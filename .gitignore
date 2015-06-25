@@ -1,0 +1,6 @@
+Makefile.in
+build
+configure
+config.h.in~
+m4
+autom4te.cache
