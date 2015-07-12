@@ -40,16 +40,18 @@
 
 #include "openhalon-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
+#include "assert.h"
 
 typedef unsigned char boolean;
 
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_if);
 
-static struct ovsdb_idl *idl;
+struct ovsdb_idl *idl;
 static unsigned int idl_seqno;
 static char *appctl_path = NULL;
 static struct unixctl_server *appctl;
 static struct ovsdb_idl_txn *txn;
+static struct ovsdb_idl_txn *status_txn;
 
 boolean exiting = false;
 
@@ -80,10 +82,25 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_set_lock(idl, "halon_vtysh");
     idl_seqno = ovsdb_idl_get_seqno(idl);
 
+    /* Add hostname columns */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
-
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_hostname);
 
+    /* Add tables and columns for LLDP configuration */
+    ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_cur_cfg);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lldp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_status);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
+
+    /* Fetch data from DB */
     vtysh_run();
 }
 
@@ -182,4 +199,43 @@ char* vtysh_ovsdb_hostname_get()
 void vtysh_ovsdb_exit(void)
 {
     ovsdb_idl_destroy(idl);
+}
+
+/* This API is for fetching contents from DB to Vtysh IDL cache
+   and to do initial setup before commiting changes to IDL cache.
+   Keeping the return value as boolean so that we can handle any error cases
+   in future. */
+boolean cli_do_config_start()
+{
+  ovsdb_idl_run(idl);
+  status_txn = ovsdb_idl_txn_create(idl);
+
+  if(status_txn == NULL)
+  {
+     assert(0);
+     return false;
+  }
+  return true;
+}
+
+/* This API is for pushing Vtysh IDL contents to DB */
+boolean cli_do_config_finish()
+{
+  enum ovsdb_idl_txn_status status;
+
+  status = ovsdb_idl_txn_commit(status_txn);
+  ovsdb_idl_txn_destroy(status_txn);
+  status_txn = NULL;
+
+  if ((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
+      && (status != TXN_UNCHANGED))
+     return false;
+
+  return true;
+}
+
+
+void cli_do_config_abort()
+{
+  ovsdb_idl_txn_destroy(status_txn);
 }

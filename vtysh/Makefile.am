@@ -16,14 +16,14 @@ bin_PROGRAMS = vtysh
 
 vtysh_SOURCES = vtysh_main.c vtysh.c vtysh_user.c vtysh_config.c
 if ENABLE_OVSDB
-vtysh_SOURCES += vtysh_ovsdb_if.c
+vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
 CLEANFILES = vtysh_cmd.c
 noinst_HEADERS = vtysh.h vtysh_user.h
 if ENABLE_OVSDB
-noinst_HEADERS += vtysh_ovsdb_if.h
+noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@

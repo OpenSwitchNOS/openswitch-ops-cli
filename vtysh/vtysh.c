@@ -305,7 +305,10 @@ vtysh_execute_func (const char *line, int pager)
    * Changing vty->node is enough to try it just out without actual walkup in
    * the vtysh. */
   while (ret != CMD_SUCCESS && ret != CMD_SUCCESS_DAEMON && ret != CMD_WARNING
-	 && vty->node > CONFIG_NODE)
+#ifdef ENABLE_OVSDB
+         && ret != CMD_OVSDB_FAILURE
+#endif
+         && vty->node > CONFIG_NODE)
     {
       vty->node = node_parent(vty->node);
       ret = cmd_execute_command (vline, vty, &cmd, 1);
@@ -347,6 +350,11 @@ vtysh_execute_func (const char *line, int pager)
   cmd_stat = ret;
   switch (ret)
     {
+#ifdef ENABLE_OVSDB
+    case CMD_OVSDB_FAILURE:
+      fprintf (stdout,"%% Command failed.\n");
+      break;
+#endif
     case CMD_WARNING:
       if (vty->type == VTY_FILE)
 	fprintf (stdout,"Warning...\n");
@@ -2624,4 +2632,7 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
 
+#ifdef ENABLE_OVSDB
+  lldp_vty_init();
+#endif
 }
