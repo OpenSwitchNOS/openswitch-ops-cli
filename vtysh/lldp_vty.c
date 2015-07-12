@@ -1122,7 +1122,7 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   row = ovsrec_interface_first(idl);
   if(!row)
   {
-    VLOG_ERR("Couldn't fetch a row from the DB.");
+    VLOG_ERR("unable to fetch a row.");
     cli_do_config_abort();
     return 1;
   }
@@ -1199,6 +1199,120 @@ DEFUN (lldp_if_lldp_rx,
 }
 
 
+int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
+{
+  const struct ovsrec_interface * row = NULL;
+  char *state_value;
+  boolean validstate = false, ifexists = false;
+
+  if(!cli_do_config_start())
+  {
+    VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    return 1;
+  }
+
+  row = ovsrec_interface_first(idl);
+  if(!row)
+  {
+    VLOG_ERR("unable to fetch a row.");
+    cli_do_config_abort();
+    return 1;
+  }
+
+  OVSREC_INTERFACE_FOR_EACH(row, idl)
+  {
+    if(strcmp(row->name, ifvalue) == 0)
+    {
+      ifexists = true;
+      state_value = smap_get(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
+      if(state == LLDP_TX)
+      {
+        if((NULL == state_value) || (strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0))
+        {
+          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+                        INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX);
+          validstate = true;
+        }
+        else if(strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
+        {
+          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+                        INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF);
+          validstate = true;
+        }
+      }
+      else if (state == LLDP_RX)
+      {
+        if((NULL == state_value) || (strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0))
+        {
+          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+                        INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX);
+          validstate = true;
+        }
+        else if(strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
+        {
+          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+                        INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF);
+          validstate = true;
+        }
+      }
+
+      if (true == validstate)
+      {
+        ovsrec_interface_set_other_config(row, &row->other_config);
+      }
+      break;
+    }
+  }
+
+  if ((true == ifexists) && (true == validstate))
+  {
+    if(cli_do_config_finish())
+      return 0;
+    else
+    {
+      VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+    }
+  }
+  else
+  {
+    if (false == ifexists)
+    {
+      VLOG_ERR("unable to find the interface");
+    }
+    if ((true == ifexists) && (false == validstate))
+    {
+      VLOG_ERR("ifrow other_config has invalid lldp dir state");
+    }
+
+    cli_do_config_abort();
+  }
+
+  return 1;
+}
+
+DEFUN (lldp_if_no_lldp_tx,
+       lldp_if_no_lldp_tx_cmd,
+       "no lldp transmission",
+       "Unset the transmission\n"
+       "Unset the trans\n")
+{
+  if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_TX) != 0)
+    VLOG_ERR("Failed to set lldp transmission in Interface context");
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (lldp_if_no_lldp_rx,
+       lldp_if_no_lldp_rx_cmd,
+       "no lldp reception",
+       "Unset the reception\n"
+       "Unset the recv\n")
+{
+  if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_RX) != 0)
+    VLOG_ERR("Failed to set lldp reception in Interface context");
+
+  return CMD_SUCCESS;
+}
 /* Install LLDP related vty commands. */
 void
 lldp_vty_init (void)
@@ -1223,5 +1337,7 @@ lldp_vty_init (void)
   install_element (ENABLE_NODE, &lldp_show_statistics_cmd);
   install_element (INTERFACE_NODE, &lldp_if_lldp_tx_cmd);
   install_element (INTERFACE_NODE, &lldp_if_lldp_rx_cmd);
+  install_element (INTERFACE_NODE, &lldp_if_no_lldp_tx_cmd);
+  install_element (INTERFACE_NODE, &lldp_if_no_lldp_rx_cmd);
   install_element (ENABLE_NODE, &lldp_show_neighbor_info_cmd);
 }
