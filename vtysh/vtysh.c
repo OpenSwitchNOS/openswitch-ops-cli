@@ -1482,7 +1482,7 @@ DEFUN (vtysh_test_regex,
        "Testing the input for regex\n"
        "Enter regex\n")
 {
-  if(lib_vtysh_regex_match("regex", argv[0]) == 0)
+  if(vtysh_regex_match("regex", argv[0]) == 0)
     printf("We matched successfully\n");
   return CMD_SUCCESS;
 }
@@ -1992,11 +1992,45 @@ ALIAS (vtysh_write_memory,
        "write",
        "Write running configuration to memory, network, or terminal\n")
 
+#ifdef ENABLE_OVSDB
+DEFUN (vtysh_show_running_config,
+       vtysh_show_running_config_cmd,
+       "show running-config",
+       SHOW_STR
+       "Current running configuration\n")
+{
+  FILE *fp = NULL;
+
+  fp = stdout;
+
+  vtysh_ovsdb_read_config(fp);
+  return CMD_SUCCESS;
+}
+
+ALIAS (vtysh_show_running_config,
+       vtysh_do_show_running_config_cmd,
+       "do show running-config",
+       SHOW_STR
+       "Current running configuration\n")
+
+DEFUN (vtysh_show_ovsdb_config_table_client_list,
+       vtysh_show_ovdb_config_table_client_list_cmd,
+       "show ovsdb-config-table-client-list",
+       "Ovsdb Config Table Client List\n"
+       "Ovsdb Config Table Client List\n")
+{
+  vty_out (vty, "%sCurrent Ovsdb Config Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
+
+  vtysh_ovsdb_table_list_clients (vty);
+  return CMD_SUCCESS;
+}
+#else
 ALIAS (vtysh_write_terminal,
        vtysh_show_running_config_cmd,
        "show running-config",
        SHOW_STR
        "Current operating configuration\n")
+#endif /* ENABLE_OVSDB */
 
 DEFUN (vtysh_terminal_length,
        vtysh_terminal_length_cmd,
@@ -2446,6 +2480,8 @@ vtysh_init_vty (void)
   install_element (VIEW_NODE, &vtysh_test_regex_cmd);
   install_element (ENABLE_NODE, &vtysh_test_regex_cmd);
   install_element (INTERFACE_NODE, &vtysh_mult_cxt_test_cmd);
+  install_element (VIEW_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
+  install_element (ENABLE_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
 #endif /* ENABLE_OVSDB */
 
   install_element (VIEW_NODE, &vtysh_enable_cmd);
@@ -2552,6 +2588,10 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_interface_cmd);
   install_element (CONFIG_NODE, &vtysh_no_interface_cmd);
   install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
+#ifdef ENABLE_OVSDB
+  install_element (CONFIG_NODE, &vtysh_do_show_running_config_cmd);
+  install_element (INTERFACE_NODE, &vtysh_do_show_running_config_cmd);
+#endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
   install_element (ENABLE_NODE, &vtysh_write_file_cmd);
   install_element (ENABLE_NODE, &vtysh_write_cmd);

@@ -39,8 +39,9 @@
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
 #ifdef ENABLE_OVSDB
+#include "openvswitch/vlog.h"
 #include "vtysh/vtysh_ovsdb_if.h"
-#include "lib/lib_vtysh_ovsdb_if.h"
+#include "vtysh_ovsdb_config.h"
 #endif
 
 /* VTY shell program name. */
@@ -172,6 +173,7 @@ struct option longopts[] =
   { "noerror",		    no_argument,	     NULL, 'n'},
 #ifdef ENABLE_OVSDB
   { "mininet-test",         no_argument,             NULL, 't'},
+  { "verbose",              required_argument,       NULL, 'v'},
 #endif
   { 0 }
 };
@@ -239,11 +241,6 @@ main (int argc, char **argv, char **env)
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
 
-#ifdef ENABLE_OVSDB
-  lib_vtysh_ovsdb_init(argc, argv);
-  vtysh_ovsdb_init(argc, argv);
-#endif
-
   /* if logging open now */
   if ((p = getenv("VTYSH_LOG")) != NULL)
       logfile = fopen(p, "a");
@@ -252,7 +249,7 @@ main (int argc, char **argv, char **env)
   while (1)
     {
 #ifdef ENABLE_OVSDB
-      opt = getopt_long (argc, argv, "be:c:d:nEhCt", longopts, 0);
+      opt = getopt_long (argc, argv, "be:c:d:nEhCtv:", longopts, 0);
 #else
       opt = getopt_long (argc, argv, "be:c:d:nEhC", longopts, 0);
 #endif
@@ -300,12 +297,20 @@ main (int argc, char **argv, char **env)
         case 't':
           enable_mininet_test_prompt = 1;
           break;
+        case 'v':
+          vlog_set_verbosity(optarg);
+          break;
 #endif
 	default:
 	  usage (1);
 	  break;
 	}
     }
+
+#ifdef ENABLE_OVSDB
+  vtysh_ovsdb_init_clients();
+  vtysh_ovsdb_init(argc, argv);
+#endif
 
   /* Initialize user input buffer. */
   line_read = NULL;
@@ -435,7 +440,6 @@ main (int argc, char **argv, char **env)
   printf ("\n");
 
 #ifdef ENABLE_OVSDB
-  lib_vtysh_ovsdb_exit();
   vtysh_ovsdb_exit();
 #endif
 

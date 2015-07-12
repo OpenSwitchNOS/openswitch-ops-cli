@@ -32,4 +32,13 @@ char* vtysh_ovsdb_hostname_get(void);
 
 void vtysh_ovsdb_exit(void);
 
+void vtysh_ovsdb_lib_init(void);
+
+int vtysh_ovsdb_interface_match(const char *str);
+
+int vtysh_ovsdb_port_match(const char *str);
+
+int vtysh_ovsdb_vlan_match(const char *str);
+
+int vtysh_regex_match(const char *regString, const char *inp);
 #endif /* VTYSH_OVSDB_IF_H */

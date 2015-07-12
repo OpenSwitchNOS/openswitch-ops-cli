@@ -24,16 +24,8 @@
 #ifndef LIB_VTYSH_OVSDB_IF_H
 #define LIB_VTYSH_OVSDB_IF_H 1
 
-void lib_vtysh_ovsdb_init(int argc, char *argv[]);
-
-int lib_vtysh_ovsdb_interface_match(const char *str);
-
-int lib_vtysh_ovsdb_port_match(const char *str);
-
-int lib_vtysh_ovsdb_vlan_match(const char *str);
-
-int lib_vtysh_regex_match(const char *regString, const char *inp);
-
-void lib_vtysh_ovsdb_exit(void);
+extern int (*lib_vtysh_ovsdb_interface_match)(const char *str);
+extern int (*lib_vtysh_ovsdb_port_match)(const char *str);
+extern int (*lib_vtysh_ovsdb_vlan_match)(const char *str);
 
 #endif /* LIB_VTYSH_OVSDB_IF_H */

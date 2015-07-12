@@ -1119,7 +1119,10 @@ cmd_ipv6_prefix_match (const char *str)
 static int
 cmd_ifname_match (const char *str)
 {
-  if(lib_vtysh_ovsdb_interface_match(str) == 0)
+  if(NULL == lib_vtysh_ovsdb_interface_match)
+    return 1;
+
+  if(((*lib_vtysh_ovsdb_interface_match)(str)) == 0)
     return 0;
 
   return 1;
@@ -1128,7 +1131,10 @@ cmd_ifname_match (const char *str)
 static int
 cmd_port_match (const char *str)
 {
-  if(lib_vtysh_ovsdb_port_match(str) == 0)
+  if(NULL == lib_vtysh_ovsdb_port_match)
+    return 1;
+
+  if(((*lib_vtysh_ovsdb_port_match)(str)) == 0)
     return 0;
 
   return 1;
@@ -1137,7 +1143,10 @@ cmd_port_match (const char *str)
 static int
 cmd_vlan_match (const char *str)
 {
-  if(lib_vtysh_ovsdb_vlan_match(str) == 0)
+  if(NULL == lib_vtysh_ovsdb_vlan_match)
+    return 1;
+
+  if(((*lib_vtysh_ovsdb_vlan_match)(str)) == 0)
     return 0;
 
   return 1;

@@ -23,8 +23,6 @@
  */
 
 #include <stdio.h>
-
-
 #include "vswitch-idl.h"
 #include "util.h"
 #include "unixctl.h"
@@ -41,6 +39,14 @@
 #include "openhalon-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "assert.h"
+#include "vtysh_ovsdb_config.h"
+#include "lib/lib_vtysh_ovsdb_if.h"
+#ifdef HAVE_GNU_REGEX
+#include <regex.h>
+#else
+#include "lib/regex-gnu.h"
+#endif /* HAVE_GNU_REGEX */
+#include "lib/vty.h"
 
 typedef unsigned char boolean;
 
@@ -55,6 +61,7 @@ static struct ovsdb_idl_txn *status_txn;
 
 boolean exiting = false;
 
+extern struct vty *vty;
 /*
  * Running idl run and wait to fetch the data from the DB
  */
@@ -102,8 +109,14 @@ bgp_ovsdb_init(struct ovsdb_idl *idl)
 static void
 ovsdb_init(const char *db_path)
 {
+    char *idl_lock;
+    long int pid;
+
     idl = ovsdb_idl_create(db_path, &ovsrec_idl_class, false, true);
-    ovsdb_idl_set_lock(idl, "halon_vtysh");
+    pid = getpid();
+    idl_lock = xasprintf("halon_vtysh_%ld", pid);
+    ovsdb_idl_set_lock(idl, idl_lock);
+    free(idl_lock);
     idl_seqno = ovsdb_idl_get_seqno(idl);
 
     /* Add hostname columns */
@@ -164,9 +177,10 @@ void vtysh_ovsdb_init(int argc, char *argv[])
     unixctl_command_register("exit", "", 0, 0, halon_vtysh_exit, &exiting);
 
     ovsdb_init(ovsdb_sock);
+    vtysh_ovsdb_lib_init();
     free(ovsdb_sock);
 
-    VLOG_INFO_ONCE("Halon Vtysh OVSDB Integration has been initialized");
+    VLOG_DBG("Halon Vtysh OVSDB Integration has been initialized");
 
     return;
 }
@@ -187,11 +201,11 @@ void vtysh_ovsdb_hostname_set(const char* in)
         ovsrec_open_vswitch_set_hostname(ovs, in);
         ovsdb_idl_txn_commit(txn);
         ovsdb_idl_txn_destroy(txn);
-        VLOG_INFO("We have set the hostname in the ovsdb table %s",in);
+        VLOG_DBG("Hostname set to %s in table",in);
     }
     else
     {
-        VLOG_ERR("We couldn't retrieve any open_vswitch table rows");
+        VLOG_ERR("unable to retrieve any open_vswitch table rows");
     }
 }
 
@@ -208,13 +222,13 @@ char* vtysh_ovsdb_hostname_get()
 
     if(ovs)
     {
-        printf("The hostname in ovsdb table is %s\n", ovs->hostname);
-        VLOG_INFO("We have read the hostname %s from ovsdb", ovs->hostname);
+        vty_out(vty, "hostname in table is %s%s", ovs->hostname, VTY_NEWLINE);
+        VLOG_DBG("retrieved hostname %s from table", ovs->hostname);
         return ovs->hostname;
     }
     else
     {
-        VLOG_ERR("We couldn't retrieve any open_vswitch table rows");
+        VLOG_ERR("unable to  retrieve any open_vswitch table rows");
     }
 
     return NULL;
@@ -250,7 +264,7 @@ boolean cli_do_config_finish()
 {
   enum ovsdb_idl_txn_status status;
 
-  status = ovsdb_idl_txn_commit(status_txn);
+  status = ovsdb_idl_txn_commit_block(status_txn);
   ovsdb_idl_txn_destroy(status_txn);
   status_txn = NULL;
 
@@ -265,4 +279,121 @@ boolean cli_do_config_finish()
 void cli_do_config_abort()
 {
   ovsdb_idl_txn_destroy(status_txn);
+}
+
+/*
+ * Check if the input string is a valid interface in the
+ * OVSDB table
+ */
+int vtysh_ovsdb_interface_match(const char *str)
+{
+
+  struct ovsrec_interface *row, *next;
+
+  if(!str)
+  {
+    return 1;
+  }
+
+  OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
+  {
+    if( strcmp(str,row->name) == 0)
+      return 0;
+  }
+
+  return 1;
+}
+
+/*
+ * Check if the input string is a valid port in the
+ * OVSDB table
+ */
+int vtysh_ovsdb_port_match(const char *str)
+{
+  struct ovsrec_port *row, *next;
+
+  if(!str)
+  {
+    return 1;
+  }
+
+  OVSREC_PORT_FOR_EACH_SAFE(row, next, idl)
+  {
+    if (strcmp(str, row->name) == 0)
+      return 0;
+  }
+
+  return 1;
+}
+
+/*
+ * Check if the input string is a valid vlan in the
+ * OVSDB table
+ */
+int vtysh_ovsdb_vlan_match(const char *str)
+{
+
+  struct ovsrec_vlan *row, *next;
+
+  if(!str)
+  {
+    return 1;
+  }
+
+  OVSREC_VLAN_FOR_EACH_SAFE(row, next, idl)
+  {
+    if (strcmp(str, row->name) == 0)
+      return 0;
+  }
+
+  return 1;
+}
+
+/*
+ * Check if the input string matches the given regex
+ */
+int vtysh_regex_match(const char *regString, const char *inp)
+{
+  if(!inp || !regString)
+  {
+    return 1;
+  }
+
+  regex_t regex;
+  int ret;
+  char msgbuf[100];
+
+  ret = regcomp(&regex, regString, 0);
+  if(ret)
+  {
+    VLOG_ERR("Could not compile regex\n");
+    return 1;
+  }
+
+  ret = regexec(&regex, inp, 0, NULL, 0);
+  if (!ret)
+  {
+    return 0;
+  }
+  else if(ret == REG_NOMATCH)
+  {
+    return REG_NOMATCH;
+  }
+  else
+  {
+    regerror(ret, &regex, msgbuf, sizeof(msgbuf));
+    VLOG_ERR("Regex match failed: %s\n", msgbuf);
+  }
+
+  return 1;
+}
+
+/*
+ * init the vtysh lib routines
+ */
+void vtysh_ovsdb_lib_init()
+{
+   lib_vtysh_ovsdb_interface_match = &vtysh_ovsdb_interface_match;
+   lib_vtysh_ovsdb_port_match = &vtysh_ovsdb_port_match;
+   lib_vtysh_ovsdb_vlan_match = &vtysh_ovsdb_vlan_match;
 }
