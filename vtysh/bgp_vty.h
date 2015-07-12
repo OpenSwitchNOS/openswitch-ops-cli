@@ -21,4 +21,11 @@
  *
  * Purpose: This file contains function declarations of BGP CLI.
  */
-bgp_vty_init();
+#ifndef _BGP_VTY_H
+#define _BGP_VTY_H
+
+#define CMD_AS_RANGE "<1-4294967295>"
+
+void bgp_vty_init (void);
+
+#endif /* _BGP_VTY_H */

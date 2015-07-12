@@ -38,6 +38,7 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "log.h"
+#include "bgp_vty.h"
 
 #ifdef ENABLE_OVSDB
 int enable_mininet_test_prompt = 0;

@@ -35,7 +35,7 @@
 #include "command.h"
 #include "vtysh/vtysh.h"
 #include "log.h"
-#include "bgpd/bgp_vty.h"
+#include "bgp_vty.h"
 #include "vswitch-idl.h"
 #include "openvswitch/vlog.h"
 
