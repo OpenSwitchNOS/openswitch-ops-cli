@@ -38,6 +38,10 @@
 /* vtysh local configuration file. */
 #define VTYSH_DEFAULT_CONFIG "vtysh.conf"
 
+#ifdef ENABLE_OVSDB
+extern int enable_mininet_test_prompt;
+#endif
+
 void vtysh_init_vty (void);
 void vtysh_init_cmd (void);
 extern int vtysh_connect_all (const char *optional_daemon_name);

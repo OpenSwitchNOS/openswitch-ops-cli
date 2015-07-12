@@ -1,6 +1,9 @@
 ## Process this file with automake to produce Makefile.in.
 
 AM_CPPFLAGS = -I.. -I$(top_srcdir) -I$(top_srcdir)/lib -I$(top_builddir)/lib
+if ENABLE_OVSDB
+AM_CPPFLAGS += -I $(LOCAL_SYSROOT_DIR)/usr/local/include/ovs
+endif
 DEFS = @DEFS@ -DSYSCONFDIR=\"$(sysconfdir)/\"
 
 lib_LTLIBRARIES = libzebra.la
@@ -13,12 +16,18 @@ libzebra_la_SOURCES = \
 	filter.c routemap.c distribute.c stream.c str.c log.c plist.c \
 	zclient.c sockopt.c smux.c agentx.c snmp.c md5.c if_rmap.c keychain.c privs.c \
 	sigevent.c pqueue.c jhash.c memtypes.c workqueue.c
+if ENABLE_OVSDB
+libzebra_la_SOURCES += lib_vtysh_ovsdb_if.c
+endif
 
 BUILT_SOURCES = memtypes.h route_types.h gitversion.h
 
 libzebra_la_DEPENDENCIES = @LIB_REGEX@
 
 libzebra_la_LIBADD = @LIB_REGEX@ @LIBCAP@
+if ENABLE_OVSDB
+libzebra_la_LIBADD += -lovscommon -lovsdb -lpthread
+endif
 
 pkginclude_HEADERS = \
 	buffer.h checksum.h command.h filter.h getopt.h hash.h \
@@ -28,6 +37,9 @@ pkginclude_HEADERS = \
 	plist.h zclient.h sockopt.h smux.h md5.h if_rmap.h keychain.h \
 	privs.h sigevent.h pqueue.h jhash.h zassert.h memtypes.h \
 	workqueue.h route_types.h libospf.h
+if ENABLE_OVSDB
+pkginclude_HEADERS += lib_vtysh_ovsdb_if.h
+endif
 
 EXTRA_DIST = \
 	regex.c regex-gnu.h \

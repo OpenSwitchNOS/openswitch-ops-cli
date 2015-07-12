@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with GNU Zebra; see the file COPYING.  If not, write to the Free
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.  
+ * 02111-1307, USA.
  */
 
 #ifndef ENABLE_OVSDB
@@ -40,6 +40,7 @@
 #include "vtysh/vtysh_user.h"
 #ifdef ENABLE_OVSDB
 #include "vtysh/vtysh_ovsdb_if.h"
+#include "lib/lib_vtysh_ovsdb_if.h"
 #endif
 
 /* VTY shell program name. */
@@ -73,7 +74,7 @@ sigtstp (int sig)
 {
   /* Execute "end" command. */
   vtysh_execute ("end");
-  
+
   /* Initialize readline. */
   rl_initialize ();
   printf ("\n");
@@ -119,7 +120,7 @@ vtysh_signal_set (int signo, void (*func)(int))
 
   ret = sigaction (signo, &sig, &osig);
 
-  if (ret < 0) 
+  if (ret < 0)
     return (SIG_ERR);
   else
     return (osig.sa_handler);
@@ -158,7 +159,7 @@ usage (int status)
 }
 
 /* VTY shell options, we use GNU getopt library. */
-struct option longopts[] = 
+struct option longopts[] =
 {
   { "boot",                 no_argument,             NULL, 'b'},
   /* For compatibility with older zebra/quagga versions */
@@ -169,6 +170,9 @@ struct option longopts[] =
   { "dryrun",		    no_argument,	     NULL, 'C'},
   { "help",                 no_argument,             NULL, 'h'},
   { "noerror",		    no_argument,	     NULL, 'n'},
+#ifdef ENABLE_OVSDB
+  { "mininet-test",         no_argument,             NULL, 't'},
+#endif
   { 0 }
 };
 
@@ -184,10 +188,10 @@ vtysh_rl_gets ()
       free (line_read);
       line_read = NULL;
     }
-     
+
   /* Get a line from the user.  Change prompt according to node.  XXX. */
   line_read = readline (vtysh_prompt ());
-     
+
   /* If the line has any text in it, save it on the history. But only if
    * last command in history isn't the same one. */
   if (line_read && *line_read)
@@ -199,7 +203,7 @@ vtysh_rl_gets ()
 	append_history(1,history_file);
       }
     }
-     
+
   return (line_read);
 }
 
@@ -211,7 +215,7 @@ static void log_it(const char *line)
   char tod[64];
 
   strftime(tod, sizeof tod, "%Y%m%d-%H:%M.%S", tmp);
-  
+
   fprintf(logfile, "%s:%s %s\n", tod, user, line);
 }
 
@@ -236,6 +240,7 @@ main (int argc, char **argv, char **env)
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
 
 #ifdef ENABLE_OVSDB
+  lib_vtysh_ovsdb_init(argc, argv);
   vtysh_ovsdb_init(argc, argv);
 #endif
 
@@ -244,14 +249,18 @@ main (int argc, char **argv, char **env)
       logfile = fopen(p, "a");
 
   /* Option handling. */
-  while (1) 
+  while (1)
     {
+#ifdef ENABLE_OVSDB
+      opt = getopt_long (argc, argv, "be:c:d:nEhCt", longopts, 0);
+#else
       opt = getopt_long (argc, argv, "be:c:d:nEhC", longopts, 0);
-    
+#endif
+
       if (opt == EOF)
 	break;
 
-      switch (opt) 
+      switch (opt)
 	{
 	case 0:
 	  break;
@@ -287,6 +296,11 @@ main (int argc, char **argv, char **env)
 	case 'h':
 	  usage (0);
 	  break;
+#ifdef ENABLE_OVSDB
+        case 't':
+          enable_mininet_test_prompt = 1;
+          break;
+#endif
 	default:
 	  usage (1);
 	  break;
@@ -314,7 +328,7 @@ main (int argc, char **argv, char **env)
   /* Start execution only if not in dry-run mode */
   if(dryrun)
     return(0);
-  
+
   /* Ignore error messages */
   if (no_error)
     freopen("/dev/null", "w", stdout);
@@ -322,12 +336,14 @@ main (int argc, char **argv, char **env)
   /* Make sure we pass authentication before proceeding. */
   vtysh_auth ();
 
+#ifndef ENABLE_OVSDB
   /* Do not connect until we have passed authentication. */
   if (vtysh_connect_all (daemon_name) <= 0)
     {
       fprintf(stderr, "Exiting: failed to connect to any daemons.\n");
       exit(1);
     }
+#endif
 
   /* If eval mode. */
   if (cmd)
@@ -346,7 +362,7 @@ main (int argc, char **argv, char **env)
 
 	      if (echo_command)
 		printf("%s%s\n", vtysh_prompt(), cmd->line);
-	      
+
 	      if (logfile)
 		log_it(cmd->line);
 
@@ -382,7 +398,7 @@ main (int argc, char **argv, char **env)
         }
       exit (0);
     }
-  
+
   /* Boot startup configuration file. */
   if (boot_flag)
     {
@@ -419,6 +435,7 @@ main (int argc, char **argv, char **env)
   printf ("\n");
 
 #ifdef ENABLE_OVSDB
+  lib_vtysh_ovsdb_exit();
   vtysh_ovsdb_exit();
 #endif
 

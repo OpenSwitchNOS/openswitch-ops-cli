@@ -39,6 +39,10 @@
 #include "vtysh/vtysh.h"
 #include "log.h"
 
+#ifdef ENABLE_OVSDB
+int enable_mininet_test_prompt = 0;
+#endif
+
 /* Struct VTY. */
 struct vty *vty;
 
@@ -1301,16 +1305,43 @@ ALIAS (vtysh_exit_line_vty,
        "quit",
        "Exit current mode and down to previous mode\n")
 
+#ifdef ENABLE_OVSDB
+DEFUN (vtysh_interface,
+       vtysh_interface_cmd,
+       "interface IFNAME",
+       "Select an interface to configure\n"
+       "Interface's name\n")
+{
+  vty->node = INTERFACE_NODE;
+  static char ifnumber[50];
+  if (strlen(argv[0]) < 50)
+    memcpy(ifnumber, argv[0], strlen(argv));
+  vty->index = ifnumber;
+  return CMD_SUCCESS;
+}
+
+DEFUN ( vtysh_mult_cxt_test,
+        vtysh_mult_cxt_test_cmd,
+        "test-interfaceCxt",
+        "Prints the interface context number\n")
+{
+  if (vty->index)
+    printf("The current context is %s\n",(char*)vty->index);
+
+  return CMD_SUCCESS;
+}
+#else
 DEFUNSH (VTYSH_INTERFACE,
-	 vtysh_interface,
-	 vtysh_interface_cmd,
-	 "interface IFNAME",
-	 "Select an interface to configure\n"
-	 "Interface's name\n")
+         vtysh_interface,
+         vtysh_interface_cmd,
+         "interface IFNAME",
+         "Select an interface to configure\n"
+         "Interface's name\n")
 {
   vty->node = INTERFACE_NODE;
   return CMD_SUCCESS;
 }
+#endif
 
 /* TODO Implement "no interface command in isisd. */
 DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D,
@@ -1392,6 +1423,61 @@ DEFUN (vtysh_get_hostname,
   return CMD_SUCCESS;
 }
 
+DEFUN (vtysh_test_port,
+       vtysh_test_port_cmd,
+       "test-port PORT",
+       "Testing the type PORT\n"
+       "Give a valid port value present in the DB\n")
+{
+  printf("The port given is %s\n", argv[0]);
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_test_vlan,
+       vtysh_test_vlan_cmd,
+       "test-vlan VLAN",
+       "Testing the type VLAN\n"
+       "Give a valid vlan value present in the DB\n")
+{
+  printf("The vlan given is %s\n", argv[0]);
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_test_interface,
+       vtysh_test_interface_cmd,
+       "test-interface IFNAME",
+       "Testing the type Interface\n"
+       "Give a valid interface value present in the DB\n")
+{
+  printf("The interface given is %s\n", argv[0]);
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_test_ip,
+       vtysh_test_ip_cmd,
+       "test-ip (A.B.C.D|X:X::X:X)",
+       "Testing the type ip\n"
+       "Give a valid ipv4 address\n"
+       "Give a valid ipv6 address\n")
+{
+  if (argv)
+    printf("The ip address given is %s\n", argv[0]);
+  else
+    printf("The argument is NULL\n");
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_test_regex,
+       vtysh_test_regex_cmd,
+       "test-regex WORD",
+       "Testing the input for regex\n"
+       "Enter regex\n")
+{
+  if(lib_vtysh_regex_match("regex", argv[0]) == 0)
+    printf("We matched successfully\n");
+  return CMD_SUCCESS;
+}
 #endif /* ENABLE_OVSDB */
 
 /* Logging commands. */
@@ -2261,8 +2347,20 @@ vtysh_prompt (void)
 	uname (&names);
       hostname = names.nodename;
     }
-
+#ifdef ENABLE_OVSDB
+  static char newhost[100];
+  char* temphost = cmd_prompt(vty->node);
+  strcpy(newhost, temphost);
+  if (enable_mininet_test_prompt == 1)
+  {
+    int len = strlen(temphost);
+    int x = 127;
+    newhost[len - 1] = (char)x;
+  }
+  snprintf (buf, sizeof buf, newhost, hostname);
+#else
   snprintf (buf, sizeof buf, cmd_prompt (vty->node), hostname);
+#endif
 
   return buf;
 }
@@ -2329,6 +2427,17 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_set_hostname_cmd);
   install_element (VIEW_NODE, &vtysh_get_hostname_cmd);
   install_element (ENABLE_NODE, &vtysh_get_hostname_cmd);
+  install_element (VIEW_NODE, &vtysh_test_port_cmd);
+  install_element (ENABLE_NODE, &vtysh_test_port_cmd);
+  install_element (VIEW_NODE, &vtysh_test_vlan_cmd);
+  install_element (ENABLE_NODE, &vtysh_test_vlan_cmd);
+  install_element (VIEW_NODE, &vtysh_test_interface_cmd);
+  install_element (ENABLE_NODE, &vtysh_test_interface_cmd);
+  install_element (VIEW_NODE, &vtysh_test_ip_cmd);
+  install_element (ENABLE_NODE, &vtysh_test_ip_cmd);
+  install_element (VIEW_NODE, &vtysh_test_regex_cmd);
+  install_element (ENABLE_NODE, &vtysh_test_regex_cmd);
+  install_element (INTERFACE_NODE, &vtysh_mult_cxt_test_cmd);
 #endif /* ENABLE_OVSDB */
 
   install_element (VIEW_NODE, &vtysh_enable_cmd);

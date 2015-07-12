@@ -448,6 +448,12 @@ struct cmd_token
 #define CMD_IPV6(S)        ((strcmp ((S), "X:X::X:X") == 0))
 #define CMD_IPV6_PREFIX(S) ((strcmp ((S), "X:X::X:X/M") == 0))
 
+#ifdef ENABLE_OVSDB
+#define CMD_IFNAME(S)   ((strcmp ((S), "IFNAME") == 0))
+#define CMD_PORT(S)     ((strcmp ((S), "PORT") == 0))
+#define CMD_VLAN(S)     ((strcmp ((S), "VLAN") == 0))
+#endif
+
 /* Common descriptions. */
 #define SHOW_STR "Show running system information\n"
 #define IP_STR "IP information\n"
