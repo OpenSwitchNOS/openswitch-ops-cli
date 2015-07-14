@@ -2678,5 +2678,6 @@ vtysh_init_vty (void)
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
+  l3static_vty_init();
 #endif
 }

@@ -98,10 +98,20 @@ bgp_ovsdb_init(struct ovsdb_idl *idl)
   ovsdb_idl_add_column(idl, &ovsrec_rib_col_selected_for_RIB);
   ovsdb_idl_add_column(idl, &ovsrec_rib_col_distance);
   ovsdb_idl_add_column(idl, &ovsrec_rib_col_metric);
-
-
+  ovsdb_idl_add_column(idl, &ovsrec_rib_col_vrf);
 }
 
+static void
+l3static_ovsdb_init(struct ovsdb_idl *idl)
+{
+  ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+  ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
+
+  ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_port);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
+}
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -139,6 +149,7 @@ ovsdb_init(const char *db_path)
 
     // BGP tables
     bgp_ovsdb_init(idl);
+    l3static_ovsdb_init(idl);
 
     /* Fetch data from DB */
     vtysh_run();
