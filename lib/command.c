@@ -3259,12 +3259,13 @@ ALIAS (config_write_terminal,
        SHOW_STR
        "running configuration\n")
 
+#ifndef ENABLE_OVSDB
 /* Write startup configuration into the terminal. */
 DEFUN (show_startup_config,
        show_startup_config_cmd,
        "show startup-config",
        SHOW_STR
-       "Contentes of startup configuration\n")
+       "Contents of startup configuration\n")
 {
   char buf[BUFSIZ];
   FILE *confp;
@@ -3292,6 +3293,7 @@ DEFUN (show_startup_config,
 
   return CMD_SUCCESS;
 }
+#endif
 
 /* Hostname configuration */
 DEFUN (config_hostname,
@@ -4150,7 +4152,9 @@ cmd_init (int terminal)
       install_element (ENABLE_NODE, &config_terminal_cmd);
       install_element (ENABLE_NODE, &copy_runningconfig_startupconfig_cmd);
     }
+#ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
+#endif
   install_element (ENABLE_NODE, &show_version_cmd);
 
   if (terminal)
