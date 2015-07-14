@@ -681,7 +681,7 @@ static void
 vty_down_level (struct vty *vty)
 {
   vty_out (vty, "%s", VTY_NEWLINE);
-  (*config_exit_cmd.func)(NULL, vty, 0, NULL);
+  (*config_exit_cmd.func)(NULL, vty, 0, 0, NULL);
   vty_prompt (vty);
   vty->cp = 0;
 }
