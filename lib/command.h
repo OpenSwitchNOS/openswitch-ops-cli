@@ -578,6 +578,8 @@ extern int cmd_execute_command (vector, struct vty *, struct cmd_element **, int
 extern int cmd_execute_command_strict (vector, struct vty *, struct cmd_element **);
 extern void cmd_init (int);
 extern void cmd_terminate (void);
+extern int cmd_try_execute_command (struct vty *vty, char *buf);
+extern void cmd_terminate_element(struct cmd_element *cmd);
 
 extern vector cmd_parse_format(const char* string, const char *desc);
 extern void format_parser_read_word(struct format_parser_state *state);

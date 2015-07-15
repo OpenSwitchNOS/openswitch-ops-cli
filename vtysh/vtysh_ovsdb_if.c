@@ -135,6 +135,13 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_bridges);
 }
 
+
+/***********************************************************
+ * @func        : intf_ovsdb_init
+ * @detail      : Initialise Interface table
+ * @param[in]
+ *      idl     : Pointer to idl structure
+ ***********************************************************/
 static void
 intf_ovsdb_init(struct ovsdb_idl *idl)
 {
@@ -156,6 +163,24 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
 
     return;
 }
+
+
+/***********************************************************
+ * @func        : alias_ovsdb_init
+ * @detail      : Initialise Alias table
+ * @param[in]
+ *      idl     : Pointer to idl structure
+ ***********************************************************/
+static void
+alias_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_cli_alias);
+    ovsdb_idl_add_column(idl, &ovsrec_cli_alias_col_alias_name);
+    ovsdb_idl_add_column(idl, &ovsrec_cli_alias_col_alias_definition);
+
+    return;
+}
+
 
 /***********************************************************
  * @func        : system_ovsdb_init
@@ -256,6 +281,8 @@ ovsdb_init(const char *db_path)
 
     /* Interface tables */
     intf_ovsdb_init(idl);
+
+    alias_ovsdb_init(idl);
 
     /* BGP tables */
     bgp_ovsdb_init(idl);

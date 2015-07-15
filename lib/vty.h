@@ -247,6 +247,7 @@ extern int vty_config_unlock (struct vty *);
 extern int vty_shell (struct vty *);
 extern int vty_shell_serv (struct vty *);
 extern void vty_hello (struct vty *);
+extern int vty_command (struct vty *vty, char *buf);
 
 /* Send a fixed-size message to all vty terminal monitors; this should be
    an async-signal-safe function. */

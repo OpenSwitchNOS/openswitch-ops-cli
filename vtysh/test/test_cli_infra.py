@@ -38,27 +38,24 @@ class VtyshInfraCommandsTests( HalonTest ):
 
   def hideCliCommandTest(self):
         print('\n=========================================================')
-        print('***    Test to verify interface congfiguration clis     ***')
-        print('===========================================================')
+        print(  '***       Test to verify changes to CLI infra         ***')
+        print(  '=========================================================')
         s1 = self.net.switches[ 0 ]
         out = s1.cmdCLI("configure terminal")
         s1.cmdCLI("demo_cli to_be_hidden")
         out = s1.cmdCLI(" ");
         sleep(1);
         if 'Demo Cli executed' not in out:
-                print out
                 return False
         s1.cmdCLI("hide demo_cli level 2")
         out = s1.cmdCLI("demo_cli to_be_hidden")
         sleep(1);
         if 'Unknown command.' not in out:
-                print out;
                 return False
         s1.cmdCLI("hide demo_cli level 3")
         out = s1.cmdCLI("demo_cli to_be_hidden")
         sleep(1);
         if 'Unknown command.' not in out:
-                print out;
                 return False
         out = s1.cmdCLI("hide demo_cli level 0")
         out = s1.cmdCLI("end")
@@ -99,6 +96,45 @@ class VtyshInfraCommandsTests( HalonTest ):
             return False
         return True
 
+  def aliasCliCommandTest(self):
+        print('\n=========================================================')
+        print(  '***           Test to verify alias clis               ***')
+        print(  '=========================================================')
+        s1 = self.net.switches[ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        s1.cmdCLI("alias abc hostname MyTest")
+        out = s1.cmdCLI("do show alias");
+        sleep(1);
+        if 'abc' not in out:
+                print out
+                assert 0, "Failed to get the alias"
+                return False
+        s1.cmdCLI("alias 12345678901234567890123456789012 demo_cli level 2")
+        out = s1.cmdCLI("demo_cli to_be_hidden")
+        sleep(1);
+        if 'Max length exceeded' not in out:
+                assert 0, "Failed to check max length"
+                return False
+        s1.cmdCLI("alias llht lldp holdtime $1; hostname $2")
+        s1.cmdCLI("llht 6 TestHName")
+        s1.cmdCLI("do show running")
+        out = s1.cmdCLI("do show running")
+        sleep(1);
+        if 'hostname TestHName' not in out:
+                assert 0, "Failed to check hostname in show running"
+                return False
+        if 'lldp holdtime 6' not in out:
+                assert 0, "Failed to check lldp hostname"
+                return False
+        out = s1.cmdCLI("no hostname")
+        out = s1.cmdCLI("no lldp hostname")
+        out = s1.cmdCLI("do show running ")
+        sleep(1);
+        if 'alias llht lldp holdtime $1; hostname $2' not in out:
+                assert 0, "Failed to check alias in show running"
+                return False
+        return True;
+
 class Test_vtyshInfraCommands:
   # Create the Mininet topology based on mininet.
   test = VtyshInfraCommandsTests()
@@ -137,3 +173,9 @@ class Test_vtyshInfraCommands:
       print 'Passed CliSessionTest'
     else:
       assert 0, 'Failed CliSessionTest'
+
+  def aliasCliCommandTest(self):
+    if self.test.aliasCliCommandTest():
+      print 'Passed aliasCliCommandTest'
+    else:
+      assert 0, "Failed aliasCliCommandTest"

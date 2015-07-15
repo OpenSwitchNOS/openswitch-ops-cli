@@ -39,6 +39,36 @@
 #define VTYSH_DEFAULT_CONFIG "vtysh.conf"
 
 #ifdef ENABLE_OVSDB
+
+#define VTYSH_MAX_ALIAS_SUPPORTED 50
+#define VTYSH_MAX_ALIAS_DEF_LEN   30
+#define VTYSH_MAX_ALIAS_DEF_LEN_WITH_ARGS   40
+#define VTYSH_MAX_ALIAS_LIST_LEN 400
+
+struct vtysh_alias_data {
+   char alias_def_str[VTYSH_MAX_ALIAS_DEF_LEN];
+   char alias_list_str[VTYSH_MAX_ALIAS_LIST_LEN];
+   struct cmd_element alias_cmd_element;
+   char alias_def_str_with_args[VTYSH_MAX_ALIAS_DEF_LEN_WITH_ARGS];
+   struct cmd_element alias_cmd_element_with_args;
+
+};
+
+#define VTYSH_ALIAS_CMD_HELPSTRING            "Execute \"show aliases\" to list the command list\nArguments to replace $1, $2 etc.\n"
+#define VTYSH_ERROR_MAX_ALIASES_EXCEEDED      "Max number of aliases supported exceeded\n"
+#define VTYSH_ERROR_MAX_ALIAS_LEN_EXCEEDED    "Max length exceeded\n"
+#define VTYSH_ERROR_ALIAS_NAME_ALREADY_EXISTS "Alias command name can not be same as an already existing token\n"
+#define VTYSH_ERROR_ALIAS_NOT_FOUND           "Alias (%s) not configured\n"
+#define VTYSH_ERROR_ALIAS_LOOP_ALIAS          "Alias name can not be part of its own definition\n"
+
+#define VTYSH_CONSOLE_LENGTH 80
+
+#define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
+#define OVSDB_ROW_FETCH_ERROR  "Couldn't fetch row from the DB."
+#define OVSDB_TXN_COMMIT_ERROR "Committing transaction to DB failed."
+
+extern int vtysh_alias_callback(struct cmd_element *self, struct vty *vty, int vty_flags, int argc, const char *argv[]);
+
 extern int enable_mininet_test_prompt;
 #endif
 
