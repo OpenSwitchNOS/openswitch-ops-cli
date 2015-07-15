@@ -21,6 +21,8 @@
 
 #ifdef ENABLE_OVSDB
 #include <stdio.h>
+#include <vty_utils.h>
+#include "vtysh/vtysh_ovsdb_if.h"
 #else
 #include <zebra.h>
 #endif
@@ -626,6 +628,7 @@ vtysh_rl_describe (void)
 	if (width < len)
 	  width = len;
       }
+#ifndef ENABLE_OVSDB
 
   for (i = 0; i < vector_active (describe); i++)
     if ((token = vector_slot (describe, i)) != NULL)
@@ -642,6 +645,9 @@ vtysh_rl_describe (void)
 		   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
 		   token->desc);
       }
+#else
+  utils_vtysh_rl_describe_output(vty, describe, width);
+#endif
 
   cmd_free_strvec (vline);
   vector_free (describe);
@@ -1351,6 +1357,10 @@ DEFUNSH (VTYSH_INTERFACE,
          "Interface's name\n")
 {
   vty->node = INTERFACE_NODE;
+  static char ifnumber[5];
+  if (strlen(argv[0]) < 5)
+    memcpy(ifnumber, argv[0], strlen(argv));
+  vty->index = ifnumber;
   return CMD_SUCCESS;
 }
 #endif
@@ -2262,9 +2272,17 @@ DEFUN (vtysh_ssh,
 DEFUN (vtysh_start_shell,
        vtysh_start_shell_cmd,
        "start-shell",
+#ifndef ENABLE_OVSDB
        "Start UNIX shell\n")
+#else
+       "Start Bash shell\n")
+#endif
 {
+#ifdef ENABLE_OVSDB
+  execute_command ("bash", 0, NULL);
+#else
   execute_command ("sh", 0, NULL);
+#endif
   return CMD_SUCCESS;
 }
 
@@ -2697,8 +2715,10 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_telnet_port_cmd);
   install_element (ENABLE_NODE, &vtysh_ssh_cmd);
   install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
+#ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
   install_element (ENABLE_NODE, &vtysh_start_zsh_cmd);
+#endif
   
   install_element (VIEW_NODE, &vtysh_show_memory_cmd);
   install_element (ENABLE_NODE, &vtysh_show_memory_cmd);

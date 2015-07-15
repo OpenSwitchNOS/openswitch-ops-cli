@@ -23,6 +23,8 @@
  */
 
 #include <stdio.h>
+#include "vector.h"
+#include "command.h"
 #include "vswitch-idl.h"
 #include "util.h"
 #include "unixctl.h"
@@ -428,4 +430,30 @@ void vtysh_ovsdb_lib_init()
    lib_vtysh_ovsdb_interface_match = &vtysh_ovsdb_interface_match;
    lib_vtysh_ovsdb_port_match = &vtysh_ovsdb_port_match;
    lib_vtysh_ovsdb_vlan_match = &vtysh_ovsdb_vlan_match;
+}
+
+/*
+ * Wrapper for changing the help text for commands
+ */
+void utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
+{
+  struct cmd_token *token;
+  int i;
+  for (i = 0; i < vector_active (describe); i++)
+  {
+    if ((token = vector_slot (describe, i)) != NULL)
+      {
+        if (token->cmd == NULL || token->cmd[0] == '\0')
+          continue;
+
+        if (! token->desc)
+          fprintf (stdout,"  %-s\n",
+                   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd);
+        else
+          fprintf (stdout,"  %-*s  %s\n",
+                   width,
+                   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                   token->desc);
+      }
+  }
 }

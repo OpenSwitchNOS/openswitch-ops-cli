@@ -60,6 +60,28 @@ struct host
   char *motdfile;
 };
 
+#ifdef ENABLE_OVSDB
+struct format_parser_state
+{
+  vector topvect; /* Top level vector */
+  vector intvect; /* Intermediate level vector, used when there's
+                   * a multiple in a keyword. */
+  vector curvect; /* current vector where read tokens should be
+                     appended. */
+
+  const char *string; /* pointer to command string, not modified */
+  const char *cp; /* pointer in command string, moved along while
+                     parsing */
+  const char *dp;  /* pointer in description string, moved along while
+                     parsing */
+
+  int in_keyword; /* flag to remember if we are in a keyword group */
+  int in_multiple; /* flag to remember if we are in a multiple group */
+  int just_read_word; /* flag to remember if the last thing we red was a
+                       * real word and not some abstract token */
+};
+#endif
+
 /* There are some command levels which called from command node. */
 enum node_type 
 {
@@ -548,6 +570,10 @@ extern int cmd_execute_command (vector, struct vty *, struct cmd_element **, int
 extern int cmd_execute_command_strict (vector, struct vty *, struct cmd_element **);
 extern void cmd_init (int);
 extern void cmd_terminate (void);
+
+extern vector cmd_parse_format(const char* string, const char *desc);
+extern void format_parser_read_word(struct format_parser_state *state);
+extern char *format_parser_desc_str(struct format_parser_state *state);
 
 /* Export typical functions. */
 extern struct cmd_element config_end_cmd;
