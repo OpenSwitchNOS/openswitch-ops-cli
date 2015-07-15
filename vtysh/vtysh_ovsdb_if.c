@@ -113,6 +113,28 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
 }
 
+static void
+intf_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_admin_state);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_duplex);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mtu);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mac_in_use);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
+
+    return;
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -141,12 +163,8 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lldp_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_status);
 
-    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
+    /* Interface tables */
+    intf_ovsdb_init(idl);
 
     /* BGP tables */
     bgp_ovsdb_init(idl);
