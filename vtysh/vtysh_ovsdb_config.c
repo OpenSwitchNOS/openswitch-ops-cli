@@ -178,11 +178,11 @@ vtysh_ovsdb_table_get_minclientid(vtysh_ovsdb_tableid tableid)
 | Responsibility : calidates the client-id for the given tableid
 | Parameters:
 |           vtysh_ovsdb_tableid tableid : tableid value
-|           vtysh_ovsdb_openvswicth_table_clientid clientid: clientid value
+|           int clientid: clientid value
 | Return: int : returns e_vtysh_ok if clientid is valid else e_vtysh_error
 ------------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_ovsdb_isvalid_tableclientid(vtysh_ovsdb_tableid tableid, vtysh_ovsdb_openvswicth_table_clientid clientid)
+vtysh_ovsdb_isvalid_tableclientid(vtysh_ovsdb_tableid tableid, int clientid)
 {
   int maxclientid=0, minclientid=0;
 
@@ -210,14 +210,14 @@ vtysh_ovsdb_isvalid_tableclientid(vtysh_ovsdb_tableid tableid, vtysh_ovsdb_openv
 | Responsibility : Add client callback to the given table
 | Parameters:
 |           vtysh_ovsdb_tableid tableid : tableid value
-|           vtysh_ovsdb_openvswicth_table_clientid clientid: clientid value
+|           int clientid: clientid value
 |           vtysh_ovsdb_client *p_client: client param
 | Return: int : returns e_vtysh_ok if client callabck added successfully
 |               else e_vtysh_error
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
 vtysh_ovsdbtable_addclient(vtysh_ovsdb_tableid tableid,
-                           vtysh_ovsdb_openvswicth_table_clientid clientid,
+                           int clientid,
                            vtysh_ovsdb_client *p_client)
 {
   vtysh_ovsdb_client *povs_client = NULL;
@@ -260,14 +260,14 @@ vtysh_ovsdbtable_addclient(vtysh_ovsdb_tableid tableid,
 | Responsibility : Remove client callback to the given table
 | Parameters:
 |           vtysh_ovsdb_tableid tableid : tableid value
-|           vtysh_ovsdb_openvswicth_table_clientid clientid: clientid value
+|           int clientid: clientid value
 |           vtysh_ovsdb_client *p_client: client param
 | Return: int : returns e_vtysh_ok if client callback removed successfully
 |               else e_vtysh_error
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
 vtysh_ovsdbtable_removeclient(vtysh_ovsdb_tableid tableid,
-                              vtysh_ovsdb_openvswicth_table_clientid clientid,
+                              int clientid,
                               vtysh_ovsdb_client *p_client)
 {
   vtysh_ovsdb_client *povs_client = NULL;
