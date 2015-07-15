@@ -98,8 +98,22 @@ bgp_ovsdb_init(struct ovsdb_idl *idl)
   ovsdb_idl_add_column(idl, &ovsrec_rib_col_selected_for_RIB);
   ovsdb_idl_add_column(idl, &ovsrec_rib_col_distance);
   ovsdb_idl_add_column(idl, &ovsrec_rib_col_metric);
+}
 
-
+static void
+vrf_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+    ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_interfaces);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip_address_secondary);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
 }
 
 /*
@@ -137,8 +151,11 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
 
-    // BGP tables
+    /* BGP tables */
     bgp_ovsdb_init(idl);
+
+    /* VRF tables */
+    vrf_ovsdb_init(idl);
 
     /* Fetch data from DB */
     vtysh_run();

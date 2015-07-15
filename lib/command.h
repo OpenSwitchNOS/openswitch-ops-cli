@@ -494,6 +494,9 @@ struct cmd_token
 #define ISIS_STR "IS-IS information\n"
 #define AREA_TAG_STR "[area tag]\n"
 
+/* Added for VRF */
+#define VRF_STR "VRF Configuration.\n"
+
 #define CONF_BACKUP_EXT ".sav"
 
 /* IPv4 only machine should not accept IPv6 address for peer's IP
