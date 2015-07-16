@@ -39,6 +39,9 @@
 #include "vtysh/vtysh.h"
 #include "log.h"
 #include "bgp_vty.h"
+#include "openvswitch/vlog.h"
+
+VLOG_DEFINE_THIS_MODULE(vtysh);
 
 #ifdef ENABLE_OVSDB
 int enable_mininet_test_prompt = 0;
@@ -2099,43 +2102,51 @@ DEFUN (vtysh_show_daemons,
   return CMD_SUCCESS;
 }
 
+#ifdef ENABLE_OVSDB
 /* Execute command in child process. */
-static int
-execute_command (const char *command, int argc, const char *arg1,
-		 const char *arg2)
+int
+execute_command (const char *command, int argc, const char *arg[])
 {
-  int ret;
-  pid_t pid;
-  int status;
-
+  int ret = 0;
+  pid_t pid = 0;
+  int status = 0;
+  int index = 0;
+  char **cmd_argv = NULL;
   /* Call fork(). */
   pid = fork ();
 
   if (pid < 0)
     {
       /* Failure of fork(). */
+      VLOG_ERR ("execute_command(): Can't fork");
       fprintf (stderr, "Can't fork: %s\n", safe_strerror (errno));
       exit (1);
     }
   else if (pid == 0)
     {
-      /* This is child process. */
-      switch (argc)
-	{
-	case 0:
-	  ret = execlp (command, command, (const char *)NULL);
-	  break;
-	case 1:
-	  ret = execlp (command, command, arg1, (const char *)NULL);
-	  break;
-	case 2:
-	  ret = execlp (command, command, arg1, arg2, (const char *)NULL);
-	  break;
-	}
+      cmd_argv = (char **) malloc(sizeof(char *) * (argc + 2));
 
-      /* When execlp suceed, this part is not executed. */
+      if (cmd_argv == NULL)
+        {
+          VLOG_ERR ("execute_command(): Memory allocation failed, error:%d",errno);
+          fprintf (stderr, "Memory allocation failed, Can't execute %s: %s\n", command, safe_strerror (errno));
+          exit(1);
+        }
+      cmd_argv[0] = (char *)command;
+
+      for (index = 1; index < (argc + 1); index++)
+        {
+          cmd_argv[index] = (char *)arg[index - 1];
+        }
+
+      cmd_argv[index] = NULL;
+      ret = execvp (*cmd_argv, cmd_argv) ;
+      /* When execvp suceed, this part is not executed. */
       fprintf (stderr, "Can't execute %s: %s\n", command, safe_strerror (errno));
-      exit (1);
+      if (cmd_argv){
+        free(cmd_argv);
+      }
+      exit(1);
     }
   else
     {
@@ -2147,7 +2158,6 @@ execute_command (const char *command, int argc, const char *arg1,
   return 0;
 }
 
-#ifdef ENABLE_OVSDB
 /* Write startup configuration into the terminal. */
 DEFUN (show_startup_config,
        show_startup_config_cmd,
@@ -2155,10 +2165,10 @@ DEFUN (show_startup_config,
        SHOW_STR
        "Contents of startup configuration\n")
 {
-  execute_command ("cfgdbutil", 2, "show", "startup-config");
+  char *arguments[] = {"show", "startup-config"};
+  execute_command ("cfgdbutil", 2, (const char **)arguments);
   return CMD_SUCCESS;
 }
-#endif
 
 DEFUN (vtysh_ping,
        vtysh_ping_cmd,
@@ -2166,7 +2176,7 @@ DEFUN (vtysh_ping,
        "Send echo messages\n"
        "Ping destination address or hostname\n")
 {
-  execute_command ("ping", 1, argv[0], NULL);
+  execute_command ("ping", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2183,7 +2193,7 @@ DEFUN (vtysh_traceroute,
        "Trace route to destination\n"
        "Trace route to destination address or hostname\n")
 {
-  execute_command ("traceroute", 1, argv[0], NULL);
+  execute_command ("traceroute", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2202,7 +2212,7 @@ DEFUN (vtysh_ping6,
        "IPv6 echo\n"
        "Ping destination address or hostname\n")
 {
-  execute_command ("ping6", 1, argv[0], NULL);
+  execute_command ("ping6", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2213,7 +2223,7 @@ DEFUN (vtysh_traceroute6,
        "IPv6 trace\n"
        "Trace route to destination address or hostname\n")
 {
-  execute_command ("traceroute6", 1, argv[0], NULL);
+  execute_command ("traceroute6", 1, argv);
   return CMD_SUCCESS;
 }
 #endif
@@ -2224,7 +2234,7 @@ DEFUN (vtysh_telnet,
        "Open a telnet connection\n"
        "IP address or hostname of a remote system\n")
 {
-  execute_command ("telnet", 1, argv[0], NULL);
+  execute_command ("telnet", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2235,7 +2245,7 @@ DEFUN (vtysh_telnet_port,
        "IP address or hostname of a remote system\n"
        "TCP Port number\n")
 {
-  execute_command ("telnet", 2, argv[0], argv[1]);
+  execute_command ("telnet", 2, argv);
   return CMD_SUCCESS;
 }
 
@@ -2245,7 +2255,7 @@ DEFUN (vtysh_ssh,
        "Open an ssh connection\n"
        "[user@]host\n")
 {
-  execute_command ("ssh", 1, argv[0], NULL);
+  execute_command ("ssh", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2254,7 +2264,7 @@ DEFUN (vtysh_start_shell,
        "start-shell",
        "Start UNIX shell\n")
 {
-  execute_command ("sh", 0, NULL, NULL);
+  execute_command ("sh", 0, NULL);
   return CMD_SUCCESS;
 }
 
@@ -2264,7 +2274,7 @@ DEFUN (vtysh_start_bash,
        "Start UNIX shell\n"
        "Start bash\n")
 {
-  execute_command ("bash", 0, NULL, NULL);
+  execute_command ("bash", 0, NULL);
   return CMD_SUCCESS;
 }
 
@@ -2274,9 +2284,10 @@ DEFUN (vtysh_start_zsh,
        "Start UNIX shell\n"
        "Start Z shell\n")
 {
-  execute_command ("zsh", 0, NULL, NULL);
+  execute_command ("zsh", 0, NULL);
   return CMD_SUCCESS;
 }
+#endif
 
 static void
 vtysh_install_default (enum node_type node)

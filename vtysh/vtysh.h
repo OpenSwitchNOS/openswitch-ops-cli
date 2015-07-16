@@ -67,6 +67,9 @@ void vtysh_config_init (void);
 
 void vtysh_pager_init (void);
 
+int execute_command (const char *, int, const char *arg[]);
+
+
 /* Child process execution flag. */
 extern int execute_flag;
 
