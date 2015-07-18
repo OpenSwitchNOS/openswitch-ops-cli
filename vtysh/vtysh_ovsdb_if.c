@@ -107,8 +107,8 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_interfaces);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip_address_secondary);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
