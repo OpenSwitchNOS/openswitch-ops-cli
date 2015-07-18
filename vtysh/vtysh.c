@@ -2147,6 +2147,19 @@ execute_command (const char *command, int argc, const char *arg1,
   return 0;
 }
 
+#ifdef ENABLE_OVSDB
+/* Write startup configuration into the terminal. */
+DEFUN (show_startup_config,
+       show_startup_config_cmd,
+       "show startup-config",
+       SHOW_STR
+       "Contents of startup configuration\n")
+{
+  execute_command ("cfgdbutil", 2, "show", "startup-config");
+  return CMD_SUCCESS;
+}
+#endif
+
 DEFUN (vtysh_ping,
        vtysh_ping_cmd,
        "ping WORD",
@@ -2612,6 +2625,9 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_terminal_no_length_cmd);
   install_element (VIEW_NODE, &vtysh_show_daemons_cmd);
   install_element (ENABLE_NODE, &vtysh_show_daemons_cmd);
+#ifdef ENABLE_OVSDB
+  install_element (ENABLE_NODE, &show_startup_config_cmd);
+#endif /* ENABLE_OVSDB */
 
   install_element (VIEW_NODE, &vtysh_ping_cmd);
   install_element (VIEW_NODE, &vtysh_ping_ip_cmd);
@@ -2678,6 +2694,7 @@ vtysh_init_vty (void)
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
+  vrf_vty_init();
   l3static_vty_init();
 #endif
 }
