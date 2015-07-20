@@ -656,7 +656,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
         secondary_ip4_addresses = xmalloc(
         IP_ADDRESS_LENGTH * (port_row->n_ip4_address_secondary - 1));
         for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
-            if (strcmp(ip, port_row->ip4_address_secondary[i]) != 0)
+            if (strcmp(ip4, port_row->ip4_address_secondary[i]) != 0)
                 secondary_ip4_addresses[i] = port_row->ip4_address_secondary[i];
         }
         ovsrec_port_set_ip4_address_secondary(port_row, secondary_ip4_addresses,
