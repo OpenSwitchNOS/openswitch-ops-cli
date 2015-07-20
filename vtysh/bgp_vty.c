@@ -66,6 +66,8 @@ extern struct ovsdb_idl *idl;
 #define BGP_SHOW_HEADER "   Network          Next Hop            Metric LocPrf Weight Path%s"
 VLOG_DEFINE_THIS_MODULE(bgp_vty);
 
+//HALON_TODO: Fix this properly
+#if 0
 static void
 print_route_status(struct vty *vty, int64_t flags)
 {
@@ -100,34 +102,38 @@ print_route_status(struct vty *vty, int64_t flags)
     else
     vty_out (vty, " "); */
 }
+#endif
 
 /* Function to print route status code */
 static void show_routes (struct vty *vty)
 {
-  const struct ovsrec_rib *ribRow = NULL;
+  const struct ovsrec_route *ribRow = NULL;
   int ii;
 
   // Read RIB flags column from RIB table
-  OVSREC_RIB_FOR_EACH(ribRow, idl) {
+  OVSREC_ROUTE_FOR_EACH(ribRow, idl) {
     if (!ribRow)
       continue;
-    print_route_status(vty, ribRow->flags);
+//HALON_TODO: Fix this properly
+#if 0
+    print_route_status(vty, flags);
+#endif
     if (ribRow->prefix) {
       char str[17] ;
       int len = 0;
-      len = snprintf(str, sizeof(str), " %s/%d", ribRow->prefix, ribRow->prefix_len);
+      len = snprintf(str, sizeof(str), " %s", ribRow->prefix);
       vty_out(vty, "%s", str);
       if (len < 18)
 	vty_out (vty, "%*s", 18-len, " ");
 
       // nexthop
-      if (!strcmp(ribRow->address_family, OVSREC_RIB_ADDRESS_FAMILY_IPV4)) {
-	if (ribRow->n_nexthop_list) {
+      if (!strcmp(ribRow->address_family, "ipv4")) {
+	if (ribRow->n_nexthops) {
 	  // Get the nexthop list
 	  //VLOG_INFO("No. of next hops : %d", ribRow->n_nexthop_list);
 	  const struct ovsdb_datum *datum = NULL;
-	  datum = ovsrec_rib_get_nexthop_list(ribRow, OVSDB_TYPE_STRING);
-	  for (ii = 0; ii < ribRow->n_nexthop_list; ii++) {
+	  datum = ovsrec_route_get_nexthops(ribRow, OVSDB_TYPE_STRING);
+	  for (ii = 0; ii < ribRow->n_nexthops; ii++) {
 	    vty_out (vty, "%-16s", datum->keys[ii].string);
 	  }
 	} else {
@@ -145,8 +151,8 @@ static void show_routes (struct vty *vty)
       vty_out (vty, "%7d ", 0);
       vty_out(vty, "%s", " ");
       // print origin
-      if (ribRow->from_protocol)
-	vty_out(vty, "%s", ribRow->from_protocol);
+      if (ribRow->from)
+	vty_out(vty, "%s", ribRow->from);
       vty_out (vty, VTY_NEWLINE);
     }
 

@@ -54,14 +54,13 @@ DEFUN (vtysh_ip_route_weight,
        "Nexthop interface\n"
        "Weight for this route. Default is 1 hop\n")
 {
-    const struct ovsrec_rib *row = NULL;
+    const struct ovsrec_route *row = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
     const struct ovsrec_vrf *row_vrf = NULL;
 
     struct in_addr nexthop;
     struct in_addr mask;
     struct prefix p;
-    char *token;
     int ret;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -84,13 +83,13 @@ DEFUN (vtysh_ip_route_weight,
         return CMD_OVSDB_FAILURE;
     }
 
-    row = ovsrec_rib_insert(status_txn);
+    row = ovsrec_route_insert(status_txn);
 
-    ovsrec_rib_set_vrf(row, row_vrf);
+    ovsrec_route_set_vrf(row, row_vrf);
 
-    ovsrec_rib_set_address_family(row, OVSREC_RIB_ADDRESS_FAMILY_IPV4);
+    ovsrec_route_set_address_family(row, OVSREC_ROUTE_ADDRESS_FAMILY_IPV4);
 
-    ovsrec_rib_set_sub_address_family(row, OVSREC_RIB_SUB_ADDRESS_FAMILY_UNICAST);
+    ovsrec_route_set_sub_address_family(row, OVSREC_ROUTE_SUB_ADDRESS_FAMILY_UNICAST);
 
     ret = str2prefix_ipv4 (argv[0], &p);
     if (ret <= 0) {
@@ -98,13 +97,9 @@ DEFUN (vtysh_ip_route_weight,
         return CMD_WARNING;
     }
 
-    token = strtok(argv[0], "/");
-    ovsrec_rib_set_prefix(row, (const char *)token);
+    ovsrec_route_set_prefix(row, argv[0]);
 
-    token = strtok(NULL, "/");
-    ovsrec_rib_set_prefix_len(row, atoi(token));
-
-    ovsrec_rib_set_from_protocol(row, OVSREC_RIB_FROM_PROTOCOL_STATIC);
+    ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
     row_nh = ovsrec_nexthop_first(idl);
 
@@ -114,18 +109,24 @@ DEFUN (vtysh_ip_route_weight,
     if(ret) {
         ovsrec_nexthop_set_ip_address(row_nh, argv[1]);
     } else {
-        ovsrec_nexthop_set_port(row_nh, argv[1]);
+        /* The number of NH ports that can be configured from CLI for a static
+         * route at a time is 1. So hardcode the last parameter.
+         */
+        ovsrec_nexthop_set_ports(row_nh, argv[1], 1);
     }
 
     if(argc < 3) {
-        ovsrec_rib_set_distance(row, 1);
-        ovsrec_nexthop_set_weight(row_nh, 1);
+        /*
+         * Hardcode the n_distance and n_weight param to 1 for static routes
+         */
+        ovsrec_route_set_distance(row, 1, 1);
+        ovsrec_nexthop_set_weight(row_nh, 1, 1);
     } else {
-        ovsrec_rib_set_distance(row, atoi(argv[2]));
-        ovsrec_nexthop_set_weight(row_nh, atoi(argv[2]));
+        ovsrec_route_set_distance(row, atoi(argv[2]), 1);
+        ovsrec_nexthop_set_weight(row_nh, atoi(argv[2]), 1);
     }
 
-    ovsrec_rib_set_nexthop_list(row, &row_nh, row->n_interface_list+1);
+    ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);
 
     status = ovsdb_idl_txn_commit_block(status_txn);
     ovsdb_idl_txn_destroy(status_txn);
@@ -142,55 +143,50 @@ DEFUN (vtysh_ip_route_weight,
 }
 
 
-static void show_routes_ip(struct vty *vty)
+static int show_routes_ip(struct vty *vty)
 {
-    const struct ovsrec_rib *row_rib = NULL;
+    const struct ovsrec_route *row_route = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
     int flag = 0;
     int disp_flag = 1;
     int ipv4_flag = 0;
 
-    OVSREC_RIB_FOR_EACH(row_rib, idl) {
-        if (row_rib->address_family != NULL) {
-            if (!strcmp(row_rib->address_family, "ipv4") && disp_flag == 1) {
+    OVSREC_ROUTE_FOR_EACH(row_route, idl) {
+        if (row_route->address_family != NULL) {
+            if (!strcmp(row_route->address_family, "ipv4") && disp_flag == 1) {
                 flag = 1;
                 vty_out (vty, "\nDisplaying IP routes %s\n", VTY_NEWLINE);
                 disp_flag = 0;
             }
         }
 
-        if (!strcmp(row_rib->address_family, "ipv4")) {
+        if (!strcmp(row_route->address_family, "ipv4")) {
             ipv4_flag = 1;
         }
 
-        if (row_rib->prefix && ipv4_flag == 1) {
+        if (row_route->prefix && ipv4_flag == 1) {
             char str[20];
             int len = 0;
-            len = snprintf(str, sizeof(str), "%s/%d", row_rib->prefix, row_rib->prefix_len);
+            len = snprintf(str, sizeof(str), "%s", row_route->prefix);
             vty_out(vty, "%s", str);
         }
 
-        if (row_rib->n_nexthop_list && ipv4_flag == 1) {
-            vty_out(vty, ",  %d %s next-hops %s", row_rib->n_nexthop_list,
-                row_rib->sub_address_family, VTY_NEWLINE);
+        if (row_route->n_nexthops && ipv4_flag == 1) {
+            vty_out(vty, ",  %d %s next-hops %s", row_route->n_nexthops,
+                row_route->sub_address_family, VTY_NEWLINE);
         }
 
-        if (row_rib->n_interface_list && ipv4_flag == 1) {
-            vty_out(vty, ",  %d %s next-hops %s", row_rib->n_interface_list,
-                row_rib->sub_address_family, VTY_NEWLINE);
-        }
-
-        if (row_rib->n_nexthop_list) {
+        if (row_route->n_nexthops) {
             char str[17];
             int len = 0;
 
-            if (row_rib->nexthop_list[0]->ip_address && ipv4_flag == 1) {
+            if (row_route->nexthops[0]->ip_address && ipv4_flag == 1) {
                 len = snprintf(str, sizeof(str), " %s",
-                    row_rib->nexthop_list[0]->ip_address);
+                    row_route->nexthops[0]->ip_address);
                 vty_out(vty, "\t*via %s", str);
-            } else if (row_rib->nexthop_list[0]->port && ipv4_flag == 1){
+            } else if (row_route->nexthops[0]->ports && ipv4_flag == 1){
                 len = snprintf(str, sizeof(str), " %s",
-                    row_rib->nexthop_list[0]->port);
+                    row_route->nexthops[0]->ports);
                 vty_out(vty, "\t*via %s", str);
             }
 
@@ -198,20 +194,20 @@ static void show_routes_ip(struct vty *vty)
             vty_out(vty, "\t*via Null0");
         }
 
-        if (row_rib->distance && ipv4_flag == 1) {
-            vty_out(vty, ",  [%d", row_rib->distance);
+        if (row_route->distance && ipv4_flag == 1) {
+            vty_out(vty, ",  [%d", row_route->distance);
         } else if(ipv4_flag == 1){
             vty_out(vty, ",  [0");
         }
 
-        if (row_rib->metric && ipv4_flag == 1) {
-            vty_out(vty, "/%d]", row_rib->metric);
+        if (row_route->metric && ipv4_flag == 1) {
+            vty_out(vty, "/%d]", row_route->metric);
         } else if (ipv4_flag == 1) {
             vty_out(vty, "/0]");
         }
 
-        if (row_rib->from_protocol && ipv4_flag == 1) {
-            vty_out(vty, ",  %s", row_rib->from_protocol);
+        if (row_route->from && ipv4_flag == 1) {
+            vty_out(vty, ",  %s", row_route->from);
         }
 
         if (ipv4_flag == 1) {
@@ -236,11 +232,15 @@ DEFUN (vtysh_show_ip_route,
        IP_STR
        ROUTE_STR)
 {
+    int retval;
+
     ovsdb_idl_run(idl);
     ovsdb_idl_wait(idl);
 
-    show_routes_ip(vty);
+    retval = show_routes_ip(vty);
     vty_out(vty, VTY_NEWLINE);
+
+    return retval;
 }
 
 DEFUN (vtysh_no_ip_route_weight,
@@ -254,11 +254,10 @@ DEFUN (vtysh_no_ip_route_weight,
        "Nexthop interface\n")
 {
 
-    const struct ovsrec_rib *row_rib = NULL;
+    const struct ovsrec_route *row_route = NULL;
     int flag = 0;
     int disp_flag = 0;
-    char prefix;
-    int prefix_len = 0;
+    char *prefix = argv[0];
     int found_flag = 0;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -274,47 +273,44 @@ DEFUN (vtysh_no_ip_route_weight,
         return CMD_OVSDB_FAILURE;
     }
 
-    prefix = strtok(argv[0], "/");
-    prefix_len = atoi(strtok(NULL, "/"));
-
-    OVSREC_RIB_FOR_EACH(row_rib, idl) {
-        if (row_rib->address_family != NULL) {
-            if (!strcmp(row_rib->address_family, "ipv4")) {
+    OVSREC_ROUTE_FOR_EACH(row_route, idl) {
+        if (row_route->address_family != NULL) {
+            if (!strcmp(row_route->address_family, "ipv4")) {
                 flag = 1;
                 disp_flag = 1;
             }
         }
 
         if (flag == 1 && disp_flag == 1) {
-            if(row_rib->prefix != NULL && !strcmp(row_rib->address_family, "ipv4")) {
-                if(0 == strcmp(argv[0],row_rib->prefix )) {
-                    if (row_rib->n_nexthop_list) {
+            if(row_route->prefix != NULL && !strcmp(row_route->address_family, "ipv4")) {
+                if(0 == strcmp(argv[0],row_route->prefix )) {
+                    if (row_route->n_nexthops) {
                         char str[17];
                         int len = 0;
                         int weight_match = 0;
 
                         if(atoi(argv[2])) {
-                            (atoi(argv[2]) == row_rib->nexthop_list[0]->weight) ? (weight_match = 1)
+                            (atoi(argv[2]) == row_route->nexthops[0]->weight) ? (weight_match = 1)
                                 : (weight_match = 0);
                         } else {
                             weight_match = 1;
                         }
 
-                        if ((row_rib->nexthop_list[0]->ip_address) ||
-                            (row_rib->nexthop_list[0]->port)) {
-                            if(row_rib->nexthop_list[0]->ip_address != NULL) {
-                                if(0 == strcmp(argv[1], row_rib->nexthop_list[0]->ip_address)
+                        if ((row_route->nexthops[0]->ip_address) ||
+                            (row_route->nexthops[0]->ports)) {
+                            if(row_route->nexthops[0]->ip_address != NULL) {
+                                if(0 == strcmp(argv[1], row_route->nexthops[0]->ip_address)
                                     && (weight_match == 1)) {
                                     found_flag = 1;
-                                    ovsrec_nexthop_delete(row_rib->nexthop_list[0]);
-                                    ovsrec_rib_delete(row_rib);
+                                    ovsrec_nexthop_delete(row_route->nexthops[0]);
+                                    ovsrec_route_delete(row_route);
                                 }
-                            } else if(row_rib->nexthop_list[0]->port != NULL) {
-                                if(0 == strcmp(argv[1], row_rib->nexthop_list[0]->port)
+                            } else if(row_route->nexthops[0]->ports != NULL) {
+                                if(0 == strcmp(argv[1], row_route->nexthops[0]->ports)
                                     && (weight_match == 1)) {
                                     found_flag = 1;
-                                    ovsrec_nexthop_delete(row_rib->nexthop_list[0]);
-                                    ovsrec_rib_delete(row_rib);
+                                    ovsrec_nexthop_delete(row_route->nexthops[0]);
+                                    ovsrec_route_delete(row_route);
                                 }
                             }
                         }
@@ -358,14 +354,13 @@ DEFUN (vtysh_ipv6_route_weight,
        "Nexthop interface\n"
        "Weight for this route. Default is 1 hop\n")
 {
-    const struct ovsrec_rib *row = NULL;
+    const struct ovsrec_route *row = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
     const struct ovsrec_vrf *row_vrf = NULL;
 
     struct in6_addr nexthop;
     struct in6_addr mask;
     struct prefix_ipv6 p;
-    char *token;
     int ret;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -388,13 +383,13 @@ DEFUN (vtysh_ipv6_route_weight,
         return CMD_OVSDB_FAILURE;
     }
 
-    row = ovsrec_rib_insert(status_txn);
+    row = ovsrec_route_insert(status_txn);
 
-    ovsrec_rib_set_vrf(row, row_vrf);
+    ovsrec_route_set_vrf(row, row_vrf);
 
-    ovsrec_rib_set_address_family(row, OVSREC_RIB_ADDRESS_FAMILY_IPV6);
+    ovsrec_route_set_address_family(row, OVSREC_ROUTE_ADDRESS_FAMILY_IPV6);
 
-    ovsrec_rib_set_sub_address_family(row, OVSREC_RIB_SUB_ADDRESS_FAMILY_UNICAST);
+    ovsrec_route_set_sub_address_family(row, OVSREC_ROUTE_SUB_ADDRESS_FAMILY_UNICAST);
 
     ret = str2prefix_ipv6 (argv[0], &p);
     if (ret <= 0) {
@@ -402,13 +397,9 @@ DEFUN (vtysh_ipv6_route_weight,
         return CMD_WARNING;
     }
 
-    token = strtok(argv[0], "/");
-    ovsrec_rib_set_prefix(row, (const char *)token);
+    ovsrec_route_set_prefix(row, argv[0]);
 
-    token = strtok(NULL, "/");
-    ovsrec_rib_set_prefix_len(row, atoi(token));
-
-    ovsrec_rib_set_from_protocol(row, OVSREC_RIB_FROM_PROTOCOL_STATIC);
+    ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
     row_nh = ovsrec_nexthop_first(idl);
 
@@ -418,18 +409,24 @@ DEFUN (vtysh_ipv6_route_weight,
     if(ret) {
         ovsrec_nexthop_set_ip_address(row_nh, argv[1]);
     } else {
-        ovsrec_nexthop_set_port(row_nh, argv[1]);
+        /* The number of NH ports that can be configured from CLI for a static
+         * route at a time is 1. So hardcode the last parameter.
+         */
+        ovsrec_nexthop_set_ports(row_nh, argv[1], 1);
     }
 
     if(argc < 3) {
-        ovsrec_rib_set_distance(row, 1);
-        ovsrec_nexthop_set_weight(row_nh, 1);
+        /*
+         * Hardcode the n_distance and n_weight param to 1 for static routes
+         */
+        ovsrec_route_set_distance(row, 1, 1);
+        ovsrec_nexthop_set_weight(row_nh, 1, 1);
     } else {
-        ovsrec_nexthop_set_weight(row_nh, atoi(argv[2]));
-        ovsrec_rib_set_distance(row, atoi(argv[2]));
+        ovsrec_nexthop_set_weight(row_nh, atoi(argv[2]), 1);
+        ovsrec_route_set_distance(row, atoi(argv[2]), 1);
     }
 
-    ovsrec_rib_set_nexthop_list(row, &row_nh, row->n_interface_list+1);
+    ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);
 
     status = ovsdb_idl_txn_commit_block(status_txn);
     ovsdb_idl_txn_destroy(status_txn);
@@ -446,55 +443,50 @@ DEFUN (vtysh_ipv6_route_weight,
 }
 
 
-static void show_routes_ipv6(struct vty *vty)
+static int show_routes_ipv6(struct vty *vty)
 {
-    const struct ovsrec_rib *row_rib = NULL;
+    const struct ovsrec_route *row_route = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
     int flag = 0;
     int disp_flag = 1;
     int ipv6_flag = 0;
 
-    OVSREC_RIB_FOR_EACH(row_rib, idl) {
-        if (row_rib->address_family != NULL) {
-            if (!strcmp(row_rib->address_family, "ipv6") && disp_flag == 1 ) {
+    OVSREC_ROUTE_FOR_EACH(row_route, idl) {
+        if (row_route->address_family != NULL) {
+            if (!strcmp(row_route->address_family, "ipv6") && disp_flag == 1 ) {
                 flag = 1;
                 vty_out (vty, "\nDisplaying IPv6 routes %s\n", VTY_NEWLINE);
                 disp_flag = 0;
             }
         }
 
-        if (!strcmp(row_rib->address_family, "ipv6")) {
+        if (!strcmp(row_route->address_family, "ipv6")) {
             ipv6_flag = 1;
         }
 
-        if (row_rib->prefix && ipv6_flag == 1) {
+        if (row_route->prefix && ipv6_flag == 1) {
             char str[50];
             int len = 0;
-            len = snprintf(str, sizeof(str), "%s/%d", row_rib->prefix, row_rib->prefix_len);
+            len = snprintf(str, sizeof(str), "%s", row_route->prefix);
             vty_out(vty, "%s", str);
         }
 
-        if (row_rib->n_nexthop_list && ipv6_flag == 1) {
-            vty_out(vty, ",  %d %s next-hops %s", row_rib->n_nexthop_list,
-                row_rib->sub_address_family, VTY_NEWLINE);
+        if (row_route->n_nexthops && ipv6_flag == 1) {
+            vty_out(vty, ",  %d %s next-hops %s", row_route->n_nexthops,
+                row_route->sub_address_family, VTY_NEWLINE);
         }
 
-        if (row_rib->n_interface_list && ipv6_flag == 1) {
-            vty_out(vty, ",  %d %s next-hops %s", row_rib->n_interface_list,
-                row_rib->sub_address_family, VTY_NEWLINE);
-        }
-
-        if (row_rib->n_nexthop_list) {
+        if (row_route->n_nexthops) {
             char str[50];
             int len = 0;
 
-            if (row_rib->nexthop_list[0]->ip_address && ipv6_flag == 1) {
+            if (row_route->nexthops[0]->ip_address && ipv6_flag == 1) {
                 len = snprintf(str, sizeof(str), " %s",
-                    row_rib->nexthop_list[0]->ip_address);
+                    row_route->nexthops[0]->ip_address);
                 vty_out(vty, "\t*via %s", str);
-            } else if (row_rib->nexthop_list[0]->port && ipv6_flag == 1){
+            } else if (row_route->nexthops[0]->ports && ipv6_flag == 1){
                 len = snprintf(str, sizeof(str), " %s",
-                    row_rib->nexthop_list[0]->port);
+                    row_route->nexthops[0]->ports);
                 vty_out(vty, "\t*via %s", str);
             }
 
@@ -502,20 +494,20 @@ static void show_routes_ipv6(struct vty *vty)
             vty_out(vty, "\t*via Null0");
         }
 
-        if (row_rib->distance && ipv6_flag == 1) {
-            vty_out(vty, ",  [%d", row_rib->distance);
-        } else if (!strcmp(row_rib->address_family, "ipv6")) {
+        if (row_route->distance && ipv6_flag == 1) {
+            vty_out(vty, ",  [%d", row_route->distance);
+        } else if (!strcmp(row_route->address_family, "ipv6")) {
             vty_out(vty, ",  [0");
         }
 
-        if (row_rib->metric && ipv6_flag == 1) {
-            vty_out(vty, "/%d]", row_rib->metric);
-        } else if (!strcmp(row_rib->address_family, "ipv6")) {
+        if (row_route->metric && ipv6_flag == 1) {
+            vty_out(vty, "/%d]", row_route->metric);
+        } else if (!strcmp(row_route->address_family, "ipv6")) {
             vty_out(vty, "/0]");
         }
 
-        if (row_rib->from_protocol && ipv6_flag == 1) {
-            vty_out(vty, ",  %s", row_rib->from_protocol);
+        if (row_route->from && ipv6_flag == 1) {
+            vty_out(vty, ",  %s", row_route->from);
         }
 
         if (ipv6_flag == 1) {
@@ -541,11 +533,15 @@ DEFUN (vtysh_show_ipv6_route,
        IP_STR
        ROUTE_STR)
 {
+    int retval;
+
     ovsdb_idl_run(idl);
     ovsdb_idl_wait(idl);
 
-    show_routes_ipv6(vty);
+    retval = show_routes_ipv6(vty);
     vty_out(vty, VTY_NEWLINE);
+
+    return retval;
 }
 
 DEFUN (vtysh_no_ipv6_route_weight,
@@ -559,11 +555,10 @@ DEFUN (vtysh_no_ipv6_route_weight,
        "Nexthop interface\n")
 {
 
-    const struct ovsrec_rib *row_rib = NULL;
+    const struct ovsrec_route *row_route = NULL;
     int flag = 0;
     int disp_flag = 0;
-    char *prefix;
-    int prefix_len = 0;
+    char *prefix = argv[0];
     int found_flag = 0;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -579,46 +574,43 @@ DEFUN (vtysh_no_ipv6_route_weight,
         return CMD_OVSDB_FAILURE;
     }
 
-    prefix = strtok(argv[0], "/");
-    prefix_len = atoi(strtok(NULL, "/"));
-
-    OVSREC_RIB_FOR_EACH(row_rib, idl) {
-        if (row_rib->address_family != NULL) {
-            if (!strcmp(row_rib->address_family, "ipv6")) {
+    OVSREC_ROUTE_FOR_EACH(row_route, idl) {
+        if (row_route->address_family != NULL) {
+            if (!strcmp(row_route->address_family, "ipv6")) {
                 flag = 1;
                 disp_flag = 1;
             }
         }
         if (flag == 1 && disp_flag == 1) {
-            if(row_rib->prefix != NULL && !strcmp(row_rib->address_family, "ipv6")) {
-                if(0 == strcmp(prefix,row_rib->prefix ) && (prefix_len == row_rib->prefix_len)) {
-                    if (row_rib->n_nexthop_list) {
+            if(row_route->prefix != NULL && !strcmp(row_route->address_family, "ipv6")) {
+                if(0 == strcmp(prefix,row_route->prefix )) {
+                    if (row_route->n_nexthops) {
                         char str[17];
                         int len = 0;
                         int weight_match = 0;
 
                         if(atoi(argv[2])) {
-                            (atoi(argv[2]) == row_rib->nexthop_list[0]->weight) ? (weight_match = 1)
+                            (atoi(argv[2]) == row_route->nexthops[0]->weight) ? (weight_match = 1)
                                 : (weight_match = 0);
                         } else {
                             weight_match = 1;
                         }
 
-                        if ((row_rib->nexthop_list[0]->ip_address) ||
-                            (row_rib->nexthop_list[0]->port)) {
-                            if(row_rib->nexthop_list[0]->ip_address != NULL) {
-                                if(0 == strcmp(argv[1], row_rib->nexthop_list[0]->ip_address)
+                        if ((row_route->nexthops[0]->ip_address) ||
+                            (row_route->nexthops[0]->ports)) {
+                            if(row_route->nexthops[0]->ip_address != NULL) {
+                                if(0 == strcmp(argv[1], row_route->nexthops[0]->ip_address)
                                     && (weight_match == 1)) {
                                     found_flag = 1;
-                                    ovsrec_nexthop_delete(row_rib->nexthop_list[0]);
-                                    ovsrec_rib_delete(row_rib);
+                                    ovsrec_nexthop_delete(row_route->nexthops[0]);
+                                    ovsrec_route_delete(row_route);
                                 }
-                            } else if(row_rib->nexthop_list[0]->port != NULL) {
-                                if(0 == strcmp(argv[1], row_rib->nexthop_list[0]->port)
+                            } else if(row_route->nexthops[0]->ports != NULL) {
+                                if(0 == strcmp(argv[1], row_route->nexthops[0]->ports)
                                     && (weight_match == 1)) {
                                     found_flag = 1;
-                                    ovsrec_nexthop_delete(row_rib->nexthop_list[0]);
-                                    ovsrec_rib_delete(row_rib);
+                                    ovsrec_nexthop_delete(row_route->nexthops[0]);
+                                    ovsrec_route_delete(row_route);
                                 }
                             }
                         }

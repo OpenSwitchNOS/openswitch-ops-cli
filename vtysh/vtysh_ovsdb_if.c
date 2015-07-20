@@ -86,19 +86,18 @@ bgp_ovsdb_init(struct ovsdb_idl *idl)
   ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_router_id);
   ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_status);
   ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
-  ovsdb_idl_add_table(idl, &ovsrec_table_rib);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_prefix);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_prefix_len);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_from_protocol);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_nexthop_list);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_address_family);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_sub_address_family);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_protocol_specific_data);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_flags);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_selected_for_RIB);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_distance);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_metric);
-  ovsdb_idl_add_column(idl, &ovsrec_rib_col_vrf);
+
+  ovsdb_idl_add_table(idl, &ovsrec_table_route);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_prefix);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_from);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_nexthops);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_sub_address_family);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_specific);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_selected);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_distance);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
+
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
 }
 
 static void
@@ -109,7 +108,7 @@ l3static_ovsdb_init(struct ovsdb_idl *idl)
 
   ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
   ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_port);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ports);
   ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
 }
 
@@ -120,8 +119,8 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_interfaces);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip_address_secondary);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
