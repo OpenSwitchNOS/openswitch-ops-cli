@@ -1841,6 +1841,7 @@ DEFUNSH (VTYSH_ALL,
   return CMD_SUCCESS;
 }
 
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_write_terminal,
        vtysh_write_terminal_cmd,
        "write terminal",
@@ -1892,6 +1893,7 @@ DEFUN (vtysh_write_terminal,
   
   return CMD_SUCCESS;
 }
+#endif
 
 DEFUN (vtysh_integrated_config,
        vtysh_integrated_config_cmd,
@@ -1964,6 +1966,7 @@ write_config_integrated(void)
   return CMD_SUCCESS;
 }
 
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_write_memory,
        vtysh_write_memory_cmd,
        "write memory",
@@ -2005,6 +2008,7 @@ ALIAS (vtysh_write_memory,
        vtysh_write_cmd,
        "write",
        "Write running configuration to memory, network, or terminal\n")
+#endif
 
 #ifdef ENABLE_OVSDB
 DEFUN (vtysh_show_running_config,
@@ -2177,6 +2181,30 @@ DEFUN (show_startup_config,
 {
   char *arguments[] = {"show", "startup-config"};
   execute_command ("cfgdbutil", 2, (const char **)arguments);
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_copy_runningconfig,
+       vtysh_copy_runningconfig_startupconfig_cmd,
+       "copy running-config startup-config",
+       COPY_STR
+       "Copy from current system running configuration\n"
+       "Copy to startup configuration\n")
+{
+  char *arguments[] = {"copy", "running-config", "startup-config"};
+  execute_command ("cfgdbutil", 3, (const char **)arguments);
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_copy_startupconfig,
+       vtysh_copy_startupconfig_runningconfig_cmd,
+       "copy startup-config running-config",
+       COPY_STR
+       "Copy from startup configuration\n"
+       "Copy to current system running configuration\n")
+{
+  char *arguments[] = {"copy", "startup-config", "running-config"};
+  execute_command ("cfgdbutil", 3, (const char **)arguments);
   return CMD_SUCCESS;
 }
 
@@ -2669,18 +2697,27 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_do_show_running_config_cmd);
   install_element (INTERFACE_NODE, &vtysh_do_show_running_config_cmd);
 #endif /* ENABLE_OVSDB */
+
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
+#ifdef ENABLE_OVSDB
+  install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
+#endif /* ENABLE_OVSDB */
+
+#ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_write_file_cmd);
   install_element (ENABLE_NODE, &vtysh_write_cmd);
 
   /* "write terminal" command. */
   install_element (ENABLE_NODE, &vtysh_write_terminal_cmd);
+#endif /* ENABLE_OVSDB */
  
   install_element (CONFIG_NODE, &vtysh_integrated_config_cmd);
   install_element (CONFIG_NODE, &no_vtysh_integrated_config_cmd);
 
+#ifndef ENABLE_OVSDB
   /* "write memory" command. */
   install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
+#endif
 
   install_element (VIEW_NODE, &vtysh_terminal_length_cmd);
   install_element (ENABLE_NODE, &vtysh_terminal_length_cmd);
