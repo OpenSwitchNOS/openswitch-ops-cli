@@ -52,7 +52,7 @@ DEFUN (vtysh_ip_route_weight,
        "IP destination prefix (e.g. 10.0.0.0/8)\n"
        "Nexthop IP (eg. 10.0.0.1)\n"
        "Nexthop interface\n"
-       "Weight for this route. Default is 1 hop\n")
+       "Distance for this route. Default is 1 for static routes\n")
 {
     const struct ovsrec_route *row = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
@@ -62,6 +62,7 @@ DEFUN (vtysh_ip_route_weight,
     struct in_addr mask;
     struct prefix p;
     int ret;
+    int64_t distance;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
 
@@ -117,13 +118,13 @@ DEFUN (vtysh_ip_route_weight,
 
     if(argc < 3) {
         /*
-         * Hardcode the n_distance and n_weight param to 1 for static routes
+         * Hardcode the n_distance param to 1 for static routes
          */
-        ovsrec_route_set_distance(row, 1, 1);
-        ovsrec_nexthop_set_weight(row_nh, 1, 1);
+        distance = 1;
+        ovsrec_route_set_distance(row, &distance, 1);
     } else {
-        ovsrec_route_set_distance(row, atoi(argv[2]), 1);
-        ovsrec_nexthop_set_weight(row_nh, atoi(argv[2]), 1);
+        distance = atoi(argv[2]);
+        ovsrec_route_set_distance(row, &distance, 1);
     }
 
     ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);
@@ -352,7 +353,7 @@ DEFUN (vtysh_ipv6_route_weight,
        "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
        "Nexthop IPv6 (eg. 2010:bda::)\n"
        "Nexthop interface\n"
-       "Weight for this route. Default is 1 hop\n")
+       "Distance for this route. Default is 1 for static routes\n")
 {
     const struct ovsrec_route *row = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
@@ -362,6 +363,7 @@ DEFUN (vtysh_ipv6_route_weight,
     struct in6_addr mask;
     struct prefix_ipv6 p;
     int ret;
+    int64_t distance;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
 
@@ -417,13 +419,13 @@ DEFUN (vtysh_ipv6_route_weight,
 
     if(argc < 3) {
         /*
-         * Hardcode the n_distance and n_weight param to 1 for static routes
+         * Hardcode the n_distance param to 1 for static routes
          */
-        ovsrec_route_set_distance(row, 1, 1);
-        ovsrec_nexthop_set_weight(row_nh, 1, 1);
+        distance = 1;
+        ovsrec_route_set_distance(row, &distance, 1);
     } else {
-        ovsrec_nexthop_set_weight(row_nh, atoi(argv[2]), 1);
-        ovsrec_route_set_distance(row, atoi(argv[2]), 1);
+        distance = atoi(argv[2]);
+        ovsrec_route_set_distance(row, &distance, 1);
     }
 
     ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);

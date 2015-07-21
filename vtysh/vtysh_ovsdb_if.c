@@ -91,6 +91,7 @@ bgp_ovsdb_init(struct ovsdb_idl *idl)
   ovsdb_idl_add_column(idl, &ovsrec_route_col_prefix);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_from);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_nexthops);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_address_family);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_sub_address_family);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_specific);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_selected);
