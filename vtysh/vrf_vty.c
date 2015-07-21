@@ -497,12 +497,12 @@ static int vrf_del_port(const char *if_name, const char *vrf_name) {
  * This function is used to configure an IP address for a port
  * which is attached to a VRF.
  */
-static int vrf_config_ip(const char *if_name, const char *ip, bool secondary) {
+static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary) {
     struct ovsrec_vrf *vrf_row = NULL;
     struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    char **secondary_ip_addresses;
+    char **secondary_ip4_addresses;
     size_t i;
 
     ovsdb_idl_run(idl);
@@ -535,16 +535,16 @@ static int vrf_config_ip(const char *if_name, const char *ip, bool secondary) {
     }
 
     if (!secondary) {
-        ovsrec_port_set_ip_address(port_row, ip);
+        ovsrec_port_set_ip4_address(port_row, ip4);
     } else {
-        secondary_ip_addresses = xmalloc(
-        IP_ADDRESS_LENGTH * (port_row->n_ip_address_secondary + 1));
-        for (i = 0; i < port_row->n_ip_address_secondary; i++)
-            secondary_ip_addresses[i] = port_row->ip_address_secondary[i];
-        secondary_ip_addresses[port_row->n_ip_address_secondary] = ip;
-        ovsrec_port_set_ip_address_secondary(port_row, secondary_ip_addresses,
-                port_row->n_ip_address_secondary + 1);
-        free(secondary_ip_addresses);
+        secondary_ip4_addresses = xmalloc(
+        IP_ADDRESS_LENGTH * (port_row->n_ip4_address_secondary + 1));
+        for (i = 0; i < port_row->n_ip4_address_secondary; i++)
+            secondary_ip4_addresses[i] = port_row->ip4_address_secondary[i];
+        secondary_ip4_addresses[port_row->n_ip4_address_secondary] = ip4;
+        ovsrec_port_set_ip4_address_secondary(port_row, secondary_ip4_addresses,
+                port_row->n_ip4_address_secondary + 1);
+        free(secondary_ip4_addresses);
     }
 
     status = ovsdb_idl_txn_commit_block(status_txn);
@@ -554,7 +554,7 @@ static int vrf_config_ip(const char *if_name, const char *ip, bool secondary) {
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" was configured"
-                " with IP address \"%s\"", __func__, if_name, ip);
+                " with IP address \"%s\"", __func__, if_name, ip4);
         return CMD_SUCCESS;
     } else {
         VLOG_DBG(
@@ -569,12 +569,12 @@ static int vrf_config_ip(const char *if_name, const char *ip, bool secondary) {
  * This function is used to delete an IP address assigned for a port
  * which is attached to a VRF.
  */
-static int vrf_del_ip(const char *if_name, const char *ip, bool secondary) {
+static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
     struct ovsrec_vrf *vrf_row = NULL;
     struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    char **secondary_ip_addresses;
+    char **secondary_ip4_addresses;
     size_t i;
 
     ovsdb_idl_run(idl);
@@ -607,7 +607,7 @@ static int vrf_del_ip(const char *if_name, const char *ip, bool secondary) {
     }
 
     if (!secondary) {
-        if (!port_row->ip_address) {
+        if (!port_row->ip4_address) {
             vty_out(vty, "Error: No IP Address configured on interface %s.%s",
                     if_name, VTY_NEWLINE);
             VLOG_DBG("%s No IP address configured on interface \"%s\".",
@@ -616,17 +616,17 @@ static int vrf_del_ip(const char *if_name, const char *ip, bool secondary) {
             status_txn = NULL;
             return CMD_SUCCESS;
         }
-        if (strcmp(port_row->ip_address, ip) != 0) {
-            vty_out(vty, "Error: IP Address %s not found.%s", ip, VTY_NEWLINE);
+        if (strcmp(port_row->ip4_address, ip4) != 0) {
+            vty_out(vty, "Error: IP Address %s not found.%s", ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface "
-                    "\"%s\".", __func__, ip, if_name);
+                    "\"%s\".", __func__, ip4, if_name);
             ovsdb_idl_txn_destroy(status_txn);
             status_txn = NULL;
             return CMD_SUCCESS;
         }
-        ovsrec_port_set_ip_address(port_row, NULL);
+        ovsrec_port_set_ip4_address(port_row, NULL);
     } else {
-        if (!port_row->n_ip_address_secondary) {
+        if (!port_row->n_ip4_address_secondary) {
             vty_out(vty,
                     "Error: No secondary IP Address configured on"
                     " interface %s.%s", if_name, VTY_NEWLINE);
@@ -637,31 +637,31 @@ static int vrf_del_ip(const char *if_name, const char *ip, bool secondary) {
             status_txn = NULL;
             return CMD_SUCCESS;
         }
-        bool ip_address_match = false;
-        for (i = 0; i < port_row->n_ip_address_secondary; i++) {
-            if (strcmp(ip, port_row->ip_address_secondary[i]) == 0) {
-                ip_address_match = true;
+        bool ip4_address_match = false;
+        for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+            if (strcmp(ip4, port_row->ip4_address_secondary[i]) == 0) {
+                ip4_address_match = true;
                 break;
             }
         }
 
-        if (!ip_address_match) {
-            vty_out(vty, "Error: IP Address %s not found.%s", ip, VTY_NEWLINE);
+        if (!ip4_address_match) {
+            vty_out(vty, "Error: IP Address %s not found.%s", ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface"
-                    " \"%s\".", __func__, ip, if_name);
+                    " \"%s\".", __func__, ip4, if_name);
             ovsdb_idl_txn_destroy(status_txn);
             status_txn = NULL;
             return CMD_SUCCESS;
         }
-        secondary_ip_addresses = xmalloc(
-        IP_ADDRESS_LENGTH * (port_row->n_ip_address_secondary - 1));
-        for (i = 0; i < port_row->n_ip_address_secondary; i++) {
-            if (strcmp(ip, port_row->ip_address_secondary[i]) != 0)
-                secondary_ip_addresses[i] = port_row->ip_address_secondary[i];
+        secondary_ip4_addresses = xmalloc(
+        IP_ADDRESS_LENGTH * (port_row->n_ip4_address_secondary - 1));
+        for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+            if (strcmp(ip4, port_row->ip4_address_secondary[i]) != 0)
+                secondary_ip4_addresses[i] = port_row->ip4_address_secondary[i];
         }
-        ovsrec_port_set_ip_address_secondary(port_row, secondary_ip_addresses,
-                port_row->n_ip_address_secondary - 1);
-        free(secondary_ip_addresses);
+        ovsrec_port_set_ip4_address_secondary(port_row, secondary_ip4_addresses,
+                port_row->n_ip4_address_secondary - 1);
+        free(secondary_ip4_addresses);
     }
 
     status = ovsdb_idl_txn_commit_block(status_txn);
@@ -671,7 +671,7 @@ static int vrf_del_ip(const char *if_name, const char *ip, bool secondary) {
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" no longer has"
-                " the IP address \"%s\"", __func__, if_name, ip);
+                " the IP address \"%s\"", __func__, if_name, ip4);
         return CMD_SUCCESS;
     } else {
         VLOG_DBG(
@@ -732,7 +732,7 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
         for (i = 0; i < port_row->n_ip6_address_secondary; i++)
             secondary_ipv6_addresses[i] = port_row->ip6_address_secondary[i];
         secondary_ipv6_addresses[port_row->n_ip6_address_secondary] = ipv6;
-        ovsrec_port_set_ip_address_secondary(port_row,
+        ovsrec_port_set_ip6_address_secondary(port_row,
                 secondary_ipv6_addresses,
                 port_row->n_ip6_address_secondary + 1);
         free(secondary_ipv6_addresses);

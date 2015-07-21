@@ -167,10 +167,10 @@ extern struct ovsdb_idl *vtysh_ovsdb_idl;
 extern unsigned int vtysh_ovsdb_idl_seqno;
 
 vtysh_ret_val vtysh_ovsdbtable_addclient(vtysh_ovsdb_tableid tableid,
-                               vtysh_ovsdb_openvswicth_table_clientid clientid,
+                               int clientid,
                                vtysh_ovsdb_client *p_client);
 vtysh_ret_val vtysh_ovsdbtable_removeclient(vtysh_ovsdb_tableid tableid,
-                                  vtysh_ovsdb_openvswicth_table_clientid clientid,
+                                  int clientid,
                                   vtysh_ovsdb_client *p_client);
 vtysh_ret_val vtysh_ovsdbtable_iterateoverclients(vtysh_ovsdb_tableid tableid, vtysh_ovsdb_cbmsg *p_msg);
 
