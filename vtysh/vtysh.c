@@ -423,7 +423,7 @@ vtysh_execute_func (const char *line, int pager)
 	    else
 	      if (cmd->func)
 		{
-		  (*cmd->func) (cmd, vty, 0, NULL);
+		  (*cmd->func) (cmd, vty, 0, 0, NULL);
 		  break;
 		}
 	  }
@@ -442,7 +442,7 @@ vtysh_execute_func (const char *line, int pager)
 	  break;
 
 	if (cmd->func)
-	  (*cmd->func) (cmd, vty, 0, NULL);
+	  (*cmd->func) (cmd, vty, 0, 0, NULL);
       }
     }
   if (pager && vtysh_pager_name && fp && closepager)
@@ -555,7 +555,7 @@ vtysh_config_from_file (struct vty *vty, FILE *fp)
 	      break;
 
 	    if (cmd->func)
-	      (*cmd->func) (cmd, vty, 0, NULL);
+	      (*cmd->func) (cmd, vty, 0, 0, NULL);
 	  }
 	}
     }
@@ -2421,6 +2421,38 @@ vtysh_prompt (void)
   return buf;
 }
 
+DEFUN (vtysh_demo_cli1,
+       vtysh_demo_cli1_cmd,
+       "demo_cli to_be_hidden",
+       "Sprint 1 Demo Cli command\n"
+       "This cli will be hidden/disabled during runtime.\n")
+{
+	if (vty_flags & CMD_FLAG_NO_CMD)
+	{
+		vty_out(vty, "Demo Cli executed, with \"no\" flag ON.\n");
+	}
+	else
+	{
+	    vty_out(vty, "Demo Cli executed.\n");
+	}
+}
+
+DEFUN (vtysh_demo_cli2,
+       vtysh_demo_cli2_cmd,
+       "hide demo_cli level <0-3>",
+       "Hide the demo cli\ndemo_cli to_be_hidden\n0: Active, 1: Hide, 2: Not active, 3: Disabled.\n")
+{
+   int val = atoi(argv[0]);
+
+	vtysh_demo_cli1_cmd.attr &= ~(CMD_ATTR_HIDDEN | CMD_ATTR_NOT_ENABLED | CMD_ATTR_DISABLED);
+	if(1 == val)
+		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_HIDDEN;
+	if(2 == val)
+		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_NOT_ENABLED;
+	if(3 == val)
+		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_DISABLED;
+    return CMD_SUCCESS;
+}
 void
 vtysh_init_vty (void)
 {
@@ -2496,6 +2528,8 @@ vtysh_init_vty (void)
   install_element (INTERFACE_NODE, &vtysh_mult_cxt_test_cmd);
   install_element (VIEW_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
   install_element (ENABLE_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
 #endif /* ENABLE_OVSDB */
 
   install_element (VIEW_NODE, &vtysh_enable_cmd);

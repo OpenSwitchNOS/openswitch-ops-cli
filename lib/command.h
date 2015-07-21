@@ -127,21 +127,23 @@ struct cmd_node
   vector cmd_vector;	
 };
 
-enum
-{
-  CMD_ATTR_DEPRECATED = 1,
-  CMD_ATTR_HIDDEN,
-};
+/* MACROS TO BE USED AS COMMAND ATTRIBUTES */
+#define CMD_ATTR_DEPRECATED  1
+#define CMD_ATTR_HIDDEN      2  /* command is not listed in "?" or "list", but executes action routine */
+#define CMD_ATTR_NOT_ENABLED 4  /* command is listed, but not calling action routine */
+#define CMD_ATTR_DISABLED    (CMD_ATTR_HIDDEN | CMD_ATTR_NOT_ENABLED)
+
+#define CMD_FLAG_NO_CMD      1
 
 /* Structure of command element. */
 struct cmd_element 
 {
   const char *string;			/* Command specification by string. */
-  int (*func) (struct cmd_element *, struct vty *, int, const char *[]);
+  int (*func) (struct cmd_element *, struct vty *, int, int, const char *[]);
   const char *doc;			/* Documentation of this command. */
   int daemon;                   /* Daemon to which this command belong. */
   vector tokens;		/* Vector of cmd_tokens */
-  u_char attr;			/* Command attributes */
+  int attr;			/* Command attributes */
 };
 
 
@@ -202,12 +204,13 @@ struct cmd_token
   };
 
 #define DEFUN_CMD_FUNC_DECL(funcname) \
-  static int funcname (struct cmd_element *, struct vty *, int, const char *[]);
+  static int funcname (struct cmd_element *, struct vty *, int, int, const char *[]);
 
 #define DEFUN_CMD_FUNC_TEXT(funcname) \
   static int funcname \
     (struct cmd_element *self __attribute__ ((unused)), \
      struct vty *vty __attribute__ ((unused)), \
+     int vty_flags __attribute__ ((unused)), \
      int argc __attribute__ ((unused)), \
      const char *argv[] __attribute__ ((unused)) )
 
@@ -385,6 +388,13 @@ struct cmd_token
   DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, 0) \
   DEFUN_CMD_FUNC_TEXT(funcname)
 
+#define DEFUN_NO_FORM(funcname, cmdname, cmdstr, helpstr) \
+  DEFUN_CMD_FUNC_DECL(no_##funcname) \
+  DEFUN_CMD_ELEMENT(no_##funcname, no_##cmdname, "no " cmdstr, "NO_STR" helpstr, 0, 0) \
+  DEFUN_CMD_FUNC_TEXT(no_##funcname) \
+{ \
+   return funcname(self, vty, CMD_FLAG_NO_CMD, argc, argv); \
+}
 #define DEFUN_HIDDEN(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN)
 
