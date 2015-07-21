@@ -113,6 +113,18 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
 }
 
+/* Declare interest in tables for 'show arp' family of commands */
+static void
+arp_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -153,6 +165,9 @@ ovsdb_init(const char *db_path)
 
     /* VRF tables */
     vrf_ovsdb_init(idl);
+
+    /* Neighbor table for 'show arp' commands */
+    arp_ovsdb_init(idl);
 
     /* Fetch data from DB */
     vtysh_run();

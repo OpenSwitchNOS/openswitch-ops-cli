@@ -497,6 +497,11 @@ struct cmd_token
 /* Added for VRF */
 #define VRF_STR "VRF Configuration.\n"
 
+/* Help strings for show commands */
+#define SHOW_ARP_STR    "Show IPv4 addresses from neighbor table\n"
+#define SHOW_IPV6_STR   "Show IPv6 info\n"
+#define SHOW_IPV6_NEIGHBOR_STR "Show IPv6 addresses from neighbor table\n"
+
 #define CONF_BACKUP_EXT ".sav"
 
 /* IPv4 only machine should not accept IPv6 address for peer's IP
