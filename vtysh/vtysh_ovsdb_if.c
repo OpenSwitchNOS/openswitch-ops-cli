@@ -102,6 +102,7 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_table(idl, &ovsrec_table_bridge);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_interfaces);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address);
@@ -110,7 +111,10 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_bridges);
 }
 
 /*
