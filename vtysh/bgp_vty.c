@@ -78,9 +78,9 @@ extern struct ovsdb_idl *idl;
 VLOG_DEFINE_THIS_MODULE(bgp_vty);
 
 static void
-report_unimplemented_command (void)
+report_unimplemented_command (struct vty *vty)
 {
-    VLOG_INFO("\nThis command is not yet implemented\n");
+    vty_out(vty, "This command is not yet implemented\n");
 }
 
 /*
@@ -146,7 +146,7 @@ DEFUN (bgp_multiple_instance_func,
        BGP_STR
        "Enable bgp multiple instance\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -157,7 +157,7 @@ DEFUN (no_bgp_multiple_instance,
        BGP_STR
        "BGP multiple instance\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -169,7 +169,7 @@ DEFUN (bgp_config_type,
        "cisco\n"
        "zebra\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -180,7 +180,7 @@ DEFUN (no_bgp_config_type,
        BGP_STR
        "Display configuration type\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -190,7 +190,7 @@ DEFUN (no_synchronization,
        NO_STR
        "Perform IGP synchronization\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -200,7 +200,7 @@ DEFUN (no_auto_summary,
        NO_STR
        "Enable automatic network number summarization\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -212,7 +212,7 @@ DEFUN_DEPRECATED (neighbor_version,
 		  "Set the BGP version to match a neighbor\n"
 		  "Neighbor's BGP version\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -269,7 +269,7 @@ DEFUN (bgp_router_id,
        "Override configured router identifier\n"
        "Manually configured router identifier\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -280,7 +280,7 @@ DEFUN (no_bgp_router_id,
        BGP_STR
        "Override configured router identifier\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -301,7 +301,7 @@ DEFUN (bgp_cluster_id,
        "Configure Route-Reflector Cluster-id\n"
        "Route-Reflector Cluster-id in IP address format\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -319,7 +319,7 @@ DEFUN (no_bgp_cluster_id,
        BGP_STR
        "Configure Route-Reflector Cluster-id\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -339,7 +339,7 @@ DEFUN (bgp_confederation_identifier,
        "AS number\n"
        "Set routing domain confederation AS\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -351,7 +351,7 @@ DEFUN (no_bgp_confederation_identifier,
        "AS confederation parameters\n"
        "AS number\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -372,7 +372,7 @@ DEFUN (bgp_confederation_peers,
        "Peer ASs in BGP confederation\n"
        AS_STR)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -385,7 +385,7 @@ DEFUN (no_bgp_confederation_peers,
        "Peer ASs in BGP confederation\n"
        AS_STR)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -396,7 +396,7 @@ DEFUN (bgp_maxpaths,
        "Forward packets over multiple paths\n"
        "Number of paths\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -407,7 +407,7 @@ DEFUN (bgp_maxpaths_ibgp,
        "iBGP-multipath\n"
        "Number of paths\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -418,7 +418,7 @@ DEFUN (no_bgp_maxpaths,
        "Forward packets over multiple paths\n"
        "Number of paths\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -437,7 +437,7 @@ DEFUN (no_bgp_maxpaths_ibgp,
        "iBGP-multipath\n"
        "Number of paths\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -459,7 +459,7 @@ DEFUN (bgp_timers,
        "Keepalive interval\n"
        "Holdtime\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -470,7 +470,7 @@ DEFUN (no_bgp_timers,
        "Adjust routing timers\n"
        "BGP timers\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -490,7 +490,7 @@ DEFUN (bgp_client_to_client_reflection,
        "Configure client to client route reflection\n"
        "reflection of routes allowed\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -502,7 +502,7 @@ DEFUN (no_bgp_client_to_client_reflection,
        "Configure client to client route reflection\n"
        "reflection of routes allowed\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -513,7 +513,7 @@ DEFUN (bgp_always_compare_med,
        "BGP specific commands\n"
        "Allow comparing MED from different neighbors\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -524,7 +524,7 @@ DEFUN (no_bgp_always_compare_med,
        "BGP specific commands\n"
        "Allow comparing MED from different neighbors\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -535,7 +535,7 @@ DEFUN (bgp_deterministic_med,
        "BGP specific commands\n"
        "Pick the best-MED path among paths advertised from the neighboring AS\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -546,7 +546,7 @@ DEFUN (no_bgp_deterministic_med,
        "BGP specific commands\n"
        "Pick the best-MED path among paths advertised from the neighboring AS\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -557,7 +557,7 @@ DEFUN (bgp_graceful_restart,
        "BGP specific commands\n"
        "Graceful restart capability parameters\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -568,7 +568,7 @@ DEFUN (no_bgp_graceful_restart,
        "BGP specific commands\n"
        "Graceful restart capability parameters\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -580,7 +580,7 @@ DEFUN (bgp_graceful_restart_stalepath_time,
        "Set the max time to hold onto restarting peer's stale paths\n"
        "Delay value (seconds)\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -592,7 +592,7 @@ DEFUN (no_bgp_graceful_restart_stalepath_time,
        "Graceful restart capability parameters\n"
        "Set the max time to hold onto restarting peer's stale paths\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -612,7 +612,7 @@ DEFUN (bgp_fast_external_failover,
        BGP_STR
        "Immediately reset session if a link to a directly connected external peer goes down\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -623,7 +623,7 @@ DEFUN (no_bgp_fast_external_failover,
        BGP_STR
        "Immediately reset session if a link to a directly connected external peer goes down\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -634,7 +634,7 @@ DEFUN (bgp_enforce_first_as,
        BGP_STR
        "Enforce the first AS for EBGP routes\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -645,7 +645,7 @@ DEFUN (no_bgp_enforce_first_as,
        BGP_STR
        "Enforce the first AS for EBGP routes\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -657,7 +657,7 @@ DEFUN (bgp_bestpath_compare_router_id,
        "Change the default bestpath selection\n"
        "Compare router-id for identical EBGP paths\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -669,7 +669,7 @@ DEFUN (no_bgp_bestpath_compare_router_id,
        "Change the default bestpath selection\n"
        "Compare router-id for identical EBGP paths\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -682,7 +682,7 @@ DEFUN (bgp_bestpath_aspath_ignore,
        "AS-path attribute\n"
        "Ignore as-path length in selecting a route\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -695,7 +695,7 @@ DEFUN (no_bgp_bestpath_aspath_ignore,
        "AS-path attribute\n"
        "Ignore as-path length in selecting a route\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -708,7 +708,7 @@ DEFUN (bgp_bestpath_aspath_confed,
        "AS-path attribute\n"
        "Compare path lengths including confederation sets & sequences in selecting a route\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -721,7 +721,7 @@ DEFUN (no_bgp_bestpath_aspath_confed,
        "AS-path attribute\n"
        "Compare path lengths including confederation sets & sequences in selecting a route\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -734,7 +734,7 @@ DEFUN (bgp_bestpath_aspath_multipath_relax,
        "AS-path attribute\n"
        "Allow load sharing across routes that have different AS paths (but same length)\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -747,7 +747,7 @@ DEFUN (no_bgp_bestpath_aspath_multipath_relax,
        "AS-path attribute\n"
        "Allow load sharing across routes that have different AS paths (but same length)\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -758,7 +758,7 @@ DEFUN (bgp_log_neighbor_changes,
        "BGP specific commands\n"
        "Log neighbor up/down and reset reason\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -769,7 +769,7 @@ DEFUN (no_bgp_log_neighbor_changes,
        "BGP specific commands\n"
        "Log neighbor up/down and reset reason\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -783,7 +783,7 @@ DEFUN (bgp_bestpath_med,
        "Compare MED among confederation paths\n"
        "Treat missing MED as the least preferred one\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -796,7 +796,7 @@ DEFUN (bgp_bestpath_med2,
        "Compare MED among confederation paths\n"
        "Treat missing MED as the least preferred one\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -819,7 +819,7 @@ DEFUN (no_bgp_bestpath_med,
        "Compare MED among confederation paths\n"
        "Treat missing MED as the least preferred one\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -833,7 +833,7 @@ DEFUN (no_bgp_bestpath_med2,
        "Compare MED among confederation paths\n"
        "Treat missing MED as the least preferred one\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -856,7 +856,7 @@ DEFUN (no_bgp_default_ipv4_unicast,
        "Configure BGP defaults\n"
        "Activate ipv4-unicast for a peer by default\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -867,7 +867,7 @@ DEFUN (bgp_default_ipv4_unicast,
        "Configure BGP defaults\n"
        "Activate ipv4-unicast for a peer by default\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -879,7 +879,7 @@ DEFUN (bgp_network_import_check,
        "BGP network command\n"
        "Check BGP network route exists in IGP\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -891,7 +891,7 @@ DEFUN (no_bgp_network_import_check,
        "BGP network command\n"
        "Check BGP network route exists in IGP\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -903,7 +903,7 @@ DEFUN (bgp_default_local_preference,
        "local preference (higher=more preferred)\n"
        "Configure default local preference value\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -915,7 +915,7 @@ DEFUN (no_bgp_default_local_preference,
        "Configure BGP defaults\n"
        "local preference (higher=more preferred)\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -931,27 +931,16 @@ ALIAS (no_bgp_default_local_preference,
 /******************************************************************************/
 
 /*
-** change this later
-*/
-static struct ovsrec_vrf *
-get_current_vrf_context (struct vty *vty)
-{
-    return
-	ovsrec_vrf_first(idl);
-}
-
-/*
-** Find the BGP neighbor with matching vrf, bgp_router and ip_addr
+** Find the BGP neighbor with matching bgp_router and ip_addr
 */
 static struct ovsrec_bgp_neighbor *
-find_bgp_neighbor_with_vrf_bgprouter_ipaddr (
-    struct ovsrec_vrf *vrf, struct ovsrec_bgp_router *bgprouter, char *ipaddr)
+find_bgp_neighbor_with_bgprouter_ipaddr (
+    struct ovsrec_bgp_router *bgprouter, char *ipaddr)
 {
     struct ovsrec_bgp_neighbor *bgpn;
 
     OVSREC_BGP_NEIGHBOR_FOR_EACH(bgpn, idl) {
 	if (!bgpn->is_peer_group &&
-	    (bgpn->vrf == vrf) &&
 	    (bgpn->bgp_router == bgprouter) &&
 	    (strcmp(bgpn->name, ipaddr) == 0)) {
 		return bgpn;
@@ -966,28 +955,18 @@ execute_neighbor_remote_as (struct vty *vty,
 {
     char *ip_addr = argv[0];
     int64_t remote_as = (int64_t) atoi(argv[1]);
-    struct ovsrec_vrf *vrf_context;
     struct ovsrec_bgp_router *bgp_router_context;
     struct ovsrec_bgp_neighbor *bgpn;
     struct ovsdb_idl_txn *txn;
 
 /* REVISIT when schema changes go in */
-    // vrf_context = get_current_vrf_context(vty);
     bgp_router_context = (struct ovsrec_bgp_router*) vty->index;
     if (!bgp_router_context) {
 	vty_out(vty, "no bgp router context: %s: %d\n",
 	    __FILE__, __LINE__);
 	return CMD_SUCCESS;
     }
-/* REVISIT when schema changes go in */
-    // vrf_context = bgp_router_context->vrf;
-    if (!vrf_context) {
-	vty_out("\nno vrf context in bgp router: %s: %d\n",
-	    __FILE__, __LINE__);
-	return CMD_SUCCESS;
-    }
-    bgpn = find_bgp_neighbor_with_vrf_bgprouter_ipaddr(
-		vrf_context, bgp_router_context, ip_addr);
+    bgpn = find_bgp_neighbor_with_bgprouter_ipaddr(bgp_router_context, ip_addr);
 
     /* no op command, no change */
     if (bgpn && (*(bgpn->remote_as) == remote_as)) {
@@ -1004,7 +983,6 @@ execute_neighbor_remote_as (struct vty *vty,
 	    ABORT_DB_TXN(txn);
 	}
 	ovsrec_bgp_neighbor_set_is_peer_group(bgpn, false);
-	ovsrec_bgp_neighbor_set_vrf(bgpn, vrf_context);
 	ovsrec_bgp_neighbor_set_bgp_router(bgpn, bgp_router_context);
 	ovsrec_bgp_neighbor_set_name(bgpn, ip_addr);
     }
@@ -1018,7 +996,7 @@ static int
 execute_no_neighbor_remote_as (struct vty *vty,
     int argc, char *argv[])
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1070,7 +1048,7 @@ static int
 execute_neighbor_peer_group (struct vty *vty,
     bool no, int argc, char *argv[])
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1106,7 +1084,7 @@ DEFUN (no_neighbor_peer_group_remote_as,
        "Specify a BGP neighbor\n"
        AS_STR)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1120,7 +1098,7 @@ DEFUN (neighbor_local_as,
        "Specify a local-as number\n"
        "AS number used as local AS\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1133,7 +1111,7 @@ DEFUN (neighbor_local_as_no_prepend,
        "AS number used as local AS\n"
        "Do not prepend local-as to updates from ebgp peers\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 DEFUN (neighbor_local_as_no_prepend_replace_as,
@@ -1146,7 +1124,7 @@ DEFUN (neighbor_local_as_no_prepend_replace_as,
        "Do not prepend local-as to updates from ebgp peers\n"
        "Do not prepend local-as to updates from ibgp peers\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1158,7 +1136,7 @@ DEFUN (no_neighbor_local_as,
        NEIGHBOR_ADDR_STR2
        "Specify a local-as number\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1200,7 +1178,7 @@ DEFUN (neighbor_password,
        "Set a password\n"
        "The password\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1212,7 +1190,7 @@ DEFUN (no_neighbor_password,
        NEIGHBOR_ADDR_STR2
        "Set a password\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1223,7 +1201,7 @@ DEFUN (neighbor_activate,
        NEIGHBOR_ADDR_STR2
        "Enable the Address Family for this Neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1235,7 +1213,7 @@ DEFUN (no_neighbor_activate,
        NEIGHBOR_ADDR_STR2
        "Enable the Address Family for this Neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1247,7 +1225,7 @@ DEFUN (neighbor_set_peer_group,
        "Member of the peer-group\n"
        "peer-group name\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1260,7 +1238,7 @@ DEFUN (no_neighbor_set_peer_group,
        "Member of the peer-group\n"
        "peer-group name\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1272,7 +1250,7 @@ DEFUN (neighbor_passive,
        NEIGHBOR_ADDR_STR2
        "Don't send open messages to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1284,7 +1262,7 @@ DEFUN (no_neighbor_passive,
        NEIGHBOR_ADDR_STR2
        "Don't send open messages to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1296,7 +1274,7 @@ DEFUN (neighbor_shutdown,
        NEIGHBOR_ADDR_STR2
        "Administratively shut down this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1308,7 +1286,7 @@ DEFUN (no_neighbor_shutdown,
        NEIGHBOR_ADDR_STR2
        "Administratively shut down this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1321,7 +1299,7 @@ DEFUN_DEPRECATED (neighbor_capability_route_refresh,
 		  "Advertise capability to the peer\n"
 		  "Advertise route-refresh capability to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1334,7 +1312,7 @@ DEFUN_DEPRECATED (no_neighbor_capability_route_refresh,
 		  "Advertise capability to the peer\n"
 		  "Advertise route-refresh capability to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1347,7 +1325,7 @@ DEFUN (neighbor_capability_dynamic,
        "Advertise capability to the peer\n"
        "Advertise dynamic capability to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1360,7 +1338,7 @@ DEFUN (no_neighbor_capability_dynamic,
        "Advertise capability to the peer\n"
        "Advertise dynamic capability to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1372,7 +1350,7 @@ DEFUN (neighbor_dont_capability_negotiate,
        NEIGHBOR_ADDR_STR2
        "Do not perform capability negotiation\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1384,7 +1362,7 @@ DEFUN (no_neighbor_dont_capability_negotiate,
        NEIGHBOR_ADDR_STR2
        "Do not perform capability negotiation\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1401,7 +1379,7 @@ DEFUN (neighbor_capability_orf_prefix,
        "Capability to RECEIVE the ORF from this neighbor\n"
        "Capability to SEND the ORF to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1418,7 +1396,7 @@ DEFUN (no_neighbor_capability_orf_prefix,
        "Capability to RECEIVE the ORF from this neighbor\n"
        "Capability to SEND the ORF to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1431,7 +1409,7 @@ DEFUN (neighbor_nexthop_self,
        "Disable the next hop calculation for this neighbor\n"
        "Apply also to ibgp-learned routes when acting as a route reflector\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1444,7 +1422,7 @@ DEFUN (no_neighbor_nexthop_self,
        "Disable the next hop calculation for this neighbor\n"
        "Apply also to ibgp-learned routes when acting as a route reflector\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1456,7 +1434,7 @@ DEFUN (neighbor_remove_private_as,
        NEIGHBOR_ADDR_STR2
        "Remove private AS number from outbound updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1468,7 +1446,7 @@ DEFUN (no_neighbor_remove_private_as,
        NEIGHBOR_ADDR_STR2
        "Remove private AS number from outbound updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1480,7 +1458,7 @@ DEFUN (neighbor_send_community,
        NEIGHBOR_ADDR_STR2
        "Send Community attribute to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1492,7 +1470,7 @@ DEFUN (no_neighbor_send_community,
        NEIGHBOR_ADDR_STR2
        "Send Community attribute to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1507,7 +1485,7 @@ DEFUN (neighbor_send_community_type,
        "Send Extended Community attributes\n"
        "Send Standard Community attributes\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1522,7 +1500,7 @@ DEFUN (no_neighbor_send_community_type,
        "Send Extended Community attributes\n"
        "Send Standard Community attributes\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1535,7 +1513,7 @@ DEFUN (neighbor_soft_reconfiguration,
        "Per neighbor soft reconfiguration\n"
        "Allow inbound soft reconfiguration for this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1548,7 +1526,7 @@ DEFUN (no_neighbor_soft_reconfiguration,
        "Per neighbor soft reconfiguration\n"
        "Allow inbound soft reconfiguration for this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1559,7 +1537,7 @@ DEFUN (neighbor_route_reflector_client,
        NEIGHBOR_ADDR_STR2
        "Configure a neighbor as Route Reflector client\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1571,7 +1549,7 @@ DEFUN (no_neighbor_route_reflector_client,
        NEIGHBOR_ADDR_STR2
        "Configure a neighbor as Route Reflector client\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1583,7 +1561,7 @@ DEFUN (neighbor_route_server_client,
        NEIGHBOR_ADDR_STR2
        "Configure a neighbor as Route Server client\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1595,7 +1573,7 @@ DEFUN (no_neighbor_route_server_client,
        NEIGHBOR_ADDR_STR2
        "Configure a neighbor as Route Server client\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1607,7 +1585,7 @@ DEFUN (neighbor_nexthop_local_unchanged,
        "Configure treatment of outgoing link-local nexthop attribute\n"
        "Leave link-local nexthop unchanged for this peer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1620,7 +1598,7 @@ DEFUN (no_neighbor_nexthop_local_unchanged,
        "Configure treatment of outgoing link-local-nexthop attribute\n"
        "Leave link-local nexthop unchanged for this peer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1631,7 +1609,7 @@ DEFUN (neighbor_attr_unchanged,
        NEIGHBOR_ADDR_STR2
        "BGP attribute is propagated unchanged to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1645,7 +1623,7 @@ DEFUN (neighbor_attr_unchanged1,
        "Nexthop attribute\n"
        "Med attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1659,7 +1637,7 @@ DEFUN (neighbor_attr_unchanged2,
        "Nexthop attribute\n"
        "Med attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1673,7 +1651,7 @@ DEFUN (neighbor_attr_unchanged3,
        "As-path attribute\n"
        "Med attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1687,7 +1665,7 @@ DEFUN (neighbor_attr_unchanged4,
        "As-path attribute\n"
        "Nexthop attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1759,7 +1737,7 @@ DEFUN (no_neighbor_attr_unchanged,
        NEIGHBOR_ADDR_STR2
        "BGP attribute is propagated unchanged to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1774,7 +1752,7 @@ DEFUN (no_neighbor_attr_unchanged1,
        "Nexthop attribute\n"
        "Med attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1789,7 +1767,7 @@ DEFUN (no_neighbor_attr_unchanged2,
        "Nexthop attribute\n"
        "Med attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1804,7 +1782,7 @@ DEFUN (no_neighbor_attr_unchanged3,
        "As-path attribute\n"
        "Med attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1819,7 +1797,7 @@ DEFUN (no_neighbor_attr_unchanged4,
        "As-path attribute\n"
        "Nexthop attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1897,7 +1875,7 @@ DEFUN_DEPRECATED (neighbor_transparent_as,
 		  NEIGHBOR_ADDR_STR
 		  "Do not append my AS number even peer is EBGP peer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1908,7 +1886,7 @@ DEFUN_DEPRECATED (neighbor_transparent_nexthop,
 		  NEIGHBOR_ADDR_STR
 		  "Do not change nexthop even peer is EBGP peer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1920,7 +1898,7 @@ DEFUN (neighbor_ebgp_multihop,
        NEIGHBOR_ADDR_STR2
        "Allow EBGP neighbors not on directly connected networks\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1932,7 +1910,7 @@ DEFUN (neighbor_ebgp_multihop_ttl,
        "Allow EBGP neighbors not on directly connected networks\n"
        "maximum hop count\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1944,7 +1922,7 @@ DEFUN (no_neighbor_ebgp_multihop,
        NEIGHBOR_ADDR_STR2
        "Allow EBGP neighbors not on directly connected networks\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1965,7 +1943,7 @@ DEFUN (neighbor_disable_connected_check,
        NEIGHBOR_ADDR_STR2
        "one-hop away EBGP peer using loopback address\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -1977,7 +1955,7 @@ DEFUN (no_neighbor_disable_connected_check,
        NEIGHBOR_ADDR_STR2
        "one-hop away EBGP peer using loopback address\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2006,7 +1984,7 @@ DEFUN (neighbor_description,
        "Neighbor specific description\n"
        "Up to 80 characters describing this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2018,7 +1996,7 @@ DEFUN (no_neighbor_description,
        NEIGHBOR_ADDR_STR2
        "Neighbor specific description\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2040,7 +2018,7 @@ DEFUN (neighbor_update_source,
        "Source of routing updates\n"
        BGP_UPDATE_SOURCE_HELP_STR)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 #endif
@@ -2053,7 +2031,7 @@ DEFUN (no_neighbor_update_source,
        NEIGHBOR_ADDR_STR2
        "Source of routing updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2065,7 +2043,7 @@ DEFUN (neighbor_default_originate,
        NEIGHBOR_ADDR_STR2
        "Originate default route to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2078,7 +2056,7 @@ DEFUN (neighbor_default_originate_rmap,
        "Route-map to specify criteria to originate default\n"
        "route-map name\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2090,7 +2068,7 @@ DEFUN (no_neighbor_default_originate,
        NEIGHBOR_ADDR_STR2
        "Originate default route to this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2113,7 +2091,7 @@ DEFUN (neighbor_port,
        "Neighbor's BGP port\n"
        "TCP port number\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2125,7 +2103,7 @@ DEFUN (no_neighbor_port,
        NEIGHBOR_ADDR_STR
        "Neighbor's BGP port\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2146,7 +2124,7 @@ DEFUN (neighbor_weight,
        "Set default weight for routes from this neighbor\n"
        "default weight\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2158,7 +2136,7 @@ DEFUN (no_neighbor_weight,
        NEIGHBOR_ADDR_STR2
        "Set default weight for routes from this neighbor\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2179,7 +2157,7 @@ DEFUN (neighbor_override_capability,
        NEIGHBOR_ADDR_STR2
        "Override capability negotiation result\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2191,7 +2169,7 @@ DEFUN (no_neighbor_override_capability,
        NEIGHBOR_ADDR_STR2
        "Override capability negotiation result\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2202,7 +2180,7 @@ DEFUN (neighbor_strict_capability,
        NEIGHBOR_ADDR_STR
        "Strict capability negotiation match\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2214,7 +2192,7 @@ DEFUN (no_neighbor_strict_capability,
        NEIGHBOR_ADDR_STR
        "Strict capability negotiation match\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2227,7 +2205,7 @@ DEFUN (neighbor_timers,
        "Keepalive interval\n"
        "Holdtime\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2239,7 +2217,7 @@ DEFUN (no_neighbor_timers,
        NEIGHBOR_ADDR_STR2
        "BGP per neighbor timers\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2252,7 +2230,7 @@ DEFUN (neighbor_timers_connect,
        "BGP connect timer\n"
        "Connect timer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2265,7 +2243,7 @@ DEFUN (no_neighbor_timers_connect,
        "BGP per neighbor timers\n"
        "BGP connect timer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2287,7 +2265,7 @@ DEFUN (neighbor_advertise_interval,
        "Minimum interval between sending BGP routing updates\n"
        "time in seconds\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2299,7 +2277,7 @@ DEFUN (no_neighbor_advertise_interval,
        NEIGHBOR_ADDR_STR
        "Minimum interval between sending BGP routing updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2320,7 +2298,7 @@ DEFUN (neighbor_interface,
        "Interface\n"
        "Interface name\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2333,7 +2311,7 @@ DEFUN (no_neighbor_interface,
        "Interface\n"
        "Interface name\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2349,7 +2327,7 @@ DEFUN (neighbor_distribute_list,
        "Filter incoming updates\n"
        "Filter outgoing updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2366,7 +2344,7 @@ DEFUN (no_neighbor_distribute_list,
        "Filter incoming updates\n"
        "Filter outgoing updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2380,7 +2358,7 @@ DEFUN (neighbor_prefix_list,
        "Filter incoming updates\n"
        "Filter outgoing updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2395,7 +2373,7 @@ DEFUN (no_neighbor_prefix_list,
        "Filter incoming updates\n"
        "Filter outgoing updates\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2409,7 +2387,7 @@ DEFUN (neighbor_filter_list,
        "Filter incoming routes\n"
        "Filter outgoing routes\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2424,7 +2402,7 @@ DEFUN (no_neighbor_filter_list,
        "Filter incoming routes\n"
        "Filter outgoing routes\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2440,7 +2418,7 @@ DEFUN (neighbor_route_map,
        "Apply map to routes going into a Route-Server client's table\n"
        "Apply map to routes coming from a Route-Server client")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2457,7 +2435,7 @@ DEFUN (no_neighbor_route_map,
        "Apply map to routes going into a Route-Server client's table\n"
        "Apply map to routes coming from a Route-Server client")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2469,7 +2447,7 @@ DEFUN (neighbor_unsuppress_map,
        "Route-map to selectively unsuppress suppressed routes\n"
        "Name of route map\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2482,7 +2460,7 @@ DEFUN (no_neighbor_unsuppress_map,
        "Route-map to selectively unsuppress suppressed routes\n"
        "Name of route map\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2497,7 +2475,7 @@ DEFUN (neighbor_maximum_prefix,
        "Maximum number of prefix accept from this peer\n"
        "maximum no. of prefix limit\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2510,7 +2488,7 @@ DEFUN (neighbor_maximum_prefix_threshold,
        "maximum no. of prefix limit\n"
        "Threshold value (%) at which to generate a warning msg\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2523,7 +2501,7 @@ DEFUN (neighbor_maximum_prefix_warning,
        "maximum no. of prefix limit\n"
        "Only give warning message when limit is exceeded\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2537,7 +2515,7 @@ DEFUN (neighbor_maximum_prefix_threshold_warning,
        "Threshold value (%) at which to generate a warning msg\n"
        "Only give warning message when limit is exceeded\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2551,7 +2529,7 @@ DEFUN (neighbor_maximum_prefix_restart,
        "Restart bgp connection after limit is exceeded\n"
        "Restart interval in minutes")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2566,7 +2544,7 @@ DEFUN (neighbor_maximum_prefix_threshold_restart,
        "Restart bgp connection after limit is exceeded\n"
        "Restart interval in minutes")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2578,7 +2556,7 @@ DEFUN (no_neighbor_maximum_prefix,
        NEIGHBOR_ADDR_STR2
        "Maximum number of prefix accept from this peer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2653,7 +2631,7 @@ DEFUN (neighbor_allowas_in,
        NEIGHBOR_ADDR_STR2
        "Accept as-path with my AS present in it\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2673,7 +2651,7 @@ DEFUN (no_neighbor_allowas_in,
        NEIGHBOR_ADDR_STR2
        "allow local ASN appears in aspath attribute\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2684,7 +2662,7 @@ DEFUN (neighbor_ttl_security,
        NEIGHBOR_ADDR_STR2
        "Specify the maximum number of hops to the BGP peer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2696,7 +2674,7 @@ DEFUN (no_neighbor_ttl_security,
        NEIGHBOR_ADDR_STR2
        "Specify the maximum number of hops to the BGP peer\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2707,7 +2685,7 @@ DEFUN (address_family_ipv4,
        "Enter Address Family command mode\n"
        "Address family\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2719,7 +2697,7 @@ DEFUN (address_family_ipv4_safi,
        "Address Family modifier\n"
        "Address Family modifier\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2731,7 +2709,7 @@ DEFUN (address_family_ipv6_safi,
        "Address Family modifier\n"
        "Address Family modifier\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2743,7 +2721,7 @@ DEFUN (clear_ip_bgp_all,
        BGP_STR
        "Clear all peers\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2790,7 +2768,7 @@ DEFUN (clear_ip_bgp_peer,
        "BGP neighbor IP address to clear\n"
        "BGP IPv6 neighbor to clear\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2820,7 +2798,7 @@ DEFUN (clear_ip_bgp_peer_group,
        "Clear all members of peer-group\n"
        "BGP peer-group name\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2849,7 +2827,7 @@ DEFUN (clear_ip_bgp_external,
        BGP_STR
        "Clear all external peers\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2876,7 +2854,7 @@ DEFUN (clear_ip_bgp_as,
        BGP_STR
        "Clear peers with the AS number\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2906,7 +2884,7 @@ DEFUN (clear_ip_bgp_all_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2944,7 +2922,7 @@ DEFUN (clear_ip_bgp_all_ipv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2974,7 +2952,7 @@ DEFUN (clear_ip_bgp_instance_all_ipv4_soft_out,
        "Address Family modifier\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -2990,7 +2968,7 @@ DEFUN (clear_ip_bgp_all_vpnv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3014,7 +2992,7 @@ DEFUN (clear_bgp_all_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3066,7 +3044,7 @@ DEFUN (clear_ip_bgp_peer_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3092,7 +3070,7 @@ DEFUN (clear_ip_bgp_peer_ipv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3120,7 +3098,7 @@ DEFUN (clear_ip_bgp_peer_vpnv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3145,7 +3123,7 @@ DEFUN (clear_bgp_peer_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3190,7 +3168,7 @@ DEFUN (clear_ip_bgp_peer_group_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3218,7 +3196,7 @@ DEFUN (clear_ip_bgp_peer_group_ipv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3245,7 +3223,7 @@ DEFUN (clear_bgp_peer_group_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3289,7 +3267,7 @@ DEFUN (clear_ip_bgp_external_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3315,7 +3293,7 @@ DEFUN (clear_ip_bgp_external_ipv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3340,7 +3318,7 @@ DEFUN (clear_bgp_external_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3381,7 +3359,7 @@ DEFUN (clear_ip_bgp_as_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3407,7 +3385,7 @@ DEFUN (clear_ip_bgp_as_ipv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3435,7 +3413,7 @@ DEFUN (clear_ip_bgp_as_vpnv4_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3459,7 +3437,7 @@ DEFUN (clear_bgp_as_soft_out,
        "Soft reconfig\n"
        "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3501,7 +3479,7 @@ DEFUN (clear_ip_bgp_all_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3536,7 +3514,7 @@ DEFUN (clear_ip_bgp_all_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3566,7 +3544,7 @@ DEFUN (clear_ip_bgp_all_ipv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3597,7 +3575,7 @@ DEFUN (clear_ip_bgp_instance_all_ipv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3614,7 +3592,7 @@ DEFUN (clear_ip_bgp_all_ipv4_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3631,7 +3609,7 @@ DEFUN (clear_ip_bgp_instance_all_ipv4_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3647,7 +3625,7 @@ DEFUN (clear_ip_bgp_all_vpnv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3671,7 +3649,7 @@ DEFUN (clear_bgp_all_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3722,7 +3700,7 @@ DEFUN (clear_bgp_all_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3746,7 +3724,7 @@ DEFUN (clear_ip_bgp_peer_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3769,7 +3747,7 @@ DEFUN (clear_ip_bgp_peer_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out the existing ORF prefix-list\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3786,7 +3764,7 @@ DEFUN (clear_ip_bgp_peer_ipv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3815,7 +3793,7 @@ DEFUN (clear_ip_bgp_peer_ipv4_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out the existing ORF prefix-list\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3831,7 +3809,7 @@ DEFUN (clear_ip_bgp_peer_vpnv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3856,7 +3834,7 @@ DEFUN (clear_bgp_peer_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3900,7 +3878,7 @@ DEFUN (clear_bgp_peer_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out the existing ORF prefix-list\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3926,7 +3904,7 @@ DEFUN (clear_ip_bgp_peer_group_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3951,7 +3929,7 @@ DEFUN (clear_ip_bgp_peer_group_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -3969,7 +3947,7 @@ DEFUN (clear_ip_bgp_peer_group_ipv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4000,7 +3978,7 @@ DEFUN (clear_ip_bgp_peer_group_ipv4_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4014,7 +3992,7 @@ DEFUN (clear_bgp_peer_group_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4058,7 +4036,7 @@ DEFUN (clear_bgp_peer_group_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4083,7 +4061,7 @@ DEFUN (clear_ip_bgp_external_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4106,7 +4084,7 @@ DEFUN (clear_ip_bgp_external_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4123,7 +4101,7 @@ DEFUN (clear_ip_bgp_external_ipv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4152,7 +4130,7 @@ DEFUN (clear_ip_bgp_external_ipv4_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4165,7 +4143,7 @@ DEFUN (clear_bgp_external_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4205,7 +4183,7 @@ DEFUN (clear_bgp_external_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4229,7 +4207,7 @@ DEFUN (clear_ip_bgp_as_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4252,7 +4230,7 @@ DEFUN (clear_ip_bgp_as_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4269,7 +4247,7 @@ DEFUN (clear_ip_bgp_as_ipv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4298,7 +4276,7 @@ DEFUN (clear_ip_bgp_as_ipv4_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4314,7 +4292,7 @@ DEFUN (clear_ip_bgp_as_vpnv4_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4338,7 +4316,7 @@ DEFUN (clear_bgp_as_soft_in,
        "Soft reconfig\n"
        "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4378,7 +4356,7 @@ DEFUN (clear_bgp_as_in_prefix_filter,
        "Soft reconfig inbound update\n"
        "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4402,7 +4380,7 @@ DEFUN (clear_ip_bgp_all_soft,
        "Clear all peers\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4430,7 +4408,7 @@ DEFUN (clear_ip_bgp_all_ipv4_soft,
        "Address Family Modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4448,7 +4426,7 @@ DEFUN (clear_ip_bgp_instance_all_ipv4_soft,
        "Address Family Modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4463,7 +4441,7 @@ DEFUN (clear_ip_bgp_all_vpnv4_soft,
        "Address Family Modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4475,7 +4453,7 @@ DEFUN (clear_bgp_all_soft,
        "Clear all peers\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4507,7 +4485,7 @@ DEFUN (clear_ip_bgp_peer_soft,
        "BGP neighbor address to clear\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4523,7 +4501,7 @@ DEFUN (clear_ip_bgp_peer_ipv4_soft,
        "Address Family Modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4538,7 +4516,7 @@ DEFUN (clear_ip_bgp_peer_vpnv4_soft,
        "Address Family Modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4551,7 +4529,7 @@ DEFUN (clear_bgp_peer_soft,
        "BGP IPv6 neighbor to clear\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4575,7 +4553,7 @@ DEFUN (clear_ip_bgp_peer_group_soft,
        "BGP peer-group name\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4592,7 +4570,7 @@ DEFUN (clear_ip_bgp_peer_group_ipv4_soft,
        "Address Family modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4605,7 +4583,7 @@ DEFUN (clear_bgp_peer_group_soft,
        "BGP peer-group name\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4628,7 +4606,7 @@ DEFUN (clear_ip_bgp_external_soft,
        "Clear all external peers\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4644,7 +4622,7 @@ DEFUN (clear_ip_bgp_external_ipv4_soft,
        "Address Family modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4656,7 +4634,7 @@ DEFUN (clear_bgp_external_soft,
        "Clear all external peers\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4678,7 +4656,7 @@ DEFUN (clear_ip_bgp_as_soft,
        "Clear peers with the AS number\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4694,7 +4672,7 @@ DEFUN (clear_ip_bgp_as_ipv4_soft,
        "Address Family Modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4709,7 +4687,7 @@ DEFUN (clear_ip_bgp_as_vpnv4_soft,
        "Address Family Modifier\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4721,7 +4699,7 @@ DEFUN (clear_bgp_as_soft,
        "Clear peers with the AS number\n"
        "Soft reconfig\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4744,7 +4722,7 @@ DEFUN (clear_bgp_all_rsclient,
        "Clear all peers\n"
        "Soft reconfig for rsclient RIB\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4788,7 +4766,7 @@ DEFUN (clear_ip_bgp_all_rsclient,
        "Clear all peers\n"
        "Soft reconfig for rsclient RIB\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4813,7 +4791,7 @@ DEFUN (clear_bgp_peer_rsclient,
        "BGP IPv6 neighbor to clear\n"
        "Soft reconfig for rsclient RIB\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4861,7 +4839,7 @@ DEFUN (clear_ip_bgp_peer_rsclient,
        "BGP IPv6 neighbor to clear\n"
        "Soft reconfig for rsclient RIB\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4884,7 +4862,7 @@ DEFUN (show_bgp_views,
        BGP_STR
        "Show the defined BGP views\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4895,7 +4873,7 @@ DEFUN (show_bgp_memory,
        BGP_STR
        "Global BGP memory statistics\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4908,7 +4886,7 @@ DEFUN (show_ip_bgp_summary,
        BGP_STR
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4922,7 +4900,7 @@ DEFUN (show_ip_bgp_instance_summary,
        "View name\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4937,7 +4915,7 @@ DEFUN (show_ip_bgp_ipv4_summary,
        "Address Family modifier\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4964,7 +4942,7 @@ DEFUN (show_ip_bgp_instance_ipv4_summary,
        "Address Family modifier\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -4990,7 +4968,7 @@ DEFUN (show_ip_bgp_vpnv4_all_summary,
        "Display information about all VPNv4 NLRIs\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5005,7 +4983,7 @@ DEFUN (show_ip_bgp_vpnv4_rd_summary,
        "VPN Route Distinguisher\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5017,7 +4995,7 @@ DEFUN (show_bgp_summary,
        BGP_STR
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5030,7 +5008,7 @@ DEFUN (show_bgp_instance_summary,
        "View name\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5062,7 +5040,7 @@ DEFUN (show_bgp_ipv6_safi_summary,
        "Address Family modifier\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5078,7 +5056,7 @@ DEFUN (show_bgp_instance_ipv6_safi_summary,
        "Address Family modifier\n"
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5091,7 +5069,7 @@ DEFUN (show_ipv6_bgp_summary,
        BGP_STR
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5104,7 +5082,7 @@ DEFUN (show_ipv6_mbgp_summary,
        MBGP_STR
        "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 #endif /* HAVE_IPV6 */
@@ -5118,7 +5096,7 @@ DEFUN (show_ip_bgp_neighbors,
        BGP_STR
        "Detailed information on TCP and BGP neighbor connections\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5179,7 +5157,7 @@ DEFUN (show_ip_bgp_neighbors_peer,
        "Neighbor to display information about\n"
        "Neighbor to display information about\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5247,7 +5225,7 @@ DEFUN (show_ip_bgp_instance_neighbors,
        "View name\n"
        "Detailed information on TCP and BGP neighbor connections\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5282,7 +5260,7 @@ DEFUN (show_ip_bgp_instance_neighbors_peer,
        "Neighbor to display information about\n"
        "Neighbor to display information about\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5320,7 +5298,7 @@ DEFUN (show_ip_bgp_paths,
        BGP_STR
        "Path information\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5335,7 +5313,7 @@ DEFUN (show_ip_bgp_ipv4_paths,
        "Address Family modifier\n"
        "Path information\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5348,7 +5326,7 @@ DEFUN (show_ip_bgp_community_info,
        BGP_STR
        "List all bgp community information\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5360,7 +5338,7 @@ DEFUN (show_ip_bgp_attr_info,
        BGP_STR
        "List all bgp attribute information\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5374,7 +5352,7 @@ DEFUN (show_ip_bgp_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5389,7 +5367,7 @@ DEFUN (show_ip_bgp_instance_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5405,7 +5383,7 @@ DEFUN (show_ip_bgp_ipv4_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5423,7 +5401,7 @@ DEFUN (show_ip_bgp_instance_ipv4_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5440,7 +5418,7 @@ DEFUN (show_bgp_instance_ipv4_safi_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5464,7 +5442,7 @@ DEFUN (show_bgp_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5478,7 +5456,7 @@ DEFUN (show_bgp_instance_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5515,7 +5493,7 @@ DEFUN (show_bgp_instance_ipv6_safi_rsclient_summary,
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5540,7 +5518,7 @@ DEFUN (bgp_redistribute_ipv4,
        "Redistribute information from another routing protocol\n"
        QUAGGA_IP_REDIST_HELP_STR_BGPD)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5552,7 +5530,7 @@ DEFUN (bgp_redistribute_ipv4_rmap,
        "Route map reference\n"
        "Pointer to route-map entries\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5564,7 +5542,7 @@ DEFUN (bgp_redistribute_ipv4_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5578,7 +5556,7 @@ DEFUN (bgp_redistribute_ipv4_rmap_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5592,7 +5570,7 @@ DEFUN (bgp_redistribute_ipv4_metric_rmap,
        "Route map reference\n"
        "Pointer to route-map entries\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5603,7 +5581,7 @@ DEFUN (no_bgp_redistribute_ipv4,
        "Redistribute information from another routing protocol\n"
        QUAGGA_IP_REDIST_HELP_STR_BGPD)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5616,7 +5594,7 @@ DEFUN (no_bgp_redistribute_ipv4_rmap,
        "Route map reference\n"
        "Pointer to route-map entries\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5629,7 +5607,7 @@ DEFUN (no_bgp_redistribute_ipv4_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5644,7 +5622,7 @@ DEFUN (no_bgp_redistribute_ipv4_rmap_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5666,7 +5644,7 @@ DEFUN (bgp_redistribute_ipv6,
        "Redistribute information from another routing protocol\n"
        QUAGGA_IP6_REDIST_HELP_STR_BGPD)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5678,7 +5656,7 @@ DEFUN (bgp_redistribute_ipv6_rmap,
        "Route map reference\n"
        "Pointer to route-map entries\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5690,7 +5668,7 @@ DEFUN (bgp_redistribute_ipv6_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5704,7 +5682,7 @@ DEFUN (bgp_redistribute_ipv6_rmap_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5718,7 +5696,7 @@ DEFUN (bgp_redistribute_ipv6_metric_rmap,
        "Route map reference\n"
        "Pointer to route-map entries\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5729,7 +5707,7 @@ DEFUN (no_bgp_redistribute_ipv6,
        "Redistribute information from another routing protocol\n"
        QUAGGA_IP6_REDIST_HELP_STR_BGPD)
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5742,7 +5720,7 @@ DEFUN (no_bgp_redistribute_ipv6_rmap,
        "Route map reference\n"
        "Pointer to route-map entries\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5755,7 +5733,7 @@ DEFUN (no_bgp_redistribute_ipv6_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
@@ -5770,7 +5748,7 @@ DEFUN (no_bgp_redistribute_ipv6_rmap_metric,
        "Metric for redistributed routes\n"
        "Default metric\n")
 {
-    report_unimplemented_command();
+    report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
 
