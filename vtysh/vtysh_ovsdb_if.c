@@ -156,6 +156,76 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
 
     return;
 }
+
+/***********************************************************
+ * @func        : system_ovsdb_init
+ * @detail      : Initialise System Related OVSDB tables
+ * @param[in]
+ *      idl     : Pointer to idl structure
+ ***********************************************************/
+static void
+system_ovsdb_init(struct ovsd_idl *idl)
+{
+    /* Add Platform Related Tables */
+    ovsdb_idl_add_table(idl,&ovsrec_table_fan);
+    ovsdb_idl_add_table(idl,&ovsrec_table_power_supply);
+    ovsdb_idl_add_table(idl,&ovsrec_table_led);
+    ovsdb_idl_add_table(idl,&ovsrec_table_subsystem);
+    ovsdb_idl_add_table(idl,&ovsrec_table_temp_sensor);
+
+    /* Add Columns for System Related Tables */
+
+    //Power Supply
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_external_ids);
+
+    //LED
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_id);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_state);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_external_ids);
+
+    //Subsystem
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_interfaces);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_leds);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_fans);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_temp_sensors);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_power_supplies);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_asset_tag_number);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_type);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_hw_desc_dir);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_other_info);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_external_ids);
+
+    //Fan
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_direction);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_rpm);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_hw_config);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_external_ids);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_speed);
+
+    //Temp
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_external_ids);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_fan_state);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_hw_config);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_location);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_max);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_min);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_other_config);;
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_temperature);
+
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -193,6 +263,9 @@ ovsdb_init(const char *db_path)
 
     /* VRF tables */
     vrf_ovsdb_init(idl);
+
+    /* System tables */
+    system_ovsdb_init(idl);
 
     /* Fetch data from DB */
     vtysh_run();

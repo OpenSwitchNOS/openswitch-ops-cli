@@ -1,0 +1,241 @@
+/* System LED CLI commands
+ *
+ * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ *
+ * GNU Zebra is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2, or (at your option) any
+ * later version.
+ *
+ * GNU Zebra is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Zebra; see the file COPYING.  If not, write to the Free
+ * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ * File: led_vty.c
+ *
+ * Purpose:  To add system LED CLI configuration and display commands.
+ */
+
+#include "command.h"
+#include "vtysh/vtysh.h"
+#include "vtysh/vtysh_user.h"
+#include "vtysh/led_vty.h"
+#include "vswitch-idl.h"
+#include "ovsdb-idl.h"
+#include "smap.h"
+#include "memory.h"
+#include "openvswitch/vlog.h"
+#include "openhalon-idl.h"
+
+VLOG_DEFINE_THIS_MODULE(vtysh_led_cli);
+
+extern struct ovsdb_idl *idl;
+
+const char *led_state_strings[] = {
+    OVSREC_LED_STATE_FLASHING,          /*!< LED state "flashing" */
+    OVSREC_LED_STATE_OFF,               /*!< LED state "off" */
+    OVSREC_LED_STATE_ON                 /*!< LED state "on" */
+};
+
+/***********************************************************
+ * @func    : lookup_led
+ * @detail  : Lookup for led using name
+ * @param[in]
+ *  name    : Pointer to name of led character string
+ * @return  : Pointer to ovsrec_led structure object
+ ***********************************************************/
+static struct ovsrec_led *
+lookup_led(const char *name)
+{
+    static struct ovsrec_led *led;
+    /*
+     * Re-caching the idl is necessary here because
+     * If new data is added using ovs-vsctl command
+     * then led name led command will fail to fetch
+     * the led name as its not cached
+    */
+    ovsdb_idl_run(idl);
+    ovsdb_idl_wait(idl);
+
+    OVSREC_LED_FOR_EACH(led, idl) {
+        if (strcmp(led->id, name) == 0) {
+            return((struct ovsrec_led *)led);
+        }
+    }
+
+    return(NULL);
+}
+
+/***********************************************************
+ * @func        : cli_system_get_led
+ * @detail      : get system led information from idl
+ * @return      : 0 on success 1 otherwise
+ ***********************************************************/
+int cli_system_get_led()
+{
+    struct ovsrec_led* pLed = NULL;
+    struct ovsrec_subsystem* pSys = NULL;
+
+    ovsdb_idl_run(idl);
+        ovsdb_idl_wait(idl);
+
+    pSys = ovsrec_subsystem_first(idl);
+
+    vty_out(vty,"%-15s%-10s%-10s%s","Name","State","Status",VTY_NEWLINE);
+        vty_out(vty,"%s%s","-----------------------------------",VTY_NEWLINE);
+
+    if(pSys->n_leds)
+    {
+        OVSREC_LED_FOR_EACH(pLed,idl)
+        {
+            if(pLed)
+            {
+                vty_out(vty,"%-15s",pLed->id);
+                vty_out(vty,"%-10s",pLed->state);
+                vty_out(vty,"%-10s",pLed->status);
+            }
+            vty_out(vty,"%s",VTY_NEWLINE);
+        }
+    }
+
+    return CMD_SUCCESS;
+}
+
+/***********************************************************
+ * @func        : cli_system_set_led
+ * @detail      : set system led state
+ * @param[in]
+ *  sLedName: Pointer to led name string
+ *  sLedState: Pointer to led state string
+ * @return      : 0 on success 1 otherwise
+ ***********************************************************/
+int  cli_system_set_led(char* sLedName,char* sLedState)
+{
+    struct ovsrec_led* pOvsLed = NULL;
+    pOvsLed = lookup_led(sLedName);
+
+    if(pOvsLed)
+    {
+        if(cli_do_config_start())
+        {
+            ovsrec_led_set_state(pOvsLed, sLedState);
+            if(cli_do_config_finish())
+                 return CMD_SUCCESS;
+            else
+            {
+                 VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+                 return CMD_OVSDB_FAILURE;
+            }
+        }
+        else
+        {
+            VLOG_ERR("Unable to acquire transaction");
+            return CMD_OVSDB_FAILURE;
+        }
+
+    }
+    else
+    {
+                vty_out(vty,"Cannot find LED%s",VTY_NEWLINE);
+    }
+    return CMD_SUCCESS;
+}
+
+/***********************************************************
+ * @func        : cli_system_no_set_led
+ * @detail      : set system led state to default
+ * @param[in]
+ *      sLedName: Pointer to led name string
+ * @return      : 0 on success 1 otherwise
+ ***********************************************************/
+
+int cli_system_no_set_led(char* sLedName)
+{
+    struct ovsrec_led* pOvsLed = NULL;
+        pOvsLed = lookup_led(sLedName);
+
+    if(pOvsLed)
+        {
+                if(cli_do_config_start())
+                {
+                        ovsrec_led_set_state(pOvsLed, OVSREC_LED_STATE_OFF);
+                        if(cli_do_config_finish())
+                            return CMD_SUCCESS;
+                        else
+                        {
+                            VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+                            return CMD_OVSDB_FAILURE;
+                        }
+                }
+                else
+                {
+                        VLOG_ERR("Unable to acquire transaction");
+                        return CMD_OVSDB_FAILURE;
+                }
+
+        }
+        else
+        {
+                vty_out(vty,"Cannot find LED%s",VTY_NEWLINE);
+        }
+
+        return CMD_SUCCESS;
+
+}
+
+
+/*
+ * Action routines for LED related CLIs
+*/
+DEFUN (cli_platform_show_led,
+    cli_platform_show_led_cmd,
+    "show system led",
+    SHOW_STR
+    SYS_STR
+    LED_STR)
+{
+    return cli_system_get_led();
+}
+
+DEFUN (cli_platform_set_led,
+    cli_platform_set_led_cmd,
+    "led WORD (on|off|flashing)",
+    LED_SET_STR
+    "Name of LED e.g. <base-loc> for locator LED\n"
+    "Switch on the LED\n"
+    "Switch off the LED\n"
+    "Blink the LED\n")
+{
+
+    return cli_system_set_led(argv[0],argv[1]);
+}
+
+
+DEFUN (no_cli_platform_set_led,
+        no_cli_platform_set_led_cmd,
+        "no led WORD",
+    NO_STR
+        LED_SET_STR
+        "Name of LED e.g. <base-loc> for locator LED\n")
+{
+
+        return cli_system_no_set_led(argv[0]);
+}
+
+/***********************************************************
+ * @func        : led_vty_init
+ * @detail      : Install the cli action routines
+ ***********************************************************/
+void led_vty_init()
+{
+    install_element (ENABLE_NODE, &cli_platform_show_led_cmd);
+    install_element (VIEW_NODE, &cli_platform_show_led_cmd);
+    install_element (CONFIG_NODE, &cli_platform_set_led_cmd);
+    install_element (CONFIG_NODE, &no_cli_platform_set_led_cmd);
+}

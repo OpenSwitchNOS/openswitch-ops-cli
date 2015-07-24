@@ -122,6 +122,7 @@ typedef enum vtysh_ovsdb_led_table_client_idenum
 {
   /* client callback based on client-id value */
   e_vtysh_led_table_client_id_first = 0,
+  e_vtysh_led_table_config,              //client id for LED configuration
   e_vtysh_led_table_client_id_max
 } vtysh_ovsdb_led_table_clientid;
 

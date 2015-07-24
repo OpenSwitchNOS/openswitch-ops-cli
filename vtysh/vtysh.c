@@ -2799,5 +2799,10 @@ vtysh_init_vty (void)
   vrf_vty_init();
   intf_vty_init();
   l3static_vty_init();
+
+  /* Initialise System LED cli */
+  led_vty_init();
+  /* Initialise System cli */
+  system_vty_init();
 #endif
 }

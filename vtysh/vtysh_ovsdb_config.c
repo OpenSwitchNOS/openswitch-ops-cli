@@ -513,4 +513,6 @@ vtysh_ovsdb_init_clients()
   vtysh_ovsdb_init_ovstableclients();
   vtysh_ovsdb_init_intftableclients();
   vtysh_ovsdb_init_routetableclients();
+  /* Register Callback for LED configuration */
+  vtysh_ovsdb_init_ledtableclients();
 }
