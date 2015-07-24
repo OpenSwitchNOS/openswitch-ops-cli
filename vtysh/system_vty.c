@@ -32,6 +32,8 @@
 #include "memory.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
+#include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_system_cli);
 
@@ -182,9 +184,6 @@ int cli_system_get_all()
     struct ovsrec_power_supply* pPSU = NULL;
     struct ovsrec_temp_sensor* pTempSen = NULL;
     int n = 0, i = 0;
-
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
 
     pSys = ovsrec_subsystem_first(idl);
     pVswitch = ovsrec_open_vswitch_first(idl);

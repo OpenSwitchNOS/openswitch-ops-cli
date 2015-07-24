@@ -32,6 +32,8 @@
 #include <readline/history.h>
 
 #include <lib/version.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include "getopt.h"
 #include "command.h"
 #include "memory.h"
@@ -43,6 +45,9 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
+#include "openvswitch/vlog.h"
+
+VLOG_DEFINE_THIS_MODULE(vtysh_main);
 #endif
 
 /* VTY shell program name. */
@@ -238,6 +243,8 @@ main (int argc, char **argv, char **env)
   struct cmd_rec *tail = NULL;
   int echo_command = 0;
   int no_error = 0;
+  int ret = 0;
+  pthread_t vtysh_ovsdb_if_thread;
 
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
@@ -311,6 +318,17 @@ main (int argc, char **argv, char **env)
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_init_clients();
   vtysh_ovsdb_init(argc, argv);
+
+  ret = pthread_create(&vtysh_ovsdb_if_thread,
+                       (pthread_attr_t *)NULL,
+                       vtysh_ovsdb_main_thread,
+                       NULL);
+
+  if (ret)
+  {
+      VLOG_ERR("Failed to create the poll thread %d",ret);
+      exit(-ret);
+  }
 #endif
 
   /* Initialize user input buffer. */

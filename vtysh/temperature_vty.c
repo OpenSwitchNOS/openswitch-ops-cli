@@ -47,8 +47,6 @@ extern struct ovsdb_idl *idl;
 static void  vtysh_ovsdb_show_temp_sensor(boolean detail)
 {
     const struct ovsrec_temp_sensor *row;
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
     OVSREC_TEMP_SENSOR_FOR_EACH(row, idl)
     {
         if(row)

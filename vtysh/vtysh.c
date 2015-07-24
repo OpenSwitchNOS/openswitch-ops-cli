@@ -1338,12 +1338,18 @@ DEFUN (vtysh_interface,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
-   vty->node = INTERFACE_NODE;
-   static char ifnumber[50];
-   if (strlen(argv[0]) < 50)
-      memcpy(ifnumber, argv[0], strlen(argv));
-   vty->index = ifnumber;
-   return CMD_SUCCESS;
+  vty->node = INTERFACE_NODE;
+  static char ifnumber[MAX_IFNAME_LENGTH];
+  if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
+  {
+    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+  }
+  else
+  {
+    return CMD_ERR_NO_MATCH;
+  }
+  vty->index = ifnumber;
+  return CMD_SUCCESS;
 }
 
 DEFUN ( vtysh_mult_cxt_test,
@@ -2542,7 +2548,6 @@ int vty_alias_load_alias_table(void)
 {
    struct ovsrec_cli_alias *alias_row = NULL;
 
-   ovsdb_idl_run(idl);
    vtysh_alias_count = 0;
 
    OVSREC_CLI_ALIAS_FOR_EACH(alias_row, idl)
@@ -2591,19 +2596,17 @@ int vtysh_alias_save_alias(char *name, char *definition)
    struct ovsrec_open_vswitch *ovs_row = NULL;
    enum ovsdb_idl_txn_status status;
 
-   ovsdb_idl_run(idl);
-   status_txn = ovsdb_idl_txn_create(idl);
+   status_txn = cli_do_config_start();
 
-   if (!status_txn) {
+   if (status_txn == NULL) {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
    alias_row = ovsrec_cli_alias_insert(status_txn);
    ovsrec_cli_alias_set_alias_name(alias_row, name);
    ovsrec_cli_alias_set_alias_definition(alias_row, definition);
-   status = ovsdb_idl_txn_commit_block(status_txn);
-   ovsdb_idl_txn_destroy(status_txn);
-   status_txn = NULL;
+   status = cli_do_config_finish(status_txn);
    if ((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
       && (status != TXN_UNCHANGED))
    {
@@ -2627,21 +2630,19 @@ int vtysh_alias_delete_alias(char *name)
    struct ovsdb_idl_txn *status_txn = NULL;
    enum ovsdb_idl_txn_status status;
 
-   ovsdb_idl_run(idl);
 
    OVSREC_CLI_ALIAS_FOR_EACH (alias_row, idl)
    {
       if (strcmp(alias_row->alias_name, name) == 0) {
-         status_txn = ovsdb_idl_txn_create(idl);
+         status_txn = cli_do_config_start();
 
-         if (!status_txn) {
+         if (status_txn == NULL) {
             VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+            cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
          }
          ovsrec_cli_alias_delete(alias_row);
-         status = ovsdb_idl_txn_commit_block(status_txn);
-         ovsdb_idl_txn_destroy(status_txn);
-         status_txn = NULL;
+         status = cli_do_config_finish(status_txn);
          if ((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
                && (status != TXN_UNCHANGED))
          {

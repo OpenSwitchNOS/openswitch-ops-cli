@@ -42,6 +42,8 @@
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
+#include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_interface_cli);
 extern struct ovsdb_idl *idl;
@@ -59,17 +61,20 @@ DEFUN (cli_intf_shutdown,
       "Enable/disable an interface\n")
 {
    struct ovsrec_interface * row = NULL;
+   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+   enum ovsdb_idl_txn_status status;
 
-   if(!cli_do_config_start())
+   if(status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
    row = ovsrec_interface_first(idl);
    if(!row)
    {
-      cli_do_config_abort();
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
@@ -91,7 +96,9 @@ DEFUN (cli_intf_shutdown,
       }
    }
 
-   if(cli_do_config_finish())
+   status = cli_do_config_finish(status_txn);
+
+   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -120,17 +127,20 @@ DEFUN (cli_intf_speed,
       "1Gb/s\n10Gb/s\n100Gb/s\n40Gb/s")
 {
    struct ovsrec_interface * row = NULL;
+   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+   enum ovsdb_idl_txn_status status;
 
-   if(!cli_do_config_start())
+   if(status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
    row = ovsrec_interface_first(idl);
    if(!row)
    {
-      cli_do_config_abort();
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
@@ -159,7 +169,9 @@ DEFUN (cli_intf_speed,
       }
    }
 
-   if(cli_do_config_finish())
+   status = cli_do_config_finish(status_txn);
+
+   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -187,17 +199,20 @@ DEFUN (cli_intf_mtu,
       "Configure mtu for the interface\nUse Default MTU (1500 bytes)\nEnter MTU (in bytes)\n")
 {
    struct ovsrec_interface * row = NULL;
+   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+   enum ovsdb_idl_txn_status status;
 
-   if(!cli_do_config_start())
+   if(status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
    row = ovsrec_interface_first(idl);
    if(!row)
    {
-      cli_do_config_abort();
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
@@ -226,7 +241,9 @@ DEFUN (cli_intf_mtu,
       }
    }
 
-   if(cli_do_config_finish())
+   status = cli_do_config_finish(status_txn);
+
+   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -254,17 +271,20 @@ DEFUN (cli_intf_duplex,
       "Configure the interface duplex mode\nConfigure half-duplex\nConfigure full-duplex")
 {
    struct ovsrec_interface * row = NULL;
+   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+   enum ovsdb_idl_txn_status status;
 
-   if(!cli_do_config_start())
+   if(status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
    row = ovsrec_interface_first(idl);
    if(!row)
    {
-      cli_do_config_abort();
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
@@ -287,7 +307,9 @@ DEFUN (cli_intf_duplex,
       }
    }
 
-   if(cli_do_config_finish())
+   status = cli_do_config_finish(status_txn);
+
+   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -317,17 +339,20 @@ DEFUN (cli_intf_flowcontrol,
       "Turn off flow-control\nTurn on flow-control\n")
 {
    struct ovsrec_interface * row = NULL;
+   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+   enum ovsdb_idl_txn_status status;
 
-   if(!cli_do_config_start())
+   if(status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
    row = ovsrec_interface_first(idl);
    if(!row)
    {
-      cli_do_config_abort();
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
@@ -408,7 +433,9 @@ DEFUN (cli_intf_flowcontrol,
       }
    }
 
-   if(cli_do_config_finish())
+   status = cli_do_config_finish(status_txn);
+
+   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -439,17 +466,20 @@ DEFUN (cli_intf_autoneg,
       "Turn on autonegotiation\nTurn off autonegotiation\n")
 {
    struct ovsrec_interface * row = NULL;
+   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+   enum ovsdb_idl_txn_status status;
 
-   if(!cli_do_config_start())
+   if(status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
    row = ovsrec_interface_first(idl);
    if(!row)
    {
-      cli_do_config_abort();
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
 
@@ -478,7 +508,9 @@ DEFUN (cli_intf_autoneg,
       }
    }
 
-   if(cli_do_config_finish())
+   status = cli_do_config_finish(status_txn);
+
+   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -508,8 +540,6 @@ int cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
    struct ovsrec_interface *row = NULL;
    const char *cur_state =NULL;
    bool bPrinted = false;
-
-   ovsdb_idl_run(idl);
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
@@ -639,7 +669,6 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
    unsigned int index;
    int64_t intVal = 0;
-   ovsdb_idl_run(idl);
 
    if(brief)
    {

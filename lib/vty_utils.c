@@ -79,7 +79,6 @@ void utils_format_parser_read_word(struct format_parser_state *state)
         {
           if (token->desc && j == 1)
           {
-            printf("name %s\t desc %s", token->cmd, token->desc);
             token->desc = noHelpString;
           }
         }

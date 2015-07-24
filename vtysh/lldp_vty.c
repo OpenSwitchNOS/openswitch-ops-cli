@@ -42,6 +42,8 @@
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
+#include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lldp_cli);
 extern struct ovsdb_idl *idl;
@@ -85,10 +87,13 @@ typedef struct lldp_nbr_info
 static int lldp_set_global_status(const char *status)
 {
   const struct ovsrec_open_vswitch *row = NULL;
+  enum ovsdb_idl_txn_status txn_status;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -97,19 +102,23 @@ static int lldp_set_global_status(const char *status)
   if(!row)
   {
      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-     cli_do_config_abort();
+     cli_do_config_abort(status_txn);
      return CMD_OVSDB_FAILURE;
   }
 
   if(strcmp("true",status) == 0)
-     smap_replace(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_ENABLE, status);
+    smap_replace(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_ENABLE, status);
   else
     smap_remove(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_ENABLE);
 
   ovsrec_open_vswitch_set_other_config(row, &row->other_config);
 
-  if(cli_do_config_finish())
+  txn_status = cli_do_config_finish(status_txn);
+
+  if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
+  {
     return CMD_SUCCESS;
+  }
   else
   {
     VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -142,11 +151,13 @@ DEFUN (cli_lldp_no_set_global_status,
 static int set_global_hold_time(const char *hold_time)
 {
   const struct ovsrec_open_vswitch *row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn* status_txn = cli_do_config_start();
 
-
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -155,7 +166,7 @@ static int set_global_hold_time(const char *hold_time)
   if(!row)
   {
     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -166,8 +177,12 @@ static int set_global_hold_time(const char *hold_time)
 
   ovsrec_open_vswitch_set_other_config(row, &row->other_config);
 
-  if(cli_do_config_finish())
+  status = cli_do_config_finish(status_txn);
+
+  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+  {
     return CMD_SUCCESS;
+  }
   else
   {
     VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -200,10 +215,13 @@ DEFUN (cli_lldp_no_set_hold_time,
 static int lldp_set_global_timer(const char *timer)
 {
   const struct ovsrec_open_vswitch *row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -212,7 +230,7 @@ static int lldp_set_global_timer(const char *timer)
   if(!row)
   {
     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -223,7 +241,9 @@ static int lldp_set_global_timer(const char *timer)
 
   ovsrec_open_vswitch_set_other_config(row, &row->other_config);
 
-  if(cli_do_config_finish())
+  status = cli_do_config_finish(status_txn);
+
+  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
     return CMD_SUCCESS;
   else
   {
@@ -261,12 +281,15 @@ DEFUN (cli_lldp_clear_counters,
        "Clear LLDP counters.\n")
 {
   const struct ovsrec_open_vswitch *row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   int clear_counter = 0;
   char buffer[10];
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -274,7 +297,7 @@ DEFUN (cli_lldp_clear_counters,
   if(!row)
   {
      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-     cli_do_config_abort();
+     cli_do_config_abort(status_txn);
      return CMD_OVSDB_FAILURE;
   }
 
@@ -285,8 +308,12 @@ DEFUN (cli_lldp_clear_counters,
   smap_replace(&row->status, "lldp_num_clear_counters_requested", buffer);
   ovsrec_open_vswitch_set_status(row, &row->status);
 
-  if(cli_do_config_finish())
+  status = cli_do_config_finish(status_txn);
+
+  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+  {
     return CMD_SUCCESS;
+  }
   else
   {
     VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -303,12 +330,15 @@ DEFUN (cli_lldp_clear_neighbors,
        "Clear LLDP neighbor tables.\n")
 {
   const struct ovsrec_open_vswitch *row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   int clear_neighbor_table = 0;
   char buffer[10];
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -316,7 +346,7 @@ DEFUN (cli_lldp_clear_neighbors,
   if(!row)
   {
     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -327,8 +357,12 @@ DEFUN (cli_lldp_clear_neighbors,
   smap_replace(&row->status, "lldp_num_clear_table_requested", buffer);
   ovsrec_open_vswitch_set_status(row, &row->status);
 
-  if(cli_do_config_finish())
+  status = cli_do_config_finish(status_txn);
+
+  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+  {
     return CMD_SUCCESS;
+  }
   else
   {
     VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -341,11 +375,14 @@ static int
 lldp_set_tlv(const char *tlv_name, const char *status)
 {
   const struct ovsrec_open_vswitch *row = NULL;
+  enum ovsdb_idl_txn_status txn_status;
+  struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   char tlv[50]={0};
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -354,7 +391,7 @@ lldp_set_tlv(const char *tlv_name, const char *status)
   if(!row)
   {
     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -384,8 +421,12 @@ lldp_set_tlv(const char *tlv_name, const char *status)
 
   ovsrec_open_vswitch_set_other_config(row, &row->other_config);
 
-  if(cli_do_config_finish())
+  txn_status = cli_do_config_finish(status_txn);
+
+  if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
+  {
     return CMD_SUCCESS;
+  }
   else
   {
     VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -421,10 +462,13 @@ DEFUN (cli_no_lldp_select_tlv,
 static int lldp_set_mgmt_address(const char *status, boolean set)
 {
   const struct ovsrec_open_vswitch *row = NULL;
+  enum ovsdb_idl_txn_status txn_status;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -432,7 +476,7 @@ static int lldp_set_mgmt_address(const char *status, boolean set)
   if(!row)
   {
     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
@@ -443,8 +487,12 @@ static int lldp_set_mgmt_address(const char *status, boolean set)
 
   ovsrec_open_vswitch_set_other_config(row, &row->other_config);
 
-  if(cli_do_config_finish())
+  txn_status = cli_do_config_finish(status_txn);
+
+  if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
+  {
     return CMD_SUCCESS;
+  }
   else
   {
     VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -543,7 +591,6 @@ DEFUN (cli_lldp_show_tlv,
 {
   const struct ovsrec_open_vswitch *row = NULL;
 
-  ovsdb_idl_run(idl);
   row = ovsrec_open_vswitch_first(idl);
 
   if(!row)
@@ -577,7 +624,6 @@ DEFUN (cli_lldp_show_intf_statistics,
 
   unsigned int index;
 
-  ovsdb_idl_run(idl);
   vty_out (vty, "LLDP statistics: %s%s", VTY_NEWLINE, VTY_NEWLINE);
 
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
@@ -635,7 +681,6 @@ DEFUN (cli_lldp_show_config,
   lldp_intf_stats *new_intf_stats = NULL;
   lldp_intf_stats *temp = NULL, *current = NULL;
 
-  ovsdb_idl_run(idl);
   row = ovsrec_open_vswitch_first(idl);
 
   if(!row)
@@ -781,7 +826,6 @@ DEFUN (cli_lldp_show_statistics,
   unsigned int total_rx_unrecognized = 0;
   unsigned int index;
 
-  ovsdb_idl_run(idl);
   row = ovsrec_open_vswitch_first(idl);
 
   if(!row)
@@ -909,7 +953,6 @@ DEFUN (cli_lldp_show_neighbor_info,
   unsigned int total_ageout_count = 0;
   unsigned int index = 0;
 
-  ovsdb_idl_run(idl);
   row = ovsrec_open_vswitch_first(idl);
 
   if(!row)
@@ -1053,8 +1096,6 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
   unsigned int index;
 
-  ovsdb_idl_run(idl);
-
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
   {
      if(0 == strcmp(argv[0],ifrow->name))
@@ -1111,11 +1152,14 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
 int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   const struct ovsrec_interface * row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   char *state_value;
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return 1;
   }
 
@@ -1123,7 +1167,7 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   if(!row)
   {
     VLOG_ERR("unable to fetch a row.");
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
     return 1;
   }
 
@@ -1164,8 +1208,12 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
     }
   }
 
-  if(cli_do_config_finish())
+  status = cli_do_config_finish(status_txn);
+
+  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+  {
     return 0;
+  }
   else
   {
     VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -1202,12 +1250,15 @@ DEFUN (lldp_if_lldp_rx,
 int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 {
   const struct ovsrec_interface * row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   char *state_value;
   boolean validstate = false, ifexists = false;
 
-  if(!cli_do_config_start())
+  if(status_txn == NULL)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
     return 1;
   }
 
@@ -1215,7 +1266,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
   if(!row)
   {
     VLOG_ERR("unable to fetch a row.");
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
     return 1;
   }
 
@@ -1266,8 +1317,11 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 
   if ((true == ifexists) && (true == validstate))
   {
-    if(cli_do_config_finish())
+    status = cli_do_config_finish(status_txn);
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
       return 0;
+    }
     else
     {
       VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -1284,7 +1338,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
       VLOG_ERR("ifrow other_config has invalid lldp dir state");
     }
 
-    cli_do_config_abort();
+    cli_do_config_abort(status_txn);
   }
 
   return 1;

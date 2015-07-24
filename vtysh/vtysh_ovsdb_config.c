@@ -381,8 +381,6 @@ vtysh_ovsdb_read_config(FILE *fp)
   int loopcnt = 0;
 
   VLOG_DBG("readconfig:before- idl 0x%x seq no 0x%x", idl, ovsdb_idl_get_seqno(idl));
-  ovsdb_idl_run(idl);
-  ovsdb_idl_wait(idl);
 
   msg.fp = fp;
   msg.idl = idl;
@@ -533,4 +531,5 @@ vtysh_ovsdb_init_clients()
   /* Register Callback for LED configuration */
   vtysh_ovsdb_init_ledtableclients();
   vtysh_ovsdb_init_subsystemtableclients();
+  vtysh_ovsdb_init_vlantableclients();
 }

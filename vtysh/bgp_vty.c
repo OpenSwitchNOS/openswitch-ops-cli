@@ -167,8 +167,6 @@ DEFUN(vtysh_show_ip_bgp,
       BGP_STR)
 {
   const struct ovsrec_bgp_router *bgpRow = NULL;
-  ovsdb_idl_run(idl);
-  ovsdb_idl_wait(idl);
 
   vty_out (vty, "BGP table version is 0\n", VTY_NEWLINE);
   vty_out (vty, BGP_SHOW_SCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);

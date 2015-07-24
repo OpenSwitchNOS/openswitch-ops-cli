@@ -41,4 +41,6 @@ int vtysh_ovsdb_port_match(const char *str);
 int vtysh_ovsdb_vlan_match(const char *str);
 
 int vtysh_regex_match(const char *regString, const char *inp);
+
+void *vtysh_ovsdb_main_thread(void *arg);
 #endif /* VTYSH_OVSDB_IF_H */

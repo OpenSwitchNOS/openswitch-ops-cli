@@ -84,6 +84,7 @@ typedef enum vtysh_ovsdb_vlan_table_client_idenum
 {
   /* client callback based on client-id value */
   e_vtysh_vlan_table_client_id_first = 0,
+  e_vtysh_vlan_table_config,
   e_vtysh_vlan_table_client_id_max
 } vtysh_ovsdb_vlan_table_clientid;
 
@@ -216,5 +217,11 @@ vtysh_ret_val vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, .
 
 /* All log/debug/err logging functions */
 void vtysh_ovsdb_config_logmsg(int loglevel, char *fmt,  ...);
+
+struct ovsdb_idl_txn * cli_do_config_start(void);
+
+enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* txn);
+
+void cli_do_config_abort(struct ovsdb_idl_txn* txn);
 
 #endif /* VTYSH_OVSDB_CONFIG_H */
