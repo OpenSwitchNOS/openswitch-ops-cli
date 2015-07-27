@@ -19,7 +19,8 @@ if ENABLE_OVSDB
 vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c vtysh_ovsdb_config.c \
                  vtysh_ovsdb_ovstable.c vtysh_ovsdb_intftable.c intf_vty.c \
                  l3static_vty.c vtysh_ovsdb_routetable.c \
-                 led_vty.c system_vty.c vtysh_ovsdb_ledtable.c
+                 led_vty.c system_vty.c vtysh_ovsdb_ledtable.c\
+                 fan_vty.c temperature_vty.c vtysh_ovsdb_subsystemtable.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -29,7 +30,8 @@ if ENABLE_OVSDB
 noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h vtysh_ovsdb_config.h \
                   vtysh_ovsdb_ovstable.h vtysh_ovsdb_intftable.h intf_vty.h \
                   l3static_vty.h vtysh_ovsdb_routetable.h \
-                  led_vty.h system_vty.h vtysh_ovsdb_ledtable.h
+                  led_vty.h system_vty.h vtysh_ovsdb_ledtable.h \
+                  fan_vty.h temperature_vty.h vtysh_ovsdb_subsystemtable.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@

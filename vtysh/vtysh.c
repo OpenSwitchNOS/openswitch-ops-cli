@@ -2804,5 +2804,7 @@ vtysh_init_vty (void)
   led_vty_init();
   /* Initialise System cli */
   system_vty_init();
+  fan_vty_init();
+  temperature_vty_init();
 #endif
 }

@@ -46,6 +46,7 @@ vtysh_ovsdb_client vtysh_temp_sensor_table_client_list[e_vtysh_temp_sensor_table
 vtysh_ovsdb_client vtysh_fan_table_client_list[e_vtysh_fan_table_client_id_max] = {NULL};
 vtysh_ovsdb_client vtysh_led_table_client_list[e_vtysh_led_table_client_id_max] = {NULL};
 vtysh_ovsdb_client vtysh_route_table_client_list[e_vtysh_route_table_client_id_max] = {NULL};
+vtysh_ovsdb_client vtysh_subsystem_table_client_list[e_vtysh_subsystem_table_client_id_max] = {NULL};
 
 /* static array of vtysh ovsdb tables
    table traversal order as shown below.
@@ -63,6 +64,7 @@ vtysh_ovsdb_table_list vtysh_ovsdb_table[e_vtysh_table_id_max] =
   { "Fan Table",          e_fan_table,         &vtysh_fan_table_client_list},
   { "Led Table",          e_led_table,         &vtysh_led_table_client_list},
   { "Route Table",          e_route_table,         &vtysh_route_table_client_list},
+  { "Subsystem Table",    e_subsystem_table,   &vtysh_subsystem_table_client_list},
 };
 
 /*-----------------------------------------------------------------------------
@@ -113,6 +115,9 @@ vtysh_ovsdb_table_get_maxclientid(vtysh_ovsdb_tableid tableid)
          break;
     case e_route_table:
          ret_val = e_vtysh_route_table_client_id_max;
+         break;
+    case e_subsystem_table:
+         ret_val = e_vtysh_subsystem_table_client_id_max;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -171,6 +176,9 @@ vtysh_ovsdb_table_get_minclientid(vtysh_ovsdb_tableid tableid)
          break;
     case e_route_table:
          ret_val = e_vtysh_route_table_client_id_first;
+         break;
+    case e_subsystem_table:
+         ret_val = e_vtysh_subsystem_table_client_id_first;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -515,4 +523,5 @@ vtysh_ovsdb_init_clients()
   vtysh_ovsdb_init_routetableclients();
   /* Register Callback for LED configuration */
   vtysh_ovsdb_init_ledtableclients();
+  vtysh_ovsdb_init_subsystemtableclients();
 }
