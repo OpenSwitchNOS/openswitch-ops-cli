@@ -42,6 +42,7 @@
 #include "openvswitch/vlog.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
+#include "lib/lib_vtysh_ovsdb_if.h"
 #endif
 
 /* VTY shell program name. */

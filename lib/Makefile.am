@@ -17,7 +17,7 @@ libzebra_la_SOURCES = \
 	zclient.c sockopt.c smux.c agentx.c snmp.c md5.c if_rmap.c keychain.c privs.c \
 	sigevent.c pqueue.c jhash.c memtypes.c workqueue.c
 if ENABLE_OVSDB
-libzebra_la_SOURCES += lib_vtysh_ovsdb_if.c
+libzebra_la_SOURCES += lib_vtysh_ovsdb_if.c vty_utils.c
 endif
 
 BUILT_SOURCES = memtypes.h route_types.h gitversion.h
@@ -38,7 +38,7 @@ pkginclude_HEADERS = \
 	privs.h sigevent.h pqueue.h jhash.h zassert.h memtypes.h \
 	workqueue.h route_types.h libospf.h
 if ENABLE_OVSDB
-pkginclude_HEADERS += lib_vtysh_ovsdb_if.h
+pkginclude_HEADERS += lib_vtysh_ovsdb_if.h vty_utils.h
 endif
 
 EXTRA_DIST = \

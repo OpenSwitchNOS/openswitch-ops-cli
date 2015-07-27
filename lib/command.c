@@ -34,6 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "workqueue.h"
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
+#include "vty_utils.h"
 #endif
 
 /* Command vector which includes some level of command lists. Normally
@@ -294,6 +295,7 @@ cmd_free_strvec (vector v)
   vector_free (v);
 }
 
+#ifndef ENABLE_OVSDB
 struct format_parser_state
 {
   vector topvect; /* Top level vector */
@@ -313,6 +315,7 @@ struct format_parser_state
   int just_read_word; /* flag to remember if the last thing we red was a
                        * real word and not some abstract token */
 };
+#endif
 
 static void
 format_parser_error(struct format_parser_state *state, const char *message)
@@ -326,7 +329,7 @@ format_parser_error(struct format_parser_state *state, const char *message)
   exit(1);
 }
 
-static char *
+char *
 format_parser_desc_str(struct format_parser_state *state)
 {
   const char *cp, *start;
@@ -487,7 +490,7 @@ format_parser_handle_pipe(struct format_parser_state *state)
     }
 }
 
-static void
+void
 format_parser_read_word(struct format_parser_state *state)
 {
   const char *start;
@@ -528,7 +531,7 @@ format_parser_read_word(struct format_parser_state *state)
  * @return A vector of struct cmd_token representing the given command,
  *         or NULL on error.
  */
-static vector
+vector
 cmd_parse_format(const char *string, const char *descstr)
 {
   struct format_parser_state state;
@@ -569,7 +572,11 @@ cmd_parse_format(const char *string, const char *descstr)
           format_parser_handle_pipe(&state);
           break;
         default:
+#ifndef ENABLE_OVSDB
           format_parser_read_word(&state);
+#else
+          utils_format_parser_read_word(&state);
+#endif
         }
     }
 }
@@ -605,7 +612,11 @@ install_element (enum node_type ntype, struct cmd_element *cmd)
 
   vector_set (cnode->cmd_vector, cmd);
   if (cmd->tokens == NULL)
+#ifndef ENABLE_OVSDB
     cmd->tokens = cmd_parse_format(cmd->string, cmd->doc);
+#else
+    cmd->tokens = utils_cmd_parse_format(cmd->string, cmd->doc);
+#endif
 }
 
 static const unsigned char itoa64[] =
