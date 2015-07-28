@@ -15,7 +15,7 @@
  under the License.
  */
 /****************************************************************************
- * @ingroup quagga/vtysh
+ * @ingroup cli/vtysh
  *
  * @file vrf_vty.c
  * VRF CLI Commands
@@ -37,12 +37,17 @@
 #include "ovsdb-idl.h"
 #include "vrf_vty.h"
 #include "openvswitch/vlog.h"
+#include "openhalon-idl.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
 
-struct ovsrec_vrf* vrf_lookup(const char *vrf_name) {
-    const struct ovsrec_vrf *vrf_row = NULL;
+/*
+ * Check for presence of VRF and return VRF row.
+ */
+struct ovsrec_vrf* vrf_lookup(const char *vrf_name)
+{
+    struct ovsrec_vrf *vrf_row = NULL;
     OVSREC_VRF_FOR_EACH (vrf_row, idl)
     {
         if (strcmp(vrf_row->name, vrf_name) == 0) {
@@ -52,12 +57,69 @@ struct ovsrec_vrf* vrf_lookup(const char *vrf_name) {
     return NULL;
 }
 
-struct ovsrec_port* port_lookup(const char *port_name) {
-    const struct ovsrec_port *port_row = NULL;
+/*
+ * This functions is used to check if port row exists.
+ *
+ * Variables:
+ * port_name -> name of port to check
+ * create -> flag to create port if not found
+ * attach_to_default_vrf -> attach newly created port to default VRF
+ */
+struct ovsrec_port* port_check(const char *port_name, bool create,
+                               bool attach_to_default_vrf,
+                               struct ovsdb_idl_txn *txn)
+{
+    struct ovsrec_port *port_row = NULL;
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
         if (strcmp(port_row->name, port_name) == 0) {
             return port_row;
+        }
+    }
+    if (!port_row && create) {
+        struct ovsrec_interface *if_row = NULL;
+        OVSREC_INTERFACE_FOR_EACH(if_row, idl)
+        {
+            if (strcmp(if_row->name, port_name) == 0) {
+                port_row = ovsrec_port_insert(txn);
+                ovsrec_port_set_name(port_row, port_name);
+                ovsrec_port_set_interfaces(port_row, &if_row, 1);
+                break;
+            }
+        }
+        if (attach_to_default_vrf) {
+            struct ovsrec_vrf *default_vrf_row = NULL;
+            struct ovsrec_port **ports = NULL;
+            size_t i;
+            default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
+            ports = xmalloc(sizeof *default_vrf_row->ports *
+                    (default_vrf_row->n_ports + 1));
+            for (i = 0; i < default_vrf_row->n_ports; i++) {
+                ports[i] = default_vrf_row->ports[i];
+            }
+            ports[default_vrf_row->n_ports] = port_row;
+            ovsrec_vrf_set_ports(default_vrf_row, ports,
+                    default_vrf_row->n_ports + 1);
+            free(ports);
+        }
+        return port_row;
+    }
+    return NULL;
+}
+
+/*
+ * Check if port is part of any VRF and return the VRF row.
+ */
+struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
+{
+    struct ovsrec_vrf *vrf_row = NULL;
+    size_t i;
+    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+        for (i = 0; i<vrf_row->n_ports; i++) {
+            if (vrf_row->ports[i] == port_row) {
+                return vrf_row;
+            }
         }
     }
     return NULL;
@@ -66,9 +128,11 @@ struct ovsrec_port* port_lookup(const char *port_name) {
 /*
  * Checks if interface is already part of bridge.
  */
-bool check_iface_in_bridge(const struct ovsrec_open_vswitch *ovs_row,
-                           const char *if_name) {
+struct ovsrec_port* check_iface_in_bridge(const char *if_name)
+{
     size_t i, j, k;
+    struct ovsrec_open_vswitch *ovs_row = NULL;
+    ovs_row = ovsrec_open_vswitch_first(idl);
     for (i = 0; i < ovs_row->n_bridges; i++) {
         struct ovsrec_bridge *br_cfg = ovs_row->bridges[i];
         for (j = 0; j < br_cfg->n_ports; j++) {
@@ -76,20 +140,22 @@ bool check_iface_in_bridge(const struct ovsrec_open_vswitch *ovs_row,
             for (k = 0; k < port_cfg->n_interfaces; k++) {
                 struct ovsrec_interface *iface_cfg = port_cfg->interfaces[k];
                 if (strcmp(if_name, iface_cfg->name) == 0) {
-                    return true;
+                    return port_cfg;
                 }
             }
         }
     }
-    return false;
+    return NULL;
 }
 
 /*
  * Checks if interface is already part of a VRF.
  */
-bool check_iface_in_vrf(const struct ovsrec_open_vswitch *ovs_row,
-                        const char *if_name) {
+struct ovsrec_port* check_iface_in_vrf(const char *if_name)
+{
     size_t i, j, k;
+    struct ovsrec_open_vswitch *ovs_row = NULL;
+    ovs_row = ovsrec_open_vswitch_first(idl);
     for (i = 0; i < ovs_row->n_vrfs; i++) {
         struct ovsrec_vrf *vrf_cfg = ovs_row->vrfs[i];
         for (j = 0; j < vrf_cfg->n_ports; j++) {
@@ -97,19 +163,20 @@ bool check_iface_in_vrf(const struct ovsrec_open_vswitch *ovs_row,
             for (k = 0; k < port_cfg->n_interfaces; k++) {
                 struct ovsrec_interface *iface_cfg = port_cfg->interfaces[k];
                 if (strcmp(if_name, iface_cfg->name) == 0) {
-                    return true;
+                    return port_cfg;
                 }
             }
         }
     }
-    return false;
+    return NULL;
 }
 
 /*
  * Adds a new VRF to the VRF table.
  * Takes VRF name as an argument.
  */
-static int vrf_add(const char *vrf_name) {
+static int vrf_add(const char *vrf_name)
+{
     struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     struct ovsrec_open_vswitch *ovs_row = NULL;
@@ -139,8 +206,7 @@ static int vrf_add(const char *vrf_name) {
     /* HALON_TODO: In case multiple vrfs. */
 #if 0
     vrf_row = vrf_lookup(vrf_name);
-    if(vrf_row)
-    {
+    if (vrf_row) {
         vty_out (vty, "Error: VRF already exists.%s", VTY_NEWLINE);
         VLOG_DBG("%s Trying to add a VRF which is already present. Check if"
                 " VRF name \"%s\" is already present.", __func__, vrf_name);
@@ -152,7 +218,7 @@ static int vrf_add(const char *vrf_name) {
     vrf_row = ovsrec_vrf_first(idl);
     if (vrf_row) {
         vty_out(vty,
-                "Error: Command not supported. Default VRF already exists.%s",
+                "Command not supported. Default VRF already exists.%s",
                 VTY_NEWLINE);
         VLOG_DBG(
                 "%s Only default VRF is allowed right now. This default VRF is"
@@ -202,6 +268,11 @@ static int vrf_add(const char *vrf_name) {
                 "%s The command succeeded and VRF \"%s\" was added "
                 "successfully", __func__, vrf_name);
         return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if VRF \"%s\" "
+                "is already present", __func__, vrf_name);
+        return CMD_SUCCESS;
     } else {
         VLOG_DBG(
                 "%s While trying to commit transaction to DB, got"
@@ -212,136 +283,21 @@ static int vrf_add(const char *vrf_name) {
 }
 
 /*
- * Adds an interface/port to a VRF.
- * Takes interface name and VRF name as arguments.
- */
-static int vrf_add_port(const char *if_name, const char *vrf_name) {
-    struct ovsrec_vrf *vrf_row = NULL;
-    struct ovsrec_interface *if_row = NULL;
-    struct ovsrec_port *port_row = NULL;
-    struct ovsdb_idl_txn *status_txn = NULL;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
-    enum ovsdb_idl_txn_status status;
-    struct ovsrec_port **ports;
-    size_t i;
-
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
-
-    if (!status_txn) {
-        VLOG_DBG(
-                "%s Got an error when trying to create a transaction"
-                " using ovsdb_idl_txn_create()", __func__);
-        return CMD_OVSDB_FAILURE;
-    }
-
-    vrf_row = vrf_lookup(vrf_name);
-    if (!vrf_row) {
-        vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
-        VLOG_DBG("%s VRF \"%s\" is not present in VRF table.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
-        return CMD_SUCCESS;
-    }
-
-    if_row = ovsrec_interface_first(idl);
-    if (!if_row) {
-        vty_out(vty, "Error: Could not fetch interface data.%s",
-        VTY_NEWLINE);
-        VLOG_DBG("%s No rows found in the Interface table", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
-        return CMD_SUCCESS;
-    }
-
-    ovs_row = ovsrec_open_vswitch_first(idl);
-    if (!ovs_row) {
-        vty_out(vty, "Error: Could not fetch Open VSwitch data.%s",
-                VTY_NEWLINE);
-        VLOG_DBG(
-                "%s Open VSwitch table did not have any rows. Ideally it"
-                " should have just one entry.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
-        return CMD_SUCCESS;
-    }
-
-    if (check_iface_in_bridge(ovs_row, if_name)) {
-        vty_out(vty, "Error: Interface %s has already been added to bridge.%s",
-                if_name, VTY_NEWLINE);
-        VLOG_DBG(
-                "%s Interface \"%s\" has already been added to bridge. Check"
-                " Interface and Port tables", __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
-        return CMD_SUCCESS;
-    }
-
-    if (check_iface_in_vrf(ovs_row, if_name)) {
-        vty_out(vty, "Error: Interface %s has already been added to vrf.%s",
-                if_name, VTY_NEWLINE);
-        VLOG_DBG("%s Interface \"%s\" has already been added to vrf.",
-                __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
-        return CMD_SUCCESS;
-    }
-
-    /* HALON_TODO: Check to see if we can directly fetch the uuid from if_name
-     instead of looping through the entire interface table.
-     Tried with uuid_from_string() but did not work. */
-    OVSREC_INTERFACE_FOR_EACH(if_row, idl)
-    {
-        if (strcmp(if_row->name, if_name) == 0) {
-            port_row = ovsrec_port_insert(status_txn);
-            ovsrec_port_set_name(port_row, if_name);
-            ovsrec_port_set_interfaces(port_row, &if_row, 1);
-            break;
-        }
-    }
-
-    ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
-    for (i = 0; i < vrf_row->n_ports; i++) {
-        ports[i] = vrf_row->ports[i];
-    }
-    ports[vrf_row->n_ports] = port_row;
-    ovsrec_vrf_set_ports(vrf_row, ports, vrf_row->n_ports + 1);
-    free(ports);
-
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
-
-    if (status == TXN_SUCCESS) {
-        VLOG_DBG(
-                "%s The command succeeded and interface \"%s\" was attached"
-                " to VRF \"%s\"", __func__, if_name, vrf_name);
-        return CMD_SUCCESS;
-    } else {
-        VLOG_DBG(
-                "%s While trying to commit transaction to DB, got a status"
-                " response : %s", __func__,
-                ovsdb_idl_txn_status_to_string(status));
-        return CMD_OVSDB_FAILURE;
-    }
-}
-
-/*
  * This function is used to delete a VRF and all ports linked to it.
  */
 static int vrf_delete(const char *vrf_name) {
     /*
-     *  HALON_TODO: Deleting VRF means to delete all references from all
-     *  tables such as bgp routes, ports, interfaces, and so on. For now
-     *  we will only delete ports.
+     *  HALON_TODO: For now we will only move ports to default VRF.
      */
 
     struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsrec_vrf *default_vrf_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     struct ovsrec_open_vswitch *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i;
+    size_t i, n, new_n_ports;
     struct ovsrec_port *port_row = NULL;
+    struct ovsrec_port **ports;
 
     ovsdb_idl_run(idl);
     status_txn = ovsdb_idl_txn_create(idl);
@@ -353,14 +309,6 @@ static int vrf_delete(const char *vrf_name) {
         return CMD_OVSDB_FAILURE;
     }
 
-    if (strcmp(vrf_name, "vrf_default") == 0) {
-        vty_out(vty, "Error: Cannot delete default VRF.%s", VTY_NEWLINE);
-        VLOG_DBG("%s Cannot delete default VRF.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
-        return CMD_SUCCESS;
-    }
-
     vrf_row = vrf_lookup(vrf_name);
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -370,8 +318,25 @@ static int vrf_delete(const char *vrf_name) {
         return CMD_SUCCESS;
     }
 
-    for (i = 0; i < vrf_row->n_ports; i++)
-        ovsrec_port_delete(vrf_row->ports[i]);
+    if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
+        vty_out(vty, "Error: Cannot delete default VRF.%s", VTY_NEWLINE);
+        VLOG_DBG("%s Cannot delete default VRF.", __func__);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
+    new_n_ports = default_vrf_row->n_ports + vrf_row->n_ports;
+    ports = xmalloc(sizeof *vrf_row->ports * new_n_ports);
+    for (i = 0; i < default_vrf_row->n_ports; i++) {
+        ports[i] = default_vrf_row->ports[i];
+    }
+    for (i = 0; i < vrf_row->n_ports; i++) {
+        ports[default_vrf_row->n_ports + i] = vrf_row->ports[i];
+    }
+    ovsrec_vrf_set_ports(default_vrf_row, ports, new_n_ports);
+    free(ports);
 
     ovs_row = ovsrec_open_vswitch_first(idl);
     if (!ovs_row) {
@@ -389,11 +354,12 @@ static int vrf_delete(const char *vrf_name) {
 #if 0
     struct ovsrec_vrf **vrfs;
     vrfs = xmalloc(sizeof *ovs_row->vrfs * (ovs_row->n_vrfs - 1));
-    for (i = 0; i < ovs_row->n_vrfs; i++) {
-        if (strcmp(ovs_row->vrfs[i]->name,vrf_name) != 0)
-        vrfs[i] = ovs_row->vrfs[i];
+    for (i = n = 0; i < ovs_row->n_vrfs; i++) {
+        if (strcmp(ovs_row->vrfs[i]->name,vrf_name) != 0) {
+            vrfs[n++] = ovs_row->vrfs[i];
+        }
     }
-    ovsrec_open_vswitch_set_vrfs(ovs_row, vrfs, ovs_row->n_vrfs - 1);
+    ovsrec_open_vswitch_set_vrfs(ovs_row, vrfs, n);
     free(vrfs);
 #else
     ovsrec_open_vswitch_set_vrfs(ovs_row, NULL, 0);
@@ -408,6 +374,118 @@ static int vrf_delete(const char *vrf_name) {
         VLOG_DBG("%s The command succeeded and VRF \"%s\" was deleted",
                 __func__, vrf_name);
         return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if VRF \"%s\" "
+                "has already been deleted", __func__, vrf_name);
+        return CMD_SUCCESS;
+    } else {
+        VLOG_DBG(
+                "%s While trying to commit transaction to DB, got a status"
+                " response : %s", __func__,
+                ovsdb_idl_txn_status_to_string(status));
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+/*
+ * Adds an interface/port to a VRF.
+ * Takes interface name and VRF name as arguments.
+ */
+static int vrf_add_port(const char *if_name, const char *vrf_name)
+{
+    struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsrec_vrf *unlink_vrf_row = NULL;
+    struct ovsrec_port *port_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsrec_port **ports;
+    size_t i, n;
+
+    ovsdb_idl_run(idl);
+    status_txn = ovsdb_idl_txn_create(idl);
+
+    if (!status_txn) {
+        VLOG_DBG(
+                "%s Got an error when trying to create a transaction"
+                " using ovsdb_idl_txn_create()", __func__);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    port_row = port_check(if_name, true, true, status_txn);
+    if (check_iface_in_bridge(if_name)) {
+        vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    vrf_row = vrf_lookup(vrf_name);
+    if (!vrf_row) {
+        vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
+        VLOG_DBG("%s VRF \"%s\" is not present in VRF table.", __func__);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    /*
+     * HALON_TODO: In case of multiple VRFs, change the error message below.
+     * Error message should be "To attach to default VRF, use the no
+     * vrf attach command."
+     */
+    if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
+        vty_out(vty, "Already attached to default VRF.%s", VTY_NEWLINE);
+        VLOG_DBG("%s Already attached to default VRF.", __func__);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    unlink_vrf_row = port_vrf_lookup(port_row);
+    if (unlink_vrf_row == vrf_row) {
+        vty_out(vty, "Interface %s is already part of VRF %s.%s",
+                if_name, vrf_name, VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" is already attached to VRF \"%s\"",
+                __func__, if_name, vrf_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    ports = xmalloc(sizeof *unlink_vrf_row->ports * (unlink_vrf_row->n_ports - 1));
+    for (i = n = 0; i < unlink_vrf_row->n_ports; i++){
+        if (unlink_vrf_row->ports[i] != port_row) {
+            ports[n++] = unlink_vrf_row->ports[i];
+        }
+    }
+    ovsrec_vrf_set_ports(unlink_vrf_row, ports, n);
+
+    xrealloc(ports, sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
+    for (i = 0; i < vrf_row->n_ports; i++) {
+        ports[i] = vrf_row->ports[i];
+    }
+    ports[vrf_row->n_ports] = port_row;
+    ovsrec_vrf_set_ports(vrf_row, ports, vrf_row->n_ports + 1);
+    free(ports);
+
+    status = ovsdb_idl_txn_commit_block(status_txn);
+    ovsdb_idl_txn_destroy(status_txn);
+    status_txn = NULL;
+
+    if (status == TXN_SUCCESS) {
+        VLOG_DBG(
+                "%s The command succeeded and interface \"%s\" was attached"
+                " to VRF \"%s\"", __func__, if_name, vrf_name);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if "
+                "interface \"%s\" is already attached to VRF \"%s\" ",
+                __func__, if_name, vrf_name);
+        return CMD_SUCCESS;
     } else {
         VLOG_DBG(
                 "%s While trying to commit transaction to DB, got a status"
@@ -420,14 +498,16 @@ static int vrf_delete(const char *vrf_name) {
 /*
  * This function is used to delete a port linked to a VRF.
  */
-static int vrf_del_port(const char *if_name, const char *vrf_name) {
+static int vrf_del_port(const char *if_name, const char *vrf_name)
+{
     struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsrec_vrf *default_vrf_row = NULL;
     struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     struct ovsrec_open_vswitch *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
     struct ovsrec_port **ports;
-    size_t i;
+    size_t i, n;
 
     ovsdb_idl_run(idl);
     status_txn = ovsdb_idl_txn_create(idl);
@@ -443,6 +523,34 @@ static int vrf_del_port(const char *if_name, const char *vrf_name) {
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
         VLOG_DBG("%s VRF \"%s\" is not found.", __func__, vrf_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
+        vty_out(vty, "Command not supported. Cannot detach from"
+                " default VRF.%s", VTY_NEWLINE);
+        VLOG_DBG("%s Cannot detach from default VRF.", __func__);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    port_row = port_check(if_name, false, false, status_txn);
+    if (!port_row) {
+        VLOG_DBG(
+                "%s Interface \"%s\" does not have any port configuration",
+                __func__, if_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    if (check_iface_in_bridge(if_name)) {
+        vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
         ovsdb_idl_txn_destroy(status_txn);
         status_txn = NULL;
         return CMD_SUCCESS;
@@ -465,14 +573,22 @@ static int vrf_del_port(const char *if_name, const char *vrf_name) {
         return CMD_SUCCESS;
     }
 
-    ovsrec_port_delete(port_row);
-
     ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
-    for (i = 0; i < vrf_row->n_ports; i++) {
-        if (strcmp(vrf_row->ports[i]->name, if_name) != 0)
-            ports[i] = vrf_row->ports[i];
+    for (i = n = 0; i < vrf_row->n_ports; i++){
+        if (vrf_row->ports[i] != port_row) {
+            ports[n++] = vrf_row->ports[i];
+        }
     }
-    ovsrec_vrf_set_ports(vrf_row, ports, vrf_row->n_ports - 1);
+    ovsrec_vrf_set_ports(vrf_row, ports, n);
+
+    default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
+    xrealloc(ports, sizeof *default_vrf_row->ports *
+            (default_vrf_row->n_ports + 1));
+    for (i = 0; i < vrf_row->n_ports; i++) {
+        ports[i] = default_vrf_row->ports[i];
+    }
+    ports[default_vrf_row->n_ports] = port_row;
+    ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
     free(ports);
 
     status = ovsdb_idl_txn_commit_block(status_txn);
@@ -484,6 +600,12 @@ static int vrf_del_port(const char *if_name, const char *vrf_name) {
                 "%s The command succeeded and interface %s was detached from"
                 " VRF %s", __func__, if_name, vrf_name);
         return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if"
+                " interface \"%s\" is already detached from VRF \"%s\"",
+                __func__, if_name, vrf_name);
+        return CMD_SUCCESS;
     } else {
         VLOG_DBG(
                 "%s While trying to commit transaction to DB, got a status"
@@ -494,16 +616,18 @@ static int vrf_del_port(const char *if_name, const char *vrf_name) {
 }
 
 /*
- * This function is used to configure an IP address for a port
- * which is attached to a VRF.
+ * This function is used to make an interface L3.
+ * It attaches the port to the default VRF.
  */
-static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary) {
-    struct ovsrec_vrf *vrf_row = NULL;
+static int vrf_routing(const char *if_name)
+{
     struct ovsrec_port *port_row = NULL;
+    struct ovsrec_vrf *default_vrf_row = NULL;
+    struct ovsrec_bridge *default_bridge_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    char **secondary_ip4_addresses;
-    size_t i;
+    struct ovsrec_port **ports;
+    size_t i, n;
 
     ovsdb_idl_run(idl);
     status_txn = ovsdb_idl_txn_create(idl);
@@ -515,32 +639,193 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary) {
         return CMD_OVSDB_FAILURE;
     }
 
-    OVSREC_VRF_FOR_EACH(vrf_row, idl)
-    {
-        for (i = 0; i < vrf_row->n_ports; i++) {
-            if (strcmp(vrf_row->ports[i]->name, if_name) == 0) {
-                port_row = vrf_row->ports[i];
-                break;
-            }
-        }
-    }
-
+    port_row = port_check(if_name, false, false, status_txn);
     if (!port_row) {
-        vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
-        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF.", __func__,
-                if_name);
+        VLOG_DBG(
+                "%s Interface \"%s\" does not have any port configuration",
+                __func__, if_name);
         ovsdb_idl_txn_destroy(status_txn);
         status_txn = NULL;
         return CMD_SUCCESS;
     }
 
+    if (!check_iface_in_bridge(if_name)) {
+        VLOG_DBG(
+                "%s Interface \"%s\" is already L3. No change required.",
+                __func__, if_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    default_bridge_row = ovsrec_bridge_first(idl);
+    ports = xmalloc(sizeof *default_bridge_row->ports *
+            (default_bridge_row->n_ports - 1));
+    for (i = n = 0; i < default_bridge_row->n_ports; i++) {
+        if (default_bridge_row->ports[i] != port_row) {
+            ports[n++] = default_bridge_row->ports[i];
+        }
+    }
+    ovsrec_bridge_set_ports(default_bridge_row, ports, n);
+
+    default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
+    xrealloc(ports, sizeof *default_vrf_row->ports *
+            (default_vrf_row->n_ports + 1));
+    for (i = 0; i < default_vrf_row->n_ports; i++) {
+        ports[i] = default_vrf_row->ports[i];
+    }
+    ports[default_vrf_row->n_ports] = port_row;
+    ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
+    free(ports);
+
+    status = ovsdb_idl_txn_commit_block(status_txn);
+    ovsdb_idl_txn_destroy(status_txn);
+    status_txn = NULL;
+
+    if (status == TXN_SUCCESS) {
+        VLOG_DBG(
+                "%s The command succeeded and interface \"%s\" is now L3"
+                " and attached to default VRF %s", __func__, if_name);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if"
+                " interface \"%s\" is already L3",
+                __func__, if_name);
+        return CMD_SUCCESS;
+    } else {
+        VLOG_DBG(
+                "%s While trying to commit transaction to DB, got a status"
+                " response : %s", __func__,
+                ovsdb_idl_txn_status_to_string(status));
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+/*
+ * This function is used to make an interface L2.
+ * It attaches the port to the default VRF.
+ * It also removes all L3 related configuration like IP addresses.
+ */
+static int vrf_no_routing(const char *if_name)
+{
+    struct ovsrec_port *port_row = NULL;
+    struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsrec_bridge *default_bridge_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsrec_port **vrf_ports;
+    struct ovsrec_port **bridge_ports;
+    size_t i, n;
+
+    ovsdb_idl_run(idl);
+    status_txn = ovsdb_idl_txn_create(idl);
+
+    if (!status_txn) {
+        VLOG_DBG(
+                "%s Got an error when trying to create a transaction using"
+                " ovsdb_idl_txn_create()", __func__);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    port_row = port_check(if_name, true, false, status_txn);
+    if (check_iface_in_bridge(if_name)) {
+        VLOG_DBG(
+                "%s Interface \"%s\" is already L2. No change required.",
+                __func__, if_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    } else if ((vrf_row = port_vrf_lookup(port_row)) != NULL) {
+        vrf_ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
+        for (i = n = 0; i < vrf_row->n_ports; i++){
+            if (vrf_row->ports[i] != port_row) {
+                vrf_ports[n++] = vrf_row->ports[i];
+            }
+        }
+        ovsrec_vrf_set_ports(vrf_row, vrf_ports, n);
+        free(vrf_ports);
+    }
+    default_bridge_row = ovsrec_bridge_first(idl);
+    bridge_ports = xmalloc(sizeof *default_bridge_row->ports
+            * (default_bridge_row->n_ports + 1));
+    for (i = 0; i < default_bridge_row->n_ports; i++) {
+        bridge_ports[i] = default_bridge_row->ports[i];
+    }
+    bridge_ports[default_bridge_row->n_ports] = port_row;
+    ovsrec_bridge_set_ports(default_bridge_row, bridge_ports,
+            default_bridge_row->n_ports + 1);
+    free(bridge_ports);
+    ovsrec_port_set_ip4_address(port_row, NULL);
+    ovsrec_port_set_ip4_address_secondary(port_row, NULL, 0);
+    ovsrec_port_set_ip6_address(port_row, NULL);
+    ovsrec_port_set_ip6_address_secondary(port_row, NULL, 0);
+    status = ovsdb_idl_txn_commit_block(status_txn);
+    ovsdb_idl_txn_destroy(status_txn);
+    status_txn = NULL;
+    if (status == TXN_SUCCESS) {
+        VLOG_DBG(
+                "%s The command succeeded and interface \"%s\" is now L2"
+                " and attached to default bridge %s", __func__, if_name);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if"
+                " interface \"%s\" is already L2",
+                __func__, if_name);
+        return CMD_SUCCESS;
+    } else {
+        VLOG_DBG(
+                "%s While trying to commit transaction to DB, got a status"
+                " response : %s", __func__,
+                ovsdb_idl_txn_status_to_string(status));
+        return CMD_OVSDB_FAILURE;
+    }
+
+}
+
+/*
+ * This function is used to configure an IP address for a port
+ * which is attached to a VRF.
+ */
+static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
+{
+    struct ovsrec_port *port_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    char **secondary_ip4_addresses;
+    size_t i;
+
+    ovsdb_idl_run(idl);
+    status_txn = ovsdb_idl_txn_create(idl);
+    if (!status_txn) {
+        VLOG_DBG(
+                "%s Got an error when trying to create a transaction using"
+                " ovsdb_idl_txn_create()", __func__);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    port_row = port_check(if_name, true, true, status_txn);
+    if (check_iface_in_bridge(if_name)) {
+        vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
     if (!secondary) {
         ovsrec_port_set_ip4_address(port_row, ip4);
     } else {
+        /*
+         * Duplicate entries are taken care of of set function.
+         * Refer to ovsdb_datum_sort_unique() in vswitch-idl.c
+         */
         secondary_ip4_addresses = xmalloc(
         IP_ADDRESS_LENGTH * (port_row->n_ip4_address_secondary + 1));
-        for (i = 0; i < port_row->n_ip4_address_secondary; i++)
+        for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
             secondary_ip4_addresses[i] = port_row->ip4_address_secondary[i];
+        }
         secondary_ip4_addresses[port_row->n_ip4_address_secondary] = ip4;
         ovsrec_port_set_ip4_address_secondary(port_row, secondary_ip4_addresses,
                 port_row->n_ip4_address_secondary + 1);
@@ -550,11 +835,16 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary) {
     status = ovsdb_idl_txn_commit_block(status_txn);
     ovsdb_idl_txn_destroy(status_txn);
     status_txn = NULL;
-
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" was configured"
                 " with IP address \"%s\"", __func__, if_name, ip4);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if"
+                " interface \"%s\" is already configured with IP \"%s\"",
+                __func__, if_name, ip4);
         return CMD_SUCCESS;
     } else {
         VLOG_DBG(
@@ -569,13 +859,13 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary) {
  * This function is used to delete an IP address assigned for a port
  * which is attached to a VRF.
  */
-static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
-    struct ovsrec_vrf *vrf_row = NULL;
+static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
+{
     struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ip4_addresses;
-    size_t i;
+    size_t i, n;
 
     ovsdb_idl_run(idl);
     status_txn = ovsdb_idl_txn_create(idl);
@@ -587,20 +877,21 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
         return CMD_OVSDB_FAILURE;
     }
 
-    OVSREC_VRF_FOR_EACH(vrf_row, idl)
-    {
-        for (i = 0; i < vrf_row->n_ports; i++) {
-            if (strcmp(vrf_row->ports[i]->name, if_name) == 0) {
-                port_row = vrf_row->ports[i];
-                break;
-            }
-        }
-    }
+    port_row = port_check(if_name, false, false, status_txn);
 
     if (!port_row) {
+        VLOG_DBG(
+                "%s Interface \"%s\" does not have any port configuration",
+                __func__, if_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
+    }
+
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
-        VLOG_DBG("%s Interface \"%s\" is not part of any VRF.", __func__,
-                if_name);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
         ovsdb_idl_txn_destroy(status_txn);
         status_txn = NULL;
         return CMD_SUCCESS;
@@ -646,7 +937,8 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
         }
 
         if (!ip4_address_match) {
-            vty_out(vty, "Error: IP Address %s not found.%s", ip4, VTY_NEWLINE);
+            vty_out(vty, "Error: IP Address %s not found.%s",
+                    ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface"
                     " \"%s\".", __func__, ip4, if_name);
             ovsdb_idl_txn_destroy(status_txn);
@@ -655,12 +947,14 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
         }
         secondary_ip4_addresses = xmalloc(
         IP_ADDRESS_LENGTH * (port_row->n_ip4_address_secondary - 1));
-        for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
-            if (strcmp(ip4, port_row->ip4_address_secondary[i]) != 0)
-                secondary_ip4_addresses[i] = port_row->ip4_address_secondary[i];
+        for (i = n = 0; i < port_row->n_ip4_address_secondary; i++) {
+            if (strcmp(ip4, port_row->ip4_address_secondary[i]) != 0) {
+                secondary_ip4_addresses[n++] =
+                        port_row->ip4_address_secondary[i];
+            }
         }
-        ovsrec_port_set_ip4_address_secondary(port_row, secondary_ip4_addresses,
-                port_row->n_ip4_address_secondary - 1);
+        ovsrec_port_set_ip4_address_secondary(port_row,
+                secondary_ip4_addresses, n);
         free(secondary_ip4_addresses);
     }
 
@@ -672,6 +966,12 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" no longer has"
                 " the IP address \"%s\"", __func__, if_name, ip4);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if"
+                " interface \"%s\" has the IP \"%s\"",
+                __func__, if_name, ip4);
         return CMD_SUCCESS;
     } else {
         VLOG_DBG(
@@ -687,8 +987,8 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary) {
  * which is attached to a VRF.
  */
 static int vrf_config_ipv6(const char *if_name, const char *ipv6,
-                           bool secondary) {
-    struct ovsrec_vrf *vrf_row = NULL;
+                           bool secondary)
+{
     struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
@@ -705,20 +1005,12 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
         return CMD_OVSDB_FAILURE;
     }
 
-    OVSREC_VRF_FOR_EACH(vrf_row, idl)
-    {
-        for (i = 0; i < vrf_row->n_ports; i++) {
-            if (strcmp(vrf_row->ports[i]->name, if_name) == 0) {
-                port_row = vrf_row->ports[i];
-                break;
-            }
-        }
-    }
+    port_row = port_check(if_name, true, true, status_txn);
 
-    if (!port_row) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
-        VLOG_DBG("%s Interface \"%s\" is not part of any VRF.", __func__,
-                if_name);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
         ovsdb_idl_txn_destroy(status_txn);
         status_txn = NULL;
         return CMD_SUCCESS;
@@ -727,10 +1019,15 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
     if (!secondary) {
         ovsrec_port_set_ip6_address(port_row, ipv6);
     } else {
+        /*
+         * Duplicate entries are taken care of of set function.
+         * Refer to ovsdb_datum_sort_unique() in vswitch-idl.c
+         */
         secondary_ipv6_addresses = xmalloc(
         IPV6_ADDRESS_LENGTH * (port_row->n_ip6_address_secondary + 1));
-        for (i = 0; i < port_row->n_ip6_address_secondary; i++)
+        for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
             secondary_ipv6_addresses[i] = port_row->ip6_address_secondary[i];
+        }
         secondary_ipv6_addresses[port_row->n_ip6_address_secondary] = ipv6;
         ovsrec_port_set_ip6_address_secondary(port_row,
                 secondary_ipv6_addresses,
@@ -741,11 +1038,16 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
     status = ovsdb_idl_txn_commit_block(status_txn);
     ovsdb_idl_txn_destroy(status_txn);
     status_txn = NULL;
-
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" was configured"
                 " with IPv6 address \"%s\"", __func__, if_name, ipv6);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if"
+                " interface \"%s\" already has IPv6 \"%s\"",
+                __func__, if_name, ipv6);
         return CMD_SUCCESS;
     } else {
         VLOG_DBG(
@@ -761,13 +1063,13 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
  * which is attached to a VRF.
  */
 static int vrf_del_ipv6(const char *if_name, const char *ipv6,
-                        bool secondary) {
-    struct ovsrec_vrf *vrf_row = NULL;
+                        bool secondary)
+{
     struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ipv6_addresses;
-    size_t i;
+    size_t i, n;
 
     ovsdb_idl_run(idl);
     status_txn = ovsdb_idl_txn_create(idl);
@@ -779,20 +1081,21 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
         return CMD_OVSDB_FAILURE;
     }
 
-    OVSREC_VRF_FOR_EACH(vrf_row, idl)
-    {
-        for (i = 0; i < vrf_row->n_ports; i++) {
-            if (strcmp(vrf_row->ports[i]->name, if_name) == 0) {
-                port_row = vrf_row->ports[i];
-                break;
-            }
-        }
+    port_row = port_check(if_name, false, false, status_txn);
+
+    if(!port_row){
+        VLOG_DBG(
+                "%s Interface \"%s\" does not have any port configuration",
+                __func__, if_name);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_SUCCESS;
     }
 
-    if (!port_row) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
-        VLOG_DBG("%s Interface \"%s\" is not part of any VRF.", __func__,
-                if_name);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
         ovsdb_idl_txn_destroy(status_txn);
         status_txn = NULL;
         return CMD_SUCCESS;
@@ -851,14 +1154,14 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
         }
         secondary_ipv6_addresses = xmalloc(
         IPV6_ADDRESS_LENGTH * (port_row->n_ip6_address_secondary - 1));
-        for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
-            if (strcmp(ipv6, port_row->ip6_address_secondary[i]) != 0)
-                secondary_ipv6_addresses[i] =
+        for (i = n = 0; i < port_row->n_ip6_address_secondary; i++) {
+            if (strcmp(ipv6, port_row->ip6_address_secondary[i]) != 0) {
+                secondary_ipv6_addresses[n++] =
                         port_row->ip6_address_secondary[i];
+            }
         }
         ovsrec_port_set_ip6_address_secondary(port_row,
-                secondary_ipv6_addresses,
-                port_row->n_ip6_address_secondary - 1);
+                secondary_ipv6_addresses, n);
         free(secondary_ipv6_addresses);
     }
 
@@ -871,6 +1174,12 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
                 "%s The command succeeded and interface \"%s\" no longer"
                 " has IPv6 address \"%s\"", __func__, if_name, ipv6);
         return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change. Check if"
+                " interface \"%s\" has IPv6 \"%s\"",
+                __func__, if_name, ipv6);
+        return CMD_SUCCESS;
     } else {
         VLOG_DBG("%s While trying to commit transaction to DB, "
                 "got a status response : %s", __func__,
@@ -879,7 +1188,12 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
     }
 }
 
-static int show_vrf_info() {
+/*
+ * This function is used to show the VRF information.
+ * Currently, it shows the interfaces attached to each VRF.
+ */
+static int show_vrf_info()
+{
     struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
 
@@ -890,6 +1204,17 @@ static int show_vrf_info() {
         vty_out(vty, "No VRF found.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
+    /** Sample output **
+     * VRF Configuration:
+     * ------------------
+     * VRF Name : vrf_default
+     *
+     *         Interfaces :
+     *         ------------
+     *         1
+     *         2
+     *
+     */
 
     vty_out(vty, "VRF Configuration:%s", VTY_NEWLINE);
     vty_out(vty, "------------------%s", VTY_NEWLINE);
@@ -898,8 +1223,9 @@ static int show_vrf_info() {
         vty_out(vty, "VRF Name : %s%s\n", vrf_row->name, VTY_NEWLINE);
         vty_out(vty, "\tInterfaces : %s", VTY_NEWLINE);
         vty_out(vty, "\t------------%s", VTY_NEWLINE);
-        for (i = 0; i < vrf_row->n_ports; i++)
+        for (i = 0; i < vrf_row->n_ports; i++) {
             vty_out(vty, "\t%s%s", vrf_row->ports[i]->name, VTY_NEWLINE);
+        }
     }
 
     return CMD_SUCCESS;
@@ -918,7 +1244,8 @@ DEFUN (cli_vrf_delete,
         "no vrf VRF_NAME",
         NO_STR
         VRF_STR
-        "Name of the vrf.\n") {
+        "Name of the vrf.\n")
+{
     return vrf_delete(argv[0]);
 }
 
@@ -926,8 +1253,9 @@ DEFUN (cli_vrf_add_port,
         cli_vrf_add_port_cmd,
         "vrf attach VRF_NAME",
         VRF_STR
-        "Attach the port to a VRF.\n"
-        "Name of the vrf.\n") {
+        "Attach an interface to a VRF.\n"
+        "Name of the vrf.\n")
+{
     return vrf_add_port((char*) vty->index, argv[0]);
 }
 
@@ -936,9 +1264,27 @@ DEFUN (cli_vrf_del_port,
         "no vrf attach VRF_NAME",
         NO_STR
         VRF_STR
-        "Detach the port from a VRF.\n"
-        "Name of the vrf.\n") {
+        "Detach an interface from a VRF.\n"
+        "Name of the vrf.\n")
+{
     return vrf_del_port((char*) vty->index, argv[0]);
+}
+
+DEFUN (cli_vrf_routing,
+        cli_vrf_routing_cmd,
+        "routing",
+        "Configure interface as L3.\n")
+{
+    return vrf_routing((char*) vty->index);
+}
+
+DEFUN (cli_vrf_no_routing,
+        cli_vrf_no_routing_cmd,
+        "no routing",
+        NO_STR
+        "Configure interface as L3.\n")
+{
+    return vrf_no_routing((char*) vty->index);
 }
 
 DEFUN (cli_vrf_config_ip,
@@ -947,12 +1293,10 @@ DEFUN (cli_vrf_config_ip,
         IP_STR
         "Set the IP Address\n"
         "IP address of port.\n"
-        "IP address is secondary.\n") {
-    if (argc > 1) {
-        return vrf_config_ip((char*) vty->index, argv[0], true);
-    } else {
-        return vrf_config_ip((char*) vty->index, argv[0], false);
-    }
+        "IP address is secondary.\n")
+{
+    return vrf_config_ip((char*) vty->index, argv[0],
+            (argc > 1) ? true : false);
 }
 
 DEFUN (cli_vrf_del_ip,
@@ -962,12 +1306,10 @@ DEFUN (cli_vrf_del_ip,
         IP_STR
         "Set the IP Address\n"
         "IP address of port.\n"
-        "IP address is secondary.\n") {
-    if (argc > 1) {
-        return vrf_del_ip((char*) vty->index, argv[0], true);
-    } else {
-        return vrf_del_ip((char*) vty->index, argv[0], false);
-    }
+        "IP address is secondary.\n")
+{
+    return vrf_del_ip((char*) vty->index, argv[0],
+            (argc > 1) ? true : false);
 }
 
 DEFUN (cli_vrf_config_ipv6,
@@ -976,12 +1318,10 @@ DEFUN (cli_vrf_config_ipv6,
         IPV6_STR
         "Set the IP Address\n"
         "IPv6 address of port.\n"
-        "IP address is secondary.\n") {
-    if (argc > 1) {
-        return vrf_config_ipv6((char*) vty->index, argv[0], true);
-    } else {
-        return vrf_config_ipv6((char*) vty->index, argv[0], false);
-    }
+        "IP address is secondary.\n")
+{
+    return vrf_config_ipv6((char*) vty->index, argv[0],
+            (argc > 1) ? true : false);
 }
 
 DEFUN (cli_vrf_del_ipv6,
@@ -991,24 +1331,24 @@ DEFUN (cli_vrf_del_ipv6,
         IPV6_STR
         "Set the IP Address\n"
         "IPv6 address of port.\n"
-        "IP address is secondary.\n") {
-    if (argc > 1) {
-        return vrf_del_ipv6((char*) vty->index, argv[0], true);
-    } else {
-        return vrf_del_ipv6((char*) vty->index, argv[0], false);
-    }
+        "IP address is secondary.\n")
+{
+    return vrf_del_ipv6((char*) vty->index, argv[0],
+            (argc > 1) ? true : false);
 }
 
 DEFUN (cli_vrf_show,
         cli_vrf_show_cmd,
         "show vrf",
         SHOW_STR
-        VRF_STR) {
+        VRF_STR)
+{
     return show_vrf_info();
 }
 
 /* Install VRF related vty commands. */
-void vrf_vty_init(void) {
+void vrf_vty_init(void)
+{
     install_element(CONFIG_NODE, &cli_vrf_add_cmd);
     install_element(CONFIG_NODE, &cli_vrf_delete_cmd);
     install_element(INTERFACE_NODE, &cli_vrf_add_port_cmd);
@@ -1017,5 +1357,7 @@ void vrf_vty_init(void) {
     install_element(INTERFACE_NODE, &cli_vrf_config_ipv6_cmd);
     install_element(INTERFACE_NODE, &cli_vrf_del_ip_cmd);
     install_element(INTERFACE_NODE, &cli_vrf_del_ipv6_cmd);
+    install_element(INTERFACE_NODE, &cli_vrf_routing_cmd);
+    install_element(INTERFACE_NODE, &cli_vrf_no_routing_cmd);
     install_element(ENABLE_NODE, &cli_vrf_show_cmd);
 }
