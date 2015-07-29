@@ -34,6 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "workqueue.h"
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
+#include "vty_utils.h"
 #endif
 
 /* Command vector which includes some level of command lists. Normally
@@ -294,6 +295,7 @@ cmd_free_strvec (vector v)
   vector_free (v);
 }
 
+#ifndef ENABLE_OVSDB
 struct format_parser_state
 {
   vector topvect; /* Top level vector */
@@ -313,6 +315,7 @@ struct format_parser_state
   int just_read_word; /* flag to remember if the last thing we red was a
                        * real word and not some abstract token */
 };
+#endif
 
 static void
 format_parser_error(struct format_parser_state *state, const char *message)
@@ -326,7 +329,7 @@ format_parser_error(struct format_parser_state *state, const char *message)
   exit(1);
 }
 
-static char *
+char *
 format_parser_desc_str(struct format_parser_state *state)
 {
   const char *cp, *start;
@@ -487,7 +490,7 @@ format_parser_handle_pipe(struct format_parser_state *state)
     }
 }
 
-static void
+void
 format_parser_read_word(struct format_parser_state *state)
 {
   const char *start;
@@ -528,7 +531,7 @@ format_parser_read_word(struct format_parser_state *state)
  * @return A vector of struct cmd_token representing the given command,
  *         or NULL on error.
  */
-static vector
+vector
 cmd_parse_format(const char *string, const char *descstr)
 {
   struct format_parser_state state;
@@ -569,7 +572,11 @@ cmd_parse_format(const char *string, const char *descstr)
           format_parser_handle_pipe(&state);
           break;
         default:
+#ifndef ENABLE_OVSDB
           format_parser_read_word(&state);
+#else
+          utils_format_parser_read_word(&state);
+#endif
         }
     }
 }
@@ -605,7 +612,11 @@ install_element (enum node_type ntype, struct cmd_element *cmd)
 
   vector_set (cnode->cmd_vector, cmd);
   if (cmd->tokens == NULL)
+#ifndef ENABLE_OVSDB
     cmd->tokens = cmd_parse_format(cmd->string, cmd->doc);
+#else
+    cmd->tokens = utils_cmd_parse_format(cmd->string, cmd->doc);
+#endif
 }
 
 static const unsigned char itoa64[] =
@@ -1793,6 +1804,8 @@ cmd_vector_filter(vector commands,
   for (i = 0; i < vector_active (commands); i++)
     if ((cmd_element = vector_slot (commands, i)) != NULL)
       {
+        if(cmd_element->attr & CMD_ATTR_HIDDEN)
+          continue;
         vector_set_index(*matches, i, NULL);
         matcher_rv = cmd_element_match(cmd_element, filter,
                                        vline, index,
@@ -2133,6 +2146,38 @@ desc_unique_string (vector v, const char *str)
   return 1;
 }
 
+
+char ErrDescStr[] =
+            "Error: Help strings does not match for the identical tokens";
+/**
+ * Check the command tokens in the list v for identical commands with
+ * different help strings. If so, change the error string to Error String
+ */
+static int
+check_unique_helpstr(vector v, const char *cmdstr, const char *helpstr)
+{
+  unsigned int i;
+  struct cmd_token *token;
+
+  for (i = 0; i < vector_active (v); i++)
+  {
+    if ((token = vector_slot (v, i)) != NULL)
+    {
+      if (strcmp (token->cmd, cmdstr) != 0)
+      {
+        continue;
+      }
+      if (strcmp (token->desc, helpstr) != 0)
+      {
+        token->desc = ErrDescStr;
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+
 static int
 cmd_try_do_shortcut (enum node_type node, char* first_word) {
   if ( first_word != NULL &&
@@ -2308,6 +2353,11 @@ cmd_describe_command_real (vector vline, struct vty *vty, int *status)
               string = cmd_entry_function_desc(command, token->cmd);
               if (string && desc_unique_string(matchvec, string))
                 vector_set(matchvec, token);
+#ifndef NDEBUG
+              else
+                /* Check if there is a conflict among the helpstrings */
+                check_unique_helpstr(matchvec, token->cmd, token->desc);
+#endif
             }
       }
   vector_free (cmd_vector);
@@ -2716,6 +2766,10 @@ cmd_execute_command_real (vector vline,
   for (i = 0; i < vector_active (cmd_vector); i++)
     if ((cmd_element = vector_slot (cmd_vector, i)))
       {
+        if(cmd_element->attr & CMD_ATTR_NOT_ENABLED)
+        {
+          continue;
+        }
 	if (cmd_is_complete(cmd_element, vline))
 	  {
 	    matched_element = cmd_element;
@@ -2754,7 +2808,7 @@ cmd_execute_command_real (vector vline,
     return CMD_SUCCESS_DAEMON;
 
   /* Execute matched command. */
-  return (*matched_element->func) (matched_element, vty, argc, argv);
+  return (*matched_element->func) (matched_element, vty, 0, argc, argv);
 }
 
 /**
@@ -3082,8 +3136,8 @@ DEFUN (config_list,
 
   for (i = 0; i < vector_active (cnode->cmd_vector); i++)
     if ((cmd = vector_slot (cnode->cmd_vector, i)) != NULL
-        && !(cmd->attr == CMD_ATTR_DEPRECATED
-             || cmd->attr == CMD_ATTR_HIDDEN))
+        && !(cmd->attr & CMD_ATTR_DEPRECATED
+             || cmd->attr & CMD_ATTR_HIDDEN))
       vty_out (vty, "  %s%s", cmd->string,
 	       VTY_NEWLINE);
   return CMD_SUCCESS;

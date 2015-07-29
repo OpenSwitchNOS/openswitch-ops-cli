@@ -23,6 +23,8 @@
  */
 
 #include <stdio.h>
+#include "vector.h"
+#include "command.h"
 #include "vswitch-idl.h"
 #include "util.h"
 #include "unixctl.h"
@@ -86,15 +88,31 @@ bgp_ovsdb_init(struct ovsdb_idl *idl)
   ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_router_id);
   ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_status);
   ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
+
   ovsdb_idl_add_table(idl, &ovsrec_table_route);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_prefix);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_from);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_nexthops);
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_address_family);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_sub_address_family);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_specific);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_selected);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_distance);
   ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
+
+  ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
+}
+
+static void
+l3static_ovsdb_init(struct ovsdb_idl *idl)
+{
+  ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+  ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
+
+  ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ports);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
 }
 
 static void
@@ -102,6 +120,7 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_table(idl, &ovsrec_table_bridge);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_interfaces);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address);
@@ -110,7 +129,10 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_bridges);
 }
 
 /* Declare interest in tables for 'show arp' family of commands */
@@ -125,6 +147,27 @@ arp_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 }
 
+static void
+intf_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_admin_state);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_duplex);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mtu);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mac_in_use);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
+
+    return;
+}
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -153,15 +196,12 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lldp_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_status);
 
-    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
+    /* Interface tables */
+    intf_ovsdb_init(idl);
 
     /* BGP tables */
     bgp_ovsdb_init(idl);
+    l3static_ovsdb_init(idl);
 
     /* VRF tables */
     vrf_ovsdb_init(idl);
@@ -425,4 +465,30 @@ void vtysh_ovsdb_lib_init()
    lib_vtysh_ovsdb_interface_match = &vtysh_ovsdb_interface_match;
    lib_vtysh_ovsdb_port_match = &vtysh_ovsdb_port_match;
    lib_vtysh_ovsdb_vlan_match = &vtysh_ovsdb_vlan_match;
+}
+
+/*
+ * Wrapper for changing the help text for commands
+ */
+void utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
+{
+  struct cmd_token *token;
+  int i;
+  for (i = 0; i < vector_active (describe); i++)
+  {
+    if ((token = vector_slot (describe, i)) != NULL)
+      {
+        if (token->cmd == NULL || token->cmd[0] == '\0')
+          continue;
+
+        if (! token->desc)
+          fprintf (stdout,"  %-s\n",
+                   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd);
+        else
+          fprintf (stdout,"  %-*s  %s\n",
+                   width,
+                   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                   token->desc);
+      }
+  }
 }

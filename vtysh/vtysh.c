@@ -21,6 +21,8 @@
 
 #ifdef ENABLE_OVSDB
 #include <stdio.h>
+#include <vty_utils.h>
+#include "vtysh/vtysh_ovsdb_if.h"
 #else
 #include <zebra.h>
 #endif
@@ -39,6 +41,9 @@
 #include "vtysh/vtysh.h"
 #include "log.h"
 #include "bgp_vty.h"
+#include "openvswitch/vlog.h"
+
+VLOG_DEFINE_THIS_MODULE(vtysh);
 
 #ifdef ENABLE_OVSDB
 int enable_mininet_test_prompt = 0;
@@ -423,7 +428,7 @@ vtysh_execute_func (const char *line, int pager)
 	    else
 	      if (cmd->func)
 		{
-		  (*cmd->func) (cmd, vty, 0, NULL);
+		  (*cmd->func) (cmd, vty, 0, 0, NULL);
 		  break;
 		}
 	  }
@@ -442,7 +447,7 @@ vtysh_execute_func (const char *line, int pager)
 	  break;
 
 	if (cmd->func)
-	  (*cmd->func) (cmd, vty, 0, NULL);
+	  (*cmd->func) (cmd, vty, 0, 0, NULL);
       }
     }
   if (pager && vtysh_pager_name && fp && closepager)
@@ -555,7 +560,7 @@ vtysh_config_from_file (struct vty *vty, FILE *fp)
 	      break;
 
 	    if (cmd->func)
-	      (*cmd->func) (cmd, vty, 0, NULL);
+	      (*cmd->func) (cmd, vty, 0, 0, NULL);
 	  }
 	}
     }
@@ -623,6 +628,7 @@ vtysh_rl_describe (void)
 	if (width < len)
 	  width = len;
       }
+#ifndef ENABLE_OVSDB
 
   for (i = 0; i < vector_active (describe); i++)
     if ((token = vector_slot (describe, i)) != NULL)
@@ -639,6 +645,9 @@ vtysh_rl_describe (void)
 		   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
 		   token->desc);
       }
+#else
+  utils_vtysh_rl_describe_output(vty, describe, width);
+#endif
 
   cmd_free_strvec (vline);
   vector_free (describe);
@@ -1348,6 +1357,10 @@ DEFUNSH (VTYSH_INTERFACE,
          "Interface's name\n")
 {
   vty->node = INTERFACE_NODE;
+  static char ifnumber[5];
+  if (strlen(argv[0]) < 5)
+    memcpy(ifnumber, argv[0], strlen(argv));
+  vty->index = ifnumber;
   return CMD_SUCCESS;
 }
 #endif
@@ -2099,43 +2112,51 @@ DEFUN (vtysh_show_daemons,
   return CMD_SUCCESS;
 }
 
+#ifdef ENABLE_OVSDB
 /* Execute command in child process. */
-static int
-execute_command (const char *command, int argc, const char *arg1,
-		 const char *arg2)
+int
+execute_command (const char *command, int argc, const char *arg[])
 {
-  int ret;
-  pid_t pid;
-  int status;
-
+  int ret = 0;
+  pid_t pid = 0;
+  int status = 0;
+  int index = 0;
+  char **cmd_argv = NULL;
   /* Call fork(). */
   pid = fork ();
 
   if (pid < 0)
     {
       /* Failure of fork(). */
+      VLOG_ERR ("execute_command(): Can't fork");
       fprintf (stderr, "Can't fork: %s\n", safe_strerror (errno));
       exit (1);
     }
   else if (pid == 0)
     {
-      /* This is child process. */
-      switch (argc)
-	{
-	case 0:
-	  ret = execlp (command, command, (const char *)NULL);
-	  break;
-	case 1:
-	  ret = execlp (command, command, arg1, (const char *)NULL);
-	  break;
-	case 2:
-	  ret = execlp (command, command, arg1, arg2, (const char *)NULL);
-	  break;
-	}
+      cmd_argv = (char **) malloc(sizeof(char *) * (argc + 2));
 
-      /* When execlp suceed, this part is not executed. */
+      if (cmd_argv == NULL)
+        {
+          VLOG_ERR ("execute_command(): Memory allocation failed, error:%d",errno);
+          fprintf (stderr, "Memory allocation failed, Can't execute %s: %s\n", command, safe_strerror (errno));
+          exit(1);
+        }
+      cmd_argv[0] = (char *)command;
+
+      for (index = 1; index < (argc + 1); index++)
+        {
+          cmd_argv[index] = (char *)arg[index - 1];
+        }
+
+      cmd_argv[index] = NULL;
+      ret = execvp (*cmd_argv, cmd_argv) ;
+      /* When execvp suceed, this part is not executed. */
       fprintf (stderr, "Can't execute %s: %s\n", command, safe_strerror (errno));
-      exit (1);
+      if (cmd_argv){
+        free(cmd_argv);
+      }
+      exit(1);
     }
   else
     {
@@ -2147,7 +2168,6 @@ execute_command (const char *command, int argc, const char *arg1,
   return 0;
 }
 
-#ifdef ENABLE_OVSDB
 /* Write startup configuration into the terminal. */
 DEFUN (show_startup_config,
        show_startup_config_cmd,
@@ -2155,10 +2175,10 @@ DEFUN (show_startup_config,
        SHOW_STR
        "Contents of startup configuration\n")
 {
-  execute_command ("cfgdbutil", 2, "show", "startup-config");
+  char *arguments[] = {"show", "startup-config"};
+  execute_command ("cfgdbutil", 2, (const char **)arguments);
   return CMD_SUCCESS;
 }
-#endif
 
 DEFUN (vtysh_ping,
        vtysh_ping_cmd,
@@ -2166,7 +2186,7 @@ DEFUN (vtysh_ping,
        "Send echo messages\n"
        "Ping destination address or hostname\n")
 {
-  execute_command ("ping", 1, argv[0], NULL);
+  execute_command ("ping", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2183,7 +2203,7 @@ DEFUN (vtysh_traceroute,
        "Trace route to destination\n"
        "Trace route to destination address or hostname\n")
 {
-  execute_command ("traceroute", 1, argv[0], NULL);
+  execute_command ("traceroute", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2202,7 +2222,7 @@ DEFUN (vtysh_ping6,
        "IPv6 echo\n"
        "Ping destination address or hostname\n")
 {
-  execute_command ("ping6", 1, argv[0], NULL);
+  execute_command ("ping6", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2213,7 +2233,7 @@ DEFUN (vtysh_traceroute6,
        "IPv6 trace\n"
        "Trace route to destination address or hostname\n")
 {
-  execute_command ("traceroute6", 1, argv[0], NULL);
+  execute_command ("traceroute6", 1, argv);
   return CMD_SUCCESS;
 }
 #endif
@@ -2224,7 +2244,7 @@ DEFUN (vtysh_telnet,
        "Open a telnet connection\n"
        "IP address or hostname of a remote system\n")
 {
-  execute_command ("telnet", 1, argv[0], NULL);
+  execute_command ("telnet", 1, argv);
   return CMD_SUCCESS;
 }
 
@@ -2235,7 +2255,7 @@ DEFUN (vtysh_telnet_port,
        "IP address or hostname of a remote system\n"
        "TCP Port number\n")
 {
-  execute_command ("telnet", 2, argv[0], argv[1]);
+  execute_command ("telnet", 2, argv);
   return CMD_SUCCESS;
 }
 
@@ -2245,16 +2265,24 @@ DEFUN (vtysh_ssh,
        "Open an ssh connection\n"
        "[user@]host\n")
 {
-  execute_command ("ssh", 1, argv[0], NULL);
+  execute_command ("ssh", 1, argv);
   return CMD_SUCCESS;
 }
 
 DEFUN (vtysh_start_shell,
        vtysh_start_shell_cmd,
        "start-shell",
+#ifndef ENABLE_OVSDB
        "Start UNIX shell\n")
+#else
+       "Start Bash shell\n")
+#endif
 {
-  execute_command ("sh", 0, NULL, NULL);
+#ifdef ENABLE_OVSDB
+  execute_command ("bash", 0, NULL);
+#else
+  execute_command ("sh", 0, NULL);
+#endif
   return CMD_SUCCESS;
 }
 
@@ -2264,7 +2292,7 @@ DEFUN (vtysh_start_bash,
        "Start UNIX shell\n"
        "Start bash\n")
 {
-  execute_command ("bash", 0, NULL, NULL);
+  execute_command ("bash", 0, NULL);
   return CMD_SUCCESS;
 }
 
@@ -2274,9 +2302,10 @@ DEFUN (vtysh_start_zsh,
        "Start UNIX shell\n"
        "Start Z shell\n")
 {
-  execute_command ("zsh", 0, NULL, NULL);
+  execute_command ("zsh", 0, NULL);
   return CMD_SUCCESS;
 }
+#endif
 
 static void
 vtysh_install_default (enum node_type node)
@@ -2421,6 +2450,38 @@ vtysh_prompt (void)
   return buf;
 }
 
+DEFUN (vtysh_demo_cli1,
+       vtysh_demo_cli1_cmd,
+       "demo_cli to_be_hidden",
+       "Sprint 1 Demo Cli command\n"
+       "This cli will be hidden/disabled during runtime.\n")
+{
+	if (vty_flags & CMD_FLAG_NO_CMD)
+	{
+		vty_out(vty, "Demo Cli executed, with \"no\" flag ON.\n");
+	}
+	else
+	{
+	    vty_out(vty, "Demo Cli executed.\n");
+	}
+}
+
+DEFUN (vtysh_demo_cli2,
+       vtysh_demo_cli2_cmd,
+       "hide demo_cli level <0-3>",
+       "Hide the demo cli\ndemo_cli to_be_hidden\n0: Active, 1: Hide, 2: Not active, 3: Disabled.\n")
+{
+   int val = atoi(argv[0]);
+
+	vtysh_demo_cli1_cmd.attr &= ~(CMD_ATTR_HIDDEN | CMD_ATTR_NOT_ENABLED | CMD_ATTR_DISABLED);
+	if(1 == val)
+		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_HIDDEN;
+	if(2 == val)
+		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_NOT_ENABLED;
+	if(3 == val)
+		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_DISABLED;
+    return CMD_SUCCESS;
+}
 void
 vtysh_init_vty (void)
 {
@@ -2496,6 +2557,8 @@ vtysh_init_vty (void)
   install_element (INTERFACE_NODE, &vtysh_mult_cxt_test_cmd);
   install_element (VIEW_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
   install_element (ENABLE_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
 #endif /* ENABLE_OVSDB */
 
   install_element (VIEW_NODE, &vtysh_enable_cmd);
@@ -2652,8 +2715,10 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_telnet_port_cmd);
   install_element (ENABLE_NODE, &vtysh_ssh_cmd);
   install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
+#ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
   install_element (ENABLE_NODE, &vtysh_start_zsh_cmd);
+#endif
   
   install_element (VIEW_NODE, &vtysh_show_memory_cmd);
   install_element (ENABLE_NODE, &vtysh_show_memory_cmd);
@@ -2696,5 +2761,7 @@ vtysh_init_vty (void)
   lldp_vty_init();
   vrf_vty_init();
   arp_vty_init();
+  intf_vty_init();
+  l3static_vty_init();
 #endif
 }
