@@ -2761,5 +2761,6 @@ vtysh_init_vty (void)
   lldp_vty_init();
   vrf_vty_init();
   intf_vty_init();
+  l3static_vty_init();
 #endif
 }
