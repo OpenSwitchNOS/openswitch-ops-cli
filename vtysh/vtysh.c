@@ -2740,5 +2740,6 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
   vrf_vty_init();
+  vlan_vty_init();
 #endif
 }

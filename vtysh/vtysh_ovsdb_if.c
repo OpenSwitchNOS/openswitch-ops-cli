@@ -158,6 +158,10 @@ ovsdb_init(const char *db_path)
     /* VRF tables */
     vrf_ovsdb_init(idl);
 
+    /* VLAN internal commands */
+    ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
+
     /* Fetch data from DB */
     vtysh_run();
 }
