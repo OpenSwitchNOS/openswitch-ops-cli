@@ -135,6 +135,13 @@ vtysh_signal_init ()
   vtysh_signal_set (SIGINT, sigint);
   vtysh_signal_set (SIGTSTP, sigtstp);
   vtysh_signal_set (SIGPIPE, SIG_IGN);
+#ifdef ENABLE_OVSDB
+  vtysh_signal_set(SIGTERM, vtysh_segfault_sigaction);
+  vtysh_signal_set(SIGQUIT, vtysh_segfault_sigaction);
+  vtysh_signal_set(SIGABRT, vtysh_segfault_sigaction);
+  vtysh_signal_set(SIGSEGV, vtysh_segfault_sigaction);
+  vtysh_signal_set(SIGHUP, vtysh_segfault_sigaction);
+#endif
 }
 
 /* Help information display. */
@@ -238,7 +245,6 @@ main (int argc, char **argv, char **env)
   struct cmd_rec *tail = NULL;
   int echo_command = 0;
   int no_error = 0;
-
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
 

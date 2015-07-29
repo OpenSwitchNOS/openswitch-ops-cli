@@ -24,6 +24,10 @@
 #ifndef VTYSH_OVSDB_IF_H
 #define VTYSH_OVSDB_IF_H 1
 
+#define MAX_CLI_SESSIONS 16
+#define SESSION_CNT_LENGTH 3
+#define OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS "cli_num_sessions"
+
 void vtysh_ovsdb_init(int argc, char *argv[]);
 
 void vtysh_ovsdb_hostname_set(const char * in);

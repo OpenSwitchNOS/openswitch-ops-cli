@@ -1130,6 +1130,7 @@ vtysh_exit (struct vty *vty)
     {
     case VIEW_NODE:
     case ENABLE_NODE:
+      vtysh_reduce_session_count();
       exit (0);
       break;
     case CONFIG_NODE:
@@ -1348,6 +1349,29 @@ DEFUN ( vtysh_mult_cxt_test,
 
   return CMD_SUCCESS;
 }
+
+DEFUN (vtysh_demo_generate_segfault,
+       vtysh_demo_generate_segfault_cmd,
+       "demo gen-segfault",
+       "Select demo command to execute\n"
+       "Generate segmentation fault\n")
+{
+  int *test_variable = NULL;
+
+  *test_variable = 1;
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_demo_generate_assert,
+       vtysh_demo_generate_assert_cmd,
+       "demo gen-assert",
+       "Select demo command to execute\n"
+       "Generate assert\n")
+{
+  assert(0);
+  return CMD_SUCCESS;
+}
+
 #else
 DEFUNSH (VTYSH_INTERFACE,
          vtysh_interface,
@@ -2587,6 +2611,8 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_generate_segfault_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_generate_segfault_cmd);
 #endif /* ENABLE_OVSDB */
 
   install_element (VIEW_NODE, &vtysh_enable_cmd);
