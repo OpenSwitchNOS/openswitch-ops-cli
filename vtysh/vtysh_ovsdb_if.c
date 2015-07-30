@@ -152,6 +152,32 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
 }
 
 static void
+policy_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_description);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list_entries);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_action);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_prefix);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_prefix_list);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_sequence);
+
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_route_map);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_col_name);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_route_map_entries);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_action);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_description);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_match);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_preference);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_route_map);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_set);
+}
+
+static void
 intf_ovsdb_init(struct ovsdb_idl *idl)
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_interface);
@@ -207,6 +233,9 @@ ovsdb_init(const char *db_path)
 
     /* VRF tables */
     vrf_ovsdb_init(idl);
+
+    /* Policy tables */
+    policy_ovsdb_init(idl);
 
     /* Fetch data from DB */
     vtysh_run();

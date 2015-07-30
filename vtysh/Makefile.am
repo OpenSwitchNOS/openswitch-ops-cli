@@ -17,7 +17,7 @@ bin_PROGRAMS = vtysh
 vtysh_SOURCES = vtysh_main.c vtysh.c vtysh_user.c vtysh_config.c
 if ENABLE_OVSDB
 vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c vtysh_ovsdb_config.c \
-                 vtysh_ovsdb_ovstable.c vtysh_ovsdb_intftable.c intf_vty.c
+                 vtysh_ovsdb_ovstable.c vtysh_ovsdb_intftable.c intf_vty.c policy_vty.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
