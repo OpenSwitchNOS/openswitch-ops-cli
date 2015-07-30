@@ -67,14 +67,13 @@ DEFUN (vtysh_ip_route,
     int64_t distance;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
+    char prefix_str[256];
 
     ovsdb_idl_run(idl);
     status_txn = ovsdb_idl_txn_create(idl);
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
         return CMD_OVSDB_FAILURE;
     }
 
@@ -96,10 +95,17 @@ DEFUN (vtysh_ip_route,
     ret = str2prefix_ipv4 (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
         return CMD_WARNING;
     }
+    /*
+     * Convert to the final/optimized format before storing to DB
+     */
+    memset(prefix_str, 0 ,sizeof(prefix_str));
+    prefix2str(&p, prefix_str, sizeof(prefix_str));
 
-    ovsrec_route_set_prefix(row, (const char *)argv[0]);
+    ovsrec_route_set_prefix(row, (const char *)prefix_str);
 
     ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
@@ -252,10 +258,11 @@ DEFUN (vtysh_no_ip_route,
        "Nexthop IP (eg. 10.0.0.1)\n"
        "Outgoing interface\n")
 {
-
+    int ret;
     const struct ovsrec_route *row_route = NULL;
     int flag = 0;
-    char *prefix = argv[0];
+    struct prefix_ipv4 p;
+    char prefix_str[256];
     int found_flag = 0;
     int len = 0;
     char str[17];
@@ -270,10 +277,21 @@ DEFUN (vtysh_no_ip_route,
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
         return CMD_OVSDB_FAILURE;
     }
+
+    ret = str2prefix_ipv4 (argv[0], &p);
+    if (ret <= 0) {
+        vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_WARNING;
+    }
+    /*
+     * Convert to the final/optimized format before storing to DB
+     */
+    memset(prefix_str, 0 ,sizeof(prefix_str));
+    prefix2str(&p, prefix_str, sizeof(prefix_str));
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -284,7 +302,7 @@ DEFUN (vtysh_no_ip_route,
 
         if (row_route->prefix != NULL && !strcmp(row_route->address_family, "ipv4")) {
             /* Checking for presence of Prefix and Nexthop entries in a row */
-            if (0 == strcmp(argv[0],row_route->prefix )) {
+            if (0 == strcmp(prefix_str,row_route->prefix )) {
                 if (row_route->n_nexthops) {
                     memset(str, 0, sizeof(str));
                     len = 0;
@@ -367,14 +385,13 @@ DEFUN (vtysh_ipv6_route,
     int64_t distance;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
+    char prefix_str[256];
 
     ovsdb_idl_run(idl);
     status_txn = ovsdb_idl_txn_create(idl);
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
         return CMD_OVSDB_FAILURE;
     }
 
@@ -397,10 +414,17 @@ DEFUN (vtysh_ipv6_route,
     ret = str2prefix_ipv6 (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
         return CMD_WARNING;
     }
+    /*
+     * Convert to the final/optimized format before storing to DB
+     */
+    memset(prefix_str, 0 ,sizeof(prefix_str));
+    prefix2str(&p, prefix_str, sizeof(prefix_str));
 
-    ovsrec_route_set_prefix(row, (const char *)argv[0]);
+    ovsrec_route_set_prefix(row, (const char *)prefix_str);
 
     ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
@@ -543,7 +567,7 @@ DEFUN (vtysh_show_ipv6_route,
     return retval;
 }
 
-DEFUN (vtysh_no_ipv6_routet,
+DEFUN (vtysh_no_ipv6_route,
        vtysh_no_ipv6_route_cmd,
        "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) [<1-255>]",
        NO_STR
@@ -553,10 +577,11 @@ DEFUN (vtysh_no_ipv6_routet,
        "Nexthop IP (eg. 2010:bda::)\n"
        "Outgoing interface\n")
 {
-
+    int ret;
     const struct ovsrec_route *row_route = NULL;
     int flag = 0;
-    char *prefix = argv[0];
+    struct prefix_ipv6 p;
+    char prefix_str[256];
     int found_flag = 0;
     int len = 0;
     char str[17];
@@ -570,10 +595,21 @@ DEFUN (vtysh_no_ipv6_routet,
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
         return CMD_OVSDB_FAILURE;
     }
+
+    ret = str2prefix_ipv6 (argv[0], &p);
+    if (ret <= 0) {
+        vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
+        ovsdb_idl_txn_destroy(status_txn);
+        status_txn = NULL;
+        return CMD_WARNING;
+    }
+    /*
+     * Convert to the final/optimized format before storing to DB
+     */
+    memset(prefix_str, 0 ,sizeof(prefix_str));
+    prefix2str(&p, prefix_str, sizeof(prefix_str));
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -584,7 +620,7 @@ DEFUN (vtysh_no_ipv6_routet,
 
         if(row_route->prefix != NULL && !strcmp(row_route->address_family, "ipv6")) {
             /* Checking for presence of Prefix and Nexthop entries in a row */
-            if(0 == strcmp(prefix,row_route->prefix )) {
+            if(0 == strcmp(prefix_str,row_route->prefix )) {
                 if (row_route->n_nexthops) {
                     memset(str, 0, sizeof(str));;
                     len = 0;
