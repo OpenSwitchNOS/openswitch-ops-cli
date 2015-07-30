@@ -39,6 +39,7 @@ typedef enum vtysh_ovsdb_table_idenum
 {
   e_vtysh_table_id_first = 0,
   e_open_vswitch_table = 0,
+  e_vrf_table,
   e_interface_table,
   e_vlan_table,
   e_port_table,
@@ -58,6 +59,14 @@ typedef enum vtysh_ovsdb_open_vswitch_table_client_idenum
   e_vtysh_open_vswitch_table_config,
   e_vtysh_open_vswitch_table_client_id_max
 } vtysh_ovsdb_openvswicth_table_clientid;
+
+/* VRF Table Client ID type */
+typedef enum vtysh_ovsdb_vrf_table_client_idenum
+{
+  e_vtysh_vrf_table_client_id_first = 0,
+  e_vtysh_vrf_table_config,
+  e_vtysh_vrf_table_client_id_max
+} vtysh_ovsdb_vrf_table_clientid;
 
 /* Interface Table client-id type */
 typedef enum vtysh_ovsdb_interface_table_client_idenum
