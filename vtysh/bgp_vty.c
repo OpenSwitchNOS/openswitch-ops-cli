@@ -48,7 +48,7 @@
 
 extern struct ovsdb_idl *idl;
 
-#define NET_BUFSZ    19
+#define NET_BUFSZ    18
 #define BGP_ATTR_DEFAULT_WEIGHT 32768
 /* BGP Information flags taken from bgp_route.h
  * TODO: Remove this duplicate declaration. Need to separate
@@ -288,7 +288,7 @@ bgp_peer_lookup(const char *peer_id)
 static void show_routes (struct vty *vty)
 {
     const struct ovsrec_route *rib_row = NULL;
-    int ii;
+    int ii, def_metric = 0;
     const struct ovsrec_nexthop *nexthop_row = NULL;
     const struct ovsrec_bgp_neighbor *bgp_peer = NULL;
     route_psd_bgp_t psd, *ppsd = NULL;
@@ -305,7 +305,7 @@ static void show_routes (struct vty *vty)
             len = strlen(rib_row->prefix);
             vty_out(vty, "%s", rib_row->prefix);
             if (len < NET_BUFSZ)
-                vty_out (vty, "%*s", NET_BUFSZ+1-len, " ");
+                vty_out (vty, "%*s", NET_BUFSZ-len-1, " ");
             // nexthop
             if (!strcmp(rib_row->address_family, OVSREC_ROUTE_ADDRESS_FAMILY_IPV4)) {
                 if (rib_row->n_nexthops) {
@@ -313,8 +313,11 @@ static void show_routes (struct vty *vty)
                     //VLOG_INFO("No. of next hops : %d", rib_row->n_nexthop_list);
                     for (ii = 0; ii < rib_row->n_nexthops; ii++) {
                         nexthop_row = rib_row->nexthops[ii];
-                        vty_out (vty, "%-16s", nexthop_row->ip_address);
-                        vty_out (vty, "%10d", rib_row->metric);
+                        vty_out (vty, "%-19s", nexthop_row->ip_address);
+                        if (rib_row->n_metric)
+                            vty_out (vty, "%7d", *rib_row->metric);
+                        else
+                            vty_out (vty, "%7d", def_metric);
                         // Print local preference
                         vty_out (vty, "%7d", ppsd->local_pref);
                         // Print weight
@@ -324,7 +327,7 @@ static void show_routes (struct vty *vty)
                                      rib_row->prefix);
                             vty_out (vty, "%7d ", BGP_ATTR_DEFAULT_WEIGHT);
                         } else {
-                            vty_out (vty, "%7d ", bgp_peer->weight);
+                            vty_out (vty, "%7d ", *bgp_peer->weight);
                         }
                         // Print AS path
                         if (ppsd->aspath) {
@@ -334,7 +337,6 @@ static void show_routes (struct vty *vty)
                         // print origin
                         if (ppsd->origin)
                             vty_out(vty, "%s", ppsd->origin);
-                        vty_out (vty, VTY_NEWLINE);
                     } // for 'nexthops'
                 } else {
                     vty_out (vty, "%-16s", " ");

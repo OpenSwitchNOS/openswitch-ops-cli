@@ -128,11 +128,22 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_prefix);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_from);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_nexthops);
+    ovsdb_idl_add_column(idl, &ovsrec_route_col_address_family);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_sub_address_family);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_specific);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_selected);
+    ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_private);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_distance);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
+    ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
+    /* nexthop table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
 }
 
 static void
