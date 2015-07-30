@@ -180,7 +180,6 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
     return;
 }
 
-
 /***********************************************************
  * @func        : alias_ovsdb_init
  * @detail      : Initialise Alias table
@@ -197,6 +196,21 @@ alias_ovsdb_init(struct ovsdb_idl *idl)
     return;
 }
 
+static void
+radius_server_ovsdb_init(struct ovsd_idl *idl)
+{
+
+    /* Add radius-server columns */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_radius_servers);
+    ovsdb_idl_add_table(idl, &ovsrec_table_radius_server);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_retries);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_udp_port);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_timeout);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_passkey);
+
+    return;
+}
 
 /***********************************************************
  * @func        : system_ovsdb_init
@@ -297,6 +311,9 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_hostname);
 
+    /* Add AAA columns */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_aaa);
+
     /* Add tables and columns for LLDP configuration */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_cur_cfg);
@@ -315,6 +332,9 @@ ovsdb_init(const char *db_path)
 
     /* VRF tables */
     vrf_ovsdb_init(idl);
+
+    /* Radius server table */
+    radius_server_ovsdb_init(idl);
 
     /* System tables */
     system_ovsdb_init(idl);

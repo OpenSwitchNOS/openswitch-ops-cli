@@ -493,6 +493,7 @@ struct cmd_token
 /* Common descriptions. */
 #define SHOW_STR    "Show running system information\n"
 #define COPY_STR    "Copy from one config to another\n"
+#define AAA_STR     "Authentication, Authorization and Accounting\n"
 #define IP_STR      "IP information\n"
 #define IPV6_STR    "IPv6 information\n"
 #define NO_STR      "Negate a command or set its defaults\n"

@@ -49,6 +49,8 @@
 #include "smap.h"
 #endif
 
+#include "aaa_vty.h"
+
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
 #ifdef ENABLE_OVSDB
@@ -2338,6 +2340,16 @@ DEFUN (vtysh_start_bash,
   return CMD_SUCCESS;
 }
 
+DEFUN (vtysh_passwd,
+       vtysh_passwd_cmd,
+       "passwd WORD",
+       "Change user password \n"
+       "User whose password is to be changed\n")
+{
+  execute_command ("passwd", 1, argv);
+  return CMD_SUCCESS;
+}
+
 DEFUN (vtysh_start_zsh,
       vtysh_start_zsh_cmd,
       "start-shell zsh",
@@ -2492,6 +2504,17 @@ vtysh_prompt (void)
    return buf;
 }
 
+DEFUN(vtysh_user_add,
+       vtysh_user_add_cmd,
+       "useradd WORD",
+       "Adding a new user\n")
+{
+       char *arg[2];
+       arg[0]="/usr/sbin/adduser";
+       arg[1]=argv[0];
+       execute_command("sudo", 2,(const char **)arg);
+       return CMD_SUCCESS;
+}
 
 #ifdef ENABLE_OVSDB
 
@@ -3307,6 +3330,8 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
+  install_element (CONFIG_NODE, &vtysh_passwd_cmd);
+  install_element (CONFIG_NODE, &vtysh_user_add_cmd);
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
@@ -3314,6 +3339,7 @@ vtysh_init_vty (void)
   intf_vty_init();
   l3static_vty_init();
   vlan_vty_init();
+  aaa_vty_init();
 
   /* Initialise System LED cli */
   led_vty_init();
