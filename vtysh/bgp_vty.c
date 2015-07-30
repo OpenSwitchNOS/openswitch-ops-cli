@@ -131,8 +131,8 @@ cli_command_result (enum ovsdb_idl_txn_status status)
 
 #define END_DB_TXN(txn) \
     do { \
-	enum ovsdb_idl_txn_status status; \
-	status = ovsdb_idl_txn_commit_block(txn); \
+	enum ovsdb_idl_txn_status status = \
+	    ovsdb_idl_txn_commit_block(txn); \
 	ovsdb_idl_txn_destroy(txn); \
 	return cli_command_result(status); \
     } while (0)
@@ -191,7 +191,7 @@ get_bgp_neighbor_with_bgp_router_and_ipaddr (struct ovsrec_bgp_router *ovs_bgp,
     struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
 
     OVSREC_BGP_NEIGHBOR_FOR_EACH(ovs_bgp_neighbor, idl) {
-	if (!ovs_bgp_neighbor->is_peer_group &&
+	if ((ovs_bgp_neighbor->is_peer_group == false) &&
 	    (ovs_bgp_neighbor->bgp_router->asn == ovs_bgp->asn) &&
 	    (strcmp(ovs_bgp_neighbor->name, ipaddr) == 0)) {
 		return ovs_bgp_neighbor;
@@ -1406,7 +1406,7 @@ create_neighbor_remote_as (struct vty *vty,
     ovs_bgp_neighbor =
 	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
     if (ovs_bgp_neighbor) {
-	if (ovs_bgp_neighbor->remote_as[0] == remote_as) {
+	if (ovs_bgp_neighbor->remote_as == remote_as) {
 	    ABORT_DB_TXN(txn, "no op command");
 	}
     } else {
@@ -1420,7 +1420,7 @@ create_neighbor_remote_as (struct vty *vty,
 	ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_neighbor, false);
     }
     vty_out(vty, "setting remote as to %d\n", remote_as);
-    ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor, &remote_as, 1);
+    ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor, remote_as);
 
     /* done */
     END_DB_TXN(txn);
