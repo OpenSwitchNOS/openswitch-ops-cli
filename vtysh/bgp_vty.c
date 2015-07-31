@@ -463,36 +463,38 @@ cli_router_bgp_cmd_execute (char *vrf_name, int64_t asn)
 {
     struct ovsrec_bgp_router *bgp_router_row;
     const struct ovsrec_vrf *vrf_row;
-    struct ovsdb_idl_txn *txn;
+    struct ovsdb_idl_txn *bgp_router_txn;
 
-    START_DB_TXN(txn);
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
-	ERRONEOUS_DB_TXN(txn, "no vrf found");
+	ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
 
-    /* see if it already exists */
+    /* See if it already exists */
     bgp_router_row = get_ovsrec_bgp_router_with_asn(asn);
 
-    /* if does not exist, create a new one */
+    /* If does not exist, create a new one */
     if (bgp_router_row == NULL) {
-	vty_out(vty, "new bgp router being created %d\n", asn);
-	bgp_router_row = ovsrec_bgp_router_insert(txn);
+	bgp_router_row = ovsrec_bgp_router_insert(bgp_router_txn);
 	if (bgp_router_row) {
 	    ovsrec_bgp_router_set_vrf(bgp_router_row, vrf_row);
 	    ovsrec_bgp_router_set_asn(bgp_router_row, asn);
-	} else {
-	    ERRONEOUS_DB_TXN(txn, "bgp router instance creation failed");
+	    vty_out(vty, "new bgp router created with asn : %d\n", asn);
+	}
+        else {
+	    ERRONEOUS_DB_TXN(bgp_router_txn, "bgp router instance creation failed");
 	}
     }
 
-    /* for sub commands */
+    /* Get the context from previous command for sub-commands */
     vty->node = BGP_NODE;
     vty->index = (void*) asn;
 
-    /* done */
-    END_DB_TXN(txn);
+    /* End of transaction */
+    END_DB_TXN(bgp_router_txn);
 }
 
 /* "router bgp" commands. */
@@ -503,8 +505,7 @@ DEFUN (router_bgp,
        BGP_STR
        AS_STR)
 {
-    return
-	cli_router_bgp_cmd_execute(NULL, atoi(argv[0]));
+    return cli_router_bgp_cmd_execute(NULL, atoi(argv[0]));
 }
 
 ALIAS (router_bgp,
@@ -517,59 +518,35 @@ ALIAS (router_bgp,
        "view name\n")
 
 static int
-cli_no_router_bgp_cmd_execute (int64_t asn)
+cli_no_router_bgp_cmd_execute (char *vrf_name, int64_t asn)
 {
     struct ovsrec_bgp_router *bgp_router_row = NULL;
     struct ovsrec_bgp_router **bgp_routers_list;
     const struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
-    enum ovsdb_idl_txn_status status;
-    int ret_status = 0;
-    size_t i=0,j=0;
 
-    ovsdb_idl_run(idl);
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
 
-    bgp_router_txn = ovsdb_idl_txn_create(idl);
-    if (bgp_router_txn == NULL) {
-        VLOG_ERR("Transaction creation failed");
-        return TXN_ERROR;
-    }
-
-    vrf_row = ovsrec_vrf_first(idl);
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
-        vty_out(vty, "Error: No VRF configured!", VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
 
-    bgp_router_row = ovsrec_bgp_router_first(idl);
+    /* See if it already exists */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn(asn);
+
+    /* If does not exist, nothing to delete */
     if (bgp_router_row == NULL) {
         vty_out(vty, "Error: No entries found! can't delete!!",VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
     }
     else {
-        OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_row,idl) {
-            VLOG_DBG("bgp_router_row->asn : %d  asn = %d",
-                      bgp_router_row->asn, asn);
-            if (bgp_router_row->asn == asn) {
-                /* Delete the bgp row for matching asn */
-                ovsrec_bgp_router_delete(bgp_router_row);
-                break;
-            }
-        }
+        /* Delete the bgp row for matching asn */
+        ovsrec_bgp_router_delete(bgp_router_row);
     }
-    status = ovsdb_idl_txn_commit_block(bgp_router_txn);
-    ovsdb_idl_txn_destroy(bgp_router_txn);
-    bgp_router_txn = NULL;
-    VLOG_DBG("%s Commit Status : %s", __FUNCTION__,
-              ovsdb_idl_txn_status_to_string(status));
-    ret_status = ((status == TXN_SUCCESS) && (status == TXN_INCOMPLETE)
-         && (status == TXN_UNCHANGED));
-    if(!ret_status) {
-        return CMD_SUCCESS;
-    }
-    else {
-        return CMD_OVSDB_FAILURE;
-    }
+    /* End of transaction*/
+    END_DB_TXN(bgp_router_txn);
 }
 
 /* "no router bgp" commands. */
@@ -581,8 +558,7 @@ DEFUN (no_router_bgp,
        BGP_STR
        AS_STR)
 {
-    return
-	cli_no_router_bgp_cmd_execute(atoi(argv[0]));
+    return cli_no_router_bgp_cmd_execute(NULL, atoi(argv[0]));
 }
 
 ALIAS (no_router_bgp,
@@ -595,6 +571,40 @@ ALIAS (no_router_bgp,
        "BGP view\n"
        "view name\n")
 
+static int
+cli_bgp_router_id_cmd_execute (char *router_ip_addr) {
+    int ret;
+    struct in_addr id;
+    struct ovsrec_bgp_router *bgp_router_row;
+    struct ovsdb_idl_txn *bgp_router_txn=NULL;
+
+    ret = inet_aton (router_ip_addr, &id);
+    if (!ret) {
+        vty_out (vty, "%% Malformed bgp router identifier%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
+
+    VLOG_INFO("Sayali: vty_index : %d\n",(int)(vty->index));
+
+    /* See if it already exists */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn((int)(vty->index));
+
+    /* If does not exist, nothing to modify */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    }
+    else {
+        /* Set the router-id with matching asn */
+        ovsrec_bgp_router_set_router_id(bgp_router_row,inet_ntoa(id));
+    }
+
+    /* End of transaction*/
+    END_DB_TXN(bgp_router_txn);
+}
+
 /* BGP router-id.  */
 
 DEFUN (bgp_router_id,
@@ -604,57 +614,7 @@ DEFUN (bgp_router_id,
        "Override configured router identifier\n"
        "Manually configured router identifier\n")
 {
-    return cli_bgp_router_id_cmd_execute(argv[0]);
-}
-
-int
-cli_bgp_router_id_cmd_execute(char *router_ip_addr) {
-    int ret;
-    struct in_addr id;
-    struct ovsrec_bgp_router *bgp_row;
-    struct ovsdb_idl_txn *bgp_router_txn=NULL;
-    enum ovsdb_idl_txn_status status;
-    int ret_status = 0;
-
-    ret = inet_aton (router_ip_addr, &id);
-    if (!ret) {
-        vty_out (vty, "%% Malformed bgp router identifier%s", VTY_NEWLINE);
-        return CMD_WARNING;
-    }
-
-    ovsdb_idl_run(idl);
-
-    bgp_router_txn = ovsdb_idl_txn_create(idl);
-    if (bgp_router_txn == NULL) {
-        VLOG_ERR("Transaction creation failed");
-        return TXN_ERROR;
-    }
-    bgp_row = ovsrec_bgp_router_first(idl);
-    if (bgp_row == NULL) {
-        VLOG_ERR("No entries found!");
-        return CMD_OVSDB_FAILURE;
-    }
-    else {
-        OVSREC_BGP_ROUTER_FOR_EACH(bgp_row, idl) {
-            if (bgp_row->asn == (vty->index)) {
-                ovsrec_bgp_router_set_router_id(bgp_row,inet_ntoa(id));
-                break;
-            }
-        }
-    }
-    status = ovsdb_idl_txn_commit_block(bgp_router_txn);
-    ovsdb_idl_txn_destroy(bgp_router_txn);
-    bgp_router_txn = NULL;
-    VLOG_DBG("%s Commit Status : %s", __FUNCTION__,
-              ovsdb_idl_txn_status_to_string(status));
-     ret_status = ((status == TXN_SUCCESS) && (status == TXN_INCOMPLETE)
-          && (status == TXN_UNCHANGED));
-     if(!ret_status) {
-         return CMD_SUCCESS;
-     }
-     else {
-         return CMD_OVSDB_FAILURE;
-     }
+    return cli_bgp_router_id_cmd_execute (argv[0]);
 }
 
 DEFUN (no_bgp_router_id,
@@ -1255,29 +1215,16 @@ DEFUN (bgp_default_ipv4_unicast,
     return CMD_SUCCESS;
 }
 
-/* Installing command for "network <network>/<length>" */
-DEFUN (bgp_network,
-       bgp_network_cmd,
-       "network A.B.C.D/M",
-       "Specify a network to announce via BGP\n"
-       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
-{
-    return cli_bgp_network_cmd_execute (argv[0]);
-}
-
 /* Configure static BGP network */
-int
-cli_bgp_network_cmd_execute(char *network) {
-    int ret;
-    int i = 0;
+static int
+cli_bgp_network_cmd_execute (char *network) {
+    int ret = 0, i = 0;
     struct prefix p;
     struct in_addr *id;
     char buf[SU_ADDRSTRLEN];
-    struct ovsrec_bgp_router *bgp_row;
+    struct ovsrec_bgp_router *bgp_router_row;
     char **network_list;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
-    enum ovsdb_idl_txn_status status;
-    int ret_status = 0;
 
     /* Convert IP prefix string to struct prefix. */
     ret = str2prefix (network, &p);
@@ -1285,49 +1232,42 @@ cli_bgp_network_cmd_execute(char *network) {
         vty_out (vty, "%% Malformed prefix%s", VTY_NEWLINE);
         return CMD_WARNING;
     }
-    ovsdb_idl_run(idl);
 
-    bgp_router_txn = ovsdb_idl_txn_create(idl);
-    if (bgp_router_txn == NULL) {
-        VLOG_ERR("Transaction creation failed");
-        return TXN_ERROR;
-    }
-    bgp_row = ovsrec_bgp_router_first(idl);
-    if (bgp_row == NULL) {
-        VLOG_ERR("No entries found!");
-        return CMD_OVSDB_FAILURE;
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
+
+    /* See if it already exists */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn((int)(vty->index));
+
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
     }
     else {
-        OVSREC_BGP_ROUTER_FOR_EACH(bgp_row, idl) {
-            if (bgp_row->asn == (vty->index)) {
-                VLOG_INFO("vty->index : %d\n",vty->index);
-                /* Insert networks in BGP_Router table */
-                network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
-                                       (bgp_row->n_networks + 1));
-                for (i = 0; i < bgp_row->n_networks; i++) {
-                    network_list[i] = bgp_row->networks[i];
-                }
-                network_list[bgp_row->n_networks] = network;
-                ovsrec_bgp_router_set_networks(bgp_row, network_list,
-                                              (bgp_row->n_networks + 1));
-                free(network_list);
-                break;
-            }
+        VLOG_INFO("vty->index : %d\n",vty->index);
+        /* Insert networks in BGP_Router table */
+        network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
+                               (bgp_router_row->n_networks + 1));
+        for (i = 0; i < bgp_router_row->n_networks; i++) {
+            network_list[i] = bgp_router_row->networks[i];
         }
+        network_list[bgp_router_row->n_networks] = network;
+        ovsrec_bgp_router_set_networks(bgp_router_row, network_list,
+                                      (bgp_router_row->n_networks + 1));
+        free(network_list);
     }
-    status = ovsdb_idl_txn_commit_block(bgp_router_txn);
-    ovsdb_idl_txn_destroy(bgp_router_txn);
-    bgp_router_txn = NULL;
-    VLOG_DBG("%s Commit Status : %s", __FUNCTION__,
-              ovsdb_idl_txn_status_to_string(status));
-    ret_status = ((status == TXN_SUCCESS) && (status == TXN_INCOMPLETE)
-         && (status == TXN_UNCHANGED));
-    if(!ret_status) {
-        return CMD_SUCCESS;
-    }
-    else {
-        return CMD_OVSDB_FAILURE;
-    }
+
+    /* End of transaction */
+    END_DB_TXN(bgp_router_txn);
+}
+
+/* Installing command for "network <network>/<length>" */
+DEFUN (bgp_network,
+       bgp_network_cmd,
+       "network A.B.C.D/M",
+       "Specify a network to announce via BGP\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
+{
+    return cli_bgp_network_cmd_execute(argv[0]);
 }
 
 /* "bgp import-check" configuration.  */
@@ -1388,7 +1328,7 @@ ALIAS (no_bgp_default_local_preference,
        "Configure default local preference value\n")
 
 static int
-cli_neighbor_remote_as_cmd_execute (struct vty *vty,
+create_neighbor_remote_as (struct vty *vty,
     int argc, char *argv[])
 {
     char *ip_addr = argv[0];
@@ -1450,7 +1390,7 @@ DEFUN (neighbor_remote_as,
 	return CMD_WARNING;
     }
     return
-	cli_neighbor_remote_as_cmd_execute(vty, argc, argv);
+	create_neighbor_remote_as(vty, argc, argv);
 }
 
 DEFUN (no_neighbor,
