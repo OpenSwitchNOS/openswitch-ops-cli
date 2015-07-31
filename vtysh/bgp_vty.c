@@ -459,7 +459,7 @@ DEFUN_DEPRECATED (neighbor_version,
 }
 
 static int
-create_bgp_router_with_asn (char *vrf_name, int64_t asn)
+cli_router_bgp_cmd_execute (char *vrf_name, int64_t asn)
 {
     struct ovsrec_bgp_router *bgp_router_row;
     const struct ovsrec_vrf *vrf_row;
@@ -504,7 +504,7 @@ DEFUN (router_bgp,
        AS_STR)
 {
     return
-	create_bgp_router_with_asn(NULL, atoi(argv[0]));
+	cli_router_bgp_cmd_execute(NULL, atoi(argv[0]));
 }
 
 ALIAS (router_bgp,
@@ -517,7 +517,7 @@ ALIAS (router_bgp,
        "view name\n")
 
 static int
-delete_bgp_router_with_asn (int64_t asn)
+cli_no_router_bgp_cmd_execute (int64_t asn)
 {
     struct ovsrec_bgp_router *bgp_router_row = NULL;
     struct ovsrec_bgp_router **bgp_routers_list;
@@ -582,7 +582,7 @@ DEFUN (no_router_bgp,
        AS_STR)
 {
     return
-	delete_bgp_router_with_asn(atoi(argv[0]));
+	cli_no_router_bgp_cmd_execute(atoi(argv[0]));
 }
 
 ALIAS (no_router_bgp,
@@ -604,11 +604,11 @@ DEFUN (bgp_router_id,
        "Override configured router identifier\n"
        "Manually configured router identifier\n")
 {
-    return bgp_set_router_id(argv[0]);
+    return cli_bgp_router_id_cmd_execute(argv[0]);
 }
 
 int
-bgp_set_router_id(char *router_ip_addr) {
+cli_bgp_router_id_cmd_execute(char *router_ip_addr) {
     int ret;
     struct in_addr id;
     struct ovsrec_bgp_router *bgp_row;
@@ -1262,12 +1262,12 @@ DEFUN (bgp_network,
        "Specify a network to announce via BGP\n"
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 {
-    return bgp_network_set (argv[0]);
+    return cli_bgp_network_cmd_execute (argv[0]);
 }
 
 /* Configure static BGP network */
 int
-bgp_network_set(char *network) {
+cli_bgp_network_cmd_execute(char *network) {
     int ret;
     int i = 0;
     struct prefix p;
@@ -1388,7 +1388,7 @@ ALIAS (no_bgp_default_local_preference,
        "Configure default local preference value\n")
 
 static int
-create_neighbor_remote_as (struct vty *vty,
+cli_neighbor_remote_as_cmd_execute (struct vty *vty,
     int argc, char *argv[])
 {
     char *ip_addr = argv[0];
@@ -1450,7 +1450,7 @@ DEFUN (neighbor_remote_as,
 	return CMD_WARNING;
     }
     return
-	create_neighbor_remote_as(vty, argc, argv);
+	cli_neighbor_remote_as_cmd_execute(vty, argc, argv);
 }
 
 DEFUN (no_neighbor,
@@ -6256,14 +6256,6 @@ bgp_vty_init (void)
     install_node(&bgp_ipv6_unicast_node, NULL);
     install_node(&bgp_ipv6_multicast_node, NULL);
     install_node(&bgp_vpnv4_node, NULL);
-
-    /* Install default VTY commands to new nodes.  */
-    install_default (BGP_NODE);
-    install_default (BGP_IPV4_NODE);
-    install_default (BGP_IPV4M_NODE);
-    install_default (BGP_IPV6_NODE);
-    install_default (BGP_IPV6M_NODE);
-    install_default (BGP_VPNV4_NODE);
 
     /* "bgp multiple-instance" commands. */
     install_element(CONFIG_NODE, &bgp_multiple_instance_cmd);
