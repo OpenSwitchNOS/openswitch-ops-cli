@@ -1,4 +1,4 @@
-/* Vtysh daemon ovsdb integration.
+/* Temperature CLI commands header file
  *
  * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
  *
@@ -17,32 +17,25 @@
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *
- * File: vtysh_ovsdb_if.h
+ * File: temperature_vty.h
  *
- * Purpose: Main file for integrating vtysh with ovsdb.
+ * Purpose:  To add declarations required for temperature_vty.c
  */
-#ifndef VTYSH_OVSDB_IF_H
-#define VTYSH_OVSDB_IF_H 1
 
-#define MAX_CLI_SESSIONS 16
-#define SESSION_CNT_LENGTH 3
-#define OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS "cli_num_sessions"
+#ifndef _TEMPERATURE_VTY_H
+#define _TEMPERATURE_VTY_H
 
-void vtysh_ovsdb_init(int argc, char *argv[]);
+#ifndef SYS_STR
+#define SYS_STR "System information\n"
+#endif
 
-void vtysh_ovsdb_hostname_set(const char * in);
+#define TEMP_STR "Temperature sensor information\n"
+#define TEMP_DETAIL_STR "Detailed temperature sensor information\n"
 
-char* vtysh_ovsdb_hostname_get(void);
+#define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
+#define OVSDB_ROW_FETCH_ERROR "Couldn't fetch row from the DB."
+#define OVSDB_TXN_COMMIT_ERROR "Commiting transaction to DB failed."
+void
+temperature_vty_init (void);
 
-void vtysh_ovsdb_exit(void);
-
-void vtysh_ovsdb_lib_init(void);
-
-int vtysh_ovsdb_interface_match(const char *str);
-
-int vtysh_ovsdb_port_match(const char *str);
-
-int vtysh_ovsdb_vlan_match(const char *str);
-
-int vtysh_regex_match(const char *regString, const char *inp);
-#endif /* VTYSH_OVSDB_IF_H */
+#endif // _TEMPERATURE_VTY_H

@@ -1,4 +1,4 @@
-/* Vtysh daemon ovsdb integration.
+/* System CLI commands.
  *
  * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
  *
@@ -17,32 +17,27 @@
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *
- * File: vtysh_ovsdb_if.h
+ * File: system_vty.h
  *
- * Purpose: Main file for integrating vtysh with ovsdb.
+ * Purpose: To add system CLI configuration and display commands.
  */
-#ifndef VTYSH_OVSDB_IF_H
-#define VTYSH_OVSDB_IF_H 1
 
-#define MAX_CLI_SESSIONS 16
-#define SESSION_CNT_LENGTH 3
-#define OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS "cli_num_sessions"
+#ifndef _SYSTEM_VTY_H
+#define _SYSTEM_VTY_H
 
-void vtysh_ovsdb_init(int argc, char *argv[]);
+#ifndef SYS_STR
+#define SYS_STR		"Shows system information\n"
+#endif
 
-void vtysh_ovsdb_hostname_set(const char * in);
+typedef enum
+{
+	CLI_FAN,
+	CLI_PSU,
+	CLI_LED,
+	CLI_TEMP
+};
 
-char* vtysh_ovsdb_hostname_get(void);
+int cli_system_get_all();
+void system_vty_init();
 
-void vtysh_ovsdb_exit(void);
-
-void vtysh_ovsdb_lib_init(void);
-
-int vtysh_ovsdb_interface_match(const char *str);
-
-int vtysh_ovsdb_port_match(const char *str);
-
-int vtysh_ovsdb_vlan_match(const char *str);
-
-int vtysh_regex_match(const char *regString, const char *inp);
-#endif /* VTYSH_OVSDB_IF_H */
+#endif //_SYSTEM_VTY_H

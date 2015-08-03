@@ -38,30 +38,101 @@ class VtyshInfraCommandsTests( HalonTest ):
 
   def hideCliCommandTest(self):
         print('\n=========================================================')
-        print('***    Test to verify interface congfiguration clis     ***')
-        print('===========================================================')
+        print(  '***       Test to verify changes to CLI infra         ***')
+        print(  '=========================================================')
         s1 = self.net.switches[ 0 ]
         out = s1.cmdCLI("configure terminal")
         s1.cmdCLI("demo_cli to_be_hidden")
         out = s1.cmdCLI(" ");
         sleep(1);
         if 'Demo Cli executed' not in out:
-        print out
                 return False
         s1.cmdCLI("hide demo_cli level 2")
         out = s1.cmdCLI("demo_cli to_be_hidden")
         sleep(1);
         if 'Unknown command.' not in out:
-        print out;
                 return False
         s1.cmdCLI("hide demo_cli level 3")
         out = s1.cmdCLI("demo_cli to_be_hidden")
         sleep(1);
         if 'Unknown command.' not in out:
-        print out;
                 return False
         out = s1.cmdCLI("hide demo_cli level 0")
         out = s1.cmdCLI("end")
+        return True;
+
+  def CliSessionTest(self):
+        print('\n=========================================================')
+        print('***    Test to verify CLI session limit                 ***')
+        print('===========================================================')
+        s1 = self.net.switches[ 0 ]
+        out = s1.cmd("ovs-vsctl list open_vswitch")
+        lines = out.split('\n')
+        flag = 0
+        for line in lines:
+            if 'cli_num_sessions=\"1\"' in line:
+                flag = 1
+        if not flag:
+            return False
+
+        print "Creating max number of CLI sessions in background"
+        for i in range(1,16):
+            s1.cmd("vtysh &")
+            sleep(1)
+            s1.cmd("\r")
+            sleep(1)
+
+        out = s1.cmd("ovs-vsctl list open_vswitch")
+        "Attempt to create one more session should fail"
+        out = s1.cmd("vtysh")
+        sleep(1)
+        print out
+        lines = out.split('\n')
+        flag = 0
+        for line in lines:
+            if 'Error: Maximum number of CLI sessions reached.' in line:
+                flag = 1
+        if not flag:
+            return False
+        return True
+
+  def aliasCliCommandTest(self):
+        print('\n=========================================================')
+        print(  '***           Test to verify alias clis               ***')
+        print(  '=========================================================')
+        s1 = self.net.switches[ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        s1.cmdCLI("alias abc hostname MyTest")
+        out = s1.cmdCLI("do show alias");
+        sleep(1);
+        if 'abc' not in out:
+                print out
+                assert 0, "Failed to get the alias"
+                return False
+        s1.cmdCLI("alias 12345678901234567890123456789012 demo_cli level 2")
+        out = s1.cmdCLI("demo_cli to_be_hidden")
+        sleep(1);
+        if 'Max length exceeded' not in out:
+                assert 0, "Failed to check max length"
+                return False
+        s1.cmdCLI("alias llht lldp holdtime $1; hostname $2")
+        s1.cmdCLI("llht 6 TestHName")
+        s1.cmdCLI("do show running")
+        out = s1.cmdCLI("do show running")
+        sleep(1);
+        if 'hostname TestHName' not in out:
+                assert 0, "Failed to check hostname in show running"
+                return False
+        if 'lldp holdtime 6' not in out:
+                assert 0, "Failed to check lldp hostname"
+                return False
+        out = s1.cmdCLI("no hostname")
+        out = s1.cmdCLI("no lldp hostname")
+        out = s1.cmdCLI("do show running ")
+        sleep(1);
+        if 'alias llht lldp holdtime $1; hostname $2' not in out:
+                assert 0, "Failed to check alias in show running"
+                return False
         return True;
 
 class Test_vtyshInfraCommands:
@@ -96,3 +167,15 @@ class Test_vtyshInfraCommands:
       print 'Passed hideCliCommandTest'
     else:
       assert 0, "Failed hideCliCommandTest"
+
+  def test_CliSession(self):
+    if self.test.CliSessionTest():
+      print 'Passed CliSessionTest'
+    else:
+      assert 0, 'Failed CliSessionTest'
+
+  def aliasCliCommandTest(self):
+    if self.test.aliasCliCommandTest():
+      print 'Passed aliasCliCommandTest'
+    else:
+      assert 0, "Failed aliasCliCommandTest"

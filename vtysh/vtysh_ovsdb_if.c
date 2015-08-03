@@ -136,14 +136,22 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_distance);
 	ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
-    /* nexthop table */
-    ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
-    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
-    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
-    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
+ }
+
+static void
+l3static_ovsdb_init(struct ovsdb_idl *idl)
+{
+  ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+  ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
+
+  ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ports);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
 }
 
 static void
@@ -151,6 +159,7 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_table(idl, &ovsrec_table_bridge);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_interfaces);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address);
@@ -159,7 +168,10 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_bridges);
 }
 
 static void
@@ -188,6 +200,12 @@ policy_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_set);
 }
 
+/***********************************************************
+ * @func        : intf_ovsdb_init
+ * @detail      : Initialise Interface table
+ * @param[in]
+ *      idl     : Pointer to idl structure
+ ***********************************************************/
 static void
 intf_ovsdb_init(struct ovsdb_idl *idl)
 {
@@ -206,6 +224,93 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
+}
+
+
+/***********************************************************
+ * @func        : alias_ovsdb_init
+ * @detail      : Initialise Alias table
+ * @param[in]
+ *      idl     : Pointer to idl structure
+ ***********************************************************/
+static void
+alias_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_cli_alias);
+    ovsdb_idl_add_column(idl, &ovsrec_cli_alias_col_alias_name);
+    ovsdb_idl_add_column(idl, &ovsrec_cli_alias_col_alias_definition);
+
+    return;
+}
+
+
+/***********************************************************
+ * @func        : system_ovsdb_init
+ * @detail      : Initialise System Related OVSDB tables
+ * @param[in]
+ *      idl     : Pointer to idl structure
+ ***********************************************************/
+static void
+system_ovsdb_init(struct ovsd_idl *idl)
+{
+    /* Add Platform Related Tables */
+    ovsdb_idl_add_table(idl,&ovsrec_table_fan);
+    ovsdb_idl_add_table(idl,&ovsrec_table_power_supply);
+    ovsdb_idl_add_table(idl,&ovsrec_table_led);
+    ovsdb_idl_add_table(idl,&ovsrec_table_subsystem);
+    ovsdb_idl_add_table(idl,&ovsrec_table_temp_sensor);
+
+    /* Add Columns for System Related Tables */
+
+    //Power Supply
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_external_ids);
+
+    //LED
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_id);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_state);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_led_col_external_ids);
+
+    //Subsystem
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_interfaces);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_leds);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_fans);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_temp_sensors);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_power_supplies);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_asset_tag_number);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_type);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_hw_desc_dir);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_other_info);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_external_ids);
+
+    //Fan
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_direction);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_rpm);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_other_config);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_hw_config);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_external_ids);
+    ovsdb_idl_add_column(idl,&ovsrec_fan_col_speed);
+
+    //Temp
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_external_ids);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_fan_state);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_hw_config);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_location);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_max);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_min);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_name);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_other_config);;
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_status);
+    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_temperature);
+
 }
 
 /*
@@ -239,14 +344,23 @@ ovsdb_init(const char *db_path)
     /* Interface tables */
     intf_ovsdb_init(idl);
 
+    alias_ovsdb_init(idl);
+
     /* BGP tables */
     bgp_ovsdb_init(idl);
+    l3static_ovsdb_init(idl);
 
     /* VRF tables */
     vrf_ovsdb_init(idl);
 
     /* Policy tables */
     policy_ovsdb_init(idl);
+
+    /* System tables */
+    system_ovsdb_init(idl);
+    /* VLAN internal commands */
+    ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
 
     /* Fetch data from DB */
     vtysh_run();
@@ -261,6 +375,110 @@ halon_vtysh_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
     unixctl_command_reply(conn, NULL);
 }
 
+void
+vtysh_segfault_sigaction(int signal, siginfo_t *si, void *arg)
+{
+  vtysh_reduce_session_count();
+  exit(0);
+}
+
+bool
+vtysh_reduce_session_count(void)
+{
+  const struct ovsrec_open_vswitch *ovs_row = NULL;
+  int sesson_count = 0;
+  char buffer[SESSION_CNT_LENGTH]={0};
+  struct smap smap_other_config;
+
+  if(status_txn != NULL)
+    ovsdb_idl_txn_destroy(status_txn);
+
+  if(!cli_do_config_start())
+  {
+    VLOG_ERR("OVSDB transaction creation failed.");
+    return false;
+  }
+
+  ovs_row = ovsrec_open_vswitch_first(idl);
+  if(!ovs_row)
+  {
+     VLOG_ERR("Couldn't fetch open_vswitch row.");
+     cli_do_config_abort();
+     return false;
+  }
+
+  sesson_count = smap_get_int(&ovs_row->other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, 0);
+  snprintf(buffer, SESSION_CNT_LENGTH, "%d", --sesson_count);
+
+  smap_clone(&smap_other_config, &ovs_row->other_config);
+  if(sesson_count != 0)
+  {
+    smap_replace(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, buffer);
+  }
+  else if(sesson_count == 0)
+  {
+    smap_remove(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS);
+  }
+
+  ovsrec_open_vswitch_set_other_config(ovs_row, &smap_other_config);
+
+  if(cli_do_config_finish())
+    return true;
+  else
+  {
+    VLOG_ERR("OVSDB transaction commit failed.");
+    return false;
+  }
+}
+
+void
+vtysh_check_session(void)
+{
+  const struct ovsrec_open_vswitch *ovs_row = NULL;
+  int sesson_count = 0;
+  char buffer[SESSION_CNT_LENGTH]={0};
+  struct smap smap_other_config;
+
+  if(!cli_do_config_start())
+  {
+    VLOG_ERR("OVSDB transaction creation failed.");
+    exit(EXIT_FAILURE);
+  }
+
+  ovs_row = ovsrec_open_vswitch_first(idl);
+  if(!ovs_row)
+  {
+     VLOG_ERR("Couldn't fetch open_vswitch row.");
+     cli_do_config_abort();
+     exit(EXIT_FAILURE);
+  }
+
+  sesson_count = smap_get_int(&ovs_row->other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, 0);
+  snprintf(buffer, SESSION_CNT_LENGTH, "%d", ++sesson_count);
+
+  smap_clone(&smap_other_config, &ovs_row->other_config);
+  if(sesson_count <= MAX_CLI_SESSIONS)
+  {
+    smap_replace(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, buffer);
+    ovsrec_open_vswitch_set_other_config(ovs_row, &smap_other_config);
+  }
+  else
+  {
+    VLOG_ERR("Exceeded max number of sessions.");
+    printf("\nError: Maximum number of CLI sessions reached.\n");
+    cli_do_config_abort();
+    exit(EXIT_FAILURE);
+  }
+
+  if(cli_do_config_finish())
+    return;
+  else
+  {
+    VLOG_ERR("OVSDB transaction commit failed.");
+    exit(EXIT_FAILURE);
+  }
+
+}
 /*
  * The init for the ovsdb integration called in vtysh main function
  */
@@ -285,6 +503,7 @@ void vtysh_ovsdb_init(int argc, char *argv[])
     unixctl_command_register("exit", "", 0, 0, halon_vtysh_exit, &exiting);
 
     ovsdb_init(ovsdb_sock);
+    vtysh_check_session();
     vtysh_ovsdb_lib_init();
     free(ovsdb_sock);
 
@@ -348,6 +567,7 @@ char* vtysh_ovsdb_hostname_get()
 void vtysh_ovsdb_exit(void)
 {
     ovsdb_idl_destroy(idl);
+    vtysh_reduce_session_count();
 }
 
 /* This API is for fetching contents from DB to Vtysh IDL cache
@@ -358,7 +578,6 @@ boolean cli_do_config_start()
 {
   ovsdb_idl_run(idl);
   status_txn = ovsdb_idl_txn_create(idl);
-
   if(status_txn == NULL)
   {
      assert(0);

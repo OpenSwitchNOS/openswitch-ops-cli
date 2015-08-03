@@ -2806,7 +2806,8 @@ cmd_execute_command_real (vector vline,
 
   if (matched_element->daemon)
     return CMD_SUCCESS_DAEMON;
-
+  vty->buf = matched_element->string;
+  vty->length = strlen(matched_element->string);
   /* Execute matched command. */
   return (*matched_element->func) (matched_element, vty, 0, argc, argv);
 }
@@ -2938,6 +2939,123 @@ config_from_file (struct vty *vty, FILE *fp, unsigned int *line_num)
     }
   return CMD_SUCCESS;
 }
+
+
+
+
+
+
+
+
+
+
+int cmd_try_execute_command (struct vty *vty, char *buf)
+{
+  int ret;
+  vector vline;
+  unsigned int i;
+  unsigned int index;
+  vector cmd_vector;
+  struct cmd_element *cmd_element;
+  struct cmd_element *matched_element;
+  unsigned int matched_count, incomplete_count;
+  int argc;
+  const char *argv[CMD_ARGC_MAX];
+  enum match_type match = 0;
+  char *command;
+  vector matches;
+
+  /* Split readline string up into the vector */
+  vline = cmd_make_strvec (buf);
+
+  if (vline == NULL)
+    return CMD_SUCCESS;
+
+  /* Make copy of command elements. */
+  cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
+
+  for (index = 0; index < vector_active (vline); index++)
+  {
+    command = vector_slot (vline, index);
+    ret = cmd_vector_filter(cmd_vector,
+        FILTER_RELAXED,
+        vline, index,
+        &match,
+        &matches);
+
+    if (ret != CMD_SUCCESS)
+    {
+      cmd_matches_free(&matches);
+      vector_free(cmd_vector);
+      return ret;
+    }
+
+    if (match == vararg_match)
+    {
+      cmd_matches_free(&matches);
+      break;
+    }
+
+    ret = is_cmd_ambiguous (cmd_vector, command, matches, match);
+    cmd_matches_free(&matches);
+
+    if (ret == 1)
+    {
+      vector_free(cmd_vector);
+      return CMD_ERR_AMBIGUOUS;
+    }
+    else if (ret == 2)
+    {
+      vector_free(cmd_vector);
+      return CMD_ERR_NO_MATCH;
+    }
+  }
+
+  /* Check matched count. */
+  matched_element = NULL;
+  matched_count = 0;
+  incomplete_count = 0;
+
+  for (i = 0; i < vector_active (cmd_vector); i++)
+     if ((cmd_element = vector_slot (cmd_vector, i)))
+     {
+        if(cmd_element->attr & CMD_ATTR_NOT_ENABLED)
+        {
+           continue;
+        }
+        if (cmd_is_complete(cmd_element, vline))
+        {
+           matched_element = cmd_element;
+           matched_count++;
+        }
+        else
+        {
+           incomplete_count++;
+        }
+     }
+
+     /* Finish of using cmd_vector. */
+  vector_free (cmd_vector);
+
+  if (matched_count == 0)
+  {
+    if (incomplete_count)
+      return CMD_ERR_INCOMPLETE;
+    else
+      return CMD_ERR_NO_MATCH;
+  }
+
+  if (matched_count > 1)
+    return CMD_ERR_AMBIGUOUS;
+
+  return CMD_COMPLETE_MATCH;
+
+}
+
+
+
+
+
 
 /* Configration from terminal */
 DEFUN (config_terminal,
@@ -4308,7 +4426,7 @@ cmd_terminate_token(struct cmd_token *token)
   XFREE(MTYPE_CMD_TOKENS, token);
 }
 
-static void
+void
 cmd_terminate_element(struct cmd_element *cmd)
 {
   unsigned int i;

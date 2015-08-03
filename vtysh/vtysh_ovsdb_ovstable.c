@@ -152,6 +152,29 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   return e_vtysh_ok;
 }
 
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_alias
+| Responsibility : parse alias column in open_vswitch table
+| Parameters :
+|    row : idl row object pointer
+|    fp : file pointer
+| Return : vtysh_ret_val, e_vtysh_ok
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
+{
+  struct ovsrec_cli_alias *alias_row = NULL;
+  OVSREC_CLI_ALIAS_FOR_EACH (alias_row, p_msg->idl)
+  {
+     vtysh_ovsdb_cli_print(p_msg, "alias %s %s",
+         alias_row->alias_name, alias_row->alias_definition);
+  }
+
+  return e_vtysh_ok;
+}
+
+
 /*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_clientcallback
 | Responsibility : client callback routine
@@ -176,6 +199,9 @@ vtysh_ovsdb_ovstable_clientcallback(void *p_private)
     {
       vtysh_ovsdb_cli_print(p_msg, "hostname \"%s\"", vswrow->hostname);
     }
+
+    /* parse the alias coumn */
+    vtysh_ovsdb_ovstable_parse_alias(p_msg);
 
     /* parse other config param */
     vtysh_ovsdb_ovstable_parse_othercfg(&vswrow->other_config, p_msg);
