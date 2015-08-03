@@ -37,6 +37,7 @@ extern struct ovsdb_idl *idl;
 
 /* vtysh ovsdb client list defintions */
 vtysh_ovsdb_client vtysh_open_vswitch_table_client_list[e_vtysh_open_vswitch_table_client_id_max] = {NULL};
+vtysh_ovsdb_client vtysh_vrf_table_client_list[e_vtysh_vrf_table_client_id_max] = {NULL};
 vtysh_ovsdb_client vtysh_interface_table_client_list[e_vtysh_interface_table_client_id_max] = {NULL};
 vtysh_ovsdb_client vtysh_vlan_table_client_list[e_vtysh_vlan_table_client_id_max] = {NULL};
 vtysh_ovsdb_client vtysh_port_table_client_list[e_vtysh_port_table_client_id_max] = {NULL};
@@ -55,16 +56,17 @@ vtysh_ovsdb_client vtysh_subsystem_table_client_list[e_vtysh_subsystem_table_cli
 vtysh_ovsdb_table_list vtysh_ovsdb_table[e_vtysh_table_id_max] =
 {
   { "Open_v_switch Table", e_open_vswitch_table, &vtysh_open_vswitch_table_client_list},
-  { "Interface Table",    e_interface_table,   &vtysh_interface_table_client_list},
-  { "Vlan Table",         e_vlan_table,        &vtysh_vlan_table_client_list},
-  { "Port Table",         e_port_table,        &vtysh_port_table_client_list},
-  { "Bridge Table",       e_bridge_table,      &vtysh_bridge_table_client_list},
+  { "VRF Table",           e_vrf_table,          &vtysh_vrf_table_client_list},
+  { "Interface Table",     e_interface_table,    &vtysh_interface_table_client_list},
+  { "Vlan Table",          e_vlan_table,         &vtysh_vlan_table_client_list},
+  { "Port Table",          e_port_table,         &vtysh_port_table_client_list},
+  { "Bridge Table",        e_bridge_table,       &vtysh_bridge_table_client_list},
   { "power_supply Table",  e_power_supply_table, &vtysh_power_supply_table_client_list},
   { "temp_sensor Table",   e_temp_sensor_table,  &vtysh_temp_sensor_table_client_list},
-  { "Fan Table",          e_fan_table,         &vtysh_fan_table_client_list},
-  { "Led Table",          e_led_table,         &vtysh_led_table_client_list},
-  { "Route Table",          e_route_table,         &vtysh_route_table_client_list},
-  { "Subsystem Table",    e_subsystem_table,   &vtysh_subsystem_table_client_list},
+  { "Fan Table",           e_fan_table,          &vtysh_fan_table_client_list},
+  { "Led Table",           e_led_table,          &vtysh_led_table_client_list},
+  { "Route Table",         e_route_table,        &vtysh_route_table_client_list},
+  { "Subsystem Table",     e_subsystem_table,    &vtysh_subsystem_table_client_list},
 };
 
 /*-----------------------------------------------------------------------------
@@ -88,6 +90,9 @@ vtysh_ovsdb_table_get_maxclientid(vtysh_ovsdb_tableid tableid)
   {
     case e_open_vswitch_table:
          ret_val = e_vtysh_open_vswitch_table_client_id_max;
+         break;
+    case e_vrf_table:
+         ret_val = e_vtysh_vrf_table_client_id_max;
          break;
     case e_interface_table:
          ret_val = e_vtysh_interface_table_client_id_max;
@@ -149,6 +154,9 @@ vtysh_ovsdb_table_get_minclientid(vtysh_ovsdb_tableid tableid)
   {
     case e_open_vswitch_table:
          ret_val = e_vtysh_open_vswitch_table_client_id_first;
+         break;
+    case e_vrf_table:
+         ret_val = e_vtysh_vrf_table_client_id_first;
          break;
     case e_interface_table:
          ret_val = e_vtysh_interface_table_client_id_first;
@@ -519,6 +527,7 @@ vtysh_ovsdb_init_clients()
 {
   /* register vtysh ovsdb table client callbacks */
   vtysh_ovsdb_init_ovstableclients();
+  vtysh_ovsdb_init_vrftableclients();
   vtysh_ovsdb_init_intftableclients();
   vtysh_ovsdb_init_routetableclients();
   /* Register Callback for LED configuration */

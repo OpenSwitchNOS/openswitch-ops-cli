@@ -15,7 +15,7 @@
  under the License.
 */
 /****************************************************************************
- * @ingroup quagga
+ * @ingroup cli
  *
  * @file vtysh_ovsdb_intftable.c
  * Source for registering client callback with interface table.
@@ -46,6 +46,57 @@ typedef struct vtysh_ovsdb_intf_cfg_struct
 } vtysh_ovsdb_intf_cfg;
 
 char intfclientname[] = "vtysh_ovsdb_intftable_clientcallback";
+static vtysh_ret_val
+vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
+                                     vtysh_ovsdb_cbmsg_ptr p_msg,
+                                     bool interfaceNameWritten);
+
+/*-----------------------------------------------------------------------------
+| Function : port_vrf_match
+| Responsibility : Lookup VRF to which interface is connected
+| Parameters :
+|    const struct ovsdb_idl *idl : idl for vtysh
+|    const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
+| Return : pointer to VRF row
+-----------------------------------------------------------------------------*/
+struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
+                                  const struct ovsrec_port *port_row)
+{
+    struct ovsrec_vrf *vrf_row = NULL;
+    size_t i;
+    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+      for (i = 0; i < vrf_row->n_ports; i++) {
+        if (vrf_row->ports[i] == port_row) {
+          return vrf_row;
+        }
+      }
+    }
+    return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : port_lookup
+| Responsibility : Lookup port table entry for interface name
+| Parameters :
+|   const char *if_name : Interface name
+|   const struct ovsdb_idl *idl : IDL for vtysh
+| Return : bool : returns true/false
+-----------------------------------------------------------------------------*/
+struct ovsrec_port* port_lookup(const char *if_name,
+                                const struct ovsdb_idl *idl)
+{
+    struct ovsrec_port *port_row = NULL;
+    size_t i;
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+      if (strcmp(port_row->name, if_name) == 0) {
+        return port_row;
+      }
+    }
+    return NULL;
+}
+
 /*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_intftable_parse_othercfg
 | Responsibility : parse other_config in intf table
@@ -113,6 +164,26 @@ intfd_get_user_cfg_adminstate(const struct smap *ifrow_config,
 }
 
 /*-----------------------------------------------------------------------------
+| Function : display_l3_info
+| Responsibility : Decide if L3 info needs to be printed
+| Parameters :
+|   const struct ovsrec_interface *if_row : Interface row data
+|   const struct ovsrec_vrf *vrf_row : VRF row data
+| Return : bool : returns true/false
+-----------------------------------------------------------------------------*/
+bool
+display_l3_info(const struct ovsrec_port *port_row,
+                const struct ovsrec_vrf *vrf_row)
+{
+   if (port_row->ip4_address || (port_row->n_ip4_address_secondary > 0)
+        || port_row->ip6_address || (port_row->n_ip6_address_secondary > 0)
+        || (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0)) {
+     return true;
+   }
+   return false;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_intftable_clientcallback
 | Responsibility : client callback routine
 | Parameters :
@@ -171,9 +242,68 @@ vtysh_ovsdb_intftable_clientcallback(void *p_private)
           vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
         }
       }
+      vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg, intfcfg.disp_intf_cfg);
     }
   }
 
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_parse_l3config
+| Responsibility : Used for VRF related config
+| Parameters :
+|     const char *if_name           : Name of interface
+|     vtysh_ovsdb_cbmsg_ptr p_msg   : Used for idl operations
+|     bool interfaceNameWritten     : Check if "interface x" has already been
+|                                     written
+| Return : vtysh_ret_val
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
+                                     vtysh_ovsdb_cbmsg_ptr p_msg,
+                                     bool interfaceNameWritten)
+{
+  struct ovsrec_port *port_row;
+  struct ovsrec_vrf *vrf_row;
+  bool displayL3Info = false;
+  size_t i;
+
+  port_row = port_lookup(if_name, p_msg->idl);
+  if (!port_row) {
+    return e_vtysh_ok;
+  }
+  if (check_iface_in_bridge(if_name)) {
+    if (!interfaceNameWritten) {
+      vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
+    }
+    vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no routing");
+  }
+  if (check_iface_in_vrf(if_name)) {
+    vrf_row = port_vrf_match(p_msg->idl, port_row);
+    if (display_l3_info(port_row, vrf_row)) {
+      if (!interfaceNameWritten) {
+        vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
+      }
+      if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "vrf attach ", vrf_row->name);
+      }
+      if (port_row->ip4_address) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "ip address ", port_row->ip4_address);
+      }
+      for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s%s", "", "ip address ",
+                port_row->ip4_address_secondary[i], " secondary");
+      }
+      if (port_row->ip6_address) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "ipv6 address ", port_row->ip6_address);
+      }
+      for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s%s", "", "ipv6 address ",
+                port_row->ip6_address_secondary[i], " secondary");
+      }
+    }
+  }
   return e_vtysh_ok;
 }
 
@@ -193,4 +323,5 @@ vtysh_ovsdb_init_intftableclients()
   client.p_callback = &vtysh_ovsdb_intftable_clientcallback;
 
   vtysh_ovsdbtable_addclient(e_interface_table, e_vtysh_interface_table_config, &client);
+
 }

@@ -651,6 +651,64 @@ int vtysh_regex_match(const char *regString, const char *inp)
 }
 
 /*
+ * Checks if interface is already part of bridge.
+ */
+bool check_iface_in_bridge(const char *if_name)
+{
+  struct ovsrec_open_vswitch *ovs_row = NULL;
+  struct ovsrec_bridge *br_cfg = NULL;
+  struct ovsrec_port *port_cfg = NULL;
+  struct ovsrec_interface *iface_cfg = NULL;
+  size_t i, j, k;
+  ovs_row = ovsrec_open_vswitch_first(idl);
+  for (i = 0; i < ovs_row->n_bridges; i++) {
+    br_cfg = ovs_row->bridges[i];
+    for (j = 0; j < br_cfg->n_ports; j++) {
+      port_cfg = br_cfg->ports[j];
+      if (strcmp(if_name, port_cfg->name) == 0) {
+        return true;
+      }
+      for (k = 0; k < port_cfg->n_interfaces; k++) {
+        iface_cfg = port_cfg->interfaces[k];
+        if (strcmp(if_name, iface_cfg->name) == 0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/*
+ * Checks if interface is already part of a VRF.
+ */
+bool check_iface_in_vrf(const char *if_name)
+{
+  struct ovsrec_open_vswitch *ovs_row = NULL;
+  struct ovsrec_vrf *vrf_cfg = NULL;
+  struct ovsrec_port *port_cfg = NULL;
+  struct ovsrec_interface *iface_cfg = NULL;
+  size_t i, j, k;
+  ovs_row = ovsrec_open_vswitch_first(idl);
+  for (i = 0; i < ovs_row->n_vrfs; i++) {
+    vrf_cfg = ovs_row->vrfs[i];
+    for (j = 0; j < vrf_cfg->n_ports; j++) {
+      port_cfg = vrf_cfg->ports[j];
+      if (strcmp(if_name, port_cfg->name) == 0) {
+        return true;
+      }
+      for (k = 0; k < port_cfg->n_interfaces; k++) {
+        iface_cfg = port_cfg->interfaces[k];
+        if (strcmp(if_name, iface_cfg->name) == 0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/*
  * init the vtysh lib routines
  */
 void vtysh_ovsdb_lib_init()

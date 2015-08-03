@@ -126,52 +126,6 @@ struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
 }
 
 /*
- * Checks if interface is already part of bridge.
- */
-struct ovsrec_port* check_iface_in_bridge(const char *if_name)
-{
-    size_t i, j, k;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
-    ovs_row = ovsrec_open_vswitch_first(idl);
-    for (i = 0; i < ovs_row->n_bridges; i++) {
-        struct ovsrec_bridge *br_cfg = ovs_row->bridges[i];
-        for (j = 0; j < br_cfg->n_ports; j++) {
-            struct ovsrec_port *port_cfg = br_cfg->ports[j];
-            for (k = 0; k < port_cfg->n_interfaces; k++) {
-                struct ovsrec_interface *iface_cfg = port_cfg->interfaces[k];
-                if (strcmp(if_name, iface_cfg->name) == 0) {
-                    return port_cfg;
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
-/*
- * Checks if interface is already part of a VRF.
- */
-struct ovsrec_port* check_iface_in_vrf(const char *if_name)
-{
-    size_t i, j, k;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
-    ovs_row = ovsrec_open_vswitch_first(idl);
-    for (i = 0; i < ovs_row->n_vrfs; i++) {
-        struct ovsrec_vrf *vrf_cfg = ovs_row->vrfs[i];
-        for (j = 0; j < vrf_cfg->n_ports; j++) {
-            struct ovsrec_port *port_cfg = vrf_cfg->ports[j];
-            for (k = 0; k < port_cfg->n_interfaces; k++) {
-                struct ovsrec_interface *iface_cfg = port_cfg->interfaces[k];
-                if (strcmp(if_name, iface_cfg->name) == 0) {
-                    return port_cfg;
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
-/*
  * Adds a new VRF to the VRF table.
  * Takes VRF name as an argument.
  */
@@ -649,7 +603,7 @@ static int vrf_routing(const char *if_name)
         return CMD_SUCCESS;
     }
 
-    if (!check_iface_in_bridge(if_name)) {
+    if (check_iface_in_vrf(if_name)) {
         VLOG_DBG(
                 "%s Interface \"%s\" is already L3. No change required.",
                 __func__, if_name);
