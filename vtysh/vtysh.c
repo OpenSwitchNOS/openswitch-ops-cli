@@ -43,6 +43,8 @@
 #include "log.h"
 #include "bgp_vty.h"
 #include "logrotate_vty.h"
+#include "fan_vty.h"
+#include "temperature_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 
