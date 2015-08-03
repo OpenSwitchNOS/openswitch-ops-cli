@@ -605,7 +605,7 @@ lldp_show_tlv(struct ovsrec_open_vswitch *row)
 DEFUN (cli_lldp_show_tlv,
        lldp_show_tlv_cmd,
        "show lldp tlv",
-       "Show switch operation information. \n"
+       SHOW_STR
        "Show various LLDP settings.\n"
        "Show TLVs advertised by LLDP.\n")
 {
@@ -626,7 +626,7 @@ DEFUN (cli_lldp_show_tlv,
 DEFUN (cli_lldp_show_intf_statistics,
        lldp_show_intf_statistics_cmd,
        "show lldp statistics IFNAME",
-       "Show switch operation information. \n"
+       SHOW_STR
        "Show various LLDP settings.\n"
        "Show LLDP statistics.\n"
        "Specify the interface name.\n")
@@ -688,7 +688,7 @@ DEFUN (cli_lldp_show_intf_statistics,
 DEFUN (cli_lldp_show_config,
        lldp_show_config_cmd,
        "show lldp configuration ",
-       "Show switch operation information.\n"
+       SHOW_STR
        "Show various LLDP settings.\n"
        "Show LLDP configuration. \n")
 {
@@ -821,7 +821,7 @@ DEFUN (cli_lldp_show_config,
 DEFUN (cli_lldp_show_statistics,
        lldp_show_statistics_cmd,
        "show lldp statistics",
-       "Show switch operation information.\n"
+       SHOW_STR
        "Show various LLDP settings.\n"
        "Show LLDP statistics.\n")
 {
@@ -948,7 +948,7 @@ DEFUN (cli_lldp_show_statistics,
 DEFUN (cli_lldp_show_neighbor_info,
        lldp_show_neighbor_info_cmd,
        "show lldp neighbor-info",
-       "Show switch operation information.\n"
+       SHOW_STR
        "Show various LLDP settings.\n"
        "Show global LLDP neighbor information.\n")
 {
@@ -1095,7 +1095,7 @@ DEFUN (cli_lldp_show_neighbor_info,
 DEFUN (cli_lldp_show_intf_neighbor_info,
        lldp_show_intf_neighbor_info_cmd,
        "show lldp neighbor-info IFNAME",
-       "Show switch operation information.\n"
+       SHOW_STR
        "Show various LLDP settings.\n"
        "Show global LLDP neighbor information.\n"
        "Specify the interface name.")

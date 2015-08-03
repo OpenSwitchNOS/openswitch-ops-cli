@@ -2045,17 +2045,12 @@ DEFUN (vtysh_show_running_config,
    return CMD_SUCCESS;
 }
 
-ALIAS (vtysh_show_running_config,
-      vtysh_do_show_running_config_cmd,
-      "do show running-config",
-      SHOW_STR
-      "Current running configuration\n")
 
 DEFUN (vtysh_show_ovsdb_config_table_client_list,
-      vtysh_show_ovdb_config_table_client_list_cmd,
-      "show ovsdb-config-table-client-list",
-      "Ovsdb Config Table Client List\n"
-      "Ovsdb Config Table Client List\n")
+       vtysh_show_ovdb_config_table_client_list_cmd,
+       "show ovsdb-config-table-client-list",
+       SHOW_STR
+       "Ovsdb Config Table Client List\n")
 {
    vty_out (vty, "%sCurrent Ovsdb Config Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
 
@@ -3234,10 +3229,6 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_interface_cmd);
    install_element (CONFIG_NODE, &vtysh_no_interface_cmd);
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-#ifdef ENABLE_OVSDB
-   install_element (CONFIG_NODE, &vtysh_do_show_running_config_cmd);
-   install_element (INTERFACE_NODE, &vtysh_do_show_running_config_cmd);
-#endif /* ENABLE_OVSDB */
 
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
 #ifdef ENABLE_OVSDB

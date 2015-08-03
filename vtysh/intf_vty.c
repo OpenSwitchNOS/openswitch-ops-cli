@@ -628,7 +628,7 @@ DEFUN (cli_intf_show_run_intf,
       cli_intf_show_run_intf_cmd,
       "show running-config interface",
       SHOW_STR
-      "Current operating configuration\n"
+      "Current running configuration\n"
       INTERFACE_STR)
 {
    return cli_show_run_interface_exec (self, vty, vty_flags, 0, 0);
@@ -638,7 +638,7 @@ DEFUN (cli_intf_show_run_intf_if,
       cli_intf_show_run_intf_if_cmd,
       "show running-config interface IFNAME",
       SHOW_STR
-      "Current operating configuration\n"
+      "Current running configuration\n"
       INTERFACE_STR
       IFNAME_STR)
 {

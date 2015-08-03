@@ -26,7 +26,7 @@
 #define _SYSTEM_VTY_H
 
 #ifndef SYS_STR
-#define SYS_STR		"Shows system information\n"
+#define SYS_STR		"System information\n"
 #endif
 
 typedef enum
