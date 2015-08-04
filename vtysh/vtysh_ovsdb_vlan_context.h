@@ -15,17 +15,17 @@
  under the License.
 */
 /****************************************************************************
- * @ingroup quagga
+ * @ingroup cli
  *
- * @file vtysh_ovsdb_ledtable.h
- * Source for registering client callback with led table.
+ * @file vtysh_ovsdb_vlan_context.h
+ * Source for registering client callback with vlan context.
  *
  ***************************************************************************/
 
-#ifndef VTYSH_OVSDB_LEDTABLE_H
-#define VTYSH_OVSDB_LEDTABLE_H
+#ifndef VTYSH_OVSDB_VLAN_CONTEXT_H
+#define VTYSH_OVSDB_VLAN_CONTEXT_H
 
-int vtysh_ovsdb_init_ledtableclients();
-vtysh_ret_val vtysh_ovsdb_ledtable_clientcallback(void *p_private);
+int vtysh_init_vlan_context_clients();
+vtysh_ret_val vtysh_vlan_context_clientcallback(void *p_private);
 
-#endif /* VTYSH_OVSDB_LEDTABLE_H */
+#endif /* VTYSH_OVSDB_VLAN_CONTEXT_H */

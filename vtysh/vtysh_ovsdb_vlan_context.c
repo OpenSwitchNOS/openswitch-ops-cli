@@ -15,10 +15,10 @@
  under the License.
 */
 /****************************************************************************
- * @ingroup quagga
+ * @ingroup cli
  *
- * @file vtysh_ovsdb_vlantable.c
- * Source for registering client callback with vlan table.
+ * @file vtysh_ovsdb_vlan_context.c
+ * Source for registering client callback with vlan context.
  *
  ***************************************************************************/
 
@@ -28,19 +28,19 @@
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
-#include "vtysh_ovsdb_vlantable.h"
+#include "vtysh_ovsdb_vlan_context.h"
 
-char vlanclientname[] = "vtysh_ovsdb_vlantable_clientcallback";
+char vlancontextclientname[] = "vtysh_vlan_context_clientcallback";
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_ovsdb_vlantable_clientcallback
+| Function : vtysh_vlan_context_clientcallback
 | Responsibility : client callback routine
 | Parameters :
 |     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_ovsdb_vlantable_clientcallback(void *p_private)
+vtysh_vlan_context_clientcallback(void *p_private)
 {
   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
   const struct ovsrec_vlan *ifrow;
@@ -65,19 +65,27 @@ vtysh_ovsdb_vlantable_clientcallback(void *p_private)
 }
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_ovsdb_init_vlantableclients
-| Responsibility : Registers the client callback routines for vlan table
+| Function : vtysh_init_vlan_contextclients
+| Responsibility : Registers the client callback routines for vlancontext
 | Parameters :
 | Return :
 -----------------------------------------------------------------------------*/
 int
-vtysh_ovsdb_init_vlantableclients()
+vtysh_init_vlan_context_clients()
 {
-  vtysh_ovsdb_client client;
+  vtysh_context_client client;
+  vtysh_ret_val retval = e_vtysh_error;
 
-  client.p_client_name = vlanclientname;
-  client.client_id = e_vtysh_vlan_table_config;
-  client.p_callback = &vtysh_ovsdb_vlantable_clientcallback;
-
-  vtysh_ovsdbtable_addclient(e_vlan_table, e_vtysh_vlan_table_config, &client);
+  client.p_client_name = vlancontextclientname;
+  client.client_id = e_vtysh_vlan_context_config;
+  client.p_callback = &vtysh_vlan_context_clientcallback;
+  retval = vtysh_context_addclient(e_vtysh_vlan_context, e_vtysh_vlan_context_config, &client);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "vlan context unable to add config callback");
+    assert(0);
+    return retval;
+  }
+  return e_vtysh_ok;
 }

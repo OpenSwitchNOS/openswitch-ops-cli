@@ -28,6 +28,10 @@
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_if.h"
 #include "lib/vty.h"
+#include "vtysh_ovsdb_config_context.h"
+#include "vtysh_ovsdb_intf_context.h"
+#include "vtysh_ovsdb_vlan_context.h"
+#include "vtysh_ovsdb_router_context.h"
 
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
@@ -35,99 +39,54 @@ VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 #define MAX_WAIT_LOOPCNT 1000
 extern struct ovsdb_idl *idl;
 
-/* vtysh ovsdb client list defintions */
-vtysh_ovsdb_client vtysh_open_vswitch_table_client_list[e_vtysh_open_vswitch_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_vrf_table_client_list[e_vtysh_vrf_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_interface_table_client_list[e_vtysh_interface_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_vlan_table_client_list[e_vtysh_vlan_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_port_table_client_list[e_vtysh_port_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_bridge_table_client_list[e_vtysh_bridge_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_power_supply_table_client_list[e_vtysh_power_supply_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_temp_sensor_table_client_list[e_vtysh_temp_sensor_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_fan_table_client_list[e_vtysh_fan_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_led_table_client_list[e_vtysh_led_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_route_table_client_list[e_vtysh_route_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_subsystem_table_client_list[e_vtysh_subsystem_table_client_id_max] = {NULL};
-vtysh_ovsdb_client vtysh_radius_server_table_client_list[e_vtysh_radius_server_table_client_id_max] = {NULL};
+/* vtysh context client list defintions */
+vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {NULL};
+vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_client_id_max] = {NULL};
+vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {NULL};
+vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {NULL};
 
-/* static array of vtysh ovsdb tables
-   table traversal order as shown below.
-   addition of new table should be done in correct order.
+/* static array of vtysh context lists
+   context traversal order as shown below.
+   addition of new context should be done in correct order.
 */
-vtysh_ovsdb_table_list vtysh_ovsdb_table[e_vtysh_table_id_max] =
+vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
 {
-  { "Open_v_switch Table", e_open_vswitch_table, &vtysh_open_vswitch_table_client_list},
-  { "VRF Table",           e_vrf_table,          &vtysh_vrf_table_client_list},
-  { "Interface Table",     e_interface_table,    &vtysh_interface_table_client_list},
-  { "Vlan Table",          e_vlan_table,         &vtysh_vlan_table_client_list},
-  { "Port Table",          e_port_table,         &vtysh_port_table_client_list},
-  { "Bridge Table",        e_bridge_table,       &vtysh_bridge_table_client_list},
-  { "power_supply Table",  e_power_supply_table, &vtysh_power_supply_table_client_list},
-  { "temp_sensor Table",   e_temp_sensor_table,  &vtysh_temp_sensor_table_client_list},
-  { "Fan Table",           e_fan_table,          &vtysh_fan_table_client_list},
-  { "Led Table",           e_led_table,          &vtysh_led_table_client_list},
-  { "Route Table",         e_route_table,        &vtysh_route_table_client_list},
-  { "Subsystem Table",     e_subsystem_table,    &vtysh_subsystem_table_client_list},
-  { "Radius_Server Table", e_radius_server_table,&vtysh_radius_server_table_client_list},
+  { "Config Context",     e_vtysh_config_context,    &vtysh_config_context_client_list},
+  { "Router Context",     e_vtysh_router_context,    &vtysh_router_context_client_list},
+  { "Interface Context",  e_vtysh_interface_context, &vtysh_interface_context_client_list},
+  { "Vlan Context",       e_vtysh_vlan_context,      &vtysh_vlan_context_client_list},
 };
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdb_table_get_maxclientid
-| Responsibility : get the max client-id value for requested tableid
+| Function: vtysh_context_get_maxclientid
+| Responsibility : get the max client-id value for requested contextid
 | Parameters:
-|           vtysh_ovsdb_tableid tableid : tableid value
+|           vtysh_contextid contextid : contextid value
 | Return: int : returns max client id
 ------------------------------------------------------------------------------*/
 int
-vtysh_ovsdb_table_get_maxclientid(vtysh_ovsdb_tableid tableid)
+vtysh_context_get_maxclientid(vtysh_contextid contextid)
 {
   int ret_val = 0;
 
-  if(!is_valid_vtysh_ovsdb_tableid(tableid))
+  if(!is_valid_vtysh_contextid(contextid))
   {
     return e_vtysh_error;
   }
 
-  switch(tableid)
+  switch(contextid)
   {
-    case e_open_vswitch_table:
-         ret_val = e_vtysh_open_vswitch_table_client_id_max;
+    case e_vtysh_config_context:
+         ret_val = e_vtysh_config_context_client_id_max;
          break;
-    case e_vrf_table:
-         ret_val = e_vtysh_vrf_table_client_id_max;
+    case e_vtysh_router_context:
+         ret_val = e_vtysh_router_context_client_id_max;
          break;
-    case e_interface_table:
-         ret_val = e_vtysh_interface_table_client_id_max;
+    case e_vtysh_interface_context:
+         ret_val = e_vtysh_interface_context_client_id_max;
          break;
-    case e_vlan_table:
-         ret_val = e_vtysh_vlan_table_client_id_max;
-         break;
-    case e_port_table:
-         ret_val = e_vtysh_port_table_client_id_max;
-         break;
-    case e_bridge_table:
-         ret_val = e_vtysh_bridge_table_client_id_max;
-         break;
-    case e_power_supply_table:
-         ret_val = e_vtysh_power_supply_table_client_id_max;
-         break;
-    case e_temp_sensor_table:
-         ret_val = e_vtysh_temp_sensor_table_client_id_max;
-         break;
-    case e_fan_table:
-         ret_val = e_vtysh_fan_table_client_id_max;
-         break;
-    case e_led_table:
-         ret_val = e_vtysh_led_table_client_id_max;
-         break;
-    case e_route_table:
-         ret_val = e_vtysh_route_table_client_id_max;
-         break;
-    case e_subsystem_table:
-         ret_val = e_vtysh_subsystem_table_client_id_max;
-         break;
-    case e_radius_server_table:
-         ret_val = e_vtysh_radius_server_table_client_id_max;
+    case e_vtysh_vlan_context:
+         ret_val = e_vtysh_vlan_context_client_id_max;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -139,62 +98,35 @@ vtysh_ovsdb_table_get_maxclientid(vtysh_ovsdb_tableid tableid)
 }
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdb_table_get_minclientid
-| Responsibility : get the min client-id value for requested tableid
+| Function: vtysh_context_get_minclientid
+| Responsibility : get the min client-id value for requested contextid
 | Parameters:
-|           vtysh_ovsdb_tableid tableid : tableid value
+|           vtysh_contextid contextid : contextid value
 | Return: int : returns min client id
 ------------------------------------------------------------------------------*/
 int
-vtysh_ovsdb_table_get_minclientid(vtysh_ovsdb_tableid tableid)
+vtysh_context_get_minclientid(vtysh_contextid contextid)
 {
   int ret_val = 0;
 
-  if(!is_valid_vtysh_ovsdb_tableid(tableid))
+  if(!is_valid_vtysh_contextid(contextid))
   {
     return e_vtysh_error;
   }
 
-  switch(tableid)
+  switch(contextid)
   {
-    case e_open_vswitch_table:
-         ret_val = e_vtysh_open_vswitch_table_client_id_first;
+    case e_vtysh_config_context:
+         ret_val = e_vtysh_config_context_client_id_first;
          break;
-    case e_vrf_table:
-         ret_val = e_vtysh_vrf_table_client_id_first;
+    case e_vtysh_router_context:
+         ret_val = e_vtysh_router_context_client_id_first;
          break;
-    case e_interface_table:
-         ret_val = e_vtysh_interface_table_client_id_first;
+    case e_vtysh_interface_context:
+         ret_val = e_vtysh_interface_context_client_id_first;
          break;
-    case e_vlan_table:
-         ret_val = e_vtysh_vlan_table_client_id_first;
-         break;
-    case e_port_table:
-         ret_val = e_vtysh_port_table_client_id_first;
-         break;
-    case e_bridge_table:
-         ret_val = e_vtysh_bridge_table_client_id_first;
-         break;
-    case e_power_supply_table:
-         ret_val = e_vtysh_power_supply_table_client_id_first;
-         break;
-    case e_temp_sensor_table:
-         ret_val = e_vtysh_temp_sensor_table_client_id_first;
-         break;
-    case e_fan_table:
-         ret_val = e_vtysh_fan_table_client_id_first;
-         break;
-    case e_led_table:
-         ret_val = e_vtysh_led_table_client_id_first;
-         break;
-    case e_route_table:
-         ret_val = e_vtysh_route_table_client_id_first;
-         break;
-    case e_subsystem_table:
-         ret_val = e_vtysh_subsystem_table_client_id_first;
-         break;
-    case e_radius_server_table:
-         ret_val = e_vtysh_radius_server_table_client_id_first;
+    case e_vtysh_vlan_context:
+         ret_val = e_vtysh_vlan_context_client_id_first;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -206,20 +138,20 @@ vtysh_ovsdb_table_get_minclientid(vtysh_ovsdb_tableid tableid)
 }
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdb_isvalid_tableclientid
-| Responsibility : calidates the client-id for the given tableid
+| Function: vtysh_isvalid_contextclientid
+| Responsibility : calidates the client-id for the given contextid
 | Parameters:
-|           vtysh_ovsdb_tableid tableid : tableid value
+|           vtysh_contextid contextid : contextid value
 |           int clientid: clientid value
 | Return: int : returns e_vtysh_ok if clientid is valid else e_vtysh_error
 ------------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_ovsdb_isvalid_tableclientid(vtysh_ovsdb_tableid tableid, int clientid)
+vtysh_isvalid_contextclientid(vtysh_contextid contextid, int clientid)
 {
   int maxclientid=0, minclientid=0;
 
-  minclientid = vtysh_ovsdb_table_get_minclientid(tableid);
-  maxclientid = vtysh_ovsdb_table_get_maxclientid(tableid);
+  minclientid = vtysh_context_get_minclientid(contextid);
+  maxclientid = vtysh_context_get_maxclientid(contextid);
 
   if ((e_vtysh_error == minclientid) || (e_vtysh_error == maxclientid))
   {
@@ -238,49 +170,49 @@ vtysh_ovsdb_isvalid_tableclientid(vtysh_ovsdb_tableid tableid, int clientid)
 }
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdbtable_addclient
-| Responsibility : Add client callback to the given table
+| Function: vtysh_context_addclient
+| Responsibility : Add client callback to the given context
 | Parameters:
-|           vtysh_ovsdb_tableid tableid : tableid value
+|           vtysh_contextid contextid : contextid value
 |           int clientid: clientid value
-|           vtysh_ovsdb_client *p_client: client param
+|           vtysh_context_client *p_client: client param
 | Return: int : returns e_vtysh_ok if client callabck added successfully
 |               else e_vtysh_error
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_ovsdbtable_addclient(vtysh_ovsdb_tableid tableid,
-                           int clientid,
-                           vtysh_ovsdb_client *p_client)
+vtysh_context_addclient(vtysh_contextid contextid,
+                        int clientid,
+                        vtysh_context_client *p_client)
 {
-  vtysh_ovsdb_client *povs_client = NULL;
+  vtysh_context_client *povs_client = NULL;
 
-  VLOG_DBG("vtysh_ovsdbtable_addclient called with table id %d clientid %d", tableid,clientid);
+  VLOG_DBG("vtysh_context_addclient called with context id %d clientid %d", contextid,clientid);
 
   if(NULL == p_client)
   {
-    VLOG_ERR("add_client: NULL Client callback for tableid %d, client id",tableid, clientid);
+    VLOG_ERR("add_client: NULL Client callback for contextid %d, client id",contextid, clientid);
     return e_vtysh_error;
   }
 
-  if (e_vtysh_ok != vtysh_ovsdb_isvalid_tableclientid(tableid, clientid))
+  if (e_vtysh_ok != vtysh_isvalid_contextclientid(contextid, clientid))
   {
-    VLOG_ERR("add_client:Invalid client id %d for given table id %d", clientid, tableid);
+    VLOG_ERR("add_client:Invalid client id %d for given context id %d", clientid, contextid);
     return e_vtysh_error;
   }
 
-  povs_client = &(*vtysh_ovsdb_table[tableid].clientlist)[clientid-1];
+  povs_client = &(*vtysh_context_table[contextid].clientlist)[clientid-1];
   if (NULL == povs_client->p_callback)
   {
     /* add client call back */
     povs_client->p_client_name = p_client->p_client_name;
     povs_client->client_id = p_client->client_id;
     povs_client->p_callback = p_client->p_callback;
-    VLOG_DBG("add_client: Client id %d callback successfully registered with table id %d",clientid, tableid);
+    VLOG_DBG("add_client: Client id %d callback successfully registered with context id %d",clientid, contextid);
   }
   else
   {
     /* client callback is already registered  */
-    VLOG_ERR("add_client: Client callback exists for client id %d in table id", clientid, tableid);
+    VLOG_ERR("add_client: Client callback exists for client id %d in context id", clientid, contextid);
     return e_vtysh_error;
   }
 
@@ -288,21 +220,21 @@ vtysh_ovsdbtable_addclient(vtysh_ovsdb_tableid tableid,
 }
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdbtable_removeclient
-| Responsibility : Remove client callback to the given table
+| Function: vtysh_context_removeclient
+| Responsibility : Remove client callback to the given context
 | Parameters:
-|           vtysh_ovsdb_tableid tableid : tableid value
+|           vtysh_contextid contextid : contextid value
 |           int clientid: clientid value
-|           vtysh_ovsdb_client *p_client: client param
+|           vtysh_context_client *p_client: client param
 | Return: int : returns e_vtysh_ok if client callback removed successfully
 |               else e_vtysh_error
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_ovsdbtable_removeclient(vtysh_ovsdb_tableid tableid,
-                              int clientid,
-                              vtysh_ovsdb_client *p_client)
+vtysh_context_removeclient(vtysh_contextid contextid,
+                           int clientid,
+                           vtysh_context_client *p_client)
 {
-  vtysh_ovsdb_client *povs_client = NULL;
+  vtysh_context_client *povs_client = NULL;
 
   if (NULL == p_client)
   {
@@ -310,13 +242,13 @@ vtysh_ovsdbtable_removeclient(vtysh_ovsdb_tableid tableid,
     return e_vtysh_error;
   }
 
-  if (e_vtysh_ok != vtysh_ovsdb_isvalid_tableclientid(tableid, clientid))
+  if (e_vtysh_ok != vtysh_isvalid_contextclientid(contextid, clientid))
   {
-    VLOG_ERR("remove_client: Invalid client id %d for given tableid %d", clientid, tableid);
+    VLOG_ERR("remove_client: Invalid client id %d for given contextid %d", clientid, contextid);
     return e_vtysh_error;
   }
 
-  povs_client = &(*vtysh_ovsdb_table[tableid].clientlist)[clientid-1];
+  povs_client = &(*vtysh_context_table[contextid].clientlist)[clientid-1];
   if (povs_client->p_callback == p_client->p_callback)
   {
     /*client callback matches with registered callback,
@@ -324,12 +256,12 @@ vtysh_ovsdbtable_removeclient(vtysh_ovsdb_tableid tableid,
     povs_client->p_client_name= NULL;
     povs_client->client_id = 0;
     povs_client->p_callback = NULL;
-    VLOG_DBG("remove_client: clientid %d callback successfully unregistered for tableid %d", clientid, tableid);
+    VLOG_DBG("remove_client: clientid %d callback successfully unregistered for contextid %d", clientid, contextid);
   }
   else
   {
     /* client registered details unmatched */
-    VLOG_DBG("remove_client: clientid %d callback param unmatched with registered callback param in tabledid %d", clientid, tableid);
+    VLOG_DBG("remove_client: clientid %d callback param unmatched with registered callback param in contextid %d", clientid, contextid);
     return e_vtysh_error;
   }
 
@@ -337,22 +269,21 @@ vtysh_ovsdbtable_removeclient(vtysh_ovsdb_tableid tableid,
 }
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdbtable_iterateoverclients
-| Responsibility : iterates over the client callback for given tableid
+| Function: vtysh_context_iterateoverclients
+| Responsibility : iterates over the client callback for given contextid
 | Parameters:
-|           vtysh_ovsdb_tableid tableid : tableid value
-|           vtysh_ovsdb_openvswicth_table_clientid clientid: clientid value
-|           vtysh_ovsdb_client *p_client: client param
+|           vtysh_contextid contextid : contextid value
+|           vtysh_ovsdb_cbmsg *p_msg: client param
 | Return: int : returns e_vtysh_ok if client callback invoked successfully
 |               else e_vtysh_error
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_ovsdbtable_iterateoverclients(vtysh_ovsdb_tableid tableid, vtysh_ovsdb_cbmsg *p_msg)
+vtysh_context_iterateoverclients(vtysh_contextid contextid, vtysh_ovsdb_cbmsg *p_msg)
 {
   int maxclientid = 0, i = 0;
-  vtysh_ovsdb_client *povs_client = NULL;
+  vtysh_context_client *povs_client = NULL;
 
-  maxclientid = vtysh_ovsdb_table_get_maxclientid(tableid);
+  maxclientid = vtysh_context_get_maxclientid(contextid);
   if (e_vtysh_error == maxclientid )
   {
     return e_vtysh_error;
@@ -360,13 +291,16 @@ vtysh_ovsdbtable_iterateoverclients(vtysh_ovsdb_tableid tableid, vtysh_ovsdb_cbm
 
   for (i = 0; i < maxclientid-1; i++)
   {
-    povs_client = &(*vtysh_ovsdb_table[tableid].clientlist)[i];
+    povs_client = &(*vtysh_context_table[contextid].clientlist)[i];
     if (NULL != povs_client->p_callback)
     {
       p_msg->clientid = i+1;
       if(e_vtysh_ok != (*(povs_client->p_callback))(p_msg))
       {
         /* log debug msg */
+        VLOG_ERR("iteration error for context-id %d, client-id %d", contextid,
+                 p_msg->clientid);
+        assert(0);
         break;
       }
     }
@@ -384,7 +318,7 @@ vtysh_ovsdbtable_iterateoverclients(vtysh_ovsdb_tableid tableid, vtysh_ovsdb_cbm
 void
 vtysh_ovsdb_read_config(FILE *fp)
 {
-  vtysh_ovsdb_tableid tableid=0;
+  vtysh_contextid contextid=0;
   vtysh_ovsdb_cbmsg msg;
   int loopcnt = 0;
 
@@ -392,52 +326,52 @@ vtysh_ovsdb_read_config(FILE *fp)
 
   msg.fp = fp;
   msg.idl = idl;
-  msg.tableid = 0;
+  msg.contextid = 0;
   msg.clientid = 0;
 
   VLOG_DBG("readconfig:after idl 0x%x seq no 0x%x", idl, ovsdb_idl_get_seqno(idl));
   fprintf(fp, "Current configuration:\n");
   fprintf(fp, "!\n");
 
-  for(tableid = 0; tableid < e_vtysh_table_id_max; tableid++)
+  for(contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
   {
-    msg.tableid = tableid;
+    msg.contextid = contextid;
     msg.clientid = 0;
-    vtysh_ovsdbtable_iterateoverclients(tableid, &msg);
+    vtysh_context_iterateoverclients(contextid, &msg);
   }
 }
 
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdb_table_list_clients
-| Responsibility : list the registered client callback for all the ovsdb tables
+| Function: vtysh_context_table_list_clients
+| Responsibility : list the registered client callback for all config contexts
 | Parameters:
 |           vty - pointer to object type struct vty
 | Return: void
 -----------------------------------------------------------------------------*/
 void
-vtysh_ovsdb_table_list_clients(struct vty *vty)
+vtysh_context_table_list_clients(struct vty *vty)
 {
-  vtysh_ovsdb_tableid tableid=0;
+  vtysh_contextid contextid=0;
   int maxclientid = 0, i =0, minclientid = 0;
-  vtysh_ovsdb_client *povs_client = NULL;
+  vtysh_context_client *povs_client = NULL;
 
   if(NULL == vty)
   {
     return;
   }
 
-  for (tableid = 0; tableid < e_vtysh_table_id_max; tableid++)
+  for (contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
   {
-    vty_out(vty, "%s:%s", vtysh_ovsdb_table[tableid].name, VTY_NEWLINE);
+    vty_out(vty, "%s:%s", vtysh_context_table[contextid].name, VTY_NEWLINE);
 
-    maxclientid = vtysh_ovsdb_table_get_maxclientid(tableid);
+    maxclientid = vtysh_context_get_maxclientid(contextid);
     if (e_vtysh_error == maxclientid )
     {
       return;
     }
 
-    minclientid = vtysh_ovsdb_table_get_minclientid(tableid);
+    minclientid = vtysh_context_get_minclientid(contextid);
     if (minclientid == (maxclientid -1))
     {
       vty_out(vty, "%8s%s%s", "", "No clients registered", VTY_NEWLINE);
@@ -450,7 +384,7 @@ vtysh_ovsdb_table_list_clients(struct vty *vty)
 
     for (i = 0; i < maxclientid-1; i++)
     {
-      povs_client = &(*vtysh_ovsdb_table[tableid].clientlist)[i];
+      povs_client = &(*vtysh_context_table[contextid].clientlist)[i];
       if (NULL != povs_client->p_callback)
       {
         vty_out(vty, "%8s%s%s", "", povs_client->p_client_name, VTY_NEWLINE);
@@ -531,14 +465,9 @@ vtysh_ovsdb_config_logmsg(int loglevel, char *fmt, ...)
 void
 vtysh_ovsdb_init_clients()
 {
-  /* register vtysh ovsdb table client callbacks */
-  vtysh_ovsdb_init_ovstableclients();
-  vtysh_ovsdb_init_vrftableclients();
-  vtysh_ovsdb_init_intftableclients();
-  vtysh_ovsdb_init_routetableclients();
-  /* Register Callback for LED configuration */
-  vtysh_ovsdb_init_ledtableclients();
-  vtysh_ovsdb_init_subsystemtableclients();
-  vtysh_ovsdb_init_vlantableclients();
-  vtysh_ovsdb_init_radiusservertableclients();
+  /* register vtysh context table client callbacks */
+  vtysh_init_config_context_clients();
+  vtysh_init_router_context_clients();
+  vtysh_init_intf_context_clients();
+  vtysh_init_vlan_context_clients();
 }

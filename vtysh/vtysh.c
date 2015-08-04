@@ -2046,15 +2046,15 @@ DEFUN (vtysh_show_running_config,
 }
 
 
-DEFUN (vtysh_show_ovsdb_config_table_client_list,
-       vtysh_show_ovdb_config_table_client_list_cmd,
-       "show ovsdb-config-table-client-list",
-       SHOW_STR
-       "Ovsdb Config Table Client List\n")
+DEFUN_HIDDEN (vtysh_show_context_client_list,
+              vtysh_show_context_client_list_cmd,
+              "show context-client-list",
+              SHOW_STR
+              "Vtysh Context Table Client List\n")
 {
-   vty_out (vty, "%sCurrent Ovsdb Config Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
+   vty_out (vty, "%sCurrent Context Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
 
-   vtysh_ovsdb_table_list_clients (vty);
+   vtysh_context_table_list_clients (vty);
    return CMD_SUCCESS;
 }
 #else
@@ -3119,8 +3119,8 @@ vtysh_init_vty (void)
   install_element (VIEW_NODE, &vtysh_test_regex_cmd);
   install_element (ENABLE_NODE, &vtysh_test_regex_cmd);
   install_element (INTERFACE_NODE, &vtysh_mult_cxt_test_cmd);
-  install_element (VIEW_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
-  install_element (ENABLE_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
+  install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
+  install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
 #endif /* ENABLE_OVSDB */

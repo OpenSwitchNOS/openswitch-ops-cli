@@ -15,16 +15,17 @@
  under the License.
 */
 /****************************************************************************
+ * @ingroup cli
  *
- * @file vtysh_ovsdb_routetable.h
- * Source for registering client callback with route table.
+ * @file vtysh_ovsdb_router_context.h
+ * Source for registering client callback with router context.
  *
  ***************************************************************************/
 
-#ifndef VTYSH_OVSDB_ROUTETABLE_H
-#define VTYSH_OVSDB_ROUTETABLE_H
+#ifndef VTYSH_OVSDB_ROUTER_CONTEXT_H
+#define VTYSH_OVSDB_ROUTER_CONTEXT_H
 
-int vtysh_ovsdb_init_routetableclients();
-vtysh_ret_val vtysh_ovsdb_routetable_clientcallback(void *p_private);
+int vtysh_init_router_context_clients();
+vtysh_ret_val vtysh_router_context_clientcallback(void *p_private);
 
-#endif /* VTYSH_OVSDB_ROUTETABLE_H */
+#endif /* VTYSH_OVSDB_ROUTER_CONTEXT_H */
