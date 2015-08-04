@@ -310,110 +310,6 @@ halon_vtysh_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
     unixctl_command_reply(conn, NULL);
 }
 
-void
-vtysh_segfault_sigaction(int signal, siginfo_t *si, void *arg)
-{
-  vtysh_reduce_session_count();
-  exit(0);
-}
-
-bool
-vtysh_reduce_session_count(void)
-{
-  const struct ovsrec_open_vswitch *ovs_row = NULL;
-  int sesson_count = 0;
-  char buffer[SESSION_CNT_LENGTH]={0};
-  struct smap smap_other_config;
-
-  if(status_txn != NULL)
-    ovsdb_idl_txn_destroy(status_txn);
-
-  if(!cli_do_config_start())
-  {
-    VLOG_ERR("OVSDB transaction creation failed.");
-    return false;
-  }
-
-  ovs_row = ovsrec_open_vswitch_first(idl);
-  if(!ovs_row)
-  {
-     VLOG_ERR("Couldn't fetch open_vswitch row.");
-     cli_do_config_abort();
-     return false;
-  }
-
-  sesson_count = smap_get_int(&ovs_row->other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, 0);
-  snprintf(buffer, SESSION_CNT_LENGTH, "%d", --sesson_count);
-
-  smap_clone(&smap_other_config, &ovs_row->other_config);
-  if(sesson_count != 0)
-  {
-    smap_replace(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, buffer);
-  }
-  else if(sesson_count == 0)
-  {
-    smap_remove(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS);
-  }
-
-  ovsrec_open_vswitch_set_other_config(ovs_row, &smap_other_config);
-
-  if(cli_do_config_finish())
-    return true;
-  else
-  {
-    VLOG_ERR("OVSDB transaction commit failed.");
-    return false;
-  }
-}
-
-void
-vtysh_check_session(void)
-{
-  const struct ovsrec_open_vswitch *ovs_row = NULL;
-  int sesson_count = 0;
-  char buffer[SESSION_CNT_LENGTH]={0};
-  struct smap smap_other_config;
-
-  if(!cli_do_config_start())
-  {
-    VLOG_ERR("OVSDB transaction creation failed.");
-    exit(EXIT_FAILURE);
-  }
-
-  ovs_row = ovsrec_open_vswitch_first(idl);
-  if(!ovs_row)
-  {
-     VLOG_ERR("Couldn't fetch open_vswitch row.");
-     cli_do_config_abort();
-     exit(EXIT_FAILURE);
-  }
-
-  sesson_count = smap_get_int(&ovs_row->other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, 0);
-  snprintf(buffer, SESSION_CNT_LENGTH, "%d", ++sesson_count);
-
-  smap_clone(&smap_other_config, &ovs_row->other_config);
-  if(sesson_count <= MAX_CLI_SESSIONS)
-  {
-    smap_replace(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, buffer);
-    ovsrec_open_vswitch_set_other_config(ovs_row, &smap_other_config);
-  }
-  else
-  {
-    VLOG_ERR("Exceeded max number of sessions.");
-    printf("\nError: Maximum number of CLI sessions reached.\n");
-    cli_do_config_abort();
-    exit(EXIT_FAILURE);
-  }
-
-  if(cli_do_config_finish())
-    return;
-  else
-  {
-    VLOG_ERR("OVSDB transaction commit failed.");
-    exit(EXIT_FAILURE);
-  }
-
-}
 /*
  * The init for the ovsdb integration called in vtysh main function
  */
@@ -438,7 +334,6 @@ void vtysh_ovsdb_init(int argc, char *argv[])
     unixctl_command_register("exit", "", 0, 0, halon_vtysh_exit, &exiting);
 
     ovsdb_init(ovsdb_sock);
-    vtysh_check_session();
     vtysh_ovsdb_lib_init();
     free(ovsdb_sock);
 
@@ -502,7 +397,6 @@ char* vtysh_ovsdb_hostname_get()
 void vtysh_ovsdb_exit(void)
 {
     ovsdb_idl_destroy(idl);
-    vtysh_reduce_session_count();
 }
 
 /* This API is for fetching contents from DB to Vtysh IDL cache
@@ -513,6 +407,7 @@ boolean cli_do_config_start()
 {
   ovsdb_idl_run(idl);
   status_txn = ovsdb_idl_txn_create(idl);
+
   if(status_txn == NULL)
   {
      assert(0);

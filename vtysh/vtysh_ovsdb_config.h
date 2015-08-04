@@ -217,16 +217,4 @@ vtysh_ret_val vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, .
 /* All log/debug/err logging functions */
 void vtysh_ovsdb_config_logmsg(int loglevel, char *fmt,  ...);
 
-bool
-vtysh_reduce_session_count(void);
-
-void
-vtysh_segfault_sigaction(int signal, siginfo_t *si, void *arg);
-
-boolean cli_do_config_start();
-
-boolean cli_do_config_finish();
-
-void cli_do_config_abort();
-
 #endif /* VTYSH_OVSDB_CONFIG_H */
