@@ -46,6 +46,11 @@
 #include "prefix.h"
 #include "sockunion.h"
 
+/*
+** enable this if exra debugging is required
+*/
+#define EXTRA_DEBUG
+
 extern struct ovsdb_idl *idl;
 
 #define NET_BUFSZ    18
@@ -482,7 +487,9 @@ cli_router_bgp_cmd_execute (char *vrf_name, int64_t asn)
 	if (bgp_router_row) {
 	    ovsrec_bgp_router_set_vrf(bgp_router_row, vrf_row);
 	    ovsrec_bgp_router_set_asn(bgp_router_row, asn);
+#ifdef EXTRA_DEBUG
 	    vty_out(vty, "new bgp router created with asn : %d\n", asn);
+#endif // EXTRA_DEBUG
 	}
         else {
 	    ERRONEOUS_DB_TXN(bgp_router_txn, "bgp router instance creation failed");
@@ -505,7 +512,8 @@ DEFUN (router_bgp,
        BGP_STR
        AS_STR)
 {
-    return cli_router_bgp_cmd_execute(NULL, atoi(argv[0]));
+    return
+	cli_router_bgp_cmd_execute(NULL, atoi(argv[0]));
 }
 
 ALIAS (router_bgp,
@@ -558,7 +566,8 @@ DEFUN (no_router_bgp,
        BGP_STR
        AS_STR)
 {
-    return cli_no_router_bgp_cmd_execute(NULL, atoi(argv[0]));
+    return
+	cli_no_router_bgp_cmd_execute(NULL, atoi(argv[0]));
 }
 
 ALIAS (no_router_bgp,
@@ -614,7 +623,8 @@ DEFUN (bgp_router_id,
        "Override configured router identifier\n"
        "Manually configured router identifier\n")
 {
-    return cli_bgp_router_id_cmd_execute (argv[0]);
+    return
+	cli_bgp_router_id_cmd_execute (argv[0]);
 }
 
 DEFUN (no_bgp_router_id,
@@ -1217,8 +1227,9 @@ DEFUN (bgp_default_ipv4_unicast,
 
 /* Configure static BGP network */
 static int
-cli_bgp_network_cmd_execute (char *network) {
-    int ret = 0, i = 0;
+cli_bgp_network_cmd_execute (char *network)
+{
+   int ret = 0, i = 0;
     struct prefix p;
     struct in_addr *id;
     char buf[SU_ADDRSTRLEN];
@@ -1267,7 +1278,8 @@ DEFUN (bgp_network,
        "Specify a network to announce via BGP\n"
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 {
-    return cli_bgp_network_cmd_execute(argv[0]);
+    return
+	cli_bgp_network_cmd_execute(argv[0]);
 }
 
 /* "bgp import-check" configuration.  */
@@ -1328,7 +1340,7 @@ ALIAS (no_bgp_default_local_preference,
        "Configure default local preference value\n")
 
 static int
-create_neighbor_remote_as (struct vty *vty,
+cli_neighbor_remote_as_cmd_execute (struct vty *vty,
     int argc, char *argv[])
 {
     char *ip_addr = argv[0];
@@ -1341,7 +1353,9 @@ create_neighbor_remote_as (struct vty *vty,
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
     if (bgp_router_context) {
+#ifdef EXTRA_DEBUG
 	vty_out(vty, "in router asn %d\n", bgp_router_context->asn);
+#endif // EXTRA_DEBUG
     } else {
 	ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -1352,7 +1366,9 @@ create_neighbor_remote_as (struct vty *vty,
 	    ABORT_DB_TXN(txn, "no op command");
 	}
     } else {
+#ifdef EXTRA_DEBUG
 	vty_out(vty, "new neighbor, addr %s as %d\n", ip_addr, remote_as);
+#endif // EXTRA_DEBUG
 	ovs_bgp_neighbor = ovsrec_bgp_neighbor_insert(txn);
 	if (!ovs_bgp_neighbor) {
 	    ERRONEOUS_DB_TXN(txn, "bgp neighbor object creation failed");
@@ -1361,7 +1377,9 @@ create_neighbor_remote_as (struct vty *vty,
 	ovsrec_bgp_neighbor_set_name(ovs_bgp_neighbor, ip_addr);
 	ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_neighbor, false);
     }
+#ifdef EXTRA_DEBUG
     vty_out(vty, "setting remote as to %d\n", remote_as);
+#endif // EXTRA_DEBUG
     ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor, remote_as);
 
     /* done */
@@ -1369,7 +1387,7 @@ create_neighbor_remote_as (struct vty *vty,
 }
 
 static int
-delete_neighbor_remote_as (struct vty *vty,
+cli_no_neighbor_remote_as_cmd_execute (struct vty *vty,
     int argc, char *argv[])
 {
     report_unimplemented_command(vty);
@@ -1390,7 +1408,7 @@ DEFUN (neighbor_remote_as,
 	return CMD_WARNING;
     }
     return
-	create_neighbor_remote_as(vty, argc, argv);
+	cli_neighbor_remote_as_cmd_execute(vty, argc, argv);
 }
 
 DEFUN (no_neighbor,
@@ -1406,7 +1424,7 @@ DEFUN (no_neighbor,
 	return CMD_WARNING;
     }
     return
-	delete_neighbor_remote_as(vty, argc, argv);
+	cli_no_neighbor_remote_as_cmd_execute(vty, argc, argv);
 }
 
 ALIAS (no_neighbor,
@@ -1418,11 +1436,17 @@ ALIAS (no_neighbor,
        "Specify a BGP neighbor\n"
        AS_STR)
 
-/******************************************************************************/
+static int
+cli_neighbor_peer_group_cmd_execute (struct vty *vty,
+    int argc, char *argv[])
+{
+    report_unimplemented_command(vty);
+    return CMD_SUCCESS;
+}
 
 static int
-execute_neighbor_peer_group (struct vty *vty,
-    bool no, int argc, char *argv[])
+cli_no_neighbor_peer_group_cmd_execute (struct vty *vty,
+    int argc, char *argv[])
 {
     report_unimplemented_command(vty);
     return CMD_SUCCESS;
@@ -1436,7 +1460,7 @@ DEFUN (neighbor_peer_group,
        "Configure peer-group\n")
 {
     return
-	execute_neighbor_peer_group(vty, 0, argc, argv);
+	cli_neighbor_peer_group_cmd_execute(vty, argc, argv);
 }
 
 DEFUN (no_neighbor_peer_group,
@@ -1448,7 +1472,7 @@ DEFUN (no_neighbor_peer_group,
        "Configure peer-group\n")
 {
     return
-	execute_neighbor_peer_group(vty, 1, argc, argv);
+	cli_no_neighbor_peer_group_cmd_execute(vty, argc, argv);
 }
 
 DEFUN (no_neighbor_peer_group_remote_as,
@@ -1463,8 +1487,6 @@ DEFUN (no_neighbor_peer_group_remote_as,
     report_unimplemented_command(vty);
     return CMD_SUCCESS;
 }
-
-/******************************************************************************/
 
 DEFUN (neighbor_local_as,
        neighbor_local_as_cmd,
