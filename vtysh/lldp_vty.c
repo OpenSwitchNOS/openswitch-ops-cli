@@ -395,23 +395,23 @@ lldp_set_tlv(const char *tlv_name, const char *status)
     return CMD_OVSDB_FAILURE;
   }
 
-  if(0 == strcmp(tlv_name, "ManagementAddress"))
+  if(0 == strcmp(tlv_name, "management-address"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_MGMT_ADDR_ENABLE);
-  else if (0 == strcmp(tlv_name, "PortDescription"))
+  else if (0 == strcmp(tlv_name, "port-description"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE);
-  else if (0 == strcmp(tlv_name, "Port-VlanID"))
+  else if (0 == strcmp(tlv_name, "port-vlan-id"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_ID_ENABLE);
-  else if(0 == strcmp(tlv_name, "Port-VlanName"))
+  else if(0 == strcmp(tlv_name, "port-vlan-name"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_NAME_ENABLE);
-  else if(0 == strcmp(tlv_name, "Port-Protocol-VlanId"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_ID_ENABLE);
-  else if(0 == strcmp(tlv_name, "Port-ProtocolID"))
+  else if(0 == strcmp(tlv_name, "port-protocol-vlan-id"))
+    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_VLAN_ID_ENABLE);
+  else if(0 == strcmp(tlv_name, "port-protocol-id"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_ID_ENABLE);
-  else if(0 == strcmp(tlv_name, "SystemCapabilites"))
+  else if(0 == strcmp(tlv_name, "system-capabilities"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_CAP_ENABLE);
-  else if(0 == strcmp(tlv_name, "SystemDescription"))
+  else if(0 == strcmp(tlv_name, "system-description"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_DESC_ENABLE);
-  else if(0 == strcmp(tlv_name, "SystemName"))
+  else if(0 == strcmp(tlv_name, "system-name"))
     strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_NAME_ENABLE);
 
   if(strcmp("false",status) == 0)
@@ -437,23 +437,43 @@ lldp_set_tlv(const char *tlv_name, const char *status)
 
 DEFUN (cli_lldp_select_tlv,
        lldp_select_tlv_cmd,
-       "lldp select-tlv (ManagementAddress | PortDescription | Port-VlanID | Port-VlanName |\
-                         Port-Protocol-VlanId | Port-ProtocolID | SystemCapabilites |\
-                         SystemDescription | SystemName)",
+       "lldp select-tlv (management-address | port-description | port-vlan-id |\
+                        port-vlan-name | port-protocol-vlan-id |\
+                        port-protocol-id | system-capabilities |\
+                        system-description | system-name)",
        "Configure LLDP parameters\n"
-       "Specifies the TLVs to send and receive in LLDP packets.\n")
+       "Specifies the TLVs to send and receive in LLDP packets.\n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n")
 {
   return lldp_set_tlv(argv[0],"true");
 }
 
 DEFUN (cli_no_lldp_select_tlv,
        lldp_no_select_tlv_cmd,
-       "no lldp select-tlv (ManagementAddress | PortDescription | Port-VlanID | Port-VlanName |\
-                            Port-Protocol-VlanId | Port-ProtocolID | SystemCapabilites |\
-                            SystemDescription | SystemName)",
+       "no lldp select-tlv (management-address | port-description | port-vlan-id |\
+                        port-vlan-name | port-protocol-vlan-id |\
+                        port-protocol-id | system-capabilities |\
+                        system-description | system-name)",
        NO_STR
        "Configure LLDP parameters.\n"
-       "Specifies the TLVs to send and receive in LLDP packets.\n")
+       "Specifies the TLVs to send and receive in LLDP packets.\n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n"
+       " \n")
 {
   return lldp_set_tlv(argv[0],"false");
 }

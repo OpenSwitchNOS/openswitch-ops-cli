@@ -78,7 +78,7 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
     transmit_interval = atoi(data);
     if ( OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT != hold_time)
     {
-      vtysh_ovsdb_cli_print(p_msg, "lldp transmit-time %d", transmit_interval);
+      vtysh_ovsdb_cli_print(p_msg, "lldp timer %d", transmit_interval);
     }
   }
 
@@ -88,9 +88,41 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   {
     if (VTYSH_STR_EQ(data, "false"))
     {
-      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv management_address");
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv management-address");
     }
   }
+
+  data = NULL;
+  data = smap_get(ifrow_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_VLAN_ID_ENABLE);
+  if (data)
+  {
+    if (VTYSH_STR_EQ(data, "false"))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv port-protocol-vlan-id");
+    }
+  }
+
+  data = NULL;
+  data = smap_get(ifrow_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_ID_ENABLE);
+  if (data)
+  {
+    if (VTYSH_STR_EQ(data, "false"))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv port-protocol-id");
+    }
+  }
+
+  data = NULL;
+  data = smap_get(ifrow_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_NAME_ENABLE);
+  if (data)
+  {
+    if (VTYSH_STR_EQ(data, "false"))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv port-vlan-name");
+    }
+  }
+
+
 
   data = NULL;
   data = smap_get(ifrow_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE);
@@ -98,7 +130,7 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   {
     if (VTYSH_STR_EQ(data, "false"))
     {
-      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv port_description");
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv port-description");
     }
   }
 
@@ -108,7 +140,7 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   {
     if (VTYSH_STR_EQ(data, "false"))
     {
-      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv Port-vlan_id");
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv port-vlan-id");
     }
   }
 
@@ -118,7 +150,7 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   {
     if (VTYSH_STR_EQ(data, "false"))
     {
-      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv system_capabilites");
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv system-capabilities");
     }
   }
 
@@ -128,7 +160,7 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   {
     if (VTYSH_STR_EQ(data, "false"))
     {
-      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv system_description");
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv system-description");
     }
   }
 
@@ -138,7 +170,7 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   {
     if (VTYSH_STR_EQ(data, "false"))
     {
-      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv system_name");
+      vtysh_ovsdb_cli_print(p_msg, "no lldp select-tlv system-name");
     }
   }
 
