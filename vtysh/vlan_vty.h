@@ -40,6 +40,7 @@
 #include "openhalon-idl.h"
 #include "openhalon-dflt.h"
 #include "openvswitch/vlog.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 
 /* vlan length + 1 */
 #define VLAN_ID_LEN 5

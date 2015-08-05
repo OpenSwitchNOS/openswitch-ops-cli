@@ -39,6 +39,7 @@
 #include "command.h"
 #include "memory.h"
 #include "vtysh/vtysh.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 #include "log.h"
 #include "bgp_vty.h"
 #include "openvswitch/vlog.h"
