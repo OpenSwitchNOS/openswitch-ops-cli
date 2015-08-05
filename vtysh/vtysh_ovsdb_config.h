@@ -50,6 +50,7 @@ typedef enum vtysh_ovsdb_table_idenum
   e_led_table,
   e_route_table,
   e_subsystem_table,
+  e_radius_server_table,
   e_vtysh_table_id_max
 } vtysh_ovsdb_tableid;
 
@@ -154,6 +155,14 @@ typedef enum vtysh_ovsdb_subsystem_table_client_idenum
   e_vtysh_subsystem_table_client_id_max
 } vtysh_ovsdb_subsystem_table_clientid;
 
+/* Radius Server Table client-id type */
+typedef enum vtysh_ovsdb_radius_server_table_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_radius_server_table_client_id_first = 0,
+  e_vtysh_radius_server_table_config,
+  e_vtysh_radius_server_table_client_id_max
+} vtysh_ovsdb_radius_server_table_clientid;
 
 typedef struct vtysh_ovsdb_cbmsg_struct
 {

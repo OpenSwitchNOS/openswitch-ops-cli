@@ -21,7 +21,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c vtysh_ovsdb_con
                  l3static_vty.c vtysh_ovsdb_routetable.c vtysh_ovsdb_vrftable.c \
                  led_vty.c system_vty.c vtysh_ovsdb_ledtable.c\
                  fan_vty.c temperature_vty.c vtysh_ovsdb_subsystemtable.c \
-                 vtysh_ovsdb_vlantable.c
+                 vtysh_ovsdb_vlantable.c aaa_vty.c vtysh_ovsdb_radiusservertable.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -33,7 +33,7 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h vtysh_ovsdb_co
                   l3static_vty.h vtysh_ovsdb_routetable.h vtysh_ovsdb_vrftable.h \
                   led_vty.h system_vty.h vtysh_ovsdb_ledtable.h \
                   fan_vty.h temperature_vty.h vtysh_ovsdb_subsystemtable.h \
-                  vtysh_ovsdb_vlantable.h
+                  vtysh_ovsdb_vlantable.h aaa_vty.h vtysh_ovsdb_radiusservertable.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@
