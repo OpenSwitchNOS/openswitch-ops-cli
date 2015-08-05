@@ -298,7 +298,7 @@ static void show_routes (struct vty *vty)
     const struct ovsrec_bgp_neighbor *bgp_peer = NULL;
     route_psd_bgp_t psd, *ppsd = NULL;
     ppsd = &psd;
-    // Read BGP routes from RIB table
+    // Read BGP routes from Route table
     OVSREC_ROUTE_FOR_EACH(rib_row, idl) {
         if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
             continue;
@@ -315,7 +315,7 @@ static void show_routes (struct vty *vty)
             if (!strcmp(rib_row->address_family, OVSREC_ROUTE_ADDRESS_FAMILY_IPV4)) {
                 if (rib_row->n_nexthops) {
                     // Get the nexthop list
-                    //VLOG_INFO("No. of next hops : %d", rib_row->n_nexthop_list);
+                    VLOG_DBG("No. of next hops : %d", rib_row->n_nexthops);
                     for (ii = 0; ii < rib_row->n_nexthops; ii++) {
                         nexthop_row = rib_row->nexthops[ii];
                         vty_out (vty, "%-19s", nexthop_row->ip_address);
@@ -332,7 +332,13 @@ static void show_routes (struct vty *vty)
                                      rib_row->prefix);
                             vty_out (vty, "%7d ", BGP_ATTR_DEFAULT_WEIGHT);
                         } else {
-                            vty_out (vty, "%7d ", *bgp_peer->weight);
+                            if (bgp_peer->n_weight) {
+                                vty_out (vty, "%7d ", *bgp_peer->weight);
+                            } else {
+                                VLOG_INFO("BGP peer %s weight not configured\n",
+                                          bgp_peer->name);
+                                vty_out (vty, "%7d ", 0);
+                            }
                         }
                         // Print AS path
                         if (ppsd->aspath) {
