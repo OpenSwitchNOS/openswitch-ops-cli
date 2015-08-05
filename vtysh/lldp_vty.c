@@ -207,7 +207,9 @@ DEFUN (cli_lldp_no_set_hold_time,
        "Configure LLDP parameters.\n"
        "The amount of time a receiving device should hold the information sent by your device before discarding it.\n")
 {
-  return set_global_hold_time(OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
+  char def_holdtime[LLDP_TIMER_MAX_STRING_LENGTH]={0};
+  snprintf(def_holdtime,LLDP_TIMER_MAX_STRING_LENGTH, "%d",OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
+  return set_global_hold_time(def_holdtime);
 }
 
 /* Sets LLDP transmission time if the transmision time passed is non-default.
@@ -269,7 +271,9 @@ DEFUN (cli_no_lldp_set_timer,
        "Configure LLDP parameters.\n"
        "The interval at which LLDP status updates are transmitted to neighbors in seconds.\n")
 {
-  return lldp_set_global_timer(OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
+  char def_global_time[LLDP_TIMER_MAX_STRING_LENGTH]={0};
+  snprintf(def_global_time,LLDP_TIMER_MAX_STRING_LENGTH, "%d",OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
+  return lldp_set_global_timer(def_global_time);
 }
 
 /* Sets or increments lldp_num_clear_counters_requested value. */
