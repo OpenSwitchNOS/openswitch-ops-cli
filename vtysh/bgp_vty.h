@@ -25,6 +25,7 @@
 #define _BGP_VTY_H
 
 #define CMD_AS_RANGE "<1-4294967295>"
+#define NETWORK_MAX_LEN 49
 
 void bgp_vty_init (void);
 
