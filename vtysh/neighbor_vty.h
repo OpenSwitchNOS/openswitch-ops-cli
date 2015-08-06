@@ -17,13 +17,13 @@
 /****************************************************************************
  * @ingroup cli/vtysh
  *
- * @file arp_vty.h
- * To add declarations required for arp_vty.c
+ * @file neighbor_vty.h
+ * To add declarations required for neighbor_vty.c
  *
  ***************************************************************************/
 
-#ifndef _ARP_VTY_H
-#define _ARP_VTY_H
+#ifndef _NEIGHBOR_VTY_H
+#define _NEIGHBOR_VTY_H
 
 #define EMPTY_STRING    ""
 
@@ -69,6 +69,6 @@
     } while(0)                          \
 
 void
-arp_vty_init(void);
+neighbor_vty_init(void);
 
-#endif /* _ARP_VTY_H */
+#endif /* _NEIGHBOR_VTY_H */

@@ -18,7 +18,7 @@ vtysh_SOURCES = vtysh_main.c vtysh.c vtysh_user.c vtysh_config.c
 if ENABLE_OVSDB
 vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c vtysh_ovsdb_config.c \
                  vtysh_ovsdb_ovstable.c vtysh_ovsdb_intftable.c intf_vty.c \
-                 l3static_vty.c vtysh_ovsdb_routetable.c arp_vty.c
+                 l3static_vty.c vtysh_ovsdb_routetable.c neighbor_vty.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -27,7 +27,7 @@ noinst_HEADERS = vtysh.h vtysh_user.h
 if ENABLE_OVSDB
 noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h vtysh_ovsdb_config.h \
                   vtysh_ovsdb_ovstable.h vtysh_ovsdb_intftable.h intf_vty.h \
-                  l3static_vty.h vtysh_ovsdb_routetable.h arp_vty.h
+                  l3static_vty.h vtysh_ovsdb_routetable.h neighbor_vty.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@

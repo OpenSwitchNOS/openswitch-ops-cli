@@ -17,9 +17,9 @@
 /****************************************************************************
  * @ingroup cli/vtysh
  *
- * @file arp_vty.c
+ * @file neighbor_vty.c
  *
- * ARP CLI Commands. Currently has following show cmds:
+ * show arp and ipv6 neighbor commands.
  *      show arp
  *      show ipv6 neighbor
  *
@@ -38,16 +38,16 @@
 #include "vtysh/vtysh.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
-#include "arp_vty.h"
+#include "neighbor_vty.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
 #include "smap.h"
 
-VLOG_DEFINE_THIS_MODULE(vtysh_arp_cli);
+VLOG_DEFINE_THIS_MODULE(vtysh_neighbor_cli);
 extern struct ovsdb_idl *idl;
 
 static int show_arp_info() {
-    struct ovsrec_neighbor *row = NULL;
+    const struct ovsrec_neighbor *row = NULL;
 
     ovsdb_idl_run(idl);
 
@@ -82,7 +82,7 @@ static int show_arp_info() {
 
 /* Handle 'show ipv6 neighbor' command */
 static int show_ipv6_neighbors() {
-    struct ovsrec_neighbor *row = NULL;
+    const struct ovsrec_neighbor *row = NULL;
 
     ovsdb_idl_run(idl);
 
@@ -133,7 +133,7 @@ DEFUN (cli_ipv6_show,
 }
 
 /* Install arp and ipv6 show commands. */
-void arp_vty_init(void) {
+void neighbor_vty_init(void) {
     install_element(ENABLE_NODE, &cli_arp_show_cmd);
     install_element(ENABLE_NODE, &cli_ipv6_neighbors_show_cmd);
 }
