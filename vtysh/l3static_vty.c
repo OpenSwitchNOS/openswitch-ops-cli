@@ -166,16 +166,18 @@ static int show_routes_ip(struct vty *vty)
     char str[20];
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
-        if (row_route->address_family != NULL) {
-            if (!strcmp(row_route->address_family, "ipv4") && disp_flag == 1) {
-                flag = 1;
-                vty_out (vty, "\nDisplaying IP routes %s\n", VTY_NEWLINE);
-                disp_flag = 0;
-            }
-        }
-
         if (strcmp(row_route->address_family, "ipv4")) {
             continue;
+        }
+
+        if (row_route->selected == NULL || row_route->selected[0] == false) {
+            continue;
+        }
+
+        if (disp_flag == 1) {
+            flag = 1;
+            vty_out (vty, "\nDisplaying IP routes %s\n", VTY_NEWLINE);
+            disp_flag = 0;
         }
 
         if (row_route->prefix) {
@@ -473,16 +475,18 @@ static int show_routes_ipv6(struct vty *vty)
     char str[50];
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
-        if (row_route->address_family != NULL) {
-            if (!strcmp(row_route->address_family, "ipv6") && disp_flag == 1 ) {
-                flag = 1;
-                vty_out (vty, "\nDisplaying IPv6 routes %s\n", VTY_NEWLINE);
-                disp_flag = 0;
-            }
-        }
-
         if (strcmp(row_route->address_family, "ipv6")) {
             continue;
+        }
+
+        if (row_route->selected == NULL || row_route->selected[0] == false) {
+            continue;
+        }
+
+        if (disp_flag == 1) {
+            flag = 1;
+            vty_out (vty, "\nDisplaying IPv6 routes %s\n", VTY_NEWLINE);
+            disp_flag = 0;
         }
 
         if (row_route->prefix) {
