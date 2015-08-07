@@ -420,6 +420,13 @@ ovsdb_init(const char *db_path)
     /* Logrotate tables */
     logrotate_ovsdb_init(idl);
 
+    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands */
+    ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 }
 
 static void

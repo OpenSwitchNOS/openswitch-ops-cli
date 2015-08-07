@@ -22,7 +22,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  l3static_vty.c led_vty.c system_vty.c fan_vty.c \
                  temperature_vty.c vtysh_ovsdb_vlan_context.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c policy_vty.c \
-                 logrotate_vty.c
+                 logrotate_vty.c neighbor_vty.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -35,7 +35,7 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   l3static_vty.h led_vty.h system_vty.h fan_vty.h \
                   temperature_vty.h vtysh_ovsdb_vlan_context.h \
                   vtysh_ovsdb_router_context.h aaa_vty.h \
-                  logrotate_vty.h
+                  logrotate_vty.h neighbor_vty.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@
