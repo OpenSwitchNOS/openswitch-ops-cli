@@ -61,7 +61,7 @@ struct lookup_entry {
 };
 
 const struct lookup_entry match_table[]={
-  {"ip address prefix list", "prefix_list"},
+  {"ip address prefix-list", "prefix_list"},
   {NULL, NULL},
 };
 
