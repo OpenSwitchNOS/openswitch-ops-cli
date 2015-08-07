@@ -509,6 +509,7 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
   int ipv6_flag = 0;
   int len = 0;
   char str[50];
+  int i;
 
   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                            "vtysh_config_context_staticroute_clientcallback entered");
@@ -525,48 +526,49 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
       } else {
           break;
       }
+
       if (ipv4_flag == 1 || ipv6_flag == 1) {
-          if (row_route->prefix) {
-              memset(str, 0, sizeof(str));
-              len = 0;
-              len = snprintf(str, sizeof(str), "%s", row_route->prefix);
-              if (ipv4_flag == 1 && ipv6_flag == 0) {
-                  snprintf(str_temp, sizeof(str_temp), "ip route %s", str);
-              }
-              else {
-                  snprintf(str_temp, sizeof(str_temp), "ipv6 route %s", str);
-              }
-          } else {
-              return e_vtysh_error;
-          }
-
-          if (row_route->distance != NULL) {
-              if (row_route->n_nexthops && row_route->nexthops[0]->ip_address &&
-                  row_route->distance) {
-                  if (*row_route->distance == 1) {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
-                          row_route->nexthops[0]->ip_address);
-                  } else {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
-                          row_route->nexthops[0]->ip_address, *row_route->distance);
+          for (i = 0; i < row_route->n_nexthops; i++) {
+              if (row_route->prefix) {
+                  memset(str, 0, sizeof(str));
+                  len = 0;
+                  len = snprintf(str, sizeof(str), "%s", row_route->prefix);
+                  if (ipv4_flag == 1 && ipv6_flag == 0) {
+                      snprintf(str_temp, sizeof(str_temp), "ip route %s", str);
                   }
-
-              } else if (row_route->n_nexthops && row_route->nexthops[0]->ports
-                  && row_route->distance) {
-                  if (*row_route->distance == 1) {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
-                          row_route->nexthops[0]->ports[0]->name);
-                  } else {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
-                          row_route->nexthops[0]->ports[0]->name, *row_route->distance);
+                  else {
+                      snprintf(str_temp, sizeof(str_temp), "ipv6 route %s", str);
                   }
               } else {
                   return e_vtysh_error;
               }
-          }
 
+              if (row_route->distance != NULL) {
+                if (row_route->n_nexthops && row_route->nexthops[i]->ip_address &&
+                    row_route->distance) {
+                    if (*row_route->distance == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                            row_route->nexthops[i]->ip_address);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
+                            row_route->nexthops[i]->ip_address, *row_route->distance);
+                    }
+
+                } else if (row_route->n_nexthops && row_route->nexthops[i]->ports
+                    && row_route->distance) {
+                    if (*row_route->distance == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                            row_route->nexthops[i]->ports[0]->name);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
+                            row_route->nexthops[i]->ports[0]->name, *row_route->distance);
+                    }
+                } else {
+                    return e_vtysh_error;
+                }
+            }
+         }
       }
-
   }
   return e_vtysh_ok;
 }

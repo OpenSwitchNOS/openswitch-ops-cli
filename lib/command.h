@@ -530,6 +530,7 @@ struct cmd_token
 "(neighbor|interface|area|lsa|zebra|config|dbex|spf|route|lsdb|redistribute|hook|asbr|prefix|abr)"
 #define ISIS_STR    "IS-IS information\n"
 #define AREA_TAG_STR "[area tag]\n"
+#define RIB_STR    "Routing Information Base\n"
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration.\n"

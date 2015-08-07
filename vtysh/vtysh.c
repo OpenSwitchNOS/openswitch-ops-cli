@@ -3441,7 +3441,7 @@ vtysh_init_vty (void)
   vrf_vty_init();
   neighbor_vty_init();
   intf_vty_init();
-  l3static_vty_init();
+  l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();
 
