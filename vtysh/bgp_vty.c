@@ -45,6 +45,8 @@
 #include "util.h"
 #include "prefix.h"
 #include "sockunion.h"
+#include "vtysh/vtysh_ovsdb_config.h"
+#include "vtysh/vtysh_ovsdb_if.h"
 
 /*
 ** enable this if exra debugging is required
@@ -123,40 +125,40 @@ cli_command_result (enum ovsdb_idl_txn_status status)
 
 /********************** standard database txn operations ***********************/
 
-#define START_DB_TXN(txn) \
-    do { \
-	ovsdb_idl_run(idl); \
-	txn = ovsdb_idl_txn_create(idl); \
-	if (!txn) { \
-	    vty_out(vty, "ovsdb_idl_txn_create failed: %s: %d\n", \
-		__FILE__, __LINE__); \
-	    return CMD_WARNING; \
-	} \
+#define START_DB_TXN(txn)                                       \
+    do {                                                        \
+        enum ovsdb_idl_txn_status status;                       \
+        txn = cli_do_config_start();                            \
+        if (txn == NULL) {                                      \
+            vty_out(vty, "ovsdb_idl_txn_create failed: %s: %d\n",   \
+                    __FILE__, __LINE__);                            \
+            cli_do_config_abort(txn);                               \
+            return CMD_OVSDB_FAILURE;                               \
+        }                                                           \
     } while (0)
 
-#define END_DB_TXN(txn) \
-    do { \
-	enum ovsdb_idl_txn_status status = \
-	    ovsdb_idl_txn_commit_block(txn); \
-	ovsdb_idl_txn_destroy(txn); \
-	return cli_command_result(status); \
+#define END_DB_TXN(txn)                                   \
+    do {                                                  \
+        enum ovsdb_idl_txn_status status;                 \
+        status = cli_do_config_finish(txn);               \
+        return cli_command_result(status);                \
     } while (0)
 
-#define ERRONEOUS_DB_TXN(txn, error_message) \
-    do { \
-	ovsdb_idl_txn_destroy(txn); \
-	vty_out(vty, "database transaction failed: %s: %d -- %s\n", \
-	    __FILE__, __LINE__, error_message); \
-	return CMD_WARNING; \
+#define ERRONEOUS_DB_TXN(txn, error_message)                        \
+    do {                                                            \
+        cli_do_config_abort(txn);                                   \
+        vty_out(vty, "database transaction failed: %s: %d -- %s\n", \
+                __FILE__, __LINE__, error_message);                 \
+        return CMD_WARNING;                                         \
     } while (0)
 
 /* used when NO error is detected but still need to terminate */
-#define ABORT_DB_TXN(txn, message) \
-    do { \
-	ovsdb_idl_txn_destroy(txn); \
-	vty_out(vty, "database transaction aborted: %s: %d, %s\n", \
-	    __FILE__, __LINE__, message); \
-	return CMD_SUCCESS; \
+#define ABORT_DB_TXN(txn, message)                             \
+    do {                                                       \
+        cli_do_config_abort(txn);                                   \
+        vty_out(vty, "database transaction aborted: %s: %d, %s\n",  \
+                __FILE__, __LINE__, message);                       \
+        return CMD_SUCCESS;                                         \
     } while (0)
 
 /********************** helper routines which find things ***********************/
@@ -369,8 +371,7 @@ DEFUN(vtysh_show_ip_bgp,
       BGP_STR)
 {
     const struct ovsrec_bgp_router *bgp_row = NULL;
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
+
     vty_out (vty, BGP_SHOW_SCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
     vty_out (vty, BGP_SHOW_OCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
     bgp_row = ovsrec_bgp_router_first(idl);

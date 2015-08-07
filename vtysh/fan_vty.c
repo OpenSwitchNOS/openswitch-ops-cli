@@ -34,6 +34,8 @@
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
+#include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_fan_cli);
 extern struct ovsdb_idl *idl;
@@ -48,30 +50,44 @@ extern struct ovsdb_idl *idl;
 static int vtysh_ovsdb_fan_speed_set( char* speed, boolean set )
 {
     const struct ovsrec_subsystem *row = NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
     struct smap smap_other_config;
 
-    if(!cli_do_config_start())
+    status_txn = cli_do_config_start();
+
+    if(status_txn == NULL)
     {
         VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
     row = ovsrec_subsystem_first(idl);
     if(!row)
     {
         VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-        cli_do_config_abort();
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
     smap_clone(&smap_other_config, &row->other_config);
 
     if(set && speed)
+    {
         smap_replace(&smap_other_config, FAN_SPEED_OVERRIDE_STR, speed);
+    }
     else
+    {
         smap_remove(&smap_other_config,FAN_SPEED_OVERRIDE_STR);
+    }
     ovsrec_subsystem_set_other_config(row,&smap_other_config);
     smap_destroy(&smap_other_config);
-    if(cli_do_config_finish())
+
+    status = cli_do_config_finish(status_txn);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
         return CMD_SUCCESS;
+    }
     else
     {
         VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -112,8 +128,6 @@ static void  vtysh_ovsdb_fan_show()
     const struct ovsrec_subsystem *subsysrow = NULL;
     const char* override = NULL ;
     int64_t rpm = 0 ;
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
     subsysrow = ovsrec_subsystem_first(idl);
     /* HALON_TODO: there could be a case where multiple subsystem rows could be present.
        In such case we may need to check for respective row of subsystem table*/

@@ -3424,6 +3424,7 @@ DEFUN (config_write_terminal,
   return CMD_SUCCESS;
 }
 
+#ifndef ENABLE_OVSDB
 /* Write current configuration into the terminal. */
 ALIAS (config_write_terminal,
        show_running_config_cmd,
@@ -3431,7 +3432,6 @@ ALIAS (config_write_terminal,
        SHOW_STR
        "running configuration\n")
 
-#ifndef ENABLE_OVSDB
 /* Write startup configuration into the terminal. */
 DEFUN (show_startup_config,
        show_startup_config_cmd,
@@ -4260,7 +4260,9 @@ install_default (enum node_type node)
   install_element (node, &config_write_file_cmd);
   install_element (node, &config_write_memory_cmd);
   install_element (node, &config_write_cmd);
+#ifndef ENABLE_OVSDB
   install_element (node, &show_running_config_cmd);
+#endif
 }
 
 /* Initialize command interface. Install basic nodes and commands. */

@@ -39,8 +39,12 @@
 #include "command.h"
 #include "memory.h"
 #include "vtysh/vtysh.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 #include "log.h"
 #include "bgp_vty.h"
+#include "logrotate_vty.h"
+#include "fan_vty.h"
+#include "temperature_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 
@@ -48,6 +52,8 @@
 #include "vswitch-idl.h"
 #include "smap.h"
 #endif
+
+#include "aaa_vty.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -1138,7 +1144,6 @@ vtysh_exit (struct vty *vty)
     {
     case VIEW_NODE:
     case ENABLE_NODE:
-      vtysh_reduce_session_count();
       exit (0);
       break;
     case CONFIG_NODE:
@@ -1339,12 +1344,18 @@ DEFUN (vtysh_interface,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
-   vty->node = INTERFACE_NODE;
-   static char ifnumber[50];
-   if (strlen(argv[0]) < 50)
-      memcpy(ifnumber, argv[0], strlen(argv));
-   vty->index = ifnumber;
-   return CMD_SUCCESS;
+  vty->node = INTERFACE_NODE;
+  static char ifnumber[MAX_IFNAME_LENGTH];
+  if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
+  {
+    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+  }
+  else
+  {
+    return CMD_ERR_NO_MATCH;
+  }
+  vty->index = ifnumber;
+  return CMD_SUCCESS;
 }
 
 DEFUN ( vtysh_mult_cxt_test,
@@ -1357,29 +1368,6 @@ DEFUN ( vtysh_mult_cxt_test,
 
    return CMD_SUCCESS;
 }
-
-DEFUN (vtysh_demo_generate_segfault,
-       vtysh_demo_generate_segfault_cmd,
-       "demo gen-segfault",
-       "Select demo command to execute\n"
-       "Generate segmentation fault\n")
-{
-  int *test_variable = NULL;
-
-  *test_variable = 1;
-  return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_demo_generate_assert,
-       vtysh_demo_generate_assert_cmd,
-       "demo gen-assert",
-       "Select demo command to execute\n"
-       "Generate assert\n")
-{
-  assert(0);
-  return CMD_SUCCESS;
-}
-
 #else
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_interface,
@@ -2057,21 +2045,16 @@ DEFUN (vtysh_show_running_config,
    return CMD_SUCCESS;
 }
 
-ALIAS (vtysh_show_running_config,
-      vtysh_do_show_running_config_cmd,
-      "do show running-config",
-      SHOW_STR
-      "Current running configuration\n")
 
-DEFUN (vtysh_show_ovsdb_config_table_client_list,
-      vtysh_show_ovdb_config_table_client_list_cmd,
-      "show ovsdb-config-table-client-list",
-      "Ovsdb Config Table Client List\n"
-      "Ovsdb Config Table Client List\n")
+DEFUN_HIDDEN (vtysh_show_context_client_list,
+              vtysh_show_context_client_list_cmd,
+              "show context-client-list",
+              SHOW_STR
+              "Vtysh Context Table Client List\n")
 {
-   vty_out (vty, "%sCurrent Ovsdb Config Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
+   vty_out (vty, "%sCurrent Context Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
 
-   vtysh_ovsdb_table_list_clients (vty);
+   vtysh_context_table_list_clients (vty);
    return CMD_SUCCESS;
 }
 #else
@@ -2356,6 +2339,16 @@ DEFUN (vtysh_start_bash,
   return CMD_SUCCESS;
 }
 
+DEFUN (vtysh_passwd,
+       vtysh_passwd_cmd,
+       "passwd WORD",
+       "Change user password \n"
+       "User whose password is to be changed\n")
+{
+  execute_command ("passwd", 1, argv);
+  return CMD_SUCCESS;
+}
+
 DEFUN (vtysh_start_zsh,
       vtysh_start_zsh_cmd,
       "start-shell zsh",
@@ -2510,6 +2503,17 @@ vtysh_prompt (void)
    return buf;
 }
 
+DEFUN(vtysh_user_add,
+       vtysh_user_add_cmd,
+       "useradd WORD",
+       "Adding a new user\n")
+{
+       char *arg[2];
+       arg[0]="/usr/sbin/adduser";
+       arg[1]=argv[0];
+       execute_command("sudo", 2,(const char **)arg);
+       return CMD_SUCCESS;
+}
 
 #ifdef ENABLE_OVSDB
 
@@ -2566,7 +2570,6 @@ int vty_alias_load_alias_table(void)
 {
    struct ovsrec_cli_alias *alias_row = NULL;
 
-   ovsdb_idl_run(idl);
    vtysh_alias_count = 0;
 
    OVSREC_CLI_ALIAS_FOR_EACH(alias_row, idl)
@@ -2615,19 +2618,17 @@ int vtysh_alias_save_alias(char *name, char *definition)
    struct ovsrec_open_vswitch *ovs_row = NULL;
    enum ovsdb_idl_txn_status status;
 
-   ovsdb_idl_run(idl);
-   status_txn = ovsdb_idl_txn_create(idl);
+   status_txn = cli_do_config_start();
 
-   if (!status_txn) {
+   if (status_txn == NULL) {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
    }
    alias_row = ovsrec_cli_alias_insert(status_txn);
    ovsrec_cli_alias_set_alias_name(alias_row, name);
    ovsrec_cli_alias_set_alias_definition(alias_row, definition);
-   status = ovsdb_idl_txn_commit_block(status_txn);
-   ovsdb_idl_txn_destroy(status_txn);
-   status_txn = NULL;
+   status = cli_do_config_finish(status_txn);
    if ((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
       && (status != TXN_UNCHANGED))
    {
@@ -2651,21 +2652,19 @@ int vtysh_alias_delete_alias(char *name)
    struct ovsdb_idl_txn *status_txn = NULL;
    enum ovsdb_idl_txn_status status;
 
-   ovsdb_idl_run(idl);
 
    OVSREC_CLI_ALIAS_FOR_EACH (alias_row, idl)
    {
       if (strcmp(alias_row->alias_name, name) == 0) {
-         status_txn = ovsdb_idl_txn_create(idl);
+         status_txn = cli_do_config_start();
 
-         if (!status_txn) {
+         if (status_txn == NULL) {
             VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+            cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
          }
          ovsrec_cli_alias_delete(alias_row);
-         status = ovsdb_idl_txn_commit_block(status_txn);
-         ovsdb_idl_txn_destroy(status_txn);
-         status_txn = NULL;
+         status = cli_do_config_finish(status_txn);
          if ((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
                && (status != TXN_UNCHANGED))
          {
@@ -3120,12 +3119,10 @@ vtysh_init_vty (void)
   install_element (VIEW_NODE, &vtysh_test_regex_cmd);
   install_element (ENABLE_NODE, &vtysh_test_regex_cmd);
   install_element (INTERFACE_NODE, &vtysh_mult_cxt_test_cmd);
-  install_element (VIEW_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
-  install_element (ENABLE_NODE, &vtysh_show_ovdb_config_table_client_list_cmd);
+  install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
+  install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
-  install_element(CONFIG_NODE, &vtysh_demo_generate_segfault_cmd);
-  install_element(CONFIG_NODE, &vtysh_demo_generate_segfault_cmd);
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
@@ -3232,10 +3229,6 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_interface_cmd);
    install_element (CONFIG_NODE, &vtysh_no_interface_cmd);
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-#ifdef ENABLE_OVSDB
-   install_element (CONFIG_NODE, &vtysh_do_show_running_config_cmd);
-   install_element (INTERFACE_NODE, &vtysh_do_show_running_config_cmd);
-#endif /* ENABLE_OVSDB */
 
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
@@ -3332,13 +3325,17 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
+  install_element (CONFIG_NODE, &vtysh_passwd_cmd);
+  install_element (CONFIG_NODE, &vtysh_user_add_cmd);
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
   vrf_vty_init();
+  neighbor_vty_init();
   intf_vty_init();
   l3static_vty_init();
   vlan_vty_init();
+  aaa_vty_init();
 
   /* Initialise System LED cli */
   led_vty_init();
@@ -3347,5 +3344,6 @@ vtysh_init_vty (void)
   fan_vty_init();
   temperature_vty_init();
   alias_vty_init();
+  logrotate_vty_init();
 #endif
 }

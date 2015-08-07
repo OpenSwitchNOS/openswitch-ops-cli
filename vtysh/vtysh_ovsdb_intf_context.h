@@ -15,17 +15,17 @@
  under the License.
 */
 /****************************************************************************
- * @ingroup quagga
+ * @ingroup cli
  *
- * @file vtysh_ovsdb_intftable.h
- * Source for registering client callback with interface table.
+ * @file vtysh_ovsdb_intf_context.h
+ * Source for registering client callback with interface context.
  *
  ***************************************************************************/
 
-#ifndef VTYSH_OVSDB_INTFTABLE_H
-#define VTYSH_OVSDB_INTFTABLE_H
+#ifndef VTYSH_OVSDB_INTF_CONTEXT_H
+#define VTYSH_OVSDB_INTF_CONTEXT_H
 
-int vtysh_ovsdb_init_intftableclients();
-vtysh_ret_val vtysh_ovsdb_intftable_clientcallback(void *p_private);
+int vtysh_init_intf_context_clients();
+vtysh_ret_val vtysh_intf_context_clientcallback(void *p_private);
 
-#endif /* VTYSH_OVSDB_INTFTABLE_H */
+#endif /* VTYSH_OVSDB_INTF_CONTEXT_H */

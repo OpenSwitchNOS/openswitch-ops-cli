@@ -38,6 +38,8 @@
 #include "vrf_vty.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
+#include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -126,52 +128,6 @@ struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
 }
 
 /*
- * Checks if interface is already part of bridge.
- */
-struct ovsrec_port* check_iface_in_bridge(const char *if_name)
-{
-    size_t i, j, k;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
-    ovs_row = ovsrec_open_vswitch_first(idl);
-    for (i = 0; i < ovs_row->n_bridges; i++) {
-        struct ovsrec_bridge *br_cfg = ovs_row->bridges[i];
-        for (j = 0; j < br_cfg->n_ports; j++) {
-            struct ovsrec_port *port_cfg = br_cfg->ports[j];
-            for (k = 0; k < port_cfg->n_interfaces; k++) {
-                struct ovsrec_interface *iface_cfg = port_cfg->interfaces[k];
-                if (strcmp(if_name, iface_cfg->name) == 0) {
-                    return port_cfg;
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
-/*
- * Checks if interface is already part of a VRF.
- */
-struct ovsrec_port* check_iface_in_vrf(const char *if_name)
-{
-    size_t i, j, k;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
-    ovs_row = ovsrec_open_vswitch_first(idl);
-    for (i = 0; i < ovs_row->n_vrfs; i++) {
-        struct ovsrec_vrf *vrf_cfg = ovs_row->vrfs[i];
-        for (j = 0; j < vrf_cfg->n_ports; j++) {
-            struct ovsrec_port *port_cfg = vrf_cfg->ports[j];
-            for (k = 0; k < port_cfg->n_interfaces; k++) {
-                struct ovsrec_interface *iface_cfg = port_cfg->interfaces[k];
-                if (strcmp(if_name, iface_cfg->name) == 0) {
-                    return port_cfg;
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
-/*
  * Adds a new VRF to the VRF table.
  * Takes VRF name as an argument.
  */
@@ -182,13 +138,13 @@ static int vrf_add(const char *vrf_name)
     struct ovsrec_open_vswitch *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -198,8 +154,7 @@ static int vrf_add(const char *vrf_name)
         VLOG_DBG(
                 "%s VRF Name can only be 32 characters. Check the VRF name"
                 " \"%s\" and try again!", __func__, vrf_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -210,8 +165,7 @@ static int vrf_add(const char *vrf_name)
         vty_out (vty, "Error: VRF already exists.%s", VTY_NEWLINE);
         VLOG_DBG("%s Trying to add a VRF which is already present. Check if"
                 " VRF name \"%s\" is already present.", __func__, vrf_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 #else
@@ -223,8 +177,7 @@ static int vrf_add(const char *vrf_name)
         VLOG_DBG(
                 "%s Only default VRF is allowed right now. This default VRF is"
                 " created as part of system bootup.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 #endif
@@ -236,8 +189,7 @@ static int vrf_add(const char *vrf_name)
         VLOG_DBG(
                 "%s Open VSwitch table did not have any rows. Ideally it"
                 " should have just one entry.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -259,9 +211,7 @@ static int vrf_add(const char *vrf_name)
     ovsrec_open_vswitch_set_vrfs(ovs_row, &vrf_row, ovs_row->n_vrfs + 1);
 #endif
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
@@ -299,13 +249,13 @@ static int vrf_delete(const char *vrf_name) {
     struct ovsrec_port *port_row = NULL;
     struct ovsrec_port **ports;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -313,16 +263,14 @@ static int vrf_delete(const char *vrf_name) {
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
         VLOG_DBG("%s VRF \"%s\" is not found.", __func__, vrf_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
     if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
         vty_out(vty, "Error: Cannot delete default VRF.%s", VTY_NEWLINE);
         VLOG_DBG("%s Cannot delete default VRF.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -345,8 +293,7 @@ static int vrf_delete(const char *vrf_name) {
         VLOG_DBG(
                 "%s Open VSwitch table did not have any rows. Ideally it"
                 " should have just one entry.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -366,9 +313,7 @@ static int vrf_delete(const char *vrf_name) {
 #endif
 
     ovsrec_vrf_delete(vrf_row);
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS) {
         VLOG_DBG("%s The command succeeded and VRF \"%s\" was deleted",
@@ -402,13 +347,13 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     struct ovsrec_port **ports;
     size_t i, n;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction"
-                " using ovsdb_idl_txn_create()", __func__);
+                " using cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -417,8 +362,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -426,8 +370,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
         VLOG_DBG("%s VRF \"%s\" is not present in VRF table.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -439,8 +382,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
         vty_out(vty, "Already attached to default VRF.%s", VTY_NEWLINE);
         VLOG_DBG("%s Already attached to default VRF.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -450,8 +392,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
                 if_name, vrf_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is already attached to VRF \"%s\"",
                 __func__, if_name, vrf_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -471,9 +412,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     ovsrec_vrf_set_ports(vrf_row, ports, vrf_row->n_ports + 1);
     free(ports);
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
@@ -509,13 +448,13 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
     struct ovsrec_port **ports;
     size_t i, n;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -523,8 +462,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
         VLOG_DBG("%s VRF \"%s\" is not found.", __func__, vrf_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -532,8 +470,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
         vty_out(vty, "Command not supported. Cannot detach from"
                 " default VRF.%s", VTY_NEWLINE);
         VLOG_DBG("%s Cannot detach from default VRF.", __func__);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -542,8 +479,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
         VLOG_DBG(
                 "%s Interface \"%s\" does not have any port configuration",
                 __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -551,8 +487,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -568,8 +503,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
                 if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to VRF \"%s\".",
                 __func__, if_name, vrf_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -591,9 +525,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
     ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
     free(ports);
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
@@ -629,13 +561,13 @@ static int vrf_routing(const char *if_name)
     struct ovsrec_port **ports;
     size_t i, n;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -644,17 +576,15 @@ static int vrf_routing(const char *if_name)
         VLOG_DBG(
                 "%s Interface \"%s\" does not have any port configuration",
                 __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
-    if (!check_iface_in_bridge(if_name)) {
+    if (check_iface_in_vrf(if_name)) {
         VLOG_DBG(
                 "%s Interface \"%s\" is already L3. No change required.",
                 __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -678,9 +608,7 @@ static int vrf_routing(const char *if_name)
     ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
     free(ports);
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
@@ -718,13 +646,13 @@ static int vrf_no_routing(const char *if_name)
     struct ovsrec_port **bridge_ports;
     size_t i, n;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -733,8 +661,7 @@ static int vrf_no_routing(const char *if_name)
         VLOG_DBG(
                 "%s Interface \"%s\" is already L2. No change required.",
                 __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     } else if ((vrf_row = port_vrf_lookup(port_row)) != NULL) {
         vrf_ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
@@ -760,9 +687,7 @@ static int vrf_no_routing(const char *if_name)
     ovsrec_port_set_ip4_address_secondary(port_row, NULL, 0);
     ovsrec_port_set_ip6_address(port_row, NULL);
     ovsrec_port_set_ip6_address_secondary(port_row, NULL, 0);
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" is now L2"
@@ -796,12 +721,12 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
     char **secondary_ip4_addresses;
     size_t i;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
-    if (!status_txn) {
+    status_txn = cli_do_config_start();
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -810,8 +735,7 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
     if (!secondary) {
@@ -832,9 +756,7 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
         free(secondary_ip4_addresses);
     }
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" was configured"
@@ -867,13 +789,13 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
     char **secondary_ip4_addresses;
     size_t i, n;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -883,8 +805,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
         VLOG_DBG(
                 "%s Interface \"%s\" does not have any port configuration",
                 __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -892,8 +813,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -903,16 +823,14 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
                     if_name, VTY_NEWLINE);
             VLOG_DBG("%s No IP address configured on interface \"%s\".",
                     __func__, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         if (strcmp(port_row->ip4_address, ip4) != 0) {
             vty_out(vty, "Error: IP Address %s not found.%s", ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface "
                     "\"%s\".", __func__, ip4, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         ovsrec_port_set_ip4_address(port_row, NULL);
@@ -924,8 +842,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
             VLOG_DBG(
                     "%s No secondary IP address configured on interface"
                     " \"%s\".", __func__, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         bool ip4_address_match = false;
@@ -941,8 +858,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
                     ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface"
                     " \"%s\".", __func__, ip4, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         secondary_ip4_addresses = xmalloc(
@@ -958,9 +874,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
         free(secondary_ip4_addresses);
     }
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
@@ -995,13 +909,13 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
     char **secondary_ipv6_addresses;
     size_t i;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -1011,8 +925,7 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -1035,9 +948,7 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
         free(secondary_ipv6_addresses);
     }
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" was configured"
@@ -1071,13 +982,13 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
     char **secondary_ipv6_addresses;
     size_t i, n;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
-    if (!status_txn) {
+    if (status_txn == NULL) {
         VLOG_DBG(
                 "%s Got an error when trying to create a transaction using"
-                " ovsdb_idl_txn_create()", __func__);
+                " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -1087,8 +998,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
         VLOG_DBG(
                 "%s Interface \"%s\" does not have any port configuration",
                 __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -1096,8 +1006,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -1107,8 +1016,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
                     " %s.%s", if_name, VTY_NEWLINE);
             VLOG_DBG("%s No IPv6 address configured on interface"
                     " \"%s\".", __func__, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         if (strcmp(port_row->ip6_address, ipv6) != 0) {
@@ -1117,8 +1025,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
             VLOG_DBG(
                     "%s IPv6 address \"%s\" not configured on interface"
                     " \"%s\".", __func__, ipv6, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         ovsrec_port_set_ip6_address(port_row, NULL);
@@ -1130,8 +1037,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
             VLOG_DBG(
                     "%s No secondary IPv6 address configured on interface"
                     " \"%s\".", __func__, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         bool ipv6_address_match = false;
@@ -1148,8 +1054,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
             VLOG_DBG(
                     "%s IPv6 address \"%s\" not configured on interface"
                     " \"%s\".", __func__, ipv6, if_name);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
         secondary_ipv6_addresses = xmalloc(
@@ -1165,9 +1070,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
         free(secondary_ipv6_addresses);
     }
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
@@ -1196,8 +1099,6 @@ static int show_vrf_info()
 {
     struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
-
-    ovsdb_idl_run(idl);
 
     vrf_row = ovsrec_vrf_first(idl);
     if (!vrf_row) {

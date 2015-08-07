@@ -15,17 +15,21 @@
  under the License.
 */
 /****************************************************************************
- * @ingroup quagga
+ * @ingroup cli
  *
- * @file vtysh_ovsdb_subsystemtable.h
- * Source for registering client callback with subsystem table.
+ * @file vtysh_ovsdb_config_context.h
+ * Source for registering client callback with config context.
  *
  ***************************************************************************/
 
-#ifndef VTYSH_OVSDB_SUBSYSTEMTABLE_H
-#define VTYSH_OVSDB_SUBSYSTEMTABLE_H
+#ifndef VTYSH_OVSDB_CONFIG_CONTEXT_H
+#define VTYSH_OVSDB_CONFIG_CONTEXT_H
 
-int vtysh_ovsdb_init_subsystemtableclients();
-vtysh_ret_val vtysh_ovsdb_subsystemtable_clientcallback(void *p_private);
+int vtysh_init_config_context_clients();
+vtysh_ret_val vtysh_config_context_global_clientcallback(void *p_private);
+vtysh_ret_val vtysh_config_context_vrf_clientcallback(void *p_private);
+vtysh_ret_val vtysh_config_context_fan_clientcallback(void *p_private);
+vtysh_ret_val vtysh_config_context_led_clientcallback(void *p_private);
+vtysh_ret_val vtysh_config_context_staticroute_clientcallback(void *p_private);
 
-#endif /* VTYSH_OVSDB_SUBSYSTEMTABLE_H */
+#endif /* VTYSH_OVSDB_CONFIG_CONTEXT_H */

@@ -493,6 +493,7 @@ struct cmd_token
 /* Common descriptions. */
 #define SHOW_STR    "Show running system information\n"
 #define COPY_STR    "Copy from one config to another\n"
+#define AAA_STR     "Authentication, Authorization and Accounting\n"
 #define IP_STR      "IP information\n"
 #define IPV6_STR    "IPv6 information\n"
 #define NO_STR      "Negate a command or set its defaults\n"
@@ -536,6 +537,11 @@ struct cmd_token
 #define VLAN_INT_RANGE_STR  "VLAN internal range configuration\n"
 #define SHOW_VLAN_STR       "Show VLAN Configuration\n"
 #define SHOW_VLAN_INT_STR   "Show VLAN internal configuration\n"
+
+/* Help strings for show commands */
+#define SHOW_ARP_STR    "Show IPv4 addresses from neighbor table\n"
+#define SHOW_IPV6_STR   "Show IPv6 info\n"
+#define SHOW_IPV6_NEIGHBOR_STR "Show IPv6 addresses from neighbor table\n"
 
 #define CONF_BACKUP_EXT ".sav"
 

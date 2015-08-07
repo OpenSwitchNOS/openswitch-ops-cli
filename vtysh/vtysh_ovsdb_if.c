@@ -25,6 +25,8 @@
 #include <stdio.h>
 #include "vector.h"
 #include "command.h"
+#include <pthread.h>
+#include <semaphore.h>
 #include "vswitch-idl.h"
 #include "util.h"
 #include "unixctl.h"
@@ -40,6 +42,7 @@
 
 #include "openhalon-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 #include "assert.h"
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
@@ -59,9 +62,23 @@ static unsigned int idl_seqno;
 static char *appctl_path = NULL;
 static struct unixctl_server *appctl;
 static struct ovsdb_idl_txn *txn;
-static struct ovsdb_idl_txn *status_txn;
 
 boolean exiting = false;
+volatile boolean vtysh_exit = false;
+/* To serialize updates to OVSDB.
+ * interface threads calls to update OVSDB states. */
+pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Macros to lock and unlock mutexes in a verbose manner. */
+#define VTYSH_OVSDB_LOCK { \
+                VLOG_DBG("%s(%d): VTYSH_OVSDB_LOCK: taking lock...", __FUNCTION__, __LINE__); \
+                pthread_mutex_lock(&vtysh_ovsdb_mutex); \
+}
+
+#define VTYSH_OVSDB_UNLOCK { \
+                VLOG_DBG("%s(%d): VTYSH_OVSDB_UNLOCK: releasing lock...", __FUNCTION__, __LINE__); \
+                pthread_mutex_unlock(&vtysh_ovsdb_mutex); \
+}
 
 extern struct vty *vty;
 
@@ -71,14 +88,13 @@ extern struct vty *vty;
 static void
 vtysh_run()
 {
-    while(!ovsdb_idl_has_lock(idl))
-    {
-        ovsdb_idl_run(idl);
-        unixctl_server_run(appctl);
+    ovsdb_idl_run(idl);
+}
 
-        ovsdb_idl_wait(idl);
-        unixctl_server_wait(appctl);
-    }
+static void
+vtysh_wait(void)
+{
+    ovsdb_idl_wait(idl);
 }
 
 static void
@@ -226,7 +242,6 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
 }
 
-
 /***********************************************************
  * @func        : alias_ovsdb_init
  * @detail      : Initialise Alias table
@@ -243,6 +258,21 @@ alias_ovsdb_init(struct ovsdb_idl *idl)
     return;
 }
 
+static void
+radius_server_ovsdb_init(struct ovsd_idl *idl)
+{
+
+    /* Add radius-server columns */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_radius_servers);
+    ovsdb_idl_add_table(idl, &ovsrec_table_radius_server);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_retries);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_udp_port);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_timeout);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_passkey);
+
+    return;
+}
 
 /***********************************************************
  * @func        : system_ovsdb_init
@@ -313,6 +343,21 @@ system_ovsdb_init(struct ovsd_idl *idl)
 
 }
 
+static void
+logrotate_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_logrotate_config);
+}
+
+static void
+vlan_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_vlan);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_id);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_admin);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -329,10 +374,14 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_set_lock(idl, idl_lock);
     free(idl_lock);
     idl_seqno = ovsdb_idl_get_seqno(idl);
+    ovsdb_idl_enable_reconnect(idl);
 
     /* Add hostname columns */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_hostname);
+
+    /* Add AAA columns */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_aaa);
 
     /* Add tables and columns for LLDP configuration */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
@@ -353,6 +402,9 @@ ovsdb_init(const char *db_path)
     /* VRF tables */
     vrf_ovsdb_init(idl);
 
+    /* Radius server table */
+    radius_server_ovsdb_init(idl);
+
     /* Policy tables */
     policy_ovsdb_init(idl);
 
@@ -362,8 +414,19 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
 
-    /* Fetch data from DB */
-    vtysh_run();
+    /* vlan table */
+    vlan_ovsdb_init(idl);
+
+    /* Logrotate tables */
+    logrotate_ovsdb_init(idl);
+
+    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands */
+    ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 }
 
 static void
@@ -375,110 +438,6 @@ halon_vtysh_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
     unixctl_command_reply(conn, NULL);
 }
 
-void
-vtysh_segfault_sigaction(int signal, siginfo_t *si, void *arg)
-{
-  vtysh_reduce_session_count();
-  exit(0);
-}
-
-bool
-vtysh_reduce_session_count(void)
-{
-  const struct ovsrec_open_vswitch *ovs_row = NULL;
-  int sesson_count = 0;
-  char buffer[SESSION_CNT_LENGTH]={0};
-  struct smap smap_other_config;
-
-  if(status_txn != NULL)
-    ovsdb_idl_txn_destroy(status_txn);
-
-  if(!cli_do_config_start())
-  {
-    VLOG_ERR("OVSDB transaction creation failed.");
-    return false;
-  }
-
-  ovs_row = ovsrec_open_vswitch_first(idl);
-  if(!ovs_row)
-  {
-     VLOG_ERR("Couldn't fetch open_vswitch row.");
-     cli_do_config_abort();
-     return false;
-  }
-
-  sesson_count = smap_get_int(&ovs_row->other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, 0);
-  snprintf(buffer, SESSION_CNT_LENGTH, "%d", --sesson_count);
-
-  smap_clone(&smap_other_config, &ovs_row->other_config);
-  if(sesson_count != 0)
-  {
-    smap_replace(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, buffer);
-  }
-  else if(sesson_count == 0)
-  {
-    smap_remove(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS);
-  }
-
-  ovsrec_open_vswitch_set_other_config(ovs_row, &smap_other_config);
-
-  if(cli_do_config_finish())
-    return true;
-  else
-  {
-    VLOG_ERR("OVSDB transaction commit failed.");
-    return false;
-  }
-}
-
-void
-vtysh_check_session(void)
-{
-  const struct ovsrec_open_vswitch *ovs_row = NULL;
-  int sesson_count = 0;
-  char buffer[SESSION_CNT_LENGTH]={0};
-  struct smap smap_other_config;
-
-  if(!cli_do_config_start())
-  {
-    VLOG_ERR("OVSDB transaction creation failed.");
-    exit(EXIT_FAILURE);
-  }
-
-  ovs_row = ovsrec_open_vswitch_first(idl);
-  if(!ovs_row)
-  {
-     VLOG_ERR("Couldn't fetch open_vswitch row.");
-     cli_do_config_abort();
-     exit(EXIT_FAILURE);
-  }
-
-  sesson_count = smap_get_int(&ovs_row->other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, 0);
-  snprintf(buffer, SESSION_CNT_LENGTH, "%d", ++sesson_count);
-
-  smap_clone(&smap_other_config, &ovs_row->other_config);
-  if(sesson_count <= MAX_CLI_SESSIONS)
-  {
-    smap_replace(&smap_other_config, OPEN_VSWITCH_OTHER_CONFIG_CLI_SESSIONS, buffer);
-    ovsrec_open_vswitch_set_other_config(ovs_row, &smap_other_config);
-  }
-  else
-  {
-    VLOG_ERR("Exceeded max number of sessions.");
-    printf("\nError: Maximum number of CLI sessions reached.\n");
-    cli_do_config_abort();
-    exit(EXIT_FAILURE);
-  }
-
-  if(cli_do_config_finish())
-    return;
-  else
-  {
-    VLOG_ERR("OVSDB transaction commit failed.");
-    exit(EXIT_FAILURE);
-  }
-
-}
 /*
  * The init for the ovsdb integration called in vtysh main function
  */
@@ -503,7 +462,6 @@ void vtysh_ovsdb_init(int argc, char *argv[])
     unixctl_command_register("exit", "", 0, 0, halon_vtysh_exit, &exiting);
 
     ovsdb_init(ovsdb_sock);
-    vtysh_check_session();
     vtysh_ovsdb_lib_init();
     free(ovsdb_sock);
 
@@ -519,15 +477,21 @@ void vtysh_ovsdb_init(int argc, char *argv[])
 void vtysh_ovsdb_hostname_set(const char* in)
 {
     const struct ovsrec_open_vswitch *ovs= NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
 
     ovs = ovsrec_open_vswitch_first(idl);
 
     if(ovs)
     {
-        txn = ovsdb_idl_txn_create(idl);
+        status_txn = cli_do_config_start();
+        if(status_txn == NULL)
+        {
+            cli_do_config_abort(status_txn);
+            VLOG_ERR("Failed to create a transaction");
+        }
         ovsrec_open_vswitch_set_hostname(ovs, in);
-        ovsdb_idl_txn_commit(txn);
-        ovsdb_idl_txn_destroy(txn);
+        status = cli_do_config_finish(txn);
         VLOG_DBG("Hostname set to %s in table",in);
     }
     else
@@ -543,8 +507,6 @@ void vtysh_ovsdb_hostname_set(const char* in)
 char* vtysh_ovsdb_hostname_get()
 {
     const struct ovsrec_open_vswitch *ovs;
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
     ovs = ovsrec_open_vswitch_first(idl);
 
     if(ovs)
@@ -567,50 +529,70 @@ char* vtysh_ovsdb_hostname_get()
 void vtysh_ovsdb_exit(void)
 {
     ovsdb_idl_destroy(idl);
-    vtysh_reduce_session_count();
 }
 
-/* This API is for fetching contents from DB to Vtysh IDL cache
-   and to do initial setup before commiting changes to IDL cache.
-   Keeping the return value as boolean so that we can handle any error cases
-   in future. */
-boolean cli_do_config_start()
+/* Take the lock and create a transaction if
+   DB connection is available and return the
+   transaction pointer */
+struct ovsdb_idl_txn* cli_do_config_start()
 {
-  ovsdb_idl_run(idl);
-  status_txn = ovsdb_idl_txn_create(idl);
-  if(status_txn == NULL)
+  idl_seqno = ovsdb_idl_get_seqno(idl);
+  /* Checking if the connection is alive and if
+     we have received atleast one update from DB */
+  if(idl_seqno < 1 || !ovsdb_idl_is_alive(idl))
+  {
+    return NULL;
+  }
+
+  /* TO-DO: Move the locking into the infra itself so
+     that developers need not worry about the locking */
+  VTYSH_OVSDB_LOCK;
+  struct ovsdb_idl_txn *status_txn = ovsdb_idl_txn_create(idl);
+
+  if(status_txn  == NULL)
   {
      assert(0);
-     return false;
+     return NULL;
   }
-  return true;
+  return status_txn;
 }
 
-/* This API is for pushing Vtysh IDL contents to DB */
-boolean cli_do_config_finish()
+/* Commit the transaction to DB and relase the lock */
+enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* status_txn)
 {
+  if(status_txn == NULL)
+  {
+    assert(0);
+    VTYSH_OVSDB_UNLOCK;
+    return TXN_ERROR;
+  }
+
   enum ovsdb_idl_txn_status status;
 
   status = ovsdb_idl_txn_commit_block(status_txn);
   ovsdb_idl_txn_destroy(status_txn);
   status_txn = NULL;
 
-  if ((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
-      && (status != TXN_UNCHANGED))
-     return false;
-
-  return true;
+  VTYSH_OVSDB_UNLOCK;
+  return status;
 }
 
-
-void cli_do_config_abort()
+/* Destroy the transaction in case of an error */
+void cli_do_config_abort(struct ovsdb_idl_txn* status_txn)
 {
+  if(status_txn == NULL)
+  {
+    VTYSH_OVSDB_UNLOCK;
+    return;
+  }
   ovsdb_idl_txn_destroy(status_txn);
+  status_txn = NULL;
+  VTYSH_OVSDB_UNLOCK;
 }
 
 /*
- * Check if the input string is a valid interface in the
- * OVSDB table
+ * check if the input string is a valid interface in the
+ * ovsdb table
  */
 int vtysh_ovsdb_interface_match(const char *str)
 {
@@ -713,6 +695,101 @@ int vtysh_regex_match(const char *regString, const char *inp)
   }
 
   return 1;
+}
+
+/* The main thread routine which keeps polling on the
+   OVSDB idl socket */
+void *
+vtysh_ovsdb_main_thread(void *arg)
+{
+    /* Detach thread to avoid memory leak upon exit. */
+    pthread_detach(pthread_self());
+
+    vtysh_exit = false;
+    while (!vtysh_exit) {
+        VTYSH_OVSDB_LOCK;
+
+        /* This function updates the Cache by running
+           ovsdb_idl_run */
+        vtysh_run();
+
+        /* This function adds the file descriptor for the
+           DB to monitor using poll_fd_wait */
+        vtysh_wait();
+
+        VTYSH_OVSDB_UNLOCK;
+        if (vtysh_exit) {
+            poll_immediate_wake();
+        } else {
+            /* TO-DO: There is a race condition with the FD's
+               used for poll here. Currently since the fd is
+               already registered and the events being registered
+               in both the threads is same, it shouldn't affect
+               functionality. Need to resolve this as soon possible */
+            poll_block();
+        }
+    }
+
+    return NULL;
+
+}
+
+/*
+ * Checks if interface is already part of bridge.
+ */
+bool check_iface_in_bridge(const char *if_name)
+{
+  struct ovsrec_open_vswitch *ovs_row = NULL;
+  struct ovsrec_bridge *br_cfg = NULL;
+  struct ovsrec_port *port_cfg = NULL;
+  struct ovsrec_interface *iface_cfg = NULL;
+  size_t i, j, k;
+  ovs_row = ovsrec_open_vswitch_first(idl);
+  for (i = 0; i < ovs_row->n_bridges; i++) {
+    br_cfg = ovs_row->bridges[i];
+    for (j = 0; j < br_cfg->n_ports; j++) {
+      port_cfg = br_cfg->ports[j];
+      if (strcmp(if_name, port_cfg->name) == 0) {
+        return true;
+      }
+      for (k = 0; k < port_cfg->n_interfaces; k++) {
+        iface_cfg = port_cfg->interfaces[k];
+        if (strcmp(if_name, iface_cfg->name) == 0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/*
+ * Checks if interface is already part of a VRF.
+ */
+bool check_iface_in_vrf(const char *if_name)
+{
+  struct ovsrec_open_vswitch *ovs_row = NULL;
+  struct ovsrec_vrf *vrf_cfg = NULL;
+  struct ovsrec_port *port_cfg = NULL;
+  struct ovsrec_interface *iface_cfg = NULL;
+  size_t i, j, k;
+  ovs_row = ovsrec_open_vswitch_first(idl);
+  for (i = 0; i < ovs_row->n_vrfs; i++) {
+    vrf_cfg = ovs_row->vrfs[i];
+    for (j = 0; j < vrf_cfg->n_ports; j++) {
+      port_cfg = vrf_cfg->ports[j];
+      if (strcmp(if_name, port_cfg->name) == 0) {
+        return true;
+      }
+      for (k = 0; k < port_cfg->n_interfaces; k++) {
+        iface_cfg = port_cfg->interfaces[k];
+        if (strcmp(if_name, iface_cfg->name) == 0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /*

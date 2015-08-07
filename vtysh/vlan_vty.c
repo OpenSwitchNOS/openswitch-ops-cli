@@ -28,8 +28,7 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_vlan_cli);
 extern struct ovsdb_idl *idl;
 
-/**
- ------------------------------------------------------------------------------
+/*-----------------------------------------------------------------------------
  | Function: vlan_int_range_add
  | Responsibility: Add a vlan range to Open vSwitch table. This range is used to
  |                 assign VLAN ID's internally to L3 ports to enable L3 support
@@ -49,12 +48,15 @@ static int vlan_int_range_add(const char *min_vlan,
                               const char *policy)
 {
     const struct ovsrec_open_vswitch *const_row = NULL;
-    struct  smap other_config;
+    struct smap other_config;
+    struct ovsdb_idl_txn *status_txn = NULL;
 
-    if (!cli_do_config_start()) {
+    status_txn = cli_do_config_start();
+
+    if (status_txn == NULL) {
         /* HALON_TODO: Generic comment. "Macro'ize" it in lib and use */
         VLOG_ERR("[%s:%d]: Failed to create OVSDB transaction\n", __FUNCTION__, __LINE__);
-
+        cli_do_config_abort(NULL);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -66,7 +68,7 @@ static int vlan_int_range_add(const char *min_vlan,
         VLOG_ERR("[%s:%d]: Failed to retrieve a row from Open_vSwitch table\n",
                     __FUNCTION__, __LINE__);
 
-        cli_do_config_abort();
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -82,7 +84,7 @@ static int vlan_int_range_add(const char *min_vlan,
 
     smap_destroy(&other_config);
 
-    if (cli_do_config_finish()) {
+    if (cli_do_config_finish(status_txn)) {
         return CMD_SUCCESS;
     } else {
         return CMD_OVSDB_FAILURE;
@@ -132,8 +134,7 @@ DEFUN  (cli_vlan_int_range_add,
     return vlan_int_range_add(argv[0], argv[1], vlan_policy_str);
 }
 
-/**
- ------------------------------------------------------------------------------
+/*-----------------------------------------------------------------------------
  | Function: vlan_int_range_del
  | Responsibility: Remove an internal vlan range to Open vSwitch table. Instead, insert a
  |                 default range. VLAN in this range are assigned to interfaces
@@ -149,9 +150,13 @@ static int vlan_int_range_del()
     const struct ovsrec_open_vswitch *const_row = NULL;
     struct smap other_config;
     char min_vlan[VLAN_ID_LEN], max_vlan[VLAN_ID_LEN];
+    struct ovsdb_idl_txn *status_txn = NULL;
 
-    if (!cli_do_config_start()) {
+    status_txn = cli_do_config_start();
+
+    if (status_txn == NULL) {
         VLOG_ERR("[%s:%d]: Failed to create OVSDB transaction\n", __FUNCTION__, __LINE__);
+        cli_do_config_abort(NULL);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -160,7 +165,7 @@ static int vlan_int_range_del()
     if (!const_row) {
         VLOG_ERR("[%s:%d]: Failed to retrieve a row from Open_vSwitch table\n",
                     __FUNCTION__, __LINE__);
-        cli_do_config_abort();
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -190,7 +195,7 @@ static int vlan_int_range_del()
 
     smap_destroy(&other_config);
 
-    if (cli_do_config_finish()) {
+    if (cli_do_config_finish(status_txn)) {
         return CMD_SUCCESS;
     } else {
         return CMD_OVSDB_FAILURE;
@@ -209,8 +214,7 @@ DEFUN  (cli_vlan_int_range_del,
     return vlan_int_range_del();
 }
 
-/**
- ------------------------------------------------------------------------------
+/*-----------------------------------------------------------------------------
  | Function: show_vlan_int_range
  | Responsibility: Handle 'show vlan internal' command
  | Parameters:
@@ -224,14 +228,17 @@ static int show_vlan_int_range()
     const struct ovsrec_open_vswitch *const_row = NULL;
     const char *policy;
     uint16_t   min_vlan, max_vlan;
+    struct ovsdb_idl_txn *status_txn = NULL;
 
     /* VLAN info on port */
     const struct ovsrec_port *port_row = NULL;
     const char *port_vlan_str;
 
-    if (!cli_do_config_start()) {
-        VLOG_ERR("[%s:%d]: Failed to create OVSDB transaction\n", __FUNCTION__, __LINE__);
+    status_txn = cli_do_config_start();
 
+    if (status_txn == NULL) {
+        VLOG_ERR("[%s:%d]: Failed to create OVSDB transaction\n", __FUNCTION__, __LINE__);
+        cli_do_config_abort(NULL);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -240,7 +247,7 @@ static int show_vlan_int_range()
     if (!const_row) {
         VLOG_ERR("[%s:%d]: Failed to retrieve a row from Open_vSwitch table\n",
                     __FUNCTION__, __LINE__);
-        cli_do_config_abort();
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -285,7 +292,7 @@ static int show_vlan_int_range()
     }
 
 done:
-    if (cli_do_config_finish()) {
+    if (cli_do_config_finish(status_txn)) {
         return CMD_SUCCESS;
     } else {
         return CMD_OVSDB_FAILURE;
@@ -304,8 +311,7 @@ DEFUN  (cli_show_vlan_int_range,
     return show_vlan_int_range();
 }
 
-/**
- ------------------------------------------------------------------------------
+/*-----------------------------------------------------------------------------
  | Function: show_vlan_int_range
  | Responsibility: Handles following commands
  |      vlan internal range <start> <end> {descending}

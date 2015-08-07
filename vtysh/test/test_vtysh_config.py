@@ -107,6 +107,108 @@ class ShowRunningConfigTests( HalonTest ):
             return True
     return False
 
+  def setLogrotatePeriodTest(self):
+    print('\n=========================================================')
+    print('*** Test to verify show running-config for logrotate period***')
+    print('===========================================================')
+    s1 = self.net.switches[ 0 ]
+    out = s1.cmdCLI("configure terminal")
+
+    out = s1.cmdCLI("do show running-config")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate period" in line:
+            print("Default behavior: logrotate period should not be part of running config\n")
+            return False
+
+    s1.cmdCLI("logrotate period none")
+    s1.cmdCLI(" ")
+    s1.cmdCLI(" ")
+    out = s1.cmdCLI("do show running-config")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate period none" in line:
+            print("Default behavior: logrotate period none should not be part of running config\n")
+            return False
+
+    s1.cmdCLI("logrotate period hourly")
+    s1.cmdCLI(" ")
+    s1.cmdCLI(" ")
+    out = s1.cmdCLI("do show running-config")
+    s1.cmdCLI("exit")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate period hourly" in line:
+            return True
+    return False
+
+  def setLogrotateMaxsizeTest(self):
+    print('\n=========================================================')
+    print('*** Test to verify show running-config for logrotate maxsize***')
+    print('===========================================================')
+    s1 = self.net.switches[ 0 ]
+    out = s1.cmdCLI("configure terminal")
+    out = s1.cmdCLI("do show running-config")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate maxsize" in line:
+            print("Default behavior: logrotate maxsize should not be part of running config\n")
+            return False
+
+    s1.cmdCLI("logrotate maxsize 10")
+    s1.cmdCLI(" ")
+    s1.cmdCLI(" ")
+    out = s1.cmdCLI("do show running-config")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate maxsize 10" in line:
+            print("Default behavior: logrotate maxsize 10 should not be part of running config\n")
+            return False
+
+    s1.cmdCLI("logrotate maxsize 20")
+    s1.cmdCLI(" ")
+    s1.cmdCLI(" ")
+    out = s1.cmdCLI("do show running-config")
+    s1.cmdCLI("exit")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate maxsize 20" in line:
+            return True
+    return False
+
+  def setLogrotateTargetTest(self):
+    print('\n=========================================================')
+    print('*** Test to verify show running-config for logrotate target***')
+    print('===========================================================')
+    s1 = self.net.switches[ 0 ]
+    out = s1.cmdCLI("configure terminal")
+    out = s1.cmdCLI("do show running-config")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate target" in line:
+            print("Default behavior: logrotate target should not be part of running config\n")
+            return False
+
+    s1.cmdCLI("logrotate target local")
+    s1.cmdCLI(" ")
+    s1.cmdCLI(" ")
+    out = s1.cmdCLI("do show running-config")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate target local" in line:
+            print("Default behavior: logrotate target local should not be part of running config\n")
+            return False
+
+    s1.cmdCLI("logrotate target tftp://1.1.1.1")
+    s1.cmdCLI(" ")
+    s1.cmdCLI(" ")
+    out = s1.cmdCLI("do show running-config")
+    s1.cmdCLI("exit")
+    lines = out.split('\n')
+    for line in lines:
+        if "logrotate target tftp://1.1.1.1" in line:
+            return True
+    return False
 
 class Test_showrunningconfig:
   # Create the Mininet topology based on mininet.
@@ -153,3 +255,21 @@ class Test_showrunningconfig:
       print 'Passed disablelldptxdirTest'
     else:
       assert 0, "disablelldptxdirTest"
+
+  def test_set_logrotatePeriod(self):
+    if self.test.setLogrotatePeriodTest():
+      print 'Passed : running config logrotate period test'
+    else:
+      assert 0, "setLogrotatePeriodTest"
+
+  def test_set_logrotateMaxsize(self):
+    if self.test.setLogrotateMaxsizeTest():
+      print 'Passed : running config logrotate maxsize test'
+    else:
+      assert 0, "setLogrotateMaxsizeTest"
+
+  def test_set_logrotateTarget(self):
+    if self.test.setLogrotateTargetTest():
+      print 'Passed : running config logrotate target test'
+    else:
+      assert 0, "setLogrotateTargetTest"

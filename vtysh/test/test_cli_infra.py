@@ -51,50 +51,17 @@ class VtyshInfraCommandsTests( HalonTest ):
         out = s1.cmdCLI("demo_cli to_be_hidden")
         sleep(1);
         if 'Unknown command.' not in out:
+        print out;
                 return False
         s1.cmdCLI("hide demo_cli level 3")
         out = s1.cmdCLI("demo_cli to_be_hidden")
         sleep(1);
         if 'Unknown command.' not in out:
+        print out;
                 return False
         out = s1.cmdCLI("hide demo_cli level 0")
         out = s1.cmdCLI("end")
         return True;
-
-  def CliSessionTest(self):
-        print('\n=========================================================')
-        print('***    Test to verify CLI session limit                 ***')
-        print('===========================================================')
-        s1 = self.net.switches[ 0 ]
-        out = s1.cmd("ovs-vsctl list open_vswitch")
-        lines = out.split('\n')
-        flag = 0
-        for line in lines:
-            if 'cli_num_sessions=\"1\"' in line:
-                flag = 1
-        if not flag:
-            return False
-
-        print "Creating max number of CLI sessions in background"
-        for i in range(1,16):
-            s1.cmd("vtysh &")
-            sleep(1)
-            s1.cmd("\r")
-            sleep(1)
-
-        out = s1.cmd("ovs-vsctl list open_vswitch")
-        "Attempt to create one more session should fail"
-        out = s1.cmd("vtysh")
-        sleep(1)
-        print out
-        lines = out.split('\n')
-        flag = 0
-        for line in lines:
-            if 'Error: Maximum number of CLI sessions reached.' in line:
-                flag = 1
-        if not flag:
-            return False
-        return True
 
   def aliasCliCommandTest(self):
         print('\n=========================================================')
@@ -167,12 +134,6 @@ class Test_vtyshInfraCommands:
       print 'Passed hideCliCommandTest'
     else:
       assert 0, "Failed hideCliCommandTest"
-
-  def test_CliSession(self):
-    if self.test.CliSessionTest():
-      print 'Passed CliSessionTest'
-    else:
-      assert 0, 'Failed CliSessionTest'
 
   def aliasCliCommandTest(self):
     if self.test.aliasCliCommandTest():

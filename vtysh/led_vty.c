@@ -32,6 +32,8 @@
 #include "memory.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
+#include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_led_cli);
 
@@ -59,10 +61,7 @@ lookup_led(const char *name)
      * If new data is added using ovs-vsctl command
      * then led name led command will fail to fetch
      * the led name as its not cached
-    */
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
-
+     */
     OVSREC_LED_FOR_EACH(led, idl) {
         if (strcmp(led->id, name) == 0) {
             return((struct ovsrec_led *)led);
@@ -81,9 +80,6 @@ int cli_system_get_led()
 {
     struct ovsrec_led* pLed = NULL;
     struct ovsrec_subsystem* pSys = NULL;
-
-    ovsdb_idl_run(idl);
-        ovsdb_idl_wait(idl);
 
     pSys = ovsrec_subsystem_first(idl);
 
@@ -118,15 +114,21 @@ int cli_system_get_led()
 int  cli_system_set_led(char* sLedName,char* sLedState)
 {
     struct ovsrec_led* pOvsLed = NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
     pOvsLed = lookup_led(sLedName);
 
     if(pOvsLed)
     {
-        if(cli_do_config_start())
+        status_txn = cli_do_config_start();
+        if(status_txn != NULL)
         {
             ovsrec_led_set_state(pOvsLed, sLedState);
-            if(cli_do_config_finish())
+            status = cli_do_config_finish(status_txn);
+            if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+            {
                  return CMD_SUCCESS;
+            }
             else
             {
                  VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -136,6 +138,7 @@ int  cli_system_set_led(char* sLedName,char* sLedState)
         else
         {
             VLOG_ERR("Unable to acquire transaction");
+            cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
         }
 
@@ -158,15 +161,21 @@ int  cli_system_set_led(char* sLedName,char* sLedState)
 int cli_system_no_set_led(char* sLedName)
 {
     struct ovsrec_led* pOvsLed = NULL;
-        pOvsLed = lookup_led(sLedName);
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    pOvsLed = lookup_led(sLedName);
 
     if(pOvsLed)
         {
-                if(cli_do_config_start())
+                status_txn = cli_do_config_start();
+                if(status_txn != NULL)
                 {
                         ovsrec_led_set_state(pOvsLed, OVSREC_LED_STATE_OFF);
-                        if(cli_do_config_finish())
+                        status = cli_do_config_finish(status_txn);
+                        if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+                        {
                             return CMD_SUCCESS;
+                        }
                         else
                         {
                             VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
@@ -176,6 +185,7 @@ int cli_system_no_set_led(char* sLedName)
                 else
                 {
                         VLOG_ERR("Unable to acquire transaction");
+                        cli_do_config_abort(status_txn);
                         return CMD_OVSDB_FAILURE;
                 }
 

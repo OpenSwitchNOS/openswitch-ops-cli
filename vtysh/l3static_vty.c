@@ -37,7 +37,8 @@
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
 #include "prefix.h"
-
+#include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
 #include "l3static_vty.h"
 
 
@@ -69,19 +70,18 @@ DEFUN (vtysh_ip_route,
     struct ovsdb_idl_txn *status_txn = NULL;
     char prefix_str[256];
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
     row_vrf = ovsrec_vrf_first(idl);
     if(!row_vrf) {
         VLOG_ERR("No vrf information yet.");
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
     row = ovsrec_route_insert(status_txn);
@@ -95,8 +95,7 @@ DEFUN (vtysh_ip_route,
     ret = str2prefix_ipv4 (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_WARNING;
     }
     /*
@@ -125,8 +124,7 @@ DEFUN (vtysh_ip_route,
 
         if(row_port == NULL) {
             vty_out(vty, "\nInterface %s not configured%s", argv[1], VTY_NEWLINE);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
         }
         ovsrec_nexthop_set_ports(row_nh, &row_port,row_nh->n_ports + 1);
@@ -145,9 +143,7 @@ DEFUN (vtysh_ip_route,
 
     ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
         && (status != TXN_UNCHANGED))){
@@ -239,9 +235,6 @@ DEFUN (vtysh_show_ip_route,
 {
     int retval;
 
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
-
     retval = show_routes_ip(vty);
     vty_out(vty, VTY_NEWLINE);
 
@@ -271,20 +264,18 @@ DEFUN (vtysh_no_ip_route,
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
-
+    status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
     ret = str2prefix_ipv4 (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_WARNING;
     }
     /*
@@ -348,9 +339,7 @@ DEFUN (vtysh_no_ip_route,
         vty_out(vty, "No such ip route found %s\n", VTY_NEWLINE);
     }
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
                     && (status != TXN_UNCHANGED))) {
@@ -387,19 +376,18 @@ DEFUN (vtysh_ipv6_route,
     struct ovsdb_idl_txn *status_txn = NULL;
     char prefix_str[256];
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
+    status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
     row_vrf = ovsrec_vrf_first(idl);
     if(!row_vrf) {
         VLOG_ERR("No vrf information yet.");
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
@@ -414,8 +402,7 @@ DEFUN (vtysh_ipv6_route,
     ret = str2prefix_ipv6 (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_WARNING;
     }
     /*
@@ -444,8 +431,7 @@ DEFUN (vtysh_ipv6_route,
 
         if(row_port == NULL) {
             vty_out(vty, "\nInterface %s not configured%s", argv[1], VTY_NEWLINE);
-            ovsdb_idl_txn_destroy(status_txn);
-            status_txn = NULL;
+            cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
         }
         ovsrec_nexthop_set_ports(row_nh, &row_port,row_nh->n_ports + 1);
@@ -464,9 +450,7 @@ DEFUN (vtysh_ipv6_route,
 
     ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
         && (status != TXN_UNCHANGED))) {
@@ -558,9 +542,6 @@ DEFUN (vtysh_show_ipv6_route,
 {
     int retval;
 
-    ovsdb_idl_run(idl);
-    ovsdb_idl_wait(idl);
-
     retval = show_routes_ipv6(vty);
     vty_out(vty, VTY_NEWLINE);
 
@@ -589,20 +570,18 @@ DEFUN (vtysh_no_ipv6_route,
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
 
-    ovsdb_idl_run(idl);
-    status_txn = ovsdb_idl_txn_create(idl);
-
+    status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
         VLOG_ERR("Couldn't create the OVSDB transaction.");
+        cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
 
     ret = str2prefix_ipv6 (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
-        ovsdb_idl_txn_destroy(status_txn);
-        status_txn = NULL;
+        cli_do_config_abort(status_txn);
         return CMD_WARNING;
     }
     /*
@@ -666,9 +645,7 @@ DEFUN (vtysh_no_ipv6_route,
         vty_out(vty, "No such ipv6 route found %s\n", VTY_NEWLINE);
     }
 
-    status = ovsdb_idl_txn_commit_block(status_txn);
-    ovsdb_idl_txn_destroy(status_txn);
-    status_txn = NULL;
+    status = cli_do_config_finish(status_txn);
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
                     && (status != TXN_UNCHANGED))) {

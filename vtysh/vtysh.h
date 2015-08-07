@@ -105,4 +105,6 @@ extern int execute_flag;
 
 extern struct vty *vty;
 
+#define MAX_IFNAME_LENGTH 50
+
 #endif /* VTYSH_H */

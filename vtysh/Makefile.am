@@ -16,22 +16,26 @@ bin_PROGRAMS = vtysh
 
 vtysh_SOURCES = vtysh_main.c vtysh.c vtysh_user.c vtysh_config.c
 if ENABLE_OVSDB
-vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c vtysh_ovsdb_config.c \
-                 vtysh_ovsdb_ovstable.c vtysh_ovsdb_intftable.c vlan_vty.c intf_vty.c \
-                 l3static_vty.c vtysh_ovsdb_routetable.c \
-                 led_vty.c system_vty.c vtysh_ovsdb_ledtable.c\
-                 fan_vty.c temperature_vty.c vtysh_ovsdb_subsystemtable.c policy_vty.c
+vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
+                 vtysh_ovsdb_config.c vtysh_ovsdb_config_context.c \
+                 vtysh_ovsdb_intf_context.c vlan_vty.c intf_vty.c \
+                 l3static_vty.c led_vty.c system_vty.c fan_vty.c \
+                 temperature_vty.c vtysh_ovsdb_vlan_context.c \
+                 vtysh_ovsdb_router_context.c aaa_vty.c policy_vty.c \
+                 logrotate_vty.c neighbor_vty.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
 CLEANFILES = vtysh_cmd.c
 noinst_HEADERS = vtysh.h vtysh_user.h
 if ENABLE_OVSDB
-noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h vtysh_ovsdb_config.h \
-                  vtysh_ovsdb_ovstable.h vtysh_ovsdb_intftable.h vlan_vty.h intf_vty.h \
-                  l3static_vty.h vtysh_ovsdb_routetable.h \
-                  led_vty.h system_vty.h vtysh_ovsdb_ledtable.h \
-                  fan_vty.h temperature_vty.h vtysh_ovsdb_subsystemtable.h
+noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
+                  vtysh_ovsdb_config.h vtysh_ovsdb_config_context.h \
+                  vtysh_ovsdb_intf_context.h vlan_vty.h intf_vty.h \
+                  l3static_vty.h led_vty.h system_vty.h fan_vty.h \
+                  temperature_vty.h vtysh_ovsdb_vlan_context.h \
+                  vtysh_ovsdb_router_context.h aaa_vty.h \
+                  logrotate_vty.h neighbor_vty.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@
