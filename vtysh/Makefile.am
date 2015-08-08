@@ -21,6 +21,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_intf_context.c vlan_vty.c intf_vty.c \
                  l3static_vty.c led_vty.c system_vty.c fan_vty.c \
                  temperature_vty.c vtysh_ovsdb_vlan_context.c \
+                 mgmt_intf_vty.c vtysh_ovsdb_mgmt_intf_context.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c policy_vty.c \
                  logrotate_vty.c neighbor_vty.c
 endif
@@ -34,6 +35,7 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   vtysh_ovsdb_intf_context.h vlan_vty.h intf_vty.h \
                   l3static_vty.h led_vty.h system_vty.h fan_vty.h \
                   temperature_vty.h vtysh_ovsdb_vlan_context.h \
+                  mgmt_intf_vty.h vtysh_ovsdb_mgmt_intf_context.h \
                   vtysh_ovsdb_router_context.h aaa_vty.h \
                   logrotate_vty.h neighbor_vty.h
 endif

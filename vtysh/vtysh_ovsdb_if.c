@@ -358,6 +358,13 @@ vlan_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_vlan_col_admin);
 }
 
+static void
+mgmt_intf_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf_status);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -392,6 +399,9 @@ ovsdb_init(const char *db_path)
 
     /* Interface tables */
     intf_ovsdb_init(idl);
+
+   /* Management interface columns */
+    mgmt_intf_ovsdb_init(idl);
 
     alias_ovsdb_init(idl);
 

@@ -31,9 +31,10 @@
 #define VTYSH_ISISD  0x40
 #define VTYSH_BABELD  0x80
 #define VTYSH_PIMD   0x100
-#define VTYSH_ALL	  VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D|VTYSH_BGPD|VTYSH_ISISD|VTYSH_BABELD|VTYSH_PIMD
+#define VTYSH_MGMT_INTF   0x200
+#define VTYSH_ALL	  VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D|VTYSH_BGPD|VTYSH_ISISD|VTYSH_BABELD|VTYSH_PIMD | VTYSH_MGMT_INTF
 #define VTYSH_RMAP	  VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D|VTYSH_BGPD|VTYSH_BABELD
-#define VTYSH_INTERFACE	  VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D|VTYSH_ISISD|VTYSH_BABELD|VTYSH_PIMD
+#define VTYSH_INTERFACE	  VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D|VTYSH_ISISD|VTYSH_BABELD|VTYSH_PIMD | VTYSH_MGMT_INTF
 
 /* vtysh local configuration file. */
 #define VTYSH_DEFAULT_CONFIG "vtysh.conf"
@@ -66,6 +67,26 @@ struct vtysh_alias_data {
 #define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
 #define OVSDB_ROW_FETCH_ERROR  "Couldn't fetch row from the DB."
 #define OVSDB_TXN_COMMIT_ERROR "Committing transaction to DB failed."
+
+#define OVSDB_INVALID_IPV4_ERROR      "Invalid IPv4 address"
+#define OVSDB_INVALID_SUBNET_ERROR    "Invalid subnet address"
+#define OVSDB_INVALID_VALUE_ERROR     "Address entered is not present"
+#define OVSDB_DUPLICATE_VALUE_ERROR   "Duplicate value entered"
+
+#define  IS_NETWORK_ADDRESS(i)     (((long)(i) & 0x000000ff) == 0x0)
+#define  IS_SUBNET_BROADCAST(i)     (((long)(i) & 0x000000ff) == 0xff)
+#define  IS_BROADCAST_IPV4(i)      (((long)(i) & 0xffffffff) == 0xffffffff)
+#define  IS_LOOPBACK_IPV4(i)       (((long)(i)) == 0x7F000001)
+#define  IS_MULTICAST_IPV4(i)      (((long)(i) & 0xf0000000) == 0xe0000000)
+#define  IS_EXPERIMENTAL_IPV4(i)   (((long)(i) & 0xf0000000) == 0xf0000000)
+#define  IS_INVALID_IPV4(i)         ((long)(i) == 0)
+
+#define IS_VALID_IPV4(i) !(IS_BROADCAST_IPV4(i) | IS_LOOPBACK_IPV4(i) | \
+                          IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
+                                                    IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
+                                                                              IS_NETWORK_ADDRESS(i))
+
+int is_valid_ip_address(const char *ip_value);
 
 extern int vtysh_alias_callback(struct cmd_element *self, struct vty *vty, int vty_flags, int argc, const char *argv[]);
 

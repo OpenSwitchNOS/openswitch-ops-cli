@@ -778,6 +778,14 @@ static struct cmd_node interface_node =
       "%s(config-if)# ",
    };
 
+#ifdef ENABLE_OVSDB
+static struct cmd_node mgmt_interface_node =
+{
+  MGMT_INTERFACE_NODE,
+  "%s(config-if-mgmt)# ",
+};
+#endif
+
 static struct cmd_node rmap_node =
    {
       RMAP_NODE,
@@ -1150,6 +1158,9 @@ vtysh_exit (struct vty *vty)
       vty->node = ENABLE_NODE;
       break;
     case INTERFACE_NODE:
+#ifdef ENABLE_OVSDB
+    case MGMT_INTERFACE_NODE:
+#endif
     case ZEBRA_NODE:
     case BGP_NODE:
     case RIP_NODE:
@@ -1358,6 +1369,15 @@ DEFUN (vtysh_interface,
   return CMD_SUCCESS;
 }
 
+DEFUN (vtysh_interface_mgmt,
+       vtysh_interface_mgmt_cmd,
+       "interface mgmt",
+       "Select an interface to configure\n"
+       "Configure management interface\n")
+{
+  vty->node = MGMT_INTERFACE_NODE;
+  return CMD_SUCCESS;
+}
 DEFUN ( vtysh_mult_cxt_test,
       vtysh_mult_cxt_test_cmd,
       "test-interfaceCxt",
@@ -1421,6 +1441,20 @@ ALIAS (vtysh_exit_interface,
       "quit",
       "Exit current mode and down to previous mode\n")
 
+#ifdef ENABLE_OVSDB
+DEFUNSH (VTYSH_MGMT_INTF,
+             vtysh_exit_mgmt_interface,
+             vtysh_exit_mgmt_interface_cmd,
+             "exit",
+             "Exit current mode and down to previous mode\n")
+{
+  return vtysh_exit (vty);
+}
+ALIAS (vtysh_exit_mgmt_interface,
+       vtysh_quit_mgmt_interface_cmd,
+       "quit",
+       "Exit current mode and down to previous mode\n")
+#endif
 /* Memory */
 DEFUN (vtysh_show_memory,
       vtysh_show_memory_cmd,
@@ -3044,6 +3078,24 @@ void alias_vty_init()
 
    vty_alias_load_alias_table();
 }
+
+int is_valid_ip_address(const char *ip_value)
+{
+    struct in_addr addr;
+    memset (&addr, 0, sizeof (struct in_addr));
+
+    if(inet_pton(AF_INET, ip_value,&addr) <= 0)
+    {
+        return 0;
+    }
+
+    if(!IS_VALID_IPV4(htonl(addr.s_addr)))
+    {
+        return 0;
+    }
+
+    return 1;
+}
 #endif /* ENABLE_OVSDB */
 
 void
@@ -3061,6 +3113,9 @@ vtysh_init_vty (void)
    install_node (&bgp_node, NULL);
    install_node (&rip_node, NULL);
    install_node (&interface_node, NULL);
+#ifdef ENABLE_OVSDB
+   install_node (&mgmt_interface_node, NULL);
+#endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
    install_node (&bgp_vpnv4_node, NULL);
@@ -3087,6 +3142,9 @@ vtysh_init_vty (void)
    vtysh_install_default (BGP_NODE);
    vtysh_install_default (RIP_NODE);
    vtysh_install_default (INTERFACE_NODE);
+#ifdef ENABLE_OVSDB
+   vtysh_install_default (MGMT_INTERFACE_NODE);
+#endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
    vtysh_install_default (BGP_VPNV4_NODE);
@@ -3229,28 +3287,28 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_interface_cmd);
    install_element (CONFIG_NODE, &vtysh_no_interface_cmd);
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-
+#ifdef ENABLE_OVSDB
+   install_element (CONFIG_NODE, &vtysh_interface_mgmt_cmd);
+   install_element (MGMT_INTERFACE_NODE, &vtysh_exit_mgmt_interface_cmd);
+   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
+   install_element (MGMT_INTERFACE_NODE, &vtysh_end_all_cmd);
+#endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
 #endif /* ENABLE_OVSDB */
-
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_write_file_cmd);
   install_element (ENABLE_NODE, &vtysh_write_cmd);
-
   /* "write terminal" command. */
   install_element (ENABLE_NODE, &vtysh_write_terminal_cmd);
 #endif /* ENABLE_OVSDB */
- 
   install_element (CONFIG_NODE, &vtysh_integrated_config_cmd);
   install_element (CONFIG_NODE, &no_vtysh_integrated_config_cmd);
-
 #ifndef ENABLE_OVSDB
   /* "write memory" command. */
   install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
 #endif
-
   install_element (VIEW_NODE, &vtysh_terminal_length_cmd);
   install_element (ENABLE_NODE, &vtysh_terminal_length_cmd);
   install_element (VIEW_NODE, &vtysh_terminal_no_length_cmd);
@@ -3260,7 +3318,6 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
 #endif /* ENABLE_OVSDB */
-
   install_element (VIEW_NODE, &vtysh_ping_cmd);
   install_element (VIEW_NODE, &vtysh_ping_ip_cmd);
   install_element (VIEW_NODE, &vtysh_traceroute_cmd);
@@ -3288,7 +3345,6 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
   install_element (ENABLE_NODE, &vtysh_start_zsh_cmd);
 #endif
-  
   install_element (VIEW_NODE, &vtysh_show_memory_cmd);
   install_element (ENABLE_NODE, &vtysh_show_memory_cmd);
 
@@ -3316,7 +3372,6 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_log_record_priority_cmd);
   install_element (CONFIG_NODE, &vtysh_log_timestamp_precision_cmd);
   install_element (CONFIG_NODE, &no_vtysh_log_timestamp_precision_cmd);
-
   install_element (CONFIG_NODE, &vtysh_service_password_encrypt_cmd);
   install_element (CONFIG_NODE, &no_vtysh_service_password_encrypt_cmd);
 
@@ -3339,6 +3394,7 @@ vtysh_init_vty (void)
 
   /* Initialise System LED cli */
   led_vty_init();
+  mgmt_intf_vty_init();
   /* Initialise System cli */
   system_vty_init();
   fan_vty_init();
