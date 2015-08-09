@@ -29,6 +29,7 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_ovstable.h"
+#include "logrotate_vty.h"
 
 char clientname[] = "vtysh_ovsdb_ovstable_clientcallback";
 
@@ -208,6 +209,52 @@ vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_logrotate_cfg
+| Responsibility : parse logrotate_config in open_vswitch table
+| Parameters :
+|    ifrow_config : logrotate_config object pointer
+|    pmsg         : callback arguments from show running config handler|
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_logrotate_cfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
+{
+  const char *data = NULL, *uri = NULL;
+  int maxSize = 0;
+
+  if(NULL == ifrow_config)
+  {
+    return e_vtysh_error;
+  }
+
+  data = smap_get(ifrow_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "logrotate period %s",data);
+    }
+  }
+
+  data = smap_get(ifrow_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "logrotate maxsize %s", data);
+    }
+  }
+
+  data = smap_get(ifrow_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT))
+        vtysh_ovsdb_cli_print(p_msg, "logrotate target %s",data);
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_clientcallback
 | Responsibility : client callback routine
 | Parameters :
@@ -237,6 +284,9 @@ vtysh_ovsdb_ovstable_clientcallback(void *p_private)
 
     /* parse other config param */
     vtysh_ovsdb_ovstable_parse_othercfg(&vswrow->other_config, p_msg);
+
+    /* parse logrotate config param */
+    vtysh_ovsdb_ovstable_parse_logrotate_cfg(&vswrow->logrotate_config, p_msg);
   }
 }
 

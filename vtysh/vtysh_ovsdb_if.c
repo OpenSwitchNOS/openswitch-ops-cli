@@ -280,6 +280,13 @@ system_ovsdb_init(struct ovsd_idl *idl)
     ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_temperature);
 
 }
+
+static void
+logrotate_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_logrotate_config);
+}
+
 static void
 vlan_ovsdb_init(struct ovsdb_idl *idl)
 {
@@ -344,6 +351,9 @@ ovsdb_init(const char *db_path)
 
     /* vlan table */
     vlan_ovsdb_init(idl);
+
+    /* Logrotate tables */
+    logrotate_ovsdb_init(idl);
 
 }
 

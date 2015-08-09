@@ -42,6 +42,7 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "log.h"
 #include "bgp_vty.h"
+#include "logrotate_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 
@@ -3349,5 +3350,6 @@ vtysh_init_vty (void)
   fan_vty_init();
   temperature_vty_init();
   alias_vty_init();
+  logrotate_vty_init();
 #endif
 }
