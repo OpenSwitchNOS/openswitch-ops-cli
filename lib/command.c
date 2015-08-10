@@ -3122,6 +3122,7 @@ DEFUN (config_exit,
       vty_config_unlock (vty);
       break;
     case INTERFACE_NODE:
+    case MGMT_INTERFACE_NODE:
     case ZEBRA_NODE:
     case BGP_NODE:
     case RIP_NODE:
@@ -3174,6 +3175,7 @@ DEFUN (config_end,
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case MGMT_INTERFACE_NODE:
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
