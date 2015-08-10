@@ -1,4 +1,4 @@
-/* Management Interface CLI commands header file
+/* Management Interface CLI commands source file
  *
  * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
  *
@@ -433,6 +433,7 @@ DEFUN (cli_mgmt_intf_set_dns_2,
 DEFUN (cli_no_mgmt_intf_set_dns_1,
        mgmt_intf_no_set_dns_1_cmd,
        "no nameserver A.B.C.D",
+       NO_STR
        MGMT_INTF_DNS_STR
        MGMT_INTF_DNS_1_STR)
 {
@@ -448,6 +449,7 @@ DEFUN (cli_no_mgmt_intf_set_dns_1,
 DEFUN (cli_no_mgmt_intf_set_dns_2,
        mgmt_intf_no_set_dns_2_cmd,
        "no nameserver A.B.C.D A.B.C.D",
+       NO_STR
        MGMT_INTF_DNS_STR
        MGMT_INTF_DNS_1_STR
        MGMT_INTF_DNS_2_STR)
