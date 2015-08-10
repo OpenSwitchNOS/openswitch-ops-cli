@@ -45,6 +45,7 @@ vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_cli
 vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {NULL};
 vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {NULL};
 vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {NULL};
+vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {NULL};
 
 /* static array of vtysh context lists
    context traversal order as shown below.
@@ -57,6 +58,7 @@ vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
   { "Interface Context",  e_vtysh_interface_context, &vtysh_interface_context_client_list},
   { "Mgmt Interface Context",  e_vtysh_mgmt_interface_context, &vtysh_mgmt_interface_context_client_list},
   { "Vlan Context",       e_vtysh_vlan_context,      &vtysh_vlan_context_client_list},
+  { "Dependent Config",   e_vtysh_dependent_config,  &vtysh_dependent_config_client_list},
 };
 
 /*-----------------------------------------------------------------------------
@@ -92,6 +94,9 @@ vtysh_context_get_maxclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_vlan_context:
          ret_val = e_vtysh_vlan_context_client_id_max;
+         break;
+    case e_vtysh_dependent_config:
+         ret_val = e_vtysh_dependent_config_client_id_max;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -135,6 +140,9 @@ vtysh_context_get_minclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_vlan_context:
          ret_val = e_vtysh_vlan_context_client_id_first;
+         break;
+    case e_vtysh_dependent_config:
+         ret_val = e_vtysh_dependent_config_client_id_first;
          break;
     default:
          ret_val = e_vtysh_error;
