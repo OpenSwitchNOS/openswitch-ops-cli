@@ -1679,8 +1679,34 @@ DEFUN (neighbor_shutdown,
        NEIGHBOR_ADDR_STR2
        "Administratively shut down this neighbor\n")
 {
-    report_unimplemented_command(vty);
-    return CMD_SUCCESS;
+    char *ip_addr = argv[0];
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    const bool shutdown = true;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+    if (bgp_router_context) {
+#ifdef EXTRA_DEBUG
+	vty_out(vty, "in router asn %d\n", bgp_router_context->asn);
+#endif // EXTRA_DEBUG
+    } else {
+	ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+    ovs_bgp_neighbor =
+	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ABORT_DB_TXN(txn, "no neighbor");
+    }
+    if (ovs_bgp_neighbor->shutdown) {
+	    ABORT_DB_TXN(txn, "no op command");
+    }
+    ovsrec_bgp_neighbor_set_shutdown(ovs_bgp_neighbor, &shutdown, 1);
+
+    /* done */
+    END_DB_TXN(txn);
 }
 
 DEFUN (no_neighbor_shutdown,
@@ -1691,8 +1717,33 @@ DEFUN (no_neighbor_shutdown,
        NEIGHBOR_ADDR_STR2
        "Administratively shut down this neighbor\n")
 {
-    report_unimplemented_command(vty);
-    return CMD_SUCCESS;
+    char *ip_addr = argv[0];
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+    if (bgp_router_context) {
+#ifdef EXTRA_DEBUG
+	vty_out(vty, "in router asn %d\n", bgp_router_context->asn);
+#endif // EXTRA_DEBUG
+    } else {
+	ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+    ovs_bgp_neighbor =
+	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ABORT_DB_TXN(txn, "no neighbor");
+    }
+    if (!ovs_bgp_neighbor->shutdown) {
+	    ABORT_DB_TXN(txn, "no op command");
+    }
+    ovsrec_bgp_neighbor_set_shutdown(ovs_bgp_neighbor, NULL, 0);
+
+    /* done */
+    END_DB_TXN(txn);
 }
 
 /* Deprecated neighbor capability route-refresh. */

@@ -124,6 +124,7 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
 	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_inbound_soft_reconfiguration);
 	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_statistics);
 	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_remote_as);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_shutdown);
 	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_override_capability);
 	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_passive);
 	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_maximum_prefix_limit);
