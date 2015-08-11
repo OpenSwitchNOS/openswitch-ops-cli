@@ -702,6 +702,7 @@ vty_end_config (struct vty *vty)
     case CONFIG_NODE:
     case INTERFACE_NODE:
     case MGMT_INTERFACE_NODE:
+    case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
@@ -1112,6 +1113,7 @@ vty_stop_input (struct vty *vty)
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case LINK_AGGREGATION_NODE:
     case MGMT_INTERFACE_NODE:
     case ZEBRA_NODE:
     case RIP_NODE:

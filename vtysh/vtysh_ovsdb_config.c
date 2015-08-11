@@ -32,7 +32,7 @@
 #include "vtysh_ovsdb_intf_context.h"
 #include "vtysh_ovsdb_vlan_context.h"
 #include "vtysh_ovsdb_router_context.h"
-
+#include "vtysh_ovsdb_intf_lag_context.h"
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
@@ -44,6 +44,7 @@ vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_cli
 vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_client_id_max] = {NULL};
 vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {NULL};
 vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {NULL};
+vtysh_context_client vtysh_interface_lag_context_client_list[e_vtysh_interface_lag_context_client_id_max] = {NULL};
 vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {NULL};
 vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {NULL};
 
@@ -55,8 +56,9 @@ vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
 {
   { "Config Context",     e_vtysh_config_context,    &vtysh_config_context_client_list},
   { "Router Context",     e_vtysh_router_context,    &vtysh_router_context_client_list},
-  { "Interface Context",  e_vtysh_interface_context, &vtysh_interface_context_client_list},
   { "Mgmt Interface Context",  e_vtysh_mgmt_interface_context, &vtysh_mgmt_interface_context_client_list},
+  { "Interface LAG Context",  e_vtysh_interface_lag_context, &vtysh_interface_lag_context_client_list},
+  { "Interface Context",  e_vtysh_interface_context, &vtysh_interface_context_client_list},
   { "Vlan Context",       e_vtysh_vlan_context,      &vtysh_vlan_context_client_list},
   { "Dependent Config",   e_vtysh_dependent_config,  &vtysh_dependent_config_client_list},
 };
@@ -91,6 +93,9 @@ vtysh_context_get_maxclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_mgmt_interface_context:
          ret_val = e_vtysh_mgmt_interface_context_client_id_max;
+         break;
+    case e_vtysh_interface_lag_context:
+         ret_val = e_vtysh_interface_lag_context_client_id_max;
          break;
     case e_vtysh_vlan_context:
          ret_val = e_vtysh_vlan_context_client_id_max;
@@ -137,6 +142,9 @@ vtysh_context_get_minclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_mgmt_interface_context:
          ret_val = e_vtysh_mgmt_interface_context_client_id_first;
+         break;
+    case e_vtysh_interface_lag_context:
+         ret_val = e_vtysh_interface_lag_context_client_id_first;
          break;
     case e_vtysh_vlan_context:
          ret_val = e_vtysh_vlan_context_client_id_first;
@@ -486,5 +494,6 @@ vtysh_ovsdb_init_clients()
   vtysh_init_router_context_clients();
   vtysh_init_intf_context_clients();
   vtysh_init_mgmt_intf_context_clients();
+  vtysh_init_intf_lag_context_clients();
   vtysh_init_vlan_context_clients();
 }

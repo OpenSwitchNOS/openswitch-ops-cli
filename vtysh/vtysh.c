@@ -48,6 +48,7 @@
 #include "temperature_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
+#include "openhalon-idl.h"
 
 #ifdef ENABLE_OVSDB
 #include "vswitch-idl.h"
@@ -798,6 +799,13 @@ static struct cmd_node mgmt_interface_node =
   MGMT_INTERFACE_NODE,
   "%s(config-if-mgmt)# ",
 };
+
+static struct cmd_node link_aggregation_node =
+{
+  LINK_AGGREGATION_NODE,
+  "%s(config-lag-if)# ",
+};
+
 #endif
 
 static struct cmd_node rmap_node =
@@ -1176,6 +1184,7 @@ vtysh_exit (struct vty *vty)
     case INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case MGMT_INTERFACE_NODE:
+    case LINK_AGGREGATION_NODE:
 #endif
     case ZEBRA_NODE:
     case BGP_NODE:
@@ -1383,6 +1392,97 @@ DEFUN (vtysh_interface,
   }
   vty->index = ifnumber;
   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_intf_link_aggregation,
+       vtysh_intf_link_aggregation_cmd,
+       "interface lag <1-2000>",
+       "Select an interface to configure.\n"
+       "Configure link-aggregation parameters.\n"
+       "LAG number ranges from 1 to 2000.\n")
+{
+  const struct ovsrec_port *port_row = NULL;
+  bool port_found = false;
+  struct ovsdb_idl_txn *txn = NULL;
+  enum ovsdb_idl_txn_status status_txn;
+  static char lag_number[LAG_NAME_LENGTH]={0};
+  struct ovsrec_vrf *default_vrf_row = NULL;
+  struct ovsrec_vrf *vrf_row = NULL;
+  int i=0;
+  struct ovsrec_port **ports = NULL;
+
+  snprintf(lag_number, LAG_NAME_LENGTH, "%s%s","lag", argv[0]);
+
+  OVSREC_PORT_FOR_EACH(port_row, idl)
+  {
+    if (strcmp(port_row->name, lag_number) == 0)
+    {
+      port_found = true;
+      break;
+    }
+  }
+
+  if(!port_found)
+  {
+    txn = cli_do_config_start();
+    if (txn == NULL)
+    {
+      VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d"
+               " cli_do_config_start()", __func__, __LINE__);
+          cli_do_config_abort(txn);
+          return CMD_OVSDB_FAILURE;
+    }
+
+    port_row = ovsrec_port_insert(txn);
+    ovsrec_port_set_name(port_row, lag_number);
+
+    OVSREC_VRF_FOR_EACH (vrf_row, idl)
+    {
+        if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
+            default_vrf_row = vrf_row;
+            break;
+        }
+    }
+
+    if(default_vrf_row == NULL)
+    {
+      assert(0);
+      VLOG_DBG("Couldn't fetch default VRF row. Function=%s, Line=%d",
+                __func__, __LINE__);
+      cli_do_config_abort(txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+    ports = xmalloc(sizeof *default_vrf_row->ports *
+                   (default_vrf_row->n_ports + 1));
+    for (i = 0; i < default_vrf_row->n_ports; i++)
+    {
+      ports[i] = default_vrf_row->ports[i];
+    }
+    ports[default_vrf_row->n_ports] = port_row;
+    ovsrec_vrf_set_ports(default_vrf_row, ports,
+                         default_vrf_row->n_ports + 1);
+    free(ports);
+
+    status_txn = cli_do_config_finish(txn);
+    if(status_txn == TXN_SUCCESS || status_txn == TXN_UNCHANGED)
+    {
+      vty->node = LINK_AGGREGATION_NODE;
+      vty->index = lag_number;
+      return CMD_SUCCESS;
+    }
+    else
+    {
+      VLOG_ERR("Transaction commit failed in function=%s, line=%d",__func__,__LINE__);
+      return CMD_OVSDB_FAILURE;
+    }
+  }
+  else
+  {
+    vty->node = LINK_AGGREGATION_NODE;
+    vty->index = lag_number;
+    return CMD_SUCCESS;
+  }
 }
 
 DEFUN (vtysh_interface_mgmt,
@@ -3166,6 +3266,7 @@ vtysh_init_vty (void)
    install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
    install_node (&mgmt_interface_node, NULL);
+   install_node (&link_aggregation_node, NULL);
 #endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
@@ -3195,6 +3296,7 @@ vtysh_init_vty (void)
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
    vtysh_install_default (MGMT_INTERFACE_NODE);
+   vtysh_install_default (LINK_AGGREGATION_NODE);
 #endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
@@ -3344,6 +3446,10 @@ vtysh_init_vty (void)
    install_element (MGMT_INTERFACE_NODE, &vtysh_exit_mgmt_interface_cmd);
    install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (MGMT_INTERFACE_NODE, &vtysh_end_all_cmd);
+   install_element (CONFIG_NODE, &vtysh_intf_link_aggregation_cmd);
+   install_element (LINK_AGGREGATION_NODE, &vtysh_exit_mgmt_interface_cmd);
+   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
+   install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
@@ -3460,5 +3566,6 @@ vtysh_init_vty (void)
 
   /* Initialise power supply cli */
   powersupply_vty_init();
+  lacp_vty_init();
 #endif
 }

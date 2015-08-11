@@ -192,6 +192,8 @@ vtysh_config_parse_line (const char *line)
 	config = config_get (INTERFACE_NODE, line);
       else if (strncmp (line, "interface mgmt", strlen ("interface mgmt")) == 0)
           config = config_get (MGMT_INTERFACE_NODE, line);
+      else if (strncmp (line, "interface lag", strlen ("interface lag")) == 0)
+          config = config_get (LINK_AGGREGATION_NODE, line);
       else if (strncmp (line, "router-id", strlen ("router-id")) == 0)
 	config = config_get (ZEBRA_NODE, line);
       else if (strncmp (line, "router rip", strlen ("router rip")) == 0)

@@ -369,6 +369,14 @@ mgmt_intf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf_status);
 }
 
+static void
+lacp_ovsdb_init()
+{
+   ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lacp_config);
+   ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
+   ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -436,6 +444,8 @@ ovsdb_init(const char *db_path)
 
     /* Logrotate tables */
     logrotate_ovsdb_init(idl);
+    /* Add tables/columns needed for LACP config commands */
+    lacp_ovsdb_init();
 
     /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands */
     ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);

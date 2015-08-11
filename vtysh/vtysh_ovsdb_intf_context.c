@@ -29,6 +29,15 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
+#include "lacp_vty.h"
+
+#define PRINT_INTERFACE_NAME(name_written, p_msg, if_name)\
+  if (!(name_written))\
+  {\
+    vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);\
+    name_written = true;\
+  }
+
 
 typedef enum vtysh_ovsdb_intf_lldptxrx_enum
 {
@@ -95,6 +104,85 @@ struct ovsrec_port* port_lookup(const char *if_name,
       }
     }
     return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_parse_lacp_othercfg
+| Responsibility : parse other_config in intf table to display lacp config
+| Parameters :
+|              ifrow_config : other_config object pointer
+|                     p_msg : vtysh_ovsdb_cbmsg_ptr data
+|                  intf_cfg : pointer of type vtysh_ovsdb_intf_cfg
+|                   if_name : interface name
+| Return : void
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_intftable_parse_lacp_othercfg(const struct smap *ifrow_config,
+                                          vtysh_ovsdb_cbmsg_ptr p_msg,
+                                          vtysh_ovsdb_intf_cfg *intf_cfg,
+                                          const char *if_name)
+{
+  const char *data = NULL;
+
+  data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_ID);
+  if (data)
+  {
+    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-id", atoi(data));
+  }
+  data = NULL;
+  data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
+  if (data)
+  {
+    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-priority", atoi(data));
+  }
+  data = NULL;
+  data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
+  if (data)
+  {
+    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp aggregation-key", atoi(data));
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_print_lag
+| Responsibility : print lag information of an interface
+| Parameters :
+|                     p_msg : vtysh_ovsdb_cbmsg_ptr data
+|                  intf_cfg : pointer of type vtysh_ovsdb_intf_cfg
+|                   if_name : interface name
+| Return : void
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_intftable_print_lag(vtysh_ovsdb_cbmsg_ptr p_msg,
+                                vtysh_ovsdb_intf_cfg *intf_cfg,
+                                const char *if_name)
+{
+  const struct ovsrec_port *port_row = NULL;
+  const struct ovsrec_interface *if_row = NULL;
+  int k=0;
+
+   OVSREC_PORT_FOR_EACH(port_row, p_msg->idl)
+   {
+     if (strncmp(port_row->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
+     {
+        for (k = 0; k < port_row->n_interfaces; k++)
+        {
+           if_row = port_row->interfaces[k];
+           if(strcmp(if_name, if_row->name) == 0)
+           {
+             PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+             vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ", "lag", atoi(&port_row->name[LAG_PORT_NAME_PREFIX_LENGTH]));
+           }
+        }
+     }
+   }
+
+  return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -242,6 +330,9 @@ vtysh_intf_context_clientcallback(void *p_private)
           vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
         }
       }
+      vtysh_ovsdb_intftable_parse_lacp_othercfg(&ifrow->other_config, p_msg,
+                                                &intfcfg, ifrow->name);
+      vtysh_ovsdb_intftable_print_lag(p_msg, &intfcfg, ifrow->name);
       vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg, intfcfg.disp_intf_cfg);
     }
   }

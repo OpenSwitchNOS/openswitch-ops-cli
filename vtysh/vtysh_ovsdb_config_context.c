@@ -32,6 +32,7 @@
 #include "fan_vty.h"
 #include "aaa_vty.h"
 #include "logrotate_vty.h"
+#include "openhalon-dflt.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
 
@@ -188,6 +189,36 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   if (data)
   {
     vtysh_ovsdb_cli_print(p_msg, "lldp management-address %s", data);
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_lacpcfg
+| Responsibility : parse lacp_config in open_vswitch table
+| Parameters :
+|    ifrow_config : lacp_config object pointer
+|    fp : file pointer
+| Return : void
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_lacpcfg(const struct smap *lacp_config, vtysh_ovsdb_cbmsg *p_msg)
+{
+  const char *data = NULL;
+
+  if(NULL == lacp_config)
+  {
+    return e_vtysh_error;
+  }
+
+  data = smap_get(lacp_config,  PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY);
+  if (data)
+  {
+    if (DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY != atoi(data))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "lacp system-priority %d", atoi(data));
+    }
   }
 
   return e_vtysh_ok;
@@ -432,6 +463,9 @@ vtysh_config_context_global_clientcallback(void *p_private)
 
     /* parse other config param */
     vtysh_ovsdb_ovstable_parse_othercfg(&vswrow->other_config, p_msg);
+
+    /* parse lacp config param */
+    vtysh_ovsdb_ovstable_parse_lacpcfg(&vswrow->lacp_config, p_msg);
 
     /* parse logrotate config param */
     vtysh_ovsdb_ovstable_parse_logrotate_cfg(&vswrow->logrotate_config, p_msg);
