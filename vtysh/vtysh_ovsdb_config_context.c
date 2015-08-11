@@ -642,13 +642,13 @@ vtysh_init_config_context_clients()
   retval = e_vtysh_error;
   memset(&client, 0, sizeof(vtysh_context_client));
   client.p_client_name = staticrouteconfigclientname;
-  client.client_id = e_vtysh_config_context_staticroute;
+  client.client_id = e_vtysh_dependent_config_staticroute;
   client.p_callback = &vtysh_config_context_staticroute_clientcallback;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_staticroute, &client);
+  retval = vtysh_context_addclient(e_vtysh_dependent_config, e_vtysh_dependent_config_staticroute, &client);
   if(e_vtysh_ok != retval)
   {
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add static route client callback");
+                              "dependent config unable to add static route client callback");
     assert(0);
     return retval;
   }

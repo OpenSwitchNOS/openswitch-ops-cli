@@ -126,6 +126,9 @@ enum node_type
   DUMP_NODE,			/* Packet dump node. */
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
+#ifdef ENABLE_OVSDB
+  MGMT_INTERFACE_NODE,          /* Management Interface Node*/
+#endif
   VTY_NODE,			/* Vty node. */
 };
 
@@ -537,6 +540,11 @@ struct cmd_token
 #define VLAN_INT_RANGE_STR  "VLAN internal range configuration\n"
 #define SHOW_VLAN_STR       "Show VLAN Configuration\n"
 #define SHOW_VLAN_INT_STR   "Show VLAN internal configuration\n"
+
+/* Help strings for show commands */
+#define SHOW_ARP_STR    "Show IPv4 addresses from neighbor table\n"
+#define SHOW_IPV6_STR   "Show IPv6 info\n"
+#define SHOW_IPV6_NEIGHBOR_STR "Show IPv6 addresses from neighbor table\n"
 
 #define CONF_BACKUP_EXT ".sav"
 

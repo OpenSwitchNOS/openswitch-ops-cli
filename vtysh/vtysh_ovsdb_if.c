@@ -81,6 +81,7 @@ pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
 }
 
 extern struct vty *vty;
+
 /*
  * Running idl run and wait to fetch the data from the DB
  */
@@ -97,27 +98,61 @@ vtysh_wait(void)
 }
 
 static void
-bgp_ovsdb_init(struct ovsdb_idl *idl)
+bgp_ovsdb_init (struct ovsdb_idl *idl)
 {
-  ovsdb_idl_add_table(idl, &ovsrec_table_bgp_router);
-  ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_asn);
-  ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_router_id);
-  ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_status);
-  ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
+    /* BGP router table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_bgp_router);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_asn);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_router_id);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_networks);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_vrf);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_redistribute);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_gr_stale_timer);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_always_compare_med);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_other_config);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_status);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_external_ids);
 
-  ovsdb_idl_add_table(idl, &ovsrec_table_route);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_prefix);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_from);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_nexthops);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_address_family);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_sub_address_family);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_specific);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_selected);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_distance);
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
+    /* BGP neighbor table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_active);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_weight);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_bgp_peer_group);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_bgp_router);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_strict_capability_match);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_tcp_port_number);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_inbound_soft_reconfiguration);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_statistics);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_remote_as);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_override_capability);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_passive);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_maximum_prefix_limit);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_name);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_status);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_description);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_local_as);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_advertisement_interval);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_local_interface);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_external_ids);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_password);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_other_config);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_capability);
+	ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_timers);
 
-  ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
-}
+    /* RIB */
+    ovsdb_idl_add_table(idl, &ovsrec_table_route);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_prefix);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_from);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_nexthops);
+    ovsdb_idl_add_column(idl, &ovsrec_route_col_address_family);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_sub_address_family);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_specific);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_selected);
+    ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_private);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_distance);
+	ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
+    ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
+ }
 
 static void
 l3static_ovsdb_init(struct ovsdb_idl *idl)
@@ -127,8 +162,12 @@ l3static_ovsdb_init(struct ovsdb_idl *idl)
 
   ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
   ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
   ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ports);
   ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
+  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
 }
 
 static void
@@ -151,6 +190,31 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_bridges);
 }
 
+static void
+policy_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_description);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list_entries);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_action);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_prefix);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_prefix_list);
+    ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entries_col_sequence);
+
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_route_map);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_col_name);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_route_map_entries);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_action);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_description);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_match);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_preference);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_route_map);
+    ovsdb_idl_add_column(idl, &ovsrec_route_map_entries_col_set);
+}
 
 /***********************************************************
  * @func        : intf_ovsdb_init
@@ -176,8 +240,6 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
-
-    return;
 }
 
 /***********************************************************
@@ -296,6 +358,13 @@ vlan_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_vlan_col_admin);
 }
 
+static void
+mgmt_intf_ovsdb_init(struct ovsdb_idl *idl)
+{
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf_status);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -331,6 +400,9 @@ ovsdb_init(const char *db_path)
     /* Interface tables */
     intf_ovsdb_init(idl);
 
+   /* Management interface columns */
+    mgmt_intf_ovsdb_init(idl);
+
     alias_ovsdb_init(idl);
 
     /* BGP tables */
@@ -342,6 +414,9 @@ ovsdb_init(const char *db_path)
 
     /* Radius server table */
     radius_server_ovsdb_init(idl);
+
+    /* Policy tables */
+    policy_ovsdb_init(idl);
 
     /* System tables */
     system_ovsdb_init(idl);
@@ -355,6 +430,13 @@ ovsdb_init(const char *db_path)
     /* Logrotate tables */
     logrotate_ovsdb_init(idl);
 
+    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands */
+    ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 }
 
 static void

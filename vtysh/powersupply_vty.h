@@ -1,4 +1,4 @@
-/* BGP CLI implementation with Halon vtysh.
+/* Power Supply CLI commands.
  *
  * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
  *
@@ -17,16 +17,20 @@
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *
- * File: bgp_vty.h
+ * File: powersupply_vty.h
  *
- * Purpose: This file contains function declarations of BGP CLI.
+ * Purpose: To add power supply CLI configuration and display commands.
  */
-#ifndef _BGP_VTY_H
-#define _BGP_VTY_H
 
-#define CMD_AS_RANGE "<1-4294967295>"
-#define NETWORK_MAX_LEN 49
+#ifndef _POWERSUPPLY_VTY_H
+#define _POWERSUPPLY_VTY_H
 
-void bgp_vty_init (void);
+#ifndef SYS_STR
+#define SYS_STR         "System information\n"
+#endif
+#define PSU_STR         "Shows power supply information\n"
 
-#endif /* _BGP_VTY_H */
+int cli_system_get_psu();
+void powersupply_vty_init();
+
+#endif //_POWERSUPPLY_VTY_H
