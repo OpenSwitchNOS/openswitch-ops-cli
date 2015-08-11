@@ -2551,19 +2551,33 @@ vtysh_prompt (void)
    return buf;
 }
 
+#ifdef ENABLE_OVSDB
+
 DEFUN(vtysh_user_add,
        vtysh_user_add_cmd,
        "useradd WORD",
-       "Adding a new user\n")
+       "Adding a new user\n"
+       "User name to be added\n")
 {
        char *arg[2];
-       arg[0]="/usr/sbin/adduser";
-       arg[1]=argv[0];
+       arg[0] = "/usr/sbin/adduser";
+       arg[1] = argv[0];
        execute_command("sudo", 2,(const char **)arg);
        return CMD_SUCCESS;
 }
 
-#ifdef ENABLE_OVSDB
+DEFUN(vtysh_user_del,
+       vtysh_user_del_cmd,
+       "deluser WORD",
+       "Delete a user account\n"
+       "User name to be deleted\n")
+{
+       char *arg[2];
+       arg[0] = "/usr/sbin/deluser";
+       arg[1] = argv[0];
+       execute_command("sudo", 2,(const char **)arg);
+       return CMD_SUCCESS;
+}
 
 DEFUN (vtysh_demo_cli1,
       vtysh_demo_cli1_cmd,
@@ -3399,6 +3413,7 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_passwd_cmd);
   install_element (CONFIG_NODE, &vtysh_user_add_cmd);
+  install_element (CONFIG_NODE, &vtysh_user_del_cmd);
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
