@@ -97,7 +97,6 @@ enum node_type
   KEYCHAIN_NODE,		/* Key-chain node. */
   KEYCHAIN_KEY_NODE,		/* Key-chain key node. */
   INTERFACE_NODE,		/* Interface mode node. */
-  MGMT_INTERFACE_NODE,  /* Management Interface Node*/
   ZEBRA_NODE,			/* zebra connection node. */
   TABLE_NODE,			/* rtm_table selection node. */
   RIP_NODE,			/* RIP protocol mode node. */ 
@@ -127,6 +126,9 @@ enum node_type
   DUMP_NODE,			/* Packet dump node. */
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
+#ifdef ENABLE_OVSDB
+  MGMT_INTERFACE_NODE,          /* Management Interface Node*/
+#endif
   VTY_NODE,			/* Vty node. */
 };
 
