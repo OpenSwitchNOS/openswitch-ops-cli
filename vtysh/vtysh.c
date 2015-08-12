@@ -2695,7 +2695,8 @@ DEFUN (vtysh_ssh,
   return CMD_SUCCESS;
 }
 #endif /* ENABLE_OVSDB */
-DEFUN (vtysh_start_shell,
+
+DEFUN_NOLOCK (vtysh_start_shell,
        vtysh_start_shell_cmd,
        "start-shell",
 #ifndef ENABLE_OVSDB

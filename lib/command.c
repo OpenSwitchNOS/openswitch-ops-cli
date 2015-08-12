@@ -35,6 +35,9 @@ Boston, MA 02111-1307, USA.  */
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
 #include "vty_utils.h"
+#include "openvswitch/vlog.h"
+
+VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
 
 #define MAX_CMD_LEN 256
@@ -2854,7 +2857,19 @@ cmd_execute_command_real (vector vline,
   vty->buf = matched_element->string;
   vty->length = strlen(matched_element->string);
   /* Execute matched command. */
-  return (*matched_element->func) (matched_element, vty, 0, argc, argv);
+  if(((matched_element->attr) & CMD_ATTR_NOLOCK) == 0)
+  {
+    VTYSH_OVSDB_LOCK;
+    VLOG_DBG("Setting the latch");
+    latch_set(&ovsdb_latch);
+    ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+    VTYSH_OVSDB_UNLOCK;
+  }
+  else
+  {
+    ret = (*matched_element->func)(matched_element, vty, 0, argc, argv);
+  }
+  return ret;
 }
 
 /**
