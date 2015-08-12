@@ -336,6 +336,10 @@ vtysh_execute_func (const char *line, int pager)
       tried++;
    }
 
+   /* if the command succeeds in any other node than current, it is not always
+    * necessary to move to parent context but to remain with the vty context
+    * after execution of the command */
+#ifndef ENABLE_OVSDB
    vty->node = saved_node;
 
    /* If command succeeded in any other node than current (tried > 0) we have
@@ -365,6 +369,15 @@ vtysh_execute_func (const char *line, int pager)
    {
       ret = saved_ret;
    }
+#else
+
+   if (ret != CMD_SUCCESS && tried)
+   {
+      vty->node = saved_node;
+      ret = saved_ret;
+   }
+
+#endif
 
    cmd_free_strvec (vline);
 
