@@ -22,7 +22,13 @@
 #include "vector.h"
 #include "vty.h"
 #include "command.h"
+#include <pthread.h>
 #include "vty_utils.h"
+#include "latch.h"
+
+struct latch latch;
+
+pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * This command converts command string into a vector of cmd_tokens

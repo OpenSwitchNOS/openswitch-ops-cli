@@ -52,6 +52,8 @@
 #include "lib/regex-gnu.h"
 #endif /* HAVE_GNU_REGEX */
 #include "lib/vty.h"
+#include "latch.h"
+#include "lib/vty_utils.h"
 
 typedef unsigned char boolean;
 
@@ -62,9 +64,11 @@ static unsigned int idl_seqno;
 static char *appctl_path = NULL;
 static struct unixctl_server *appctl;
 static struct ovsdb_idl_txn *txn;
+static int cur_cfg_no = 0;
 
 boolean exiting = false;
 volatile boolean vtysh_exit = false;
+#if 0
 /* To serialize updates to OVSDB.
  * interface threads calls to update OVSDB states. */
 pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -79,7 +83,7 @@ pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
                 VLOG_DBG("%s(%d): VTYSH_OVSDB_UNLOCK: releasing lock...", __FUNCTION__, __LINE__); \
                 pthread_mutex_unlock(&vtysh_ovsdb_mutex); \
 }
-
+#endif
 extern struct vty *vty;
 
 /*
@@ -95,6 +99,7 @@ static void
 vtysh_wait(void)
 {
     ovsdb_idl_wait(idl);
+    latch_wait(&latch);
 }
 
 static void
@@ -409,6 +414,7 @@ ovsdb_init(const char *db_path)
     free(idl_lock);
     idl_seqno = ovsdb_idl_get_seqno(idl);
     ovsdb_idl_enable_reconnect(idl);
+    latch_init(&latch);
 
     /* Add hostname columns */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
@@ -579,17 +585,25 @@ void vtysh_ovsdb_exit(void)
    transaction pointer */
 struct ovsdb_idl_txn* cli_do_config_start()
 {
-  idl_seqno = ovsdb_idl_get_seqno(idl);
-  /* Checking if the connection is alive and if
-     we have received atleast one update from DB */
-  if(idl_seqno < 1 || !ovsdb_idl_is_alive(idl))
+  if(cur_cfg_no < 1)
   {
-    return NULL;
+    const struct ovsrec_open_vswitch* ovs = ovsrec_open_vswitch_first(idl);
+    if(ovs != NULL)
+    {
+      cur_cfg_no = ovs->cur_cfg;
+      if(cur_cfg_no <1)
+      {
+        return NULL;
+      }
+    }
+    else
+    {
+      return NULL;
+    }
   }
 
   /* TO-DO: Move the locking into the infra itself so
      that developers need not worry about the locking */
-  VTYSH_OVSDB_LOCK;
   struct ovsdb_idl_txn *status_txn = ovsdb_idl_txn_create(idl);
 
   if(status_txn  == NULL)
@@ -606,7 +620,6 @@ enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* status_txn)
   if(status_txn == NULL)
   {
     assert(0);
-    VTYSH_OVSDB_UNLOCK;
     return TXN_ERROR;
   }
 
@@ -616,7 +629,6 @@ enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* status_txn)
   ovsdb_idl_txn_destroy(status_txn);
   status_txn = NULL;
 
-  VTYSH_OVSDB_UNLOCK;
   return status;
 }
 
@@ -625,12 +637,10 @@ void cli_do_config_abort(struct ovsdb_idl_txn* status_txn)
 {
   if(status_txn == NULL)
   {
-    VTYSH_OVSDB_UNLOCK;
     return;
   }
   ovsdb_idl_txn_destroy(status_txn);
   status_txn = NULL;
-  VTYSH_OVSDB_UNLOCK;
 }
 
 /*
@@ -801,10 +811,9 @@ vtysh_ovsdb_main_thread(void *arg)
                functionality. Need to resolve this as soon possible */
             poll_block();
         }
+        latch_poll(&latch);
     }
-
     return NULL;
-
 }
 
 /*

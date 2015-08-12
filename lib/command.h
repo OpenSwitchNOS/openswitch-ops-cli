@@ -159,6 +159,7 @@ struct cmd_node
 #define CMD_ATTR_HIDDEN      2  /* command is not listed in "?" or "list", but executes action routine */
 #define CMD_ATTR_NOT_ENABLED 4  /* command is listed, but not calling action routine */
 #define CMD_ATTR_DISABLED    (CMD_ATTR_HIDDEN | CMD_ATTR_NOT_ENABLED)
+#define CMD_ATTR_NOLOCK      8  /* OVSDB lock is not taken */
 
 #define CMD_FLAG_NO_CMD      1
 
@@ -425,6 +426,9 @@ struct cmd_token
 #define DEFUN_HIDDEN(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN)
 
+#define DEFUN_NOLOCK(funcname, cmdname, cmdstr, helpstr) \
+  DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_NOLOCK)
+
 #define DEFUN_DEPRECATED(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_DEPRECATED) \
 
@@ -450,6 +454,9 @@ struct cmd_token
 
 #define DEFUNSH_HIDDEN(daemon, funcname, cmdname, cmdstr, helpstr) \
   DEFUNSH_ATTR (daemon, funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN)
+
+#define DEFUNSH_NOLOCK(daemon, funcname, cmdname, cmdstr, helpstr) \
+  DEFUNSH_ATTR (daemon, funcname, cmdname, cmdstr, helpstr, CMD_ATTR_NOLOCK)
 
 #define DEFUNSH_DEPRECATED(daemon, funcname, cmdname, cmdstr, helpstr) \
   DEFUNSH_ATTR (daemon, funcname, cmdname, cmdstr, helpstr, CMD_ATTR_DEPRECATED)
