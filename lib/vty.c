@@ -39,6 +39,11 @@
 
 #include <arpa/telnet.h>
 
+#include "vswitch-idl.h"
+#include "latch.h"
+#include <pthread.h>
+#include "vty_utils.h"
+
 /* Vty events */
 enum event 
 {
