@@ -130,7 +130,7 @@ DEFUN (cli_lldp_set_global_status,
        lldp_set_global_status_cmd,
        "feature lldp",
        "Enables or disables the selected feature.\n"
-       "Enables or disables LLDP on the device.\n")
+       CONFIG_LLDP_STR)
 {
   return lldp_set_global_status("true");
 }
@@ -140,7 +140,7 @@ DEFUN (cli_lldp_no_set_global_status,
        "no feature lldp",
         NO_STR
        "Enables or disables the selected feature.\n"
-       "Enables or disables LLDP on the device.\n")
+       CONFIG_LLDP_STR)
 {
   return lldp_set_global_status("false");
 }
@@ -192,7 +192,7 @@ static int set_global_hold_time(const char *hold_time)
 DEFUN (cli_lldp_set_hold_time,
        lldp_set_global_hold_time_cmd,
        "lldp holdtime <2-10>",
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "The amount of time a receiving device should hold the information sent by your device before discarding it.\n"
        "The range is 2 to 10; the default is 4.\n")
 {
@@ -203,7 +203,7 @@ DEFUN (cli_lldp_no_set_hold_time,
        lldp_no_set_global_hold_time_cmd,
        "no lldp holdtime",
         NO_STR
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "The amount of time a receiving device should hold the information sent by your device before discarding it.\n")
 {
   char def_holdtime[LLDP_TIMER_MAX_STRING_LENGTH]={0};
@@ -256,7 +256,7 @@ static int lldp_set_global_timer(const char *timer)
 DEFUN (cli_lldp_set_timer,
        lldp_set_global_timer_cmd,
        "lldp timer <5-32768>",
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "The interval at which LLDP status updates are transmitted to neighbors in seconds.\n"
         "The range is 5 to 32768 seconds; the default is 30 seconds.\n")
 {
@@ -267,7 +267,7 @@ DEFUN (cli_no_lldp_set_timer,
        lldp_no_set_global_timer_cmd,
        "no lldp timer",
        NO_STR
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "The interval at which LLDP status updates are transmitted to neighbors in seconds.\n")
 {
   char def_global_time[LLDP_TIMER_MAX_STRING_LENGTH]={0};
@@ -279,7 +279,7 @@ DEFUN (cli_no_lldp_set_timer,
 DEFUN (cli_lldp_clear_counters,
        lldp_clear_counters_cmd,
        "lldp clear counters",
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "Clear LLDP information.\n"
        "Clear LLDP counters.\n")
 {
@@ -328,7 +328,7 @@ DEFUN (cli_lldp_clear_counters,
 DEFUN (cli_lldp_clear_neighbors,
        lldp_clear_neighbors_cmd,
        "lldp clear neighbors",
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "Clear LLDP information.\n"
        "Clear LLDP neighbor tables.\n")
 {
@@ -444,7 +444,7 @@ DEFUN (cli_lldp_select_tlv,
                         port-vlan-name | port-protocol-vlan-id |\
                         port-protocol-id | system-capabilities |\
                         system-description | system-name)",
-       "Configure LLDP parameters\n"
+       CONFIG_LLDP_STR
        "Specifies the TLVs to send and receive in LLDP packets.\n"
        " \n"
        " \n"
@@ -466,7 +466,7 @@ DEFUN (cli_no_lldp_select_tlv,
                         port-protocol-id | system-capabilities |\
                         system-description | system-name)",
        NO_STR
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "Specifies the TLVs to send and receive in LLDP packets.\n"
        " \n"
        " \n"
@@ -526,8 +526,10 @@ static int lldp_set_mgmt_address(const char *status, boolean set)
 DEFUN (cli_lldp_set_mgmt_address,
        lldp_set_mgmt_address_cmd,
        "lldp management-address (A.B.C.D | X:X::X:X)",
-       "Configure LLDP parameters.\n"
-       "LLDP Management IP Address to be sent in TLV.\n")
+       CONFIG_LLDP_STR
+       "LLDP Management IP Address to be sent in TLV.\n"
+       "LLDP Management IP4 Address.\n"
+       "LLDP Management IP6 Address.\n")
 {
   return lldp_set_mgmt_address(argv[0], true);
 }
@@ -536,7 +538,7 @@ DEFUN (cli_lldp_set_no_mgmt_address,
        lldp_set_no_mgmt_address_cmd,
        "no lldp management-address",
        NO_STR
-       "Configure LLDP parameters.\n"
+       CONFIG_LLDP_STR
        "LLDP Management IP Address to be sent in TLV.\n")
 {
   return lldp_set_mgmt_address(argv[0], false);
@@ -609,7 +611,7 @@ DEFUN (cli_lldp_show_tlv,
        lldp_show_tlv_cmd,
        "show lldp tlv",
        SHOW_STR
-       "Show various LLDP settings.\n"
+       SHOW_LLDP_STR
        "Show TLVs advertised by LLDP.\n")
 {
   const struct ovsrec_open_vswitch *row = NULL;
@@ -630,7 +632,7 @@ DEFUN (cli_lldp_show_intf_statistics,
        lldp_show_intf_statistics_cmd,
        "show lldp statistics IFNAME",
        SHOW_STR
-       "Show various LLDP settings.\n"
+       SHOW_LLDP_STR
        "Show LLDP statistics.\n"
        "Specify the interface name.\n")
 {
@@ -692,7 +694,7 @@ DEFUN (cli_lldp_show_config,
        lldp_show_config_cmd,
        "show lldp configuration ",
        SHOW_STR
-       "Show various LLDP settings.\n"
+       SHOW_LLDP_STR
        "Show LLDP configuration. \n")
 {
   const struct ovsrec_interface *ifrow = NULL;
@@ -825,7 +827,7 @@ DEFUN (cli_lldp_show_statistics,
        lldp_show_statistics_cmd,
        "show lldp statistics",
        SHOW_STR
-       "Show various LLDP settings.\n"
+       SHOW_LLDP_STR
        "Show LLDP statistics.\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
@@ -979,7 +981,7 @@ DEFUN (cli_lldp_show_neighbor_info,
        lldp_show_neighbor_info_cmd,
        "show lldp neighbor-info",
        SHOW_STR
-       "Show various LLDP settings.\n"
+       SHOW_LLDP_STR
        "Show global LLDP neighbor information.\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
@@ -1111,7 +1113,7 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
        lldp_show_intf_neighbor_info_cmd,
        "show lldp neighbor-info IFNAME",
        SHOW_STR
-       "Show various LLDP settings.\n"
+       SHOW_LLDP_STR
        "Show global LLDP neighbor information.\n"
        "Specify the interface name.")
 {
@@ -1280,8 +1282,8 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
 DEFUN (lldp_if_lldp_tx,
        lldp_if_lldp_tx_cmd,
        "lldp transmission",
-       "Set the transmission\n"
-       "Set the trans\n")
+       INTF_LLDP_STR
+       "Set the transmission\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission in Interface context");
@@ -1292,8 +1294,8 @@ DEFUN (lldp_if_lldp_tx,
 DEFUN (lldp_if_lldp_rx,
        lldp_if_lldp_rx_cmd,
        "lldp reception",
-       "Set the reception\n"
-       "Set the recv\n")
+       INTF_LLDP_STR
+       "Set the receiption\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception in Interface context");
@@ -1402,8 +1404,9 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 DEFUN (lldp_if_no_lldp_tx,
        lldp_if_no_lldp_tx_cmd,
        "no lldp transmission",
-       "Unset the transmission\n"
-       "Unset the trans\n")
+       NO_STR
+       INTF_LLDP_STR
+       "Set the transmission\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission in Interface context");
@@ -1414,8 +1417,9 @@ DEFUN (lldp_if_no_lldp_tx,
 DEFUN (lldp_if_no_lldp_rx,
        lldp_if_no_lldp_rx_cmd,
        "no lldp reception",
-       "Unset the reception\n"
-       "Unset the recv\n")
+       NO_STR
+       INTF_LLDP_STR
+       "Set the receiption\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception in Interface context");
