@@ -2270,7 +2270,7 @@ DEFUN (vtysh_copy_startupconfig,
   execute_command ("cfgdbutil", 3, (const char **)arguments);
   return CMD_SUCCESS;
 }
-
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_ping,
       vtysh_ping_cmd,
       "ping WORD",
@@ -2359,7 +2359,7 @@ DEFUN (vtysh_ssh,
   execute_command ("ssh", 1, argv);
   return CMD_SUCCESS;
 }
-
+#endif /* ENABLE_OVSDB */
 DEFUN (vtysh_start_shell,
        vtysh_start_shell_cmd,
        "start-shell",
@@ -3332,6 +3332,8 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
 #endif /* ENABLE_OVSDB */
+
+#ifndef ENABLE_OVSDB
   install_element (VIEW_NODE, &vtysh_ping_cmd);
   install_element (VIEW_NODE, &vtysh_ping_ip_cmd);
   install_element (VIEW_NODE, &vtysh_traceroute_cmd);
@@ -3354,6 +3356,7 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_telnet_cmd);
   install_element (ENABLE_NODE, &vtysh_telnet_port_cmd);
   install_element (ENABLE_NODE, &vtysh_ssh_cmd);
+#endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
