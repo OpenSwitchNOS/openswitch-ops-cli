@@ -60,12 +60,12 @@
 
 # define LOGROTATE_HELP_STR_TARGET     "Rotates, compresses, and transfers system logs.\n" \
                                        "Transfers logs to remote host.\n"\
-                                       "URI of the remote host. Supported values :'tftp://A.B.C.D'\n"
+                                       "URI of the remote host. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X'\n"
 
 # define LOGROTATE_NO_HELP_STR_TARGET     NO_STR \
                                           "Rotates, compresses, and transfers system logs.\n" \
                                           "Transfers logs to remote host.\n" \
-                                          "URI of the remote host. Supported values :'tftp://A.B.C.D'\n"
+                                          "URI of the remote host. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X'\n"
 
 #define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD "period"
 #define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE "maxsize"

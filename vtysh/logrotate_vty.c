@@ -29,6 +29,7 @@
 #include "ovsdb-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh.h"
+#include "vtysh_utils.h"
 
 #include <arpa/inet.h>
 #include <string.h>
@@ -36,10 +37,22 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_logrotate);
 extern struct ovsdb_idl *idl;
 
+#define IS_VALID_IPV4(i) !(IS_BROADCAST_IPV4(i) | IS_LOOPBACK_IPV4(i) | \
+                          IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
+                          IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
+                          IS_NETWORK_ADDRESS(i))
+
+#define IS_VALID_IPV6(i) !(IN6_IS_ADDR_UNSPECIFIED(i) | IN6_IS_ADDR_LOOPBACK(i) | \
+                           IN6_IS_ADDR_SITELOCAL(i)  |  IN6_IS_ADDR_MULTICAST(i))
+
 #define VLOG_ERR_LOGROTATE_TRANSACTION_COMMIT_FAILED VLOG_ERR("Logrotate DB : transaction commit failed \n")
 #define VLOG_ERR_LOGROTATE_OPENVSWITCH_READ_FAILED VLOG_ERR("Logrotate DB: Openvswitch read failed \n")
 #define VLOG_ERR_LOGROTATE_TRANSACTION_CREATE_FAILED  VLOG_ERR(OVSDB_TXN_CREATE_ERROR)
 
+typedef unsigned char boolean;
+
+#define TRUE 1
+#define FALSE 0
 /* Sets logrotation period value in DB*/
 static int set_logrotate_period(const char *period_value)
 {
@@ -133,6 +146,8 @@ static int set_logrotate_target(const char *uri)
     struct ovsdb_idl_txn *txn;
     const char *ip_value;
     struct in_addr addr;
+    struct in6_addr addrv6;
+    boolean is_ipv4 = TRUE;
 
     if(strncmp(uri,OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
         {
@@ -151,13 +166,23 @@ static int set_logrotate_target(const char *uri)
 
         if(inet_pton(AF_INET, ip_value,&addr) <= 0)
             {
-            VLOG_ERR("Invalid IPv4 address\n");
+            if(inet_pton(AF_INET6, ip_value, &addrv6) <= 0)
+                {
+                VLOG_ERR("Invalid IPv4 or IPv6 address\n");
+                return CMD_ERR_NOTHING_TODO;
+                }
+            is_ipv4 = FALSE;
+            }
+
+        if(is_ipv4 && (!IS_VALID_IPV4(htonl(addr.s_addr))))
+            {
+            VLOG_ERR("IPv4 :Broadcast, multicast and loopback addresses are not allowed\n");
             return CMD_ERR_NOTHING_TODO;
             }
 
-        if(!IS_VALID_IPV4(htonl(addr.s_addr)))
+        if((!is_ipv4) && (!IS_VALID_IPV6(&addrv6)))
             {
-            VLOG_ERR("Broadcast, multicast and loopback addresses are not allowed\n");
+            VLOG_ERR("IPv6 :Multicast and loopback addresses are not allowed\n");
             return CMD_ERR_NOTHING_TODO;
             }
         }
@@ -184,7 +209,7 @@ static int set_logrotate_target(const char *uri)
         }
     else
         {
-        smap_remove(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET);
+        smap_remove((struct smap *)&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET);
         }
 
     ovsrec_open_vswitch_set_logrotate_config(ovs, &ovs->logrotate_config);
