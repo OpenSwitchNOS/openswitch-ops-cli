@@ -16,11 +16,7 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
-import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -110,10 +106,7 @@ class PlatformSystemTests( HalonTest ):
 
         return False
 
-
-
 class Test_sys:
-    test = PlatformSystemTests()
 
     def setup(self):
         pass
@@ -123,7 +116,15 @@ class Test_sys:
 
     def setup_class(cls):
         # Initialize the led table with dummy value
+        Test_sys.test = PlatformSystemTests()
         Test_sys.test.initSystemTable()
+
+    # show system test.
+    def test_show_system_command(self):
+       if self.test.showSystemTest():
+           print 'Passed System Test'
+       else:
+           assert 0, "Failed System Test"
 
     def teardown_class(cls):
         # Delete Dummy data to avoid clash with other test scripts
@@ -140,10 +141,3 @@ class Test_sys:
 
     def __del__(self):
         del self.test
-
-    # show system test.
-    def test_show_system_command(self):
-       if self.test.showSystemTest():
-           print 'Passed System Test'
-       else:
-           assert 0, "Failed System Test"

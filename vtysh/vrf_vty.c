@@ -47,9 +47,9 @@ extern struct ovsdb_idl *idl;
 /*
  * Check for presence of VRF and return VRF row.
  */
-struct ovsrec_vrf* vrf_lookup(const char *vrf_name)
+const struct ovsrec_vrf* vrf_lookup(const char *vrf_name)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
     OVSREC_VRF_FOR_EACH (vrf_row, idl)
     {
         if (strcmp(vrf_row->name, vrf_name) == 0) {
@@ -67,11 +67,11 @@ struct ovsrec_vrf* vrf_lookup(const char *vrf_name)
  * create -> flag to create port if not found
  * attach_to_default_vrf -> attach newly created port to default VRF
  */
-struct ovsrec_port* port_check(const char *port_name, bool create,
+const struct ovsrec_port* port_check(const char *port_name, bool create,
                                bool attach_to_default_vrf,
                                struct ovsdb_idl_txn *txn)
 {
-    struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
         if (strcmp(port_row->name, port_name) == 0) {
@@ -79,18 +79,23 @@ struct ovsrec_port* port_check(const char *port_name, bool create,
         }
     }
     if (!port_row && create) {
-        struct ovsrec_interface *if_row = NULL;
+        const struct ovsrec_interface *if_row = NULL;
+        struct ovsrec_interface **ifs;
+
         OVSREC_INTERFACE_FOR_EACH(if_row, idl)
         {
             if (strcmp(if_row->name, port_name) == 0) {
                 port_row = ovsrec_port_insert(txn);
                 ovsrec_port_set_name(port_row, port_name);
-                ovsrec_port_set_interfaces(port_row, &if_row, 1);
+                ifs = xmalloc(sizeof *if_row);
+                ifs[0] = (struct ovsrec_interface *)if_row;
+                ovsrec_port_set_interfaces(port_row, ifs, 1);
+                free(ifs);
                 break;
             }
         }
         if (attach_to_default_vrf) {
-            struct ovsrec_vrf *default_vrf_row = NULL;
+            const struct ovsrec_vrf *default_vrf_row = NULL;
             struct ovsrec_port **ports = NULL;
             size_t i;
             default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
@@ -99,7 +104,9 @@ struct ovsrec_port* port_check(const char *port_name, bool create,
             for (i = 0; i < default_vrf_row->n_ports; i++) {
                 ports[i] = default_vrf_row->ports[i];
             }
-            ports[default_vrf_row->n_ports] = port_row;
+            struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*,
+                                                           port_row);
+            ports[default_vrf_row->n_ports] = temp_port_row;
             ovsrec_vrf_set_ports(default_vrf_row, ports,
                     default_vrf_row->n_ports + 1);
             free(ports);
@@ -112,9 +119,9 @@ struct ovsrec_port* port_check(const char *port_name, bool create,
 /*
  * Check if port is part of any VRF and return the VRF row.
  */
-struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
+const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
     OVSREC_VRF_FOR_EACH(vrf_row, idl)
     {
@@ -133,9 +140,11 @@ struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
  */
 static int vrf_add(const char *vrf_name)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_open_vswitch *ovs_row = NULL;
+    struct ovsrec_vrf **vrfs;
+    size_t i;
     enum ovsdb_idl_txn_status status;
 
     status_txn = cli_do_config_start();
@@ -196,20 +205,14 @@ static int vrf_add(const char *vrf_name)
     vrf_row = ovsrec_vrf_insert(status_txn);
     ovsrec_vrf_set_name(vrf_row, vrf_name);
 
-    /* HALON_TODO: In case multiple vrfs. */
-#if 0
-    struct ovsrec_vrf **vrfs;
-    size_t i;
     vrfs = xmalloc(sizeof *ovs_row->vrfs * (ovs_row->n_vrfs + 1));
     for (i = 0; i < ovs_row->n_vrfs; i++) {
         vrfs[i] = ovs_row->vrfs[i];
     }
-    vrfs[ovs_row->n_vrfs] = vrf_row;
+    struct ovsrec_vrf *temp_vrf_row = CONST_CAST(struct ovsrec_vrf*, vrf_row);
+    vrfs[ovs_row->n_vrfs] = temp_vrf_row;
     ovsrec_open_vswitch_set_vrfs(ovs_row, vrfs, ovs_row->n_vrfs + 1);
     free(vrfs);
-#else
-    ovsrec_open_vswitch_set_vrfs(ovs_row, &vrf_row, ovs_row->n_vrfs + 1);
-#endif
 
     status = cli_do_config_finish(status_txn);
 
@@ -240,13 +243,12 @@ static int vrf_delete(const char *vrf_name) {
      *  HALON_TODO: For now we will only move ports to default VRF.
      */
 
-    struct ovsrec_vrf *vrf_row = NULL;
-    struct ovsrec_vrf *default_vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *default_vrf_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_open_vswitch *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i, n, new_n_ports;
-    struct ovsrec_port *port_row = NULL;
+    size_t i, new_n_ports;
     struct ovsrec_port **ports;
 
     status_txn = cli_do_config_start();
@@ -339,9 +341,9 @@ static int vrf_delete(const char *vrf_name) {
  */
 static int vrf_add_port(const char *if_name, const char *vrf_name)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
-    struct ovsrec_vrf *unlink_vrf_row = NULL;
-    struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *unlink_vrf_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     struct ovsrec_port **ports;
@@ -369,7 +371,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     vrf_row = vrf_lookup(vrf_name);
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
-        VLOG_DBG("%s VRF \"%s\" is not present in VRF table.", __func__);
+        VLOG_DBG("%s VRF \"%s\" is not present in VRF table.", __func__, vrf_name);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -408,7 +410,8 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     for (i = 0; i < vrf_row->n_ports; i++) {
         ports[i] = vrf_row->ports[i];
     }
-    ports[vrf_row->n_ports] = port_row;
+    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    ports[vrf_row->n_ports] = temp_port_row;
     ovsrec_vrf_set_ports(vrf_row, ports, vrf_row->n_ports + 1);
     free(ports);
 
@@ -439,11 +442,10 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
  */
 static int vrf_del_port(const char *if_name, const char *vrf_name)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
-    struct ovsrec_vrf *default_vrf_row = NULL;
-    struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *default_vrf_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
-    struct ovsrec_open_vswitch *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
     struct ovsrec_port **ports;
     size_t i, n;
@@ -521,7 +523,8 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
     for (i = 0; i < vrf_row->n_ports; i++) {
         ports[i] = default_vrf_row->ports[i];
     }
-    ports[default_vrf_row->n_ports] = port_row;
+    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    ports[default_vrf_row->n_ports] = temp_port_row;
     ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
     free(ports);
 
@@ -553,9 +556,9 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
  */
 static int vrf_routing(const char *if_name)
 {
-    struct ovsrec_port *port_row = NULL;
-    struct ovsrec_vrf *default_vrf_row = NULL;
-    struct ovsrec_bridge *default_bridge_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *default_vrf_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     struct ovsrec_port **ports;
@@ -604,7 +607,8 @@ static int vrf_routing(const char *if_name)
     for (i = 0; i < default_vrf_row->n_ports; i++) {
         ports[i] = default_vrf_row->ports[i];
     }
-    ports[default_vrf_row->n_ports] = port_row;
+    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    ports[default_vrf_row->n_ports] = temp_port_row;
     ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
     free(ports);
 
@@ -613,7 +617,7 @@ static int vrf_routing(const char *if_name)
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" is now L3"
-                " and attached to default VRF %s", __func__, if_name);
+                " and attached to default VRF", __func__, if_name);
         return CMD_SUCCESS;
     } else if (status == TXN_UNCHANGED) {
         VLOG_DBG(
@@ -637,9 +641,9 @@ static int vrf_routing(const char *if_name)
  */
 static int vrf_no_routing(const char *if_name)
 {
-    struct ovsrec_port *port_row = NULL;
-    struct ovsrec_vrf *vrf_row = NULL;
-    struct ovsrec_bridge *default_bridge_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     struct ovsrec_port **vrf_ports;
@@ -679,7 +683,8 @@ static int vrf_no_routing(const char *if_name)
     for (i = 0; i < default_bridge_row->n_ports; i++) {
         bridge_ports[i] = default_bridge_row->ports[i];
     }
-    bridge_ports[default_bridge_row->n_ports] = port_row;
+    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    bridge_ports[default_bridge_row->n_ports] = temp_port_row;
     ovsrec_bridge_set_ports(default_bridge_row, bridge_ports,
             default_bridge_row->n_ports + 1);
     free(bridge_ports);
@@ -691,7 +696,7 @@ static int vrf_no_routing(const char *if_name)
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
                 "%s The command succeeded and interface \"%s\" is now L2"
-                " and attached to default bridge %s", __func__, if_name);
+                " and attached to default bridge", __func__, if_name);
         return CMD_SUCCESS;
     } else if (status == TXN_UNCHANGED) {
         VLOG_DBG(
@@ -715,7 +720,7 @@ static int vrf_no_routing(const char *if_name)
  */
 static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
 {
-    struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ip4_addresses;
@@ -750,7 +755,7 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
         for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
             secondary_ip4_addresses[i] = port_row->ip4_address_secondary[i];
         }
-        secondary_ip4_addresses[port_row->n_ip4_address_secondary] = ip4;
+        secondary_ip4_addresses[port_row->n_ip4_address_secondary] = (char *)ip4;
         ovsrec_port_set_ip4_address_secondary(port_row, secondary_ip4_addresses,
                 port_row->n_ip4_address_secondary + 1);
         free(secondary_ip4_addresses);
@@ -783,7 +788,7 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
  */
 static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
 {
-    struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ip4_addresses;
@@ -903,7 +908,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
 static int vrf_config_ipv6(const char *if_name, const char *ipv6,
                            bool secondary)
 {
-    struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ipv6_addresses;
@@ -941,7 +946,7 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
         for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
             secondary_ipv6_addresses[i] = port_row->ip6_address_secondary[i];
         }
-        secondary_ipv6_addresses[port_row->n_ip6_address_secondary] = ipv6;
+        secondary_ipv6_addresses[port_row->n_ip6_address_secondary] = (char *)ipv6;
         ovsrec_port_set_ip6_address_secondary(port_row,
                 secondary_ipv6_addresses,
                 port_row->n_ip6_address_secondary + 1);
@@ -976,7 +981,7 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
 static int vrf_del_ipv6(const char *if_name, const char *ipv6,
                         bool secondary)
 {
-    struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ipv6_addresses;
@@ -1097,7 +1102,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
  */
 static int show_vrf_info()
 {
-    struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
 
     vrf_row = ovsrec_vrf_first(idl);

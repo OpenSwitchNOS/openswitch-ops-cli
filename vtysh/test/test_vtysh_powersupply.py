@@ -20,7 +20,7 @@ from time import sleep
 from halonvsi.docker import *
 from halonvsi.halon import *
 
-class TemperatureSystemTests( HalonTest ):
+class PlatformPSUTests( HalonTest ):
     uuid = ""
 
     def setupNet(self):
@@ -32,40 +32,45 @@ class TemperatureSystemTests( HalonTest ):
                            switch=HalonSwitch, host=HalonHost,
                            link=HalonLink, controller=None,
                            build=True)
-    def initTemp_sensorTable(self):
-        # Add dummy data for fans in subsystem and fan table for simulation.
+
+    def initPSUTable(self):
+        # Add dummy data for PSU in subsystem and PSU table for simulation.
         # Assume there would be only one entry in subsystem table
         s1 = self.net.switches[ 0 ]
-        print("\n")
         out = s1.cmd("ovs-vsctl list subsystem")
         lines = out.split('\n')
         for line in lines:
             if "_uuid" in line:
                 _id = line.split(':')
-                TemperatureSystemTests.uuid = _id[1].strip()
-                out=s1.cmd("/usr/bin/ovs-vsctl -- set Subsystem "+TemperatureSystemTests.uuid+" temp_sensors=@fan1 -- --id=@fan1 create Temp_sensor "
-                           "name=base-1 location=Faceplate_side_of_switch_chip_U16 status=normal fan-state=normal min=0 max=21000 temperature=20500")
+                PlatformPSUTests.uuid = _id[1].strip()
+                s1.cmd("ovs-vsctl -- set Subsystem "+PlatformPSUTests.uuid+" power_supplies=@psu1 -- --id=@psu1 create Power_supply "
+                "name=Psu_base status=ok")
 
-    def deinitTemp_sensorTable(self):
+
+    def deinitPSUTable(self):
         s1 = self.net.switches[ 0 ]
-        # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
-        s1.cmd("ovs-vsctl clear subsystem "+TemperatureSystemTests.uuid+" temp_sensors")
+        # Delete dummy data from subsystem and PSU table to avoid clash with other CT scripts.
+        s1.cmd("ovs-vsctl clear subsystem "+PlatformPSUTests.uuid+" power_supplies")
 
-    def showSystemTemperatureTest(self):
+
+    def showSystemPSUTest(self):
         # Test to verify show system command
         s1 = self.net.switches[ 0 ]
         print('\n==============================================================')
-        print('*** Test to verify \'show system temperature\' command ***')
+        print('*** Test to verify \'show system power-supply\' command ***')
         print('================================================================')
-        out = s1.cmdCLI("show system temperature")
+        out = s1.cmdCLI("show system power-supply")
         lines = out.split('\n')
         for line in lines:
-            if 'base-1' and 'Faceplate_side_of_switch_chip_U16' and 'normal' and 'normal' in line:
-                return True
+            if 'Psu_base' in line:
+                if 'ok' in line:
+                    return True
+                else:
+                    return False
+
         return False
 
-
-class Test_sys:
+class Test_psu:
 
     def setup(self):
         pass
@@ -74,16 +79,16 @@ class Test_sys:
         pass
 
     def setup_class(cls):
-        # Initialize the led table with dummy value
-        Test_sys.test = TemperatureSystemTests()
-        Test_sys.test.initTemp_sensorTable()
+        # Initialize the PSU table with dummy value
+        Test_psu.test = PlatformPSUTests()
+        Test_psu.test.initPSUTable()
 
     def teardown_class(cls):
         # Delete Dummy data to avoid clash with other test scripts
-        Test_sys.test.deinitTemp_sensorTable()
+        Test_psu.test.deinitPSUTable()
         # Stop the Docker containers, and
         # mininet topology
-        Test_sys.test.net.stop()
+        Test_psu.test.net.stop()
 
     def setup_method(self, method):
         pass
@@ -94,9 +99,9 @@ class Test_sys:
     def __del__(self):
         del self.test
 
-    # show system fan test.
-    def test_show_system_temperature_command(self):
-       if self.test.showSystemTemperatureTest():
-           print 'Passed show system temperature test'
+    # show system test.
+    def test_show_system_psu_command(self):
+       if self.test.showSystemPSUTest():
+           print 'Passed Power Supply Test'
        else:
-           assert 0, "Failed show system temperature test"
+           assert 0, "Failed Power Supply Test"

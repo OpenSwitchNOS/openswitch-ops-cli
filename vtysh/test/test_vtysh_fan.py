@@ -16,11 +16,7 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
-import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -125,7 +121,6 @@ class FanSystemTests( HalonTest ):
         return False
 
 class Test_sys_fan:
-    test = FanSystemTests()
 
     def setup(self):
         pass
@@ -135,23 +130,8 @@ class Test_sys_fan:
 
     def setup_class(cls):
         # Initialize the led table with dummy value
+        Test_sys_fan.test = FanSystemTests()
         Test_sys_fan.test.initFanTable()
-
-    def teardown_class(cls):
-        # Delete Dummy data to avoid clash with other test scripts
-        Test_sys_fan.test.deinitFanTable()
-        # Stop the Docker containers, and
-        # mininet topology
-        Test_sys_fan.test.net.stop()
-
-    def setup_method(self, method):
-        pass
-
-    def teardown_method(self, method):
-        pass
-
-    def __del__(self):
-        del self.test
 
     # show system fan test.
     def test_show_system_fan_command(self):
@@ -180,3 +160,19 @@ class Test_sys_fan:
             print 'Passed system unset fan speed test'
         else:
             assert 0, "Failed system unset fan speed test"
+
+    def teardown_class(cls):
+        # Delete Dummy data to avoid clash with other test scripts
+        Test_sys_fan.test.deinitFanTable()
+        # Stop the Docker containers, and
+        # mininet topology
+        Test_sys_fan.test.net.stop()
+
+    def setup_method(self, method):
+        pass
+
+    def teardown_method(self, method):
+        pass
+
+    def __del__(self):
+        del self.test

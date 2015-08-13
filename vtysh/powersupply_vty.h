@@ -1,4 +1,4 @@
-/* LLDP CLI commands header file
+/* Power Supply CLI commands.
  *
  * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
  *
@@ -17,26 +17,20 @@
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *
- * File: lldp_vty.h
+ * File: powersupply_vty.h
  *
- * Purpose:  To add declarations required for lldp_vty.c
+ * Purpose: To add power supply CLI configuration and display commands.
  */
 
-#ifndef _LLDP_VTY_H
-#define _LLDP_VTY_H
+#ifndef _POWERSUPPLY_VTY_H
+#define _POWERSUPPLY_VTY_H
 
-#define CONFIG_LLDP_STR "Configure LLDP parameters.\n"
-#define SHOW_LLDP_STR "Show various LLDP settings.\n"
-/* As of now same helpstring for both CONFIG and INTERFACE context
- * subjected to change when more commands are added
- */
-#define INTF_LLDP_STR CONFIG_LLDP_STR
+#ifndef SYS_STR
+#define SYS_STR         "System information\n"
+#endif
+#define PSU_STR         "Shows power supply information\n"
 
-#define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
-#define OVSDB_ROW_FETCH_ERROR "Couldn't fetch row from the DB."
-#define OVSDB_TXN_COMMIT_ERROR "Commiting transaction to DB failed."
-#define LLDP_TIMER_MAX_STRING_LENGTH 10
-void
-lldp_vty_init (void);
+int cli_system_get_psu();
+void powersupply_vty_init();
 
-#endif /* _LLDP_VTY_H */
+#endif //_POWERSUPPLY_VTY_H
