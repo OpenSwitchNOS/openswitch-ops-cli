@@ -272,6 +272,8 @@ DEFUN (show_logrotate_config,
        )
 {
     const struct ovsrec_open_vswitch *ovs = NULL;
+    const char *data = NULL;
+
     ovsdb_idl_run(idl);
     ovsdb_idl_wait(idl);
 
@@ -279,9 +281,15 @@ DEFUN (show_logrotate_config,
 
     if(ovs) {
         vty_out (vty, "Logrotate configurations : %s", VTY_NEWLINE);
-        vty_out (vty, "Period            : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD), VTY_NEWLINE);
-        vty_out (vty, "Maxsize (MB)      : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE), VTY_NEWLINE);
-        vty_out (vty, "Target            : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET), VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD);
+        vty_out (vty, "Period            : %s%s", (NULL == data) ? OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT : data, VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE);
+        vty_out (vty, "Maxsize           : %sMB%s", (NULL == data) ? OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT : data, VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET);
+        if (data != NULL)
+            {
+            vty_out (vty, "Target            : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET), VTY_NEWLINE);
+            }
     }
     else {
         VLOG_ERR("Couldn't retrieve any logrotate columns");
