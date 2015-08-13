@@ -43,4 +43,8 @@ int vtysh_ovsdb_vlan_match(const char *str);
 int vtysh_regex_match(const char *regString, const char *inp);
 
 void *vtysh_ovsdb_main_thread(void *arg);
+
+bool check_iface_in_bridge(const char *if_name);
+
+bool check_iface_in_vrf(const char *if_name);
 #endif /* VTYSH_OVSDB_IF_H */
