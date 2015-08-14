@@ -3124,6 +3124,27 @@ int is_valid_ip_address(const char *ip_value)
 
     return 1;
 }
+
+int is_valid_ip_subnet_mask(const char *subnet_value)
+{
+    struct in_addr addr;
+    long validate_subnet=0;
+    long num=0;
+    int pos=0;
+    memset (&addr, 0, sizeof (struct in_addr));
+    if(inet_pton(AF_INET,subnet_value,&addr) <= 0)
+    {
+       return 0;
+    }
+    num = -htonl(addr.s_addr) & htonl(addr.s_addr);
+    validate_subnet = htonl(addr.s_addr);
+    while(num !=0){
+       num>>=1;
+       pos++;
+    }
+
+    return ((validate_subnet==0XFFFFFFFF) ? 0:(validate_subnet==(0xFFFFFFFF<<(pos-1))));
+}
 #endif /* ENABLE_OVSDB */
 
 void

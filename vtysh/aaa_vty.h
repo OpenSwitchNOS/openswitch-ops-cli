@@ -34,9 +34,5 @@
 #define RADIUS_SERVER_DEFAULT_RETRIES         1
 #define RADIUS_SERVER_DEFAULT_TIMEOUT         5
 
-#define OVSDB_TXN_CREATE_ERROR                "Couldn't create the OVSDB transaction."
-#define OVSDB_ROW_FETCH_ERROR                 "Couldn't fetch row from the DB."
-#define OVSDB_TXN_COMMIT_ERROR                "Committing transaction to DB failed."
-
 void
 aaa_vty_init (void);

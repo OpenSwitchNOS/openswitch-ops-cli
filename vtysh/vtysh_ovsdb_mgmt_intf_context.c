@@ -27,6 +27,7 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_mgmt_intf_context.h"
+#include "mgmt_intf_vty.h"
 
 char mgmtintfcontextclientname[] = "vtysh_mgmt_intf_context_clientcallback";
 
@@ -44,6 +45,8 @@ vtysh_mgmt_intf_context_clientcallback(void *p_private)
     const char *data = NULL;
     const char *ip = NULL;
     const char *subnet = NULL;
+    const char *dns_1 = NULL;
+    const char *dns_2 = NULL;
     const struct ovsrec_open_vswitch *vswrow;
     vswrow = ovsrec_open_vswitch_first(p_msg->idl);
     if(!vswrow)
@@ -59,28 +62,26 @@ vtysh_mgmt_intf_context_clientcallback(void *p_private)
             vtysh_ovsdb_cli_print(p_msg, "interface mgmt");
             ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
             subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
-            if (ip && subnet )
+            if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
                 vtysh_ovsdb_cli_print(p_msg, "%4sip static %s %s","",ip,subnet);
         }
         else
-            return;
+            return e_vtysh_error;
     }
     data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
-    if (data)
+    if (data && (strcmp(data,MGMT_INTF_DEFAULT_IP) != 0))
     {
         vtysh_ovsdb_cli_print(p_msg, "%4sdefault-gateway %s","",data);
     }
-    data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
-    if (data)
+    dns_1 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
+    dns_2 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
+    if (dns_1 && dns_2 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0) &&
+                                               (strcmp(dns_2,MGMT_INTF_DEFAULT_IP) != 0))
     {
-        vtysh_ovsdb_cli_print(p_msg, "%4snameserver1 %s","", data);
+           vtysh_ovsdb_cli_print(p_msg, "%4snameserver %s %s","", dns_1,dns_2);
+    }else if(dns_1 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0)) {
+           vtysh_ovsdb_cli_print(p_msg, "%4snameserver %s","", dns_1);
     }
-    data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
-    if (data)
-    {
-        vtysh_ovsdb_cli_print(p_msg, "%4snameserver2 %s","", data);
-    }
-
     return e_vtysh_ok;
 }
 

@@ -33,10 +33,6 @@
 #define FAN_SET_STR "Override fan speed\n"
 #define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
 
-#define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
-#define OVSDB_ROW_FETCH_ERROR "Couldn't fetch row from the DB."
-#define OVSDB_TXN_COMMIT_ERROR "Commiting transaction to DB failed."
-
 void
 fan_vty_init (void);
 
