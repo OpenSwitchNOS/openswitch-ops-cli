@@ -22,7 +22,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  l3static_vty.c led_vty.c system_vty.c fan_vty.c \
                  temperature_vty.c vtysh_ovsdb_vlan_context.c \
                  mgmt_intf_vty.c vtysh_ovsdb_mgmt_intf_context.c \
-                 vtysh_ovsdb_router_context.c aaa_vty.c policy_vty.c \
+                 vtysh_ovsdb_router_context.c aaa_vty.c \
                  logrotate_vty.c neighbor_vty.c \
                  powersupply_vty.c
 endif

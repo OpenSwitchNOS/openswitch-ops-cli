@@ -1102,6 +1102,7 @@ DEFUNSH (VTYSH_ISISD,
    return CMD_SUCCESS;
 }
 
+#if 0
 DEFUNSH (VTYSH_RMAP,
       route_map,
       route_map_cmd,
@@ -1115,6 +1116,7 @@ DEFUNSH (VTYSH_RMAP,
    vty->node = RMAP_NODE;
    return CMD_SUCCESS;
 }
+#endif
 
 DEFUNSH (VTYSH_ALL,
       vtysh_line_vty,
@@ -3243,6 +3245,7 @@ vtysh_init_vty (void)
    install_element (BGP_IPV6M_NODE, &vtysh_exit_bgpd_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
 
+   policy_vty_init();
    bgp_vty_init();
 
    install_element (ISIS_NODE, &vtysh_exit_isisd_cmd);
@@ -3307,7 +3310,7 @@ vtysh_init_vty (void)
    install_element (BGP_IPV6_NODE, &exit_address_family_cmd);
    install_element (BGP_IPV6M_NODE, &exit_address_family_cmd);
    install_element (CONFIG_NODE, &key_chain_cmd);
-   install_element (CONFIG_NODE, &route_map_cmd);
+   //install_element (CONFIG_NODE, &route_map_cmd);
    install_element (CONFIG_NODE, &vtysh_line_vty_cmd);
    install_element (KEYCHAIN_NODE, &key_cmd);
    install_element (KEYCHAIN_NODE, &key_chain_cmd);

@@ -20,9 +20,8 @@
  *
  * File: bgp_vty.c
  *
- * Purpose: This file contains implementation of all BGP related CLI commands.
+ * Purpose: This file contains implementation of all Boute Map
  */
-
 #include <stdio.h>
 #include <sys/un.h>
 #include <setjmp.h>
@@ -48,12 +47,28 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 
+#include <lib/version.h>
+#include "getopt.h"
+#include "memory.h"
+#include "vtysh/vtysh_user.h"
+#include "ovsdb-idl.h"
+#include "lib/prefix.h"
+#include "lib/routemap.h"
+#include "lib/plist.h"
+
 /*
 ** enable this if exra debugging is required
 */
 #define EXTRA_DEBUG
 
 extern struct ovsdb_idl *idl;
+
+static struct rt_map_context {
+    char name [80];
+    int pref;
+} ;
+struct rt_map_context rmp_context;
+
 
 #define NET_BUFSZ    18
 #define BGP_ATTR_DEFAULT_WEIGHT 32768
@@ -102,6 +117,7 @@ typedef struct route_psd_bgp_s {
     bool ibgp;
 } route_psd_bgp_t;
 
+
 /********************** simple error handling ***********************/
 
 static void
@@ -121,54 +137,6 @@ report_unimplemented_command (struct vty *vty, int argc, char *argv[])
 ** depending on the outcome of the db transaction, returns
 ** the appropriate value for the cli command execution.
 */
-static int
-cli_command_result (enum ovsdb_idl_txn_status status)
-{
-    if ((status == TXN_SUCCESS) || (status == TXN_UNCHANGED)) {
-	return CMD_SUCCESS;
-    }
-    return CMD_WARNING;
-}
-
-/********************** standard database txn operations ***********************/
-
-#define START_DB_TXN(txn)                                       \
-    do {                                                        \
-        enum ovsdb_idl_txn_status status;                       \
-        txn = cli_do_config_start();                            \
-        if (txn == NULL) {                                      \
-            vty_out(vty, "ovsdb_idl_txn_create failed: %s: %d\n",   \
-                    __FILE__, __LINE__);                            \
-            cli_do_config_abort(txn);                               \
-            return CMD_OVSDB_FAILURE;                               \
-        }                                                           \
-    } while (0)
-
-#define END_DB_TXN(txn)                                   \
-    do {                                                  \
-        enum ovsdb_idl_txn_status status;                 \
-        status = cli_do_config_finish(txn);               \
-        return cli_command_result(status);                \
-    } while (0)
-
-#define ERRONEOUS_DB_TXN(txn, error_message)                        \
-    do {                                                            \
-        cli_do_config_abort(txn);                                   \
-        vty_out(vty, "database transaction failed: %s: %d -- %s\n", \
-                __FILE__, __LINE__, error_message);                 \
-        return CMD_WARNING;                                         \
-    } while (0)
-
-/* used when NO error is detected but still need to terminate */
-#define ABORT_DB_TXN(txn, message)                             \
-    do {                                                       \
-        cli_do_config_abort(txn);                                   \
-        vty_out(vty, "database transaction aborted: %s: %d, %s\n",  \
-                __FILE__, __LINE__, message);                       \
-        return CMD_SUCCESS;                                         \
-    } while (0)
-
-/********************** helper routines which find things ***********************/
 
 static const char *_undefined = "undefined";
 static char itoa_buffer [64];
@@ -7503,4 +7471,572 @@ bgp_vty_init (void)
     install_element(VIEW_NODE, &show_bgp_views_cmd);
     install_element(RESTRICTED_NODE, &show_bgp_views_cmd);
     install_element(ENABLE_NODE, &show_bgp_views_cmd);
+}
+
+/*
+ * Prefix List
+ */
+
+struct lookup_entry {
+   char *cli_cmd;
+   char *table_key;
+};
+
+const struct lookup_entry match_table[]={
+  {"ip address prefix-list", "prefix_list"},
+  {NULL, NULL},
+};
+
+const struct lookup_entry set_table[]={
+  {"community", "community"},
+  {"metric", "metric"},
+  {NULL, NULL},
+};
+
+/*
+ * Map 'CLI command argument list' to 'smap key'
+ * Input
+ * cmd - lookup command
+ * lookup_table - match/set table that maps cmds to keys
+ * Return value - key on match, otherwise NULL
+ */
+char *policy_cmd_to_key_lookup(const char *cmd, const struct lookup_entry *lookup_table)
+{
+        int i;
+
+        for (i=0; lookup_table[i].cli_cmd; i++) {
+            if (strcmp(cmd, lookup_table[i].cli_cmd) == 0)
+               return lookup_table[i].table_key;
+        }
+
+        return NULL;
+}
+
+/*
+ * Map 'smap key' to 'CLI command argument list'
+ * Input
+ * key - lookup key
+ * lookup_table - match/set table that maps cmds to keys
+ * Return value - cli cmd on match, otherwise NULL
+ */
+char *policy_key_to_cmd_lookup(const char *key, const struct lookup_entry *lookup_table)
+{
+        int i;
+
+        for (i=0; lookup_table[i].cli_cmd; i++) {
+            if (strcmp(key, lookup_table[i].table_key) == 0)
+               return lookup_table[i].cli_cmd;
+        }
+
+        return NULL;
+}
+
+struct ovsrec_prefix_list *
+policy_get_prefix_list_in_ovsdb (char *name)
+{
+    struct ovsrec_prefix_list * policy_row;
+
+    OVSREC_PREFIX_LIST_FOR_EACH(policy_row, idl) {
+        if (strcmp(policy_row->name, name) == 0) {
+            return policy_row;
+        }
+    }
+    return NULL;
+}
+
+struct ovsrec_prefix_list_entries  *
+policy_get_prefix_list_entry_in_ovsdb (int seqnum, char *name)
+{
+    struct ovsrec_prefix_list_entries  * policy_entry_row;
+
+    OVSREC_PREFIX_LIST_ENTRIES_FOR_EACH(policy_entry_row, idl) {
+        if (policy_entry_row->sequence == seqnum &&
+            !strcmp(name, policy_entry_row->prefix_list->name)) {
+            return policy_entry_row;
+        }
+    }
+    return NULL;
+}
+
+
+/*
+ * IP Address Prefix List
+ */
+static int
+policy_set_prefix_list_in_ovsdb (struct vty *vty, afi_t afi, const char *name,
+                         const char *seq, const char *typestr,
+                         const char *prefix, const char *ge, const char *le)
+
+{
+    struct ovsdb_idl_txn *policy_txn;
+    struct ovsrec_prefix_list *policy_row;
+    struct ovsrec_prefix_list_entries  *policy_entry_row;
+    enum ovsdb_idl_txn_status status;
+
+    int ret;
+    enum prefix_list_type type;
+    struct prefix_list *plist;
+    struct prefix_list_entry *pentry;
+    struct prefix_list_entry *dup;
+    struct prefix p;
+    int any = 0;
+    int seqnum = -1;
+    int lenum = 0;
+    int genum = 0;
+
+
+    /* Sequential number. */
+    if (seq)
+        seqnum = atoi (seq);
+
+    /* ge and le number */
+    if (ge)
+        genum = atoi (ge);
+    if (le)
+        lenum = atoi (le);
+
+    /* Check filter type. */
+    if (strncmp ("permit", typestr, 1) == 0)
+        type = PREFIX_PERMIT;
+    else if (strncmp ("deny", typestr, 1) == 0)
+        type = PREFIX_DENY;
+    else
+    {
+        vty_out (vty, "%% prefix type must be permit or deny%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    /* "any" is special token for matching any IPv4 addresses.  */
+    if (afi == AFI_IP)
+    {
+        if (strncmp ("any", prefix, strlen (prefix)) == 0)
+        {
+            ret = str2prefix_ipv4 ("0.0.0.0/0", (struct prefix_ipv4 *) &p);
+            genum = 0;
+            lenum = IPV4_MAX_BITLEN;
+            any = 1;
+        }
+        else
+            ret = str2prefix_ipv4 (prefix, (struct prefix_ipv4 *) &p);
+
+        if (ret <= 0)
+        {
+            vty_out (vty, "%% Malformed IPv4 prefix%s", VTY_NEWLINE);
+            return CMD_WARNING;
+        }
+    }
+
+    START_DB_TXN(policy_txn);
+
+    /*
+     * If 'name' row already exists get a row structure pointer
+     */
+    policy_row = policy_get_prefix_list_in_ovsdb (name);
+    /*
+     * If row not found, create an empty row and set name field
+     * The row will be used as uuid, refered to from another table
+     */
+    if (!policy_row) {
+        policy_row = ovsrec_prefix_list_insert(policy_txn);
+        ovsrec_prefix_list_set_name(policy_row, name);
+    }
+
+    policy_entry_row = policy_get_prefix_list_entry_in_ovsdb (seqnum, name);
+
+    /*
+     * If row not found, create an empty row and set name field
+     * The row will be used as uuid, refered to from another table
+     */
+    if (!policy_entry_row) {
+        policy_entry_row = ovsrec_prefix_list_entries_insert(policy_txn);
+    }
+
+    ovsrec_prefix_list_entries_set_sequence(policy_entry_row, seqnum);
+    ovsrec_prefix_list_entries_set_action(policy_entry_row, typestr);
+    ovsrec_prefix_list_entries_set_prefix(policy_entry_row, prefix);
+    ovsrec_prefix_list_entries_set_prefix_list(policy_entry_row, policy_row);
+
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (ip_prefix_list_seq,
+       ip_prefix_list_seq_cmd,
+       "ip prefix-list WORD seq <1-4294967295> (deny|permit) (A.B.C.D/M|any)",
+       IP_STR
+       PREFIX_LIST_STR
+       "Name of a prefix list\n"
+       "sequence number of an entry\n"
+       "Sequence number\n"
+       "Specify packets to reject\n"
+       "Specify packets to forward\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
+       "Any prefix match. Same as \"0.0.0.0/0 le 32\"\n")
+{
+  return policy_set_prefix_list_in_ovsdb (vty, AFI_IP, argv[0], argv[1], argv[2],
+                                  argv[3], NULL, NULL);
+}
+
+/*
+ * Route Map Start Below
+ */
+struct ovsrec_route_map *
+policy_get_route_map_in_ovsdb (char * name)
+{
+  struct ovsrec_route_map *rt_map_row;
+
+  OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
+    if (strcmp(rt_map_row->name, name) == 0) {
+       return rt_map_row;
+    }
+  }
+  return NULL;
+}
+
+struct ovsrec_route_map_entries  *
+policy_get_route_map_entry_in_ovsdb (unsigned long pref, char *name)
+{
+  struct ovsrec_route_map_entries  *rt_map_entry_row;
+
+    OVSREC_ROUTE_MAP_ENTRIES_FOR_EACH(rt_map_entry_row, idl) {
+        if (rt_map_entry_row->preference== pref &&
+            !strcmp(name, rt_map_entry_row->route_map->name)) {
+            return rt_map_entry_row;
+        }
+    }
+    return NULL;
+}
+
+/*
+ * Route Map
+ */
+static int
+policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
+                         const char *typestr, const char *seq)
+{
+  struct ovsdb_idl_txn *policy_txn;
+  struct ovsrec_route_map *rt_map_row;
+  struct ovsrec_route_map_entries  *rt_map_entry_row;
+  enum ovsdb_idl_txn_status status;
+
+  int permit;
+  unsigned long pref;
+  struct route_map *map;
+  struct route_map_index *index;
+  char *endptr = NULL;
+
+
+  /* Permit check. */
+  if (strncmp (typestr, "permit", strlen (typestr)) == 0)
+    permit = RMAP_PERMIT;
+  else if (strncmp (typestr, "deny", strlen (typestr)) == 0)
+    permit = RMAP_DENY;
+  else
+    {
+      vty_out (vty, "the third field must be [permit|deny]%s", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+
+  /* Preference check. */
+  pref = strtoul (seq, &endptr, 10);
+
+  if (pref == ULONG_MAX || *endptr != '\0')
+    {
+      vty_out (vty, "the fourth field must be positive integer%s",
+               VTY_NEWLINE);
+      return CMD_SUCCESS;
+    }
+
+  if (pref == 0 || pref > 65535)
+    {
+      vty_out (vty, "the fourth field must be <1-65535>%s", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+    START_DB_TXN(policy_txn);
+
+    /*
+     * If 'name' row already exists get a row structure pointer
+     */
+    rt_map_row = policy_get_route_map_in_ovsdb (name);
+
+    /*
+     * If row not found, create an empty row and set name field
+     * The row will be used as uuid, refered to from another table
+     */
+    if (!rt_map_row) {
+        rt_map_row = ovsrec_route_map_insert(policy_txn);
+        ovsrec_route_map_set_name(rt_map_row, name);
+    }
+
+    /*
+     * create a empty row, it will be used as uuid, refer to from another table
+     */
+    rt_map_entry_row = policy_get_route_map_entry_in_ovsdb (pref, name);
+
+    if (!rt_map_entry_row) {
+        rt_map_entry_row = ovsrec_route_map_entries_insert(policy_txn);
+    }
+
+    ovsrec_route_map_entries_set_preference(rt_map_entry_row, pref);
+    ovsrec_route_map_entries_set_action(rt_map_entry_row, typestr);
+    ovsrec_route_map_entries_set_route_map(rt_map_entry_row, rt_map_row);
+    /*
+     * Note point should work, but not work for now
+     */
+  ovsrec_route_map_entries_set_match(rt_map_entry_row, NULL);
+  ovsrec_route_map_entries_set_set(rt_map_entry_row, NULL);
+
+
+    rmp_context.pref = pref;
+    strncpy(rmp_context.name, name, sizeof(rmp_context.name));
+
+    //vty->index = rt_map_entry_row;
+    vty->index = &rmp_context;
+    vty->node = RMAP_NODE;
+
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (route_map,
+       rt_map_cmd,
+       "route-map WORD (deny|permit) <1-65535>",
+       "Create route-map or enter route-map command mode\n"
+       "Route map tag\n"
+       "Route map denies set operations\n"
+       "Route map permits set operations\n"
+       "Sequence to insert to/delete from existing route-map entry\n")
+{
+
+    return policy_set_route_map_in_ovsdb (vty, argv[0], argv[1], argv[2]);
+}
+
+static int
+policy_set_route_map_description_in_ovsdb (struct vty *vty, const char *description)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    struct ovsrec_route_map_entries  *rt_map_entry_row =
+           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
+    enum ovsdb_idl_txn_status status;
+
+    START_DB_TXN(policy_txn);
+
+    ovsrec_route_map_entries_set_description(rt_map_entry_row, description);
+
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (rmap_description,
+       rmap_description_cmd,
+       "description .LINE",
+       "Route-map comment\n"
+       "Comment describing this route-map rule\n")
+{
+    return policy_set_route_map_description_in_ovsdb(vty, argv_concat(argv, argc, 0));
+}
+
+static int
+policy_set_route_map_match_in_ovsdb (struct vty *vty,
+                               struct ovsrec_route_map_entries  *rt_map_entry_row,
+                               const char *command, const char *arg)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    enum ovsdb_idl_txn_status status;
+    struct smap smap_match;
+    char *table_key;
+    struct smap *psmap;
+
+    table_key = policy_cmd_to_key_lookup(command, match_table);
+    if (table_key == NULL) {
+         VLOG_ERR("Route map match wrong key - %s", command);
+            return TXN_ERROR;
+    }
+
+    START_DB_TXN(policy_txn);
+
+    psmap = &rt_map_entry_row->match;
+    if (psmap && !smap_is_empty(psmap)) {
+        smap_clone(&smap_match, psmap);
+        smap_replace(&smap_match, table_key, arg);
+    } else {
+        smap_init(&smap_match);
+        smap_add(&smap_match, table_key, arg);
+    }
+    ovsrec_route_map_entries_set_match(rt_map_entry_row, &smap_match);
+    smap_destroy(&smap_match);
+
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (match_ip_address_prefix_list,
+       match_ip_address_prefix_list_cmd,
+       "match ip address prefix-list WORD",
+       MATCH_STR
+       IP_STR
+       "Match address of route\n"
+       "Match entries of prefix-lists\n"
+       "IP prefix-list name\n")
+{
+
+  struct ovsrec_route_map_entries  *rt_map_entry_row =
+           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
+
+  return policy_set_route_map_match_in_ovsdb (vty,
+                             rt_map_entry_row,
+                            "ip address prefix-list", argv[0]);
+}
+
+static int
+policy_set_route_map_set_in_ovsdb (struct vty *vty,
+                   struct ovsrec_route_map_entries  *rt_map_entry_row,
+                   const char *command, const char *arg)
+
+{
+    struct ovsdb_idl_txn *policy_txn;
+    enum ovsdb_idl_txn_status status;
+    struct smap smap_set;
+    char *table_key;
+    struct smap *psmap;
+
+
+    table_key = policy_cmd_to_key_lookup(command, set_table);
+    if (table_key == NULL) {
+         VLOG_ERR("Route map set wrong key - %s", command);
+            return TXN_ERROR;
+    }
+
+    START_DB_TXN(policy_txn);
+
+    psmap = &rt_map_entry_row->set;
+    if (psmap && !smap_is_empty(psmap)) {
+        smap_clone(&smap_set, psmap);
+        smap_replace(&smap_set, table_key, arg);
+    } else {
+        smap_init(&smap_set);
+        smap_add(&smap_set, table_key, arg);
+    }
+
+    ovsrec_route_map_entries_set_set(rt_map_entry_row, &smap_set);
+    smap_destroy(&smap_set);
+
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (set_metric,
+       set_metric_cmd,
+       "set metric <0-4294967295>",
+       SET_STR
+       "Metric value for destination routing protocol\n"
+       "Metric value\n")
+{
+  struct ovsrec_route_map_entries  *rt_map_entry_row =
+           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
+
+  return policy_set_route_map_set_in_ovsdb (vty,
+                  rt_map_entry_row,
+                     "metric", argv[0]);
+}
+
+
+static int
+policy_set_route_map_set_community_str_in_ovsdb (struct vty *vty,
+                                        const int argc,  const char *argv)
+{
+
+  int i;
+  int first = 0;
+  int additive = 0;
+  struct buffer *b;
+  struct community *com = NULL;
+  char *str;
+  char *argstr;
+  int ret;
+  struct ovsrec_route_map_entries  *rt_map_entry_row =
+           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
+
+  b = buffer_new (1024);
+
+  for (i = 0; i < argc; i++)
+    {
+      if (strncmp (argv[i], "additive", strlen (argv[i])) == 0)
+        {
+          additive = 1;
+          continue;
+        }
+
+      if (first)
+        buffer_putc (b, ' ');
+      else
+        first = 1;
+
+      if (strncmp (argv[i], "internet", strlen (argv[i])) == 0)
+        {
+          buffer_putstr (b, "internet");
+          continue;
+        }
+      if (strncmp (argv[i], "local-AS", strlen (argv[i])) == 0)
+        {
+          buffer_putstr (b, "local-AS");
+          continue;
+        }
+      if (strncmp (argv[i], "no-a", strlen ("no-a")) == 0
+          && strncmp (argv[i], "no-advertise", strlen (argv[i])) == 0)
+        {
+          buffer_putstr (b, "no-advertise");
+          continue;
+        }
+      if (strncmp (argv[i], "no-e", strlen ("no-e"))== 0
+          && strncmp (argv[i], "no-export", strlen (argv[i])) == 0)
+        {
+          buffer_putstr (b, "no-export");
+          continue;
+        }
+      buffer_putstr (b, argv[i]);
+    }
+  buffer_putc (b, '\0');
+
+  /* Fetch result string then compile it to communities attribute.  */
+  str = buffer_getstr (b);
+  buffer_free (b);
+
+
+  if (additive)
+    {
+      argstr = XCALLOC (MTYPE_TMP, strlen (str) + strlen (" additive") + 1);
+      strcpy (argstr, str);
+      strcpy (argstr + strlen (str), " additive");
+
+      policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                        "community", argstr);
+      XFREE (MTYPE_TMP, argstr);
+    }
+  else
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                         "community", str);
+
+  //community_free (com);
+
+  return ret;
+
+}
+
+DEFUN (set_community,
+       set_community_cmd,
+       "set community .AA:NN",
+       SET_STR
+       "BGP community attribute\n"
+       "Community number in aa:nn format or local-AS|no-advertise|no-export|internet or additive\n")
+{
+    return policy_set_route_map_set_community_str_in_ovsdb (vty, argc,  argv);
+}
+
+
+void policy_vty_init(void)
+{
+    install_element (CONFIG_NODE, &ip_prefix_list_seq_cmd);
+    install_element (CONFIG_NODE, &rt_map_cmd);
+    install_element (RMAP_NODE, &rmap_description_cmd);
+    install_element (RMAP_NODE, &match_ip_address_prefix_list_cmd);
+    install_element (RMAP_NODE, &set_metric_cmd);
+    install_element (RMAP_NODE, &set_community_cmd);
 }
