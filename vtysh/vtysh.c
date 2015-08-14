@@ -1838,25 +1838,6 @@ DEFUN (vtysh_show_memory,
 
 #ifdef ENABLE_OVSDB
 
-DEFUN (vtysh_set_hostname,
-      vtysh_set_hostname_cmd,
-      "set-hostname WORD",
-      "Setting the hostname in ovsdb from vtysh\n"
-      "Give the string you want to set as hostname\n")
-{
-   vtysh_ovsdb_hostname_set(argv[0]);
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_get_hostname,
-      vtysh_get_hostname_cmd,
-      "get-hostname",
-      "Get the hostname set in ovsdb\n")
-{
-   vtysh_ovsdb_hostname_get();
-   return CMD_SUCCESS;
-}
-
 DEFUN (vtysh_test_port,
       vtysh_test_port_cmd,
       "test-port PORT",
@@ -2870,13 +2851,18 @@ vtysh_prompt (void)
    extern struct host host;
 
    hostname = host.name;
-
    if (!hostname)
    {
-      if (!names.nodename[0])
+      hostname = vtysh_ovsdb_hostname_get();
+     if(hostname && hostname[0]);
+     else if (!names.nodename[0])
+     {
          uname (&names);
-      hostname = names.nodename;
+         hostname = names.nodename;
+     }
+     host.name = XSTRDUP (MTYPE_HOST,hostname);
    }
+
 #ifdef ENABLE_OVSDB
    static char newhost[100];
    char* temphost = cmd_prompt(vty->node);
@@ -3563,10 +3549,6 @@ vtysh_init_vty (void)
    vtysh_install_default (VTY_NODE);
 
 #ifdef ENABLE_OVSDB
-  install_element (VIEW_NODE, &vtysh_set_hostname_cmd);
-  install_element (ENABLE_NODE, &vtysh_set_hostname_cmd);
-  install_element (VIEW_NODE, &vtysh_get_hostname_cmd);
-  install_element (ENABLE_NODE, &vtysh_get_hostname_cmd);
   install_element (VIEW_NODE, &vtysh_test_port_cmd);
   install_element (ENABLE_NODE, &vtysh_test_port_cmd);
   install_element (VIEW_NODE, &vtysh_test_vlan_cmd);

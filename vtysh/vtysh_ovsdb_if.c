@@ -517,21 +517,24 @@ void vtysh_ovsdb_hostname_set(const char* in)
 {
     const struct ovsrec_open_vswitch *ovs= NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
-    enum ovsdb_idl_txn_status status;
+    enum ovsdb_idl_txn_status status = TXN_ERROR;
 
     ovs = ovsrec_open_vswitch_first(idl);
-
     if(ovs)
     {
         status_txn = cli_do_config_start();
         if(status_txn == NULL)
         {
-            cli_do_config_abort(status_txn);
-            VLOG_ERR("Failed to create a transaction");
+          cli_do_config_abort(status_txn);
+          VLOG_ERR("Couldn't create the OVSDB transaction.");
         }
-        ovsrec_open_vswitch_set_hostname(ovs, in);
-        status = cli_do_config_finish(txn);
-        VLOG_DBG("Hostname set to %s in table",in);
+        else
+        {
+          ovsrec_open_vswitch_set_hostname(ovs, in);
+          status = cli_do_config_finish(status_txn);
+        }
+        if(!(status == TXN_SUCCESS || status == TXN_UNCHANGED))
+          VLOG_ERR("Committing transaction to DB failed.");
     }
     else
     {
@@ -550,8 +553,6 @@ char* vtysh_ovsdb_hostname_get()
 
     if(ovs)
     {
-        vty_out(vty, "hostname in table is %s%s", ovs->hostname, VTY_NEWLINE);
-        VLOG_DBG("retrieved hostname %s from table", ovs->hostname);
         return ovs->hostname;
     }
     else

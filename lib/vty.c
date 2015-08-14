@@ -272,6 +272,7 @@ vty_prompt (struct vty *vty)
 	{
 	  uname (&names);
 	  hostname = names.nodename;
+          host.name = XSTRDUP (MTYPE_HOST, hostname);
 	}
       vty_out (vty, cmd_prompt (vty->node), hostname);
     }
