@@ -394,6 +394,9 @@ ovsdb_init(const char *db_path)
     /* Add AAA columns */
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_aaa);
 
+    /* Add Auto Provision Column */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_auto_provisioning_status);
+
     /* Add tables and columns for LLDP configuration */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_cur_cfg);

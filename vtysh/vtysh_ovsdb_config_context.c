@@ -351,6 +351,58 @@ vtysh_ovsdb_ovstable_parse_logrotate_cfg(const struct smap *ifrow_config, vtysh_
 
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_aaa_cfg
+| Responsibility : parse aaa column in open_vswitch table
+| Parameters :
+|    ifrow_aaa   : aaa column object pointer
+|    pmsg        : callback arguments from show running config handler|
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbmsg *p_msg)
+{
+  const char *data = NULL;
+
+  if(NULL == ifrow_aaa)
+  {
+    return e_vtysh_error;
+  }
+
+  data = smap_get(ifrow_aaa, OPEN_VSWITCH_AAA_RADIUS);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, HALON_FALSE_STR))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "aaa authentication login radius");
+    }
+  }
+
+  data = smap_get(ifrow_aaa, OPEN_VSWITCH_AAA_FALLBACK);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, HALON_TRUE_STR))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "no aaa authentication login fallback error local");
+    }
+  }
+
+  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
+        vtysh_ovsdb_cli_print(p_msg, "ssh password-authentication disable");
+  }
+
+  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
+        vtysh_ovsdb_cli_print(p_msg, "ssh publickey-authentication disable");
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_config_context_global_clientcallback
 | Responsibility : client callback routine
 | Parameters :
@@ -383,6 +435,9 @@ vtysh_config_context_global_clientcallback(void *p_private)
 
     /* parse logrotate config param */
     vtysh_ovsdb_ovstable_parse_logrotate_cfg(&vswrow->logrotate_config, p_msg);
+
+    /* parse aaa config param */
+    vtysh_ovsdb_ovstable_parse_aaa_cfg(&vswrow->aaa, p_msg);
   }
 
   /* display radius server commands */
