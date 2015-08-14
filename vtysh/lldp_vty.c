@@ -764,6 +764,10 @@ DEFUN (cli_lldp_show_config,
     {
       new_intf_stats->lldp_dir = LLDP_RX;
     }
+    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0)
+    {
+      new_intf_stats->lldp_dir = LLDP_TXRX;
+    }
     if((intf_stats == NULL) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
     {
       new_intf_stats->next = intf_stats;
