@@ -111,6 +111,7 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
     struct smap smap_status = SMAP_INITIALIZER(&smap_status);
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
+    const char* mode = NULL;
 
     if (!is_valid_ip_address(ip))
     {
@@ -142,14 +143,23 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
     }
 
     smap_clone(&smap, &row->mgmt_intf);
+    smap_clone(&smap_status, &row->mgmt_intf_status);
+
+    mode = smap_get(&smap,OPEN_VSWITCH_MGMT_INTF_MAP_MODE);
+    if(!mode || (mode && (strcmp(mode, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_DHCP)) == 0))
+    {
+        smap_remove(&smap_status,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
+        smap_remove(&smap_status,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
+        smap_remove(&smap_status,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
+    }
 
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_MODE, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_STATIC);
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_IP, ip);
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK, subnet);
 
 
-    smap_add_once(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_IP,ip);
-    smap_add_once(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK,subnet);
+    smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_IP,ip);
+    smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK,subnet);
 
     ovsrec_open_vswitch_set_mgmt_intf(row, &smap);
     ovsrec_open_vswitch_set_mgmt_intf_status(row, &smap_status);
@@ -475,10 +485,10 @@ void mgmt_intf_show(const struct ovsrec_open_vswitch *row)
     const char *subnet;
 
     val = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_MODE);
-    if(val && (strcmp(val,MGMT_INTF_DEFAULT_IP) != 0))
+    if(val)
         vty_out(vty, "  Address Mode\t\t\t: %s%s",val,VTY_NEWLINE);
     else
-        vty_out(vty, "  Address Mode\t\t\t: %s",VTY_NEWLINE);
+        vty_out(vty, "  Address Mode\t\t\t: dhcp%s",VTY_NEWLINE);
 
     val = smap_get(&row->mgmt_intf_status,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
     subnet = smap_get(&row->mgmt_intf_status,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
