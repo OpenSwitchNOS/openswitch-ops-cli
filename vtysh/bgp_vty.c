@@ -20,7 +20,7 @@
  *
  * File: bgp_vty.c
  *
- * Purpose: This file contains implementation of all Boute Map
+ * Purpose: This file contains implementation of all BGP configuration
  */
 #include <stdio.h>
 #include <sys/un.h>
@@ -1391,7 +1391,7 @@ cli_neighbor_remote_as_cmd_execute (struct vty *vty,
 #ifdef EXTRA_DEBUG
     vty_out(vty, "setting remote as to %d\n", remote_as);
 #endif // EXTRA_DEBUG
-    ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor, remote_as);
+    ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor, &remote_as, 1);
 
     /* done */
     END_DB_TXN(txn);
@@ -7572,7 +7572,6 @@ policy_set_prefix_list_in_ovsdb (struct vty *vty, afi_t afi, const char *name,
     struct ovsrec_prefix_list *policy_row;
     struct ovsrec_prefix_list_entries  *policy_entry_row;
     enum ovsdb_idl_txn_status status;
-
     int ret;
     enum prefix_list_type type;
     struct prefix_list *plist;
@@ -7717,7 +7716,6 @@ policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
   struct ovsrec_route_map *rt_map_row;
   struct ovsrec_route_map_entries  *rt_map_entry_row;
   enum ovsdb_idl_txn_status status;
-
   int permit;
   unsigned long pref;
   struct route_map *map;
@@ -7735,7 +7733,6 @@ policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
       vty_out (vty, "the third field must be [permit|deny]%s", VTY_NEWLINE);
       return CMD_WARNING;
     }
-
 
   /* Preference check. */
   pref = strtoul (seq, &endptr, 10);
@@ -7781,17 +7778,11 @@ policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
     ovsrec_route_map_entries_set_preference(rt_map_entry_row, pref);
     ovsrec_route_map_entries_set_action(rt_map_entry_row, typestr);
     ovsrec_route_map_entries_set_route_map(rt_map_entry_row, rt_map_row);
-    /*
-     * Note point should work, but not work for now
-     */
-  ovsrec_route_map_entries_set_match(rt_map_entry_row, NULL);
-  ovsrec_route_map_entries_set_set(rt_map_entry_row, NULL);
-
+    ovsrec_route_map_entries_set_match(rt_map_entry_row, NULL);
+    ovsrec_route_map_entries_set_set(rt_map_entry_row, NULL);
 
     rmp_context.pref = pref;
     strncpy(rmp_context.name, name, sizeof(rmp_context.name));
-
-    //vty->index = rt_map_entry_row;
     vty->index = &rmp_context;
     vty->node = RMAP_NODE;
 
@@ -7855,13 +7846,8 @@ policy_set_route_map_match_in_ovsdb (struct vty *vty,
     START_DB_TXN(policy_txn);
 
     psmap = &rt_map_entry_row->match;
-    if (psmap && !smap_is_empty(psmap)) {
-        smap_clone(&smap_match, psmap);
-        smap_replace(&smap_match, table_key, arg);
-    } else {
-        smap_init(&smap_match);
-        smap_add(&smap_match, table_key, arg);
-    }
+    smap_clone(&smap_match, psmap);
+    smap_replace(&smap_match, table_key, arg);
     ovsrec_route_map_entries_set_match(rt_map_entry_row, &smap_match);
     smap_destroy(&smap_match);
 
@@ -7898,7 +7884,6 @@ policy_set_route_map_set_in_ovsdb (struct vty *vty,
     char *table_key;
     struct smap *psmap;
 
-
     table_key = policy_cmd_to_key_lookup(command, set_table);
     if (table_key == NULL) {
          VLOG_ERR("Route map set wrong key - %s", command);
@@ -7908,13 +7893,8 @@ policy_set_route_map_set_in_ovsdb (struct vty *vty,
     START_DB_TXN(policy_txn);
 
     psmap = &rt_map_entry_row->set;
-    if (psmap && !smap_is_empty(psmap)) {
-        smap_clone(&smap_set, psmap);
-        smap_replace(&smap_set, table_key, arg);
-    } else {
-        smap_init(&smap_set);
-        smap_add(&smap_set, table_key, arg);
-    }
+    smap_clone(&smap_set, psmap);
+    smap_replace(&smap_set, table_key, arg);
 
     ovsrec_route_map_entries_set_set(rt_map_entry_row, &smap_set);
     smap_destroy(&smap_set);
@@ -7937,24 +7917,24 @@ DEFUN (set_metric,
                      "metric", argv[0]);
 }
 
-
 static int
 policy_set_route_map_set_community_str_in_ovsdb (struct vty *vty,
-                                        const int argc,  const char *argv)
+                                        const int argc,  const char **argv)
 {
 
   int i;
-  int first = 0;
   int additive = 0;
-  struct buffer *b;
-  struct community *com = NULL;
-  char *str;
   char *argstr;
-  int ret;
+  int ret = 0;
   struct ovsrec_route_map_entries  *rt_map_entry_row =
            policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
+  int n = 0;
 
-  b = buffer_new (1024);
+
+  argstr = xmalloc(1024);
+
+  if (!argstr)
+      return 0;
 
   for (i = 0; i < argc; i++)
     {
@@ -7964,60 +7944,17 @@ policy_set_route_map_set_community_str_in_ovsdb (struct vty *vty,
           continue;
         }
 
-      if (first)
-        buffer_putc (b, ' ');
-      else
-        first = 1;
-
-      if (strncmp (argv[i], "internet", strlen (argv[i])) == 0)
-        {
-          buffer_putstr (b, "internet");
-          continue;
-        }
-      if (strncmp (argv[i], "local-AS", strlen (argv[i])) == 0)
-        {
-          buffer_putstr (b, "local-AS");
-          continue;
-        }
-      if (strncmp (argv[i], "no-a", strlen ("no-a")) == 0
-          && strncmp (argv[i], "no-advertise", strlen (argv[i])) == 0)
-        {
-          buffer_putstr (b, "no-advertise");
-          continue;
-        }
-      if (strncmp (argv[i], "no-e", strlen ("no-e"))== 0
-          && strncmp (argv[i], "no-export", strlen (argv[i])) == 0)
-        {
-          buffer_putstr (b, "no-export");
-          continue;
-        }
-      buffer_putstr (b, argv[i]);
+        n += sprintf(&argstr[n], "%s", argv[i]);
     }
-  buffer_putc (b, '\0');
-
-  /* Fetch result string then compile it to communities attribute.  */
-  str = buffer_getstr (b);
-  buffer_free (b);
-
 
   if (additive)
     {
-      argstr = XCALLOC (MTYPE_TMP, strlen (str) + strlen (" additive") + 1);
-      strcpy (argstr, str);
-      strcpy (argstr + strlen (str), " additive");
-
-      policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
-                                        "community", argstr);
-      XFREE (MTYPE_TMP, argstr);
+      n += sprintf(&argstr[n], " %s", "additive");
     }
-  else
     policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
-                         "community", str);
-
-  //community_free (com);
-
+                                        "community", argstr);
+  free (argstr);
   return ret;
-
 }
 
 DEFUN (set_community,
