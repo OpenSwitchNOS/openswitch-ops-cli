@@ -1372,7 +1372,7 @@ cli_neighbor_remote_as_cmd_execute (struct vty *vty,
     ovs_bgp_neighbor =
 	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
     if (ovs_bgp_neighbor) {
-	if (ovs_bgp_neighbor->remote_as == remote_as) {
+	if (*ovs_bgp_neighbor->remote_as == remote_as) {
 	    ABORT_DB_TXN(txn, "no op command");
 	}
     } else {

@@ -360,7 +360,7 @@ vlan_ovsdb_init(struct ovsdb_idl *idl)
 }
 
 static void
-mgmt_intf_ovsdb_init(struct ovsdb_idl *idl)
+mgmt_intf_ovsdb_init()
 {
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf_status);
@@ -402,7 +402,7 @@ ovsdb_init(const char *db_path)
     intf_ovsdb_init(idl);
 
    /* Management interface columns */
-    mgmt_intf_ovsdb_init(idl);
+    mgmt_intf_ovsdb_init();
 
     alias_ovsdb_init(idl);
 
