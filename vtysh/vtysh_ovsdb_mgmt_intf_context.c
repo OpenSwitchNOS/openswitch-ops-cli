@@ -55,19 +55,23 @@ vtysh_mgmt_intf_context_clientcallback(void *p_private)
     }
 
     data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_MODE);
-    if (data)
+    if (!data)
     {
-        if (VTYSH_STR_EQ(data, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_STATIC))
-        {
-            vtysh_ovsdb_cli_print(p_msg, "interface mgmt");
-            ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
-            subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
-            if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
-                vtysh_ovsdb_cli_print(p_msg, "%4sip static %s %s","",ip,subnet);
-        }
-        else
-            return e_vtysh_error;
+        /* If not present then mode is dhcp. So nothing to display since dhcp is the default. */
+        return e_vtysh_ok;
     }
+
+    if (VTYSH_STR_EQ(data, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_STATIC))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "interface mgmt");
+        ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
+        subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
+        if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
+            vtysh_ovsdb_cli_print(p_msg, "%4sip static %s %s","",ip,subnet);
+    }
+    else
+        return e_vtysh_error;
+
     data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
     if (data && (strcmp(data,MGMT_INTF_DEFAULT_IP) != 0))
     {
