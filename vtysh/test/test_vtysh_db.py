@@ -16,11 +16,8 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
 import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -125,10 +122,7 @@ class DBTests( HalonTest ):
             return True
     return False
 
-
 class Test_db:
-  # Create the Mininet topology based on mininet.
-  test = DBTests()
 
   def setup(self):
     pass
@@ -137,7 +131,7 @@ class Test_db:
     pass
 
   def setup_class(cls):
-    pass
+    Test_db.test = DBTests()
 
   def teardown_class(cls):
     # Stop the Docker containers, and
@@ -154,6 +148,7 @@ class Test_db:
     del self.test
 
   # DB config tests.
+  @pytest.mark.skipif(True, reason="Takes too long")
   def test_create_db(self):
     if self.test.createdbTest():
       print 'Passed createdbTest'

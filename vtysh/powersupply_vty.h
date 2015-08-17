@@ -1,4 +1,4 @@
-/* AAA CLI commands header file
+/* Power Supply CLI commands.
  *
  * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
  *
@@ -17,22 +17,20 @@
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *
- * File: aaa_vty.h
+ * File: powersupply_vty.h
  *
- * Purpose:  To add declarations required for aaa_vty.c
+ * Purpose: To add power supply CLI configuration and display commands.
  */
 
-#define OPEN_VSWITCH_AAA_RADIUS               "radius"
-#define OPEN_VSWITCH_AAA_FALLBACK             "fallback"
-#define OPEN_VSWITCH_AAA_RADIUS_LOCAL         "local"
-#define HALON_TRUE_STR                        "true"
-#define HALON_FALSE_STR                       "false"
+#ifndef _POWERSUPPLY_VTY_H
+#define _POWERSUPPLY_VTY_H
 
-#define MAX_RADIUS_SERVERS                    64
-#define RADIUS_SERVER_DEFAULT_PASSKEY         "testing123-1"
-#define RADIUS_SERVER_DEFAULT_PORT            1812
-#define RADIUS_SERVER_DEFAULT_RETRIES         1
-#define RADIUS_SERVER_DEFAULT_TIMEOUT         5
+#ifndef SYS_STR
+#define SYS_STR         "System information\n"
+#endif
+#define PSU_STR         "Shows power supply information\n"
 
-void
-aaa_vty_init (void);
+int cli_system_get_psu();
+void powersupply_vty_init();
+
+#endif //_POWERSUPPLY_VTY_H

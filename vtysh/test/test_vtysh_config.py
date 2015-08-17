@@ -16,11 +16,7 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
-import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -211,8 +207,6 @@ class ShowRunningConfigTests( HalonTest ):
     return False
 
 class Test_showrunningconfig:
-  # Create the Mininet topology based on mininet.
-  test = ShowRunningConfigTests()
 
   def setup(self):
     pass
@@ -221,21 +215,7 @@ class Test_showrunningconfig:
     pass
 
   def setup_class(cls):
-    pass
-
-  def teardown_class(cls):
-    # Stop the Docker containers, and
-    # mininet topology
-    Test_showrunningconfig.test.net.stop()
-
-  def setup_method(self, method):
-    pass
-
-  def teardown_method(self, method):
-    pass
-
-  def __del__(self):
-    del self.test
+    Test_showrunningconfig.test = ShowRunningConfigTests()
 
   # show running config tests.
   def test_enable_lldp_commands(self):
@@ -273,3 +253,17 @@ class Test_showrunningconfig:
       print 'Passed : running config logrotate target test'
     else:
       assert 0, "setLogrotateTargetTest"
+
+  def teardown_class(cls):
+    # Stop the Docker containers, and
+    # mininet topology
+    Test_showrunningconfig.test.net.stop()
+
+  def setup_method(self, method):
+    pass
+
+  def teardown_method(self, method):
+    pass
+
+  def __del__(self):
+    del self.test

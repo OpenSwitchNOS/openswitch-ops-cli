@@ -118,6 +118,12 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
         return CMD_ERR_NO_MATCH;
     }
 
+    if (!is_valid_ip_subnet_mask(subnet))
+    {
+        VLOG_ERR(OVSDB_INVALID_SUBNET_ERROR);
+        return CMD_ERR_NO_MATCH;
+    }
+
     status_txn = cli_do_config_start();
     if(status_txn == NULL)
     {
@@ -469,7 +475,7 @@ void mgmt_intf_show(const struct ovsrec_open_vswitch *row)
     const char *subnet;
 
     val = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_MODE);
-    if(val)
+    if(val && (strcmp(val,MGMT_INTF_DEFAULT_IP) != 0))
         vty_out(vty, "  Address Mode\t\t\t: %s%s",val,VTY_NEWLINE);
     else
         vty_out(vty, "  Address Mode\t\t\t: %s",VTY_NEWLINE);
@@ -477,25 +483,25 @@ void mgmt_intf_show(const struct ovsrec_open_vswitch *row)
     val = smap_get(&row->mgmt_intf_status,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
     subnet = smap_get(&row->mgmt_intf_status,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
 
-    if(val && subnet)
+    if(val && subnet && (strcmp(val,MGMT_INTF_DEFAULT_IP) != 0))
         vty_out(vty, "  IP address/subnet-mask\t: %s/%s%s",val, subnet, VTY_NEWLINE);
     else
         vty_out(vty, "  IP address/subnet-mask\t: %s", VTY_NEWLINE);
 
     val = smap_get(&row->mgmt_intf_status,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
-    if(val)
+    if(val && (strcmp(val,MGMT_INTF_DEFAULT_IP) != 0))
         vty_out(vty, "  Default gateway\t\t: %s%s",val,VTY_NEWLINE);
     else
         vty_out(vty, "  Default gateway\t\t: %s",VTY_NEWLINE);
 
     val = smap_get(&row->mgmt_intf_status,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
-    if(val)
+    if(val && (strcmp(val,MGMT_INTF_DEFAULT_IP) != 0))
         vty_out(vty, "  Primary Nameserver\t\t: %s%s",val,VTY_NEWLINE);
     else
         vty_out(vty, "  Primary Nameserver\t\t: %s",VTY_NEWLINE);
 
     val = smap_get(&row->mgmt_intf_status,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
-    if(val)
+    if(val && (strcmp(val,MGMT_INTF_DEFAULT_IP) != 0))
         vty_out(vty, "  Secondary Nameserver\t\t: %s%s",val,VTY_NEWLINE);
     else
         vty_out(vty, "  Secondary Nameserver\t\t: %s",VTY_NEWLINE);

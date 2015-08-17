@@ -16,11 +16,7 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
-import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -148,7 +144,6 @@ class LLDPCliTest(HalonTest):
 
 
 class Test_lldp_cli:
-    test = LLDPCliTest()
 
     def setup(self):
         pass
@@ -157,19 +152,7 @@ class Test_lldp_cli:
         pass
 
     def setup_class(cls):
-        pass
-
-    def teardown_class(cls):
-        pass
-
-    def setup_method(self, method):
-        pass
-
-    def teardown_method(self, method):
-        pass
-
-    def __del__(self):
-        del self.test
+        Test_lldp_cli.test = LLDPCliTest()
 
     def test_enableLLDPFeatureTest(self):
         if self.test.enableLLDPFeatureTest():
@@ -230,3 +213,15 @@ class Test_lldp_cli:
             print 'Passed setLLDPClearNeighborsTest'
         else:
             assert 0, 'Failed setLLDPClearNeighborsTest'
+
+    def teardown_class(cls):
+        Test_lldp_cli.test.net.stop()
+
+    def setup_method(self, method):
+        pass
+
+    def teardown_method(self, method):
+        pass
+
+    def __del__(self):
+        del self.test

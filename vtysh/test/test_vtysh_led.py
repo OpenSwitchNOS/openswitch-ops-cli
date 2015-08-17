@@ -16,11 +16,7 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
-import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -158,7 +154,6 @@ class PlatformLedTests( HalonTest ):
         return False
 
 class Test_led:
-    test = PlatformLedTests()
 
     # Init test tables??
     def setup(self):
@@ -169,23 +164,8 @@ class Test_led:
 
     def setup_class(cls):
         # Initialize the led table with dummy value
+        Test_led.test = PlatformLedTests()
         Test_led.test.initLedTable()
-
-    def teardown_class(cls):
-        # Delete Dummy data to avoid clash with other test scripts
-        Test_led.test.deinitLedTable()
-        # Stop the Docker containers, and
-        # mininet topology
-        Test_led.test.net.stop()
-
-    def setup_method(self, method):
-        pass
-
-    def teardown_method(self, method):
-        pass
-
-    def __del__(self):
-        del self.test
 
     # led <led name> on|off|flashing test.
     def test_led_command(self):
@@ -214,3 +194,19 @@ class Test_led:
             print 'Passed Show running-config Test'
         else:
             assert 0, "Failed Show running-config Test"
+
+    def teardown_class(cls):
+        # Delete Dummy data to avoid clash with other test scripts
+        Test_led.test.deinitLedTable()
+        # Stop the Docker containers, and
+        # mininet topology
+        Test_led.test.net.stop()
+
+    def setup_method(self, method):
+        pass
+
+    def teardown_method(self, method):
+        pass
+
+    def __del__(self):
+        del self.test

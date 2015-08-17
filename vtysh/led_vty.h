@@ -32,10 +32,6 @@
 #define LED_STR 	"Shows LED information\n"
 #define LED_SET_STR 	"Set LED state\n"
 
-#define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
-#define OVSDB_ROW_FETCH_ERROR "Couldn't fetch row from the DB."
-#define OVSDB_TXN_COMMIT_ERROR "Commiting transaction to DB failed."
-
 typedef enum
 {
 	CLI_FAN,

@@ -25,8 +25,8 @@
 
 #include "command.h"
 
-# define LOGROTATE_CMD_STR_PERIOD        "logrotate period (hourly| daily| weekly | monthly ) "
-# define LOGROTATE_NO_CMD_STR_PERIOD     "no logrotate period {hourly| daily| weekly | monthly }"
+# define LOGROTATE_CMD_STR_PERIOD        "logrotate period (hourly| weekly | monthly ) "
+# define LOGROTATE_NO_CMD_STR_PERIOD     "no logrotate period {hourly| weekly | monthly }"
 # define LOGROTATE_CMD_STR_MAXSIZE       "logrotate maxsize <1-200>"
 # define LOGROTATE_NO_CMD_STR_MAXSIZE    "no logrotate maxsize {<1-200>}"
 
@@ -36,13 +36,15 @@
 # define LOGROTATE_HELP_STR_PERIOD      "Rotates, compresses, and transfers system logs.\n" \
                                         "Logrotation period.\n" \
                                         "Rotates log files every hour.\n" \
-                                        "Rotates log files every day (default).\n" \
                                         "Rotates log files every week.\n" \
                                         "Rotates log files every month.\n"
 
 # define LOGROTATE_NO_HELP_STR_PERIOD      NO_STR \
                                            "Rotates, compresses, and transfers system logs.\n" \
-                                           "Logrotation period.\n"
+                                           "Logrotation period.\n" \
+                                           "Rotates log files every hour.\n" \
+                                           "Rotates log files every week.\n" \
+                                           "Rotates log files every month.\n"
 
 
 
@@ -52,16 +54,18 @@
 
 # define LOGROTATE_NO_HELP_STR_MAXSIZE     NO_STR \
                                            "Rotates, compresses, and transfers system logs.\n" \
-                                           "Maximum file size for rotation.\n"
+                                           "Maximum file size for rotation.\n" \
+                                           "File size in Mega Bytes (MB).Default value is 10MB\n"
 
 
 # define LOGROTATE_HELP_STR_TARGET     "Rotates, compresses, and transfers system logs.\n" \
                                        "Transfers logs to remote host.\n"\
-                                       "URI of the remote host in the format 'Protocol://A.B.C.D' (e.g.,tftp://10.0.0.1).\n"
+                                       "URI of the remote host. Supported values :'tftp://A.B.C.D'\n"
 
 # define LOGROTATE_NO_HELP_STR_TARGET     NO_STR \
                                           "Rotates, compresses, and transfers system logs.\n" \
-                                          "Transfers logs to remote host.\n"
+                                          "Transfers logs to remote host.\n" \
+                                          "URI of the remote host. Supported values :'tftp://A.B.C.D'\n"
 
 #define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD "period"
 #define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE "maxsize"
