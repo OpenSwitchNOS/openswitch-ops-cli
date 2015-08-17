@@ -88,6 +88,8 @@ struct vtysh_alias_data {
 
 int is_valid_ip_address(const char *ip_value);
 
+int is_valid_ip_subnet_mask(const char *subnet_value);
+
 extern int vtysh_alias_callback(struct cmd_element *self, struct vty *vty, int vty_flags, int argc, const char *argv[]);
 
 extern int enable_mininet_test_prompt;

@@ -36,19 +36,6 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_logrotate);
 extern struct ovsdb_idl *idl;
 
-#define  IS_NETWORK_ADDRESS(i)     (((long)(i) & 0x000000ff) == 0x0)
-#define  IS_SUBNET_BROADCAST(i)     (((long)(i) & 0x000000ff) == 0xff)
-#define  IS_BROADCAST_IPV4(i)      (((long)(i) & 0xffffffff) == 0xffffffff)
-#define  IS_LOOPBACK_IPV4(i)       (((long)(i)) == 0x7F000001)
-#define  IS_MULTICAST_IPV4(i)      (((long)(i) & 0xf0000000) == 0xe0000000)
-#define  IS_EXPERIMENTAL_IPV4(i)   (((long)(i) & 0xf0000000) == 0xf0000000)
-#define  IS_INVALID_IPV4(i)         ((long)(i) == 0)
-
-#define IS_VALID_IPV4(i) !(IS_BROADCAST_IPV4(i) | IS_LOOPBACK_IPV4(i) | \
-                          IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
-                          IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
-                          IS_NETWORK_ADDRESS(i))
-
 #define VLOG_ERR_LOGROTATE_TRANSACTION_COMMIT_FAILED VLOG_ERR("Logrotate DB : transaction commit failed \n")
 #define VLOG_ERR_LOGROTATE_OPENVSWITCH_READ_FAILED VLOG_ERR("Logrotate DB: Openvswitch read failed \n")
 #define VLOG_ERR_LOGROTATE_TRANSACTION_CREATE_FAILED  VLOG_ERR(OVSDB_TXN_CREATE_ERROR)
@@ -272,6 +259,8 @@ DEFUN (show_logrotate_config,
        )
 {
     const struct ovsrec_open_vswitch *ovs = NULL;
+    const char *data = NULL;
+
     ovsdb_idl_run(idl);
     ovsdb_idl_wait(idl);
 
@@ -279,9 +268,15 @@ DEFUN (show_logrotate_config,
 
     if(ovs) {
         vty_out (vty, "Logrotate configurations : %s", VTY_NEWLINE);
-        vty_out (vty, "Period            : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD), VTY_NEWLINE);
-        vty_out (vty, "Maxsize (MB)      : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE), VTY_NEWLINE);
-        vty_out (vty, "Target            : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET), VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD);
+        vty_out (vty, "Period            : %s%s", (NULL == data) ? OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT : data, VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE);
+        vty_out (vty, "Maxsize           : %sMB%s", (NULL == data) ? OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT : data, VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET);
+        if (data != NULL)
+            {
+            vty_out (vty, "Target            : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET), VTY_NEWLINE);
+            }
     }
     else {
         VLOG_ERR("Couldn't retrieve any logrotate columns");

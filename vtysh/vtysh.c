@@ -336,6 +336,10 @@ vtysh_execute_func (const char *line, int pager)
       tried++;
    }
 
+   /* if the command succeeds in any other node than current, it is not always
+    * necessary to move to parent context but to remain with the vty context
+    * after execution of the command */
+#ifndef ENABLE_OVSDB
    vty->node = saved_node;
 
    /* If command succeeded in any other node than current (tried > 0) we have
@@ -365,6 +369,15 @@ vtysh_execute_func (const char *line, int pager)
    {
       ret = saved_ret;
    }
+#else
+
+   if (ret != CMD_SUCCESS && tried)
+   {
+      vty->node = saved_node;
+      ret = saved_ret;
+   }
+
+#endif
 
    cmd_free_strvec (vline);
 
@@ -2257,7 +2270,7 @@ DEFUN (vtysh_copy_startupconfig,
   execute_command ("cfgdbutil", 3, (const char **)arguments);
   return CMD_SUCCESS;
 }
-
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_ping,
       vtysh_ping_cmd,
       "ping WORD",
@@ -2346,7 +2359,7 @@ DEFUN (vtysh_ssh,
   execute_command ("ssh", 1, argv);
   return CMD_SUCCESS;
 }
-
+#endif /* ENABLE_OVSDB */
 DEFUN (vtysh_start_shell,
        vtysh_start_shell_cmd,
        "start-shell",
@@ -2538,19 +2551,33 @@ vtysh_prompt (void)
    return buf;
 }
 
+#ifdef ENABLE_OVSDB
+
 DEFUN(vtysh_user_add,
        vtysh_user_add_cmd,
        "useradd WORD",
-       "Adding a new user\n")
+       "Adding a new user\n"
+       "User name to be added\n")
 {
        char *arg[2];
-       arg[0]="/usr/sbin/adduser";
-       arg[1]=argv[0];
+       arg[0] = "/usr/sbin/adduser";
+       arg[1] = argv[0];
        execute_command("sudo", 2,(const char **)arg);
        return CMD_SUCCESS;
 }
 
-#ifdef ENABLE_OVSDB
+DEFUN(vtysh_user_del,
+       vtysh_user_del_cmd,
+       "deluser WORD",
+       "Delete a user account\n"
+       "User name to be deleted\n")
+{
+       char *arg[2];
+       arg[0] = "/usr/sbin/deluser";
+       arg[1] = argv[0];
+       execute_command("sudo", 2,(const char **)arg);
+       return CMD_SUCCESS;
+}
 
 DEFUN (vtysh_demo_cli1,
       vtysh_demo_cli1_cmd,
@@ -3097,6 +3124,27 @@ int is_valid_ip_address(const char *ip_value)
 
     return 1;
 }
+
+int is_valid_ip_subnet_mask(const char *subnet_value)
+{
+    struct in_addr addr;
+    long validate_subnet=0;
+    long num=0;
+    int pos=0;
+    memset (&addr, 0, sizeof (struct in_addr));
+    if(inet_pton(AF_INET,subnet_value,&addr) <= 0)
+    {
+       return 0;
+    }
+    num = -htonl(addr.s_addr) & htonl(addr.s_addr);
+    validate_subnet = htonl(addr.s_addr);
+    while(num !=0){
+       num>>=1;
+       pos++;
+    }
+
+    return ((validate_subnet==0XFFFFFFFF) ? 0:(validate_subnet==(0xFFFFFFFF<<(pos-1))));
+}
 #endif /* ENABLE_OVSDB */
 
 void
@@ -3319,6 +3367,8 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
 #endif /* ENABLE_OVSDB */
+
+#ifndef ENABLE_OVSDB
   install_element (VIEW_NODE, &vtysh_ping_cmd);
   install_element (VIEW_NODE, &vtysh_ping_ip_cmd);
   install_element (VIEW_NODE, &vtysh_traceroute_cmd);
@@ -3341,6 +3391,7 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_telnet_cmd);
   install_element (ENABLE_NODE, &vtysh_telnet_port_cmd);
   install_element (ENABLE_NODE, &vtysh_ssh_cmd);
+#endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
@@ -3383,6 +3434,7 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_passwd_cmd);
   install_element (CONFIG_NODE, &vtysh_user_add_cmd);
+  install_element (CONFIG_NODE, &vtysh_user_del_cmd);
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();

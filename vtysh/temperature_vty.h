@@ -32,9 +32,6 @@
 #define TEMP_STR "Temperature sensor information\n"
 #define TEMP_DETAIL_STR "Detailed temperature sensor information\n"
 
-#define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
-#define OVSDB_ROW_FETCH_ERROR "Couldn't fetch row from the DB."
-#define OVSDB_TXN_COMMIT_ERROR "Commiting transaction to DB failed."
 void
 temperature_vty_init (void);
 

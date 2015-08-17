@@ -51,19 +51,6 @@ extern struct ovsdb_idl *idl;
 
 VLOG_DEFINE_THIS_MODULE(vtysh_aaa_cli);
 
-#define  IS_NETWORK_ADDRESS(i)     (((long)(i) & 0x000000ff) == 0x0)
-#define  IS_SUBNET_BROADCAST(i)     (((long)(i) & 0x000000ff) == 0xff)
-#define  IS_BROADCAST_IPV4(i)      (((long)(i) & 0xffffffff) == 0xffffffff)
-#define  IS_LOOPBACK_IPV4(i)       (((long)(i)) == 0x7F000001)
-#define  IS_MULTICAST_IPV4(i)      (((long)(i) & 0xf0000000) == 0xe0000000)
-#define  IS_EXPERIMENTAL_IPV4(i)   (((long)(i) & 0xf0000000) == 0xf0000000)
-#define  IS_INVALID_IPV4(i)         ((long)(i) == 0)
-
-#define IS_VALID_IPV4(i) !(IS_BROADCAST_IPV4(i) | IS_LOOPBACK_IPV4(i) | \
-IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
-IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
-IS_NETWORK_ADDRESS(i))
-
 static int aaa_set_global_status(const char *status)
 {
   const struct ovsrec_open_vswitch *row = NULL;

@@ -46,4 +46,6 @@ void vty_mgmt_int_init (void);
 #define OVSDB_MODE_ERROR                      "Configurations not allowed in dhcp mode"
 #define OVSDB_DNS_DEPENDENCY_ERROR            "Deletion not allowed. Secondary Nameserver present"
 
+void mgmt_intf_vty_init (void);
+
 #endif /* _VTY_MGMT_INTF_H */

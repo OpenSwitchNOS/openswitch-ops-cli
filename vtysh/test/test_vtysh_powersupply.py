@@ -16,11 +16,7 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
-import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -74,10 +70,7 @@ class PlatformPSUTests( HalonTest ):
 
         return False
 
-
-
 class Test_psu:
-    test = PlatformPSUTests()
 
     def setup(self):
         pass
@@ -87,6 +80,7 @@ class Test_psu:
 
     def setup_class(cls):
         # Initialize the PSU table with dummy value
+        Test_psu.test = PlatformPSUTests()
         Test_psu.test.initPSUTable()
 
     def teardown_class(cls):

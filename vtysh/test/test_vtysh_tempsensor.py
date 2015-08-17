@@ -16,11 +16,7 @@
 #    under the License.
 #
 
-import os
-import sys
 from time import sleep
-import pytest
-import subprocess
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -70,7 +66,6 @@ class TemperatureSystemTests( HalonTest ):
 
 
 class Test_sys:
-    test = TemperatureSystemTests()
 
     def setup(self):
         pass
@@ -80,6 +75,7 @@ class Test_sys:
 
     def setup_class(cls):
         # Initialize the led table with dummy value
+        Test_sys.test = TemperatureSystemTests()
         Test_sys.test.initTemp_sensorTable()
 
     def teardown_class(cls):
