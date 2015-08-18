@@ -45,6 +45,14 @@ class PlatformPSUTests( HalonTest ):
                 PlatformPSUTests.uuid = _id[1].strip()
                 s1.cmd("ovs-vsctl -- set Subsystem "+PlatformPSUTests.uuid+" power_supplies=@psu1 -- --id=@psu1 create Power_supply "
                 "name=Psu_base status=ok")
+                s1.cmd("ovs-vsctl -- set Subsystem "+PlatformPSUTests.uuid+" power_supplies=@psu1 -- --id=@psu1 create Power_supply "
+                "name=Psu_base1 status=fault_input")
+                s1.cmd("ovs-vsctl -- set Subsystem "+PlatformPSUTests.uuid+" power_supplies=@psu1 -- --id=@psu1 create Power_supply "
+                "name=Psu_base2 status=fault_output")
+                s1.cmd("ovs-vsctl -- set Subsystem "+PlatformPSUTests.uuid+" power_supplies=@psu1 -- --id=@psu1 create Power_supply "
+                "name=Psu_base3 status=fault_absent")
+                s1.cmd("ovs-vsctl -- set Subsystem "+PlatformPSUTests.uuid+" power_supplies=@psu1 -- --id=@psu1 create Power_supply "
+                "name=Psu_base4 status=unknown")
 
 
     def deinitPSUTable(self):
@@ -67,7 +75,26 @@ class PlatformPSUTests( HalonTest ):
                     return True
                 else:
                     return False
-
+            if 'Psu_base1' in line:
+                if 'Input Fault' in line:
+                    return True
+                else:
+                    return False
+            if 'Psu_base2' in line:
+                if 'Output Fault' in line:
+                    return True
+                else:
+                    return False
+            if 'Psu_base3' in line:
+                if 'Absent' in line:
+                    return True
+                else:
+                    return False
+            if 'Psu_base4' in line:
+                if 'Unknown' in line:
+                    return True
+                else:
+                    return False
         return False
 
 class Test_psu:
