@@ -80,4 +80,15 @@ extern int prefix_bgp_orf_set (char *, afi_t, struct orf_prefix *, int, int);
 extern void prefix_bgp_orf_remove_all (char *);
 extern int prefix_bgp_show_prefix_list (struct vty *, afi_t, char *);
 
+extern void prefix_list_entry_add (struct prefix_list *plist,
+                       struct prefix_list_entry *pentry);
+extern void prefix_list_entry_free (struct prefix_list_entry *pentry);
+extern struct prefix_list * prefix_list_get (afi_t afi, const char *name);
+extern struct prefix_list_entry *
+       prefix_list_entry_make (struct prefix *prefix, enum prefix_list_type type,
+                        int seq, int le, int ge, int any);
+extern struct prefix_list_entry *
+       prefix_entry_dup_check (struct prefix_list *plist,
+                        struct prefix_list_entry *new);
+
 #endif /* _QUAGGA_PLIST_H */
