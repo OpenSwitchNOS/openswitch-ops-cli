@@ -1836,6 +1836,7 @@ delete_neighbor_peer_group(struct ovsrec_bgp_router *bgp_router_context,
                            const char *name)
 {
     struct ovsrec_bgp_neighbor *peer_group;
+
     peer_group = get_bgp_peer_group_with_bgp_router_and_name(bgp_router_context,
                                                              name);
     if (!peer_group) {
@@ -1843,7 +1844,7 @@ delete_neighbor_peer_group(struct ovsrec_bgp_router *bgp_router_context,
     }
 
     // Check to see if any neighbor is referencing this peer group. If so,
-    // we should not allow the user to delete the peer group.
+    // we need to delete it.
     struct ovsrec_bgp_neighbor *bgpn;
     OVSREC_BGP_NEIGHBOR_FOR_EACH(bgpn, idl)
     {
@@ -1851,7 +1852,7 @@ delete_neighbor_peer_group(struct ovsrec_bgp_router *bgp_router_context,
         {
             if (!strcmp(bgpn->bgp_peer_group->name, peer_group->name))
             {
-                return CMD_WARNING;
+                ovsrec_bgp_neighbor_delete(bgpn);
             }
         }
     }
@@ -1889,11 +1890,6 @@ cli_no_neighbor_cmd_execute (const char *peer_str)
         if (res == CMD_ERR_NO_MATCH)
         {
             ERRONEOUS_DB_TXN(txn, "neighbor does not exist.");
-        }
-        else if (res == CMD_WARNING)
-        {
-            ERRONEOUS_DB_TXN(txn, "cannot delete peer group while a "
-                                  "neighbor is still referencing it.");
         }
     }
 
@@ -1939,11 +1935,6 @@ cli_no_neighbor_peer_group_cmd_execute (const char *name)
     if (res == CMD_ERR_NO_MATCH)
     {
         ERRONEOUS_DB_TXN(txn, "peer-group does not exist.");
-    }
-    else if (res == CMD_WARNING)
-    {
-        ERRONEOUS_DB_TXN(txn, "cannot delete peer group while a "
-                              "neighbor is still referencing it.");
     }
 
     /* done */
@@ -2162,12 +2153,6 @@ cli_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
 
-    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                               bgp_router_context, ip_addr);
-    if (!ovs_bgp_neighbor) {
-        ERRONEOUS_DB_TXN(txn, "neighbor does not exist");
-    }
-
     ovs_bgp_peer_group = get_bgp_peer_group_with_bgp_router_and_name(
                                     bgp_router_context, peer_group);
     if (!ovs_bgp_peer_group)
@@ -2175,23 +2160,60 @@ cli_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
         ERRONEOUS_DB_TXN(txn, "Configure the peer-group first.");
     }
 
-    // Check if the existing peer is already configured with a peer group.
-    ovs_bgp_neighbors_peer_group = ovs_bgp_neighbor->bgp_peer_group;
-    if (ovs_bgp_neighbors_peer_group)
-    {
-        if (!strcmp(ovs_bgp_neighbors_peer_group->name, peer_group))
+    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                               bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        // Need to create a new neighbor and assign it values from the peer
+        // group
+        ovs_bgp_neighbor = ovsrec_bgp_neighbor_insert(txn);
+        if (!ovs_bgp_neighbor) {
+           ERRONEOUS_DB_TXN(txn, "bgp neighbor object creation failed");
+        }
+
+        ovsrec_bgp_neighbor_set_bgp_router(ovs_bgp_neighbor,
+                                           bgp_router_context);
+        ovsrec_bgp_neighbor_set_name(ovs_bgp_neighbor, ip_addr);
+        ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_neighbor, false);
+
+        if (!ovs_bgp_peer_group->n_remote_as)
         {
-            ABORT_DB_TXN(txn, "Configuration already exists.");
+            ERRONEOUS_DB_TXN(txn, "Specify remote-as or peer-group "
+                                  "remote AS first");
         }
         else
         {
-            ERRONEOUS_DB_TXN(txn,
-                             "Cannot change the peer-group. Deconfigure first");
+            ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor,
+                                              ovs_bgp_peer_group->remote_as, 1);
+        }
+    }
+    else
+    {
+        // Check if the existing peer is already configured with a peer group.
+        ovs_bgp_neighbors_peer_group = ovs_bgp_neighbor->bgp_peer_group;
+        if (ovs_bgp_neighbors_peer_group)
+        {
+            if (!strcmp(ovs_bgp_neighbors_peer_group->name, peer_group))
+            {
+                ABORT_DB_TXN(txn, "Configuration already exists.");
+            }
+            else
+            {
+                ERRONEOUS_DB_TXN(txn, "Cannot change the peer-group. "
+                                      "Deconfigure first");
+            }
         }
     }
 
     ovsrec_bgp_neighbor_set_bgp_peer_group(ovs_bgp_neighbor,
                                            ovs_bgp_peer_group);
+
+    // Update the AS if peer-group contains it
+    if (ovs_bgp_peer_group->n_remote_as)
+    {
+        ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor,
+                                          ovs_bgp_peer_group->remote_as,
+                                          1);
+    }
 
     /* done */
     END_DB_TXN(txn);
@@ -2214,7 +2236,6 @@ cli_no_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
 {
     struct ovsrec_bgp_router *bgp_router_context;
     struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_neighbor *ovs_bgp_peer_group;
     struct ovsrec_bgp_neighbor *ovs_bgp_neighbors_peer_group;
     struct ovsdb_idl_txn *txn;
 
@@ -2241,7 +2262,18 @@ cli_no_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
                              "for the neighbor");
         }
 
-        ovsrec_bgp_neighbor_set_bgp_peer_group(ovs_bgp_neighbor, NULL);
+        // Removing the peer group causes the peer to be deleted if remote-as
+        // is set for the peer-group
+        if (ovs_bgp_neighbors_peer_group->n_remote_as)
+        {
+            ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
+        }
+        else
+        {
+            // Since remote-as was not set, we only unset the peer_group info
+            // of this neighbor
+            ovsrec_bgp_neighbor_set_bgp_peer_group(ovs_bgp_neighbor, NULL);
+        }
     }
     else
     {
