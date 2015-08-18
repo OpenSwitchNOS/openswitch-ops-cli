@@ -160,7 +160,7 @@ route_map_lookup_by_name (const char *name)
 
 /* Lookup route map.  If there isn't route map create one and return
    it. */
-static struct route_map *
+struct route_map *
 route_map_get (const char *name)
 {
   struct route_map *map;
@@ -393,7 +393,7 @@ route_map_index_add (struct route_map *map, enum route_map_type type,
 }
 
 /* Get route map index. */
-static struct route_map_index *
+struct route_map_index *
 route_map_index_get (struct route_map *map, enum route_map_type type, 
 		     int pref)
 {
