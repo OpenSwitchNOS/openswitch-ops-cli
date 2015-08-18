@@ -104,6 +104,7 @@ int cli_system_get_psu()
                return CMD_OVSDB_FAILURE;
         }
 
+        vty_out(vty,"%s",VTY_NEWLINE);
         vty_out(vty,"%-15s%-10s%s","Name","Status",VTY_NEWLINE);
         vty_out(vty,"%s%s","-----------------------------",VTY_NEWLINE);
         OVSREC_POWER_SUPPLY_FOR_EACH(pPSU,idl)
@@ -130,6 +131,7 @@ int cli_system_get_psu()
 
         vty_out(vty,"%s%d/%d Power Supply present%s",VTY_NEWLINE,nPres,n,VTY_NEWLINE);
         vty_out(vty,"%d/%d Power Supply running OK%s",nOK,n,VTY_NEWLINE);
+        vty_out(vty,"%s",VTY_NEWLINE);
 
         if(pPSUsort)
         {
