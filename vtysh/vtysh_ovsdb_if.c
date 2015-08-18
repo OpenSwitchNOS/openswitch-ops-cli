@@ -105,6 +105,8 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_asn);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_router_id);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_networks);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_maximum_paths);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_timers);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_vrf);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_redistribute);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_gr_stale_timer);

@@ -454,7 +454,7 @@ DEFUN(vtysh_show_ip_bgp,
     vty_out (vty, BGP_SHOW_OCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
     bgp_row = ovsrec_bgp_router_first(idl);
     if (!bgp_row) {
-        vty_out(vty, "No bgp instance configured\n");
+        vty_out(vty, "No bgp router configured\n");
         return CMD_SUCCESS;
     }
     // HALON_TODO: Need to update this when multiple BGP routers are supported.
@@ -598,7 +598,7 @@ bgp_show_route(struct vty *vty, const char *view_name, const char *ip_str,
 
     bgp_row = ovsrec_bgp_router_first(idl);
     if (!bgp_row) {
-        vty_out(vty, "No bgp instance configured\n");
+        vty_out(vty, "No bgp router configured\n");
         return CMD_SUCCESS;
     }
 
@@ -855,7 +855,7 @@ cli_bgp_router_id_cmd_execute (char *router_ip_addr) {
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
 
     ret = inet_aton (router_ip_addr, &id);
-    if (!ret) {
+    if (!ret || (id.s_addr == 0)) {
         vty_out (vty, "%% Malformed bgp router identifier%s", VTY_NEWLINE);
         return CMD_WARNING;
     }
@@ -863,7 +863,7 @@ cli_bgp_router_id_cmd_execute (char *router_ip_addr) {
     /* Start of transaction */
     START_DB_TXN(bgp_router_txn);
 
-    VLOG_DBG("vty_index : %d\n",(int)(vty->index));
+    VLOG_DBG("vty_index for router_id: %d\n",(int)(vty->index));
 
     /* See if it already exists */
     bgp_router_row = get_ovsrec_bgp_router_with_asn((int)(vty->index));
@@ -1009,6 +1009,33 @@ DEFUN (no_bgp_confederation_peers,
     return CMD_SUCCESS;
 }
 
+static int
+cli_bgp_maxpaths_cmd_execute(int64_t max_paths)
+{
+    struct ovsrec_bgp_router *bgp_router_row;
+    struct ovsdb_idl_txn *bgp_router_txn=NULL;
+
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
+
+    VLOG_DBG("vty_index for maxpaths : %d\n",(int)(vty->index));
+
+    /* See if it already exists */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn((int)(vty->index));
+
+    /* If does not exist, nothing to modify */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    }
+    else {
+        /* Set the maximum-paths with matching asn */
+        ovsrec_bgp_router_set_maximum_paths(bgp_router_row, &max_paths, 1);
+    }
+
+    /* End of transaction*/
+    END_DB_TXN(bgp_router_txn);
+}
+
 /* Maximum-paths configuration */
 DEFUN (bgp_maxpaths,
        bgp_maxpaths_cmd,
@@ -1016,8 +1043,7 @@ DEFUN (bgp_maxpaths,
        "Forward packets over multiple paths\n"
        "Number of paths\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_bgp_maxpaths_cmd_execute(atoi(argv[0]));
 }
 
 DEFUN (bgp_maxpaths_ibgp,
@@ -1071,6 +1097,62 @@ ALIAS (no_bgp_maxpaths_ibgp,
 
 /* BGP timers.  */
 
+static int
+cli_bgp_timers_cmd_execute(int64_t keepalive, int64_t holdtime)
+{
+    struct ovsrec_bgp_router *bgp_router_row;
+    struct ovsdb_idl_txn *bgp_router_txn=NULL;
+    int i = 0;
+    char **bgp_key_timers;
+    int64_t bgp_value_timers[2];
+
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
+
+    VLOG_DBG("vty_index for timers : %d\n",(int)(vty->index));
+
+    /* See if it already exists */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn((int)(vty->index));
+
+    /* If does not exist, nothing to modify */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    }
+    else {
+        if (keepalive >= 0 && keepalive <= 65535 && holdtime >= 0 && holdtime <= 65535) {
+           /* Holdtime value check. */
+           if (holdtime < 3 && holdtime != 0)
+           {
+               vty_out (vty, "%% hold time value must be either 0 or greater than 3%s",
+               VTY_NEWLINE);
+           }
+           else
+           {
+               bgp_key_timers =  xmalloc(TIMER_KEY_MAX_LENGTH * BGP_MAX_TIMERS);
+               bgp_key_timers[0] = OVSDB_BGP_TIMER_KEEPALIVE;
+               bgp_key_timers[1] = OVSDB_BGP_TIMER_HOLDTIME;
+
+               bgp_value_timers[0] = keepalive;
+               bgp_value_timers[1] = holdtime;
+
+               /* Set the timers with matching asn */
+               ovsrec_bgp_router_set_timers(bgp_router_row, bgp_key_timers,
+                                            &bgp_value_timers, 2);
+           }
+        }
+        else {
+            VLOG_INFO("The timer values are not in the range.\n"
+                      "Please refer to following range values: "
+                      "keepalive <0-65535> holdtime <0-65535>");
+        }
+    }
+
+    free(bgp_key_timers);
+
+    /* End of transaction*/
+    END_DB_TXN(bgp_router_txn);
+}
+
 DEFUN (bgp_timers,
        bgp_timers_cmd,
        "timers bgp <0-65535> <0-65535>",
@@ -1079,8 +1161,8 @@ DEFUN (bgp_timers,
        "Keepalive interval\n"
        "Holdtime\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return ((argc==2) ?
+            cli_bgp_timers_cmd_execute(atoi(argv[0]),atoi(argv[1])) : CMD_ERR_AMBIGUOUS);
 }
 
 DEFUN (no_bgp_timers,
@@ -1497,15 +1579,13 @@ cli_bgp_network_cmd_execute (char *network)
 {
    int ret = 0, i = 0;
     struct prefix p;
-    struct in_addr *id;
-    char buf[SU_ADDRSTRLEN];
     struct ovsrec_bgp_router *bgp_router_row;
     char **network_list;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
 
     /* Convert IP prefix string to struct prefix. */
     ret = str2prefix (network, &p);
-    if (! ret) {
+    if (! ret ) {
         vty_out (vty, "%% Malformed prefix%s", VTY_NEWLINE);
         return CMD_WARNING;
     }
@@ -1520,7 +1600,7 @@ cli_bgp_network_cmd_execute (char *network)
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
     }
     else {
-        VLOG_INFO("vty->index : %d\n",vty->index);
+        VLOG_DBG("vty_index for network : %d\n",(int)vty->index);
         /* Insert networks in BGP_Router table */
         network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
                                (bgp_router_row->n_networks + 1));
@@ -1546,6 +1626,65 @@ DEFUN (bgp_network,
 {
     return
 	cli_bgp_network_cmd_execute(argv[0]);
+}
+
+/* Unconfigure static BGP network */
+static int
+cli_no_bgp_network_cmd_execute (char *network) {
+    int ret = 0, i = 0, j = 0;
+    struct prefix p;
+    struct in_addr *id;
+    char buf[SU_ADDRSTRLEN];
+    struct ovsrec_bgp_router *bgp_router_row;
+    char **network_list;
+    struct ovsdb_idl_txn *bgp_router_txn=NULL;
+
+    /* Convert IP prefix string to struct prefix. */
+    ret = str2prefix (network, &p);
+    if (! ret) {
+        vty_out (vty, "%% Malformed prefix%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
+
+    /* See if it already exists */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn((int)(vty->index));
+
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    }
+    else {
+        VLOG_DBG("vty_index for no network : %d\n",(int)vty->index);
+        /* Insert networks in BGP_Router table */
+        network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
+                               (bgp_router_row->n_networks - 1));
+        for (i = 0,j = 0; i < bgp_router_row->n_networks; i++) {
+            if(!strcmp(bgp_router_row->networks[i], network)) {
+                continue;
+            }
+            else {
+                network_list[j++] = bgp_router_row->networks[i];
+            }
+        }
+        ovsrec_bgp_router_set_networks(bgp_router_row, network_list,
+                                      (bgp_router_row->n_networks - 1));
+        free(network_list);
+    }
+
+    /* End of transaction */
+    END_DB_TXN(bgp_router_txn);
+}
+
+DEFUN (no_bgp_network,
+       no_bgp_network_cmd,
+       "no network A.B.C.D/M",
+       NO_STR
+       "Specify a network to announce via BGP\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
+{
+    return cli_no_bgp_network_cmd_execute(argv[0]);
 }
 
 /* "bgp import-check" configuration.  */
@@ -7017,6 +7156,7 @@ bgp_vty_init (void)
 
     /* "bgp network" commands. */
     install_element(BGP_NODE, &bgp_network_cmd);
+    install_element(BGP_NODE, &no_bgp_network_cmd);
 
     /* "bgp network import-check" commands. */
     install_element(BGP_NODE, &bgp_network_import_check_cmd);

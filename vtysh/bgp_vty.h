@@ -29,11 +29,10 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 
-
-
 #define CMD_AS_RANGE "<1-4294967295>"
 #define NETWORK_MAX_LEN 49
-
+#define TIMER_KEY_MAX_LENGTH 80
+#define BGP_MAX_TIMERS 2
 
 /*
 ** depending on the outcome of the db transaction, returns
@@ -87,8 +86,6 @@ cli_command_result (enum ovsdb_idl_txn_status status)
     } while (0)
 
 /********************** helper routines which find things ***********************/
-
-
 
 void bgp_vty_init (void);
 void policy_vty_init(void);
