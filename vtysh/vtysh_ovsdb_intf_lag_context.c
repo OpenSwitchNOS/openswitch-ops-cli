@@ -26,10 +26,84 @@
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
+#include "vtysh_ovsdb_intf_context.h"
 #include "vtysh_ovsdb_mgmt_intf_context.h"
 #include "lacp_vty.h"
+#include "vrf_vty.h"
 
 char intflagcontextclientname[] = "vtysh_intf_lag_context_clientcallback";
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_parse_vlan
+| Responsibility : Used for VLAN related config
+| Parameters :
+|     const char *if_name           : Name of interface
+|     vtysh_ovsdb_cbmsg_ptr p_msg   : Used for idl operations
+|     bool interfaceNameWritten     : Check if "interface x" has already been
+|                                     written
+| Return : vtysh_ret_val
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_porttable_parse_vlan(const char *if_name,
+                                 vtysh_ovsdb_cbmsg_ptr p_msg)
+{
+    struct ovsrec_port *port_row;
+    bool displayL3Info = false;
+    int i;
+
+    port_row = port_lookup(if_name, p_msg->idl);
+    if (port_row == NULL)
+    {
+        return e_vtysh_ok;
+    }
+
+    if (port_row->vlan_mode == NULL)
+    {
+        return e_vtysh_ok;
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
+            *port_row->tag);
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
+    {
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk allowed ",
+                port_row->trunks[i]);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native ",
+                *port_row->tag);
+        }
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk allowed ",
+                port_row->trunks[i]);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native ",
+                *port_row->tag);
+        }
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "vlan trunk native tag");
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk allowed ",
+                port_row->trunks[i]);
+        }
+    }
+
+    return e_vtysh_ok;
+}
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_intf_lag_context_clientcallback
@@ -52,6 +126,11 @@ vtysh_intf_lag_context_clientcallback(void *p_private)
       /* Print the LAG port name because lag port is present. */
       vtysh_ovsdb_cli_print(p_msg, "interface lag %d", atoi(&port_row->name[LAG_PORT_NAME_PREFIX_LENGTH]));
       data = smap_get(&port_row->other_config, "lacp");
+      if (check_port_in_bridge(port_row->name))
+      {
+          vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no routing");
+          vtysh_ovsdb_porttable_parse_vlan(port_row->name, p_msg);
+      }
       if(data)
       {
         vtysh_ovsdb_cli_print(p_msg, "%4slacp mode %s"," ",data);

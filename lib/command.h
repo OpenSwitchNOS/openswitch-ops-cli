@@ -127,6 +127,7 @@ enum node_type
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
 #ifdef ENABLE_OVSDB
+  VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
 #endif
@@ -537,6 +538,9 @@ struct cmd_token
 
 /* VLAN help strings */
 #define VLAN_STR            "VLAN Configuration\n"
+#define VLAN_NAME_STR            "NAME Configuration\n"
+#define VLAN_DESCRIPTION_STR     "VLAN Description\n"
+#define TRUNK_STR           "Trunk Configuration\n"
 #define VLAN_INT_STR        "VLAN internal configuration\n"
 #define VLAN_INT_RANGE_STR  "VLAN internal range configuration\n"
 #define SHOW_VLAN_STR       "Show VLAN Configuration\n"

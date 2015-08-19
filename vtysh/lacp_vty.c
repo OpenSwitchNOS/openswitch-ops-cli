@@ -45,6 +45,7 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "openhalon-dflt.h"
+#include "vrf_vty.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lacp_cli);
 extern struct ovsdb_idl *idl;
@@ -1207,7 +1208,6 @@ lacp_show_interfaces_all()
                        key ? key: " ",
                        port_priority ? port_priority : " ",
                        lacp_state);
-            free((void *)lacp_state);
             vty_out(vty,"%s", VTY_NEWLINE);
          }
          if(k == 0)
@@ -1245,7 +1245,6 @@ lacp_show_interfaces_all()
                        key ? key : "",
                        port_priority ? port_priority : " ",
                        lacp_state);
-            free((void *)lacp_state);
             vty_out(vty,"%s", VTY_NEWLINE);
          }
          if(k == 0)
@@ -1328,10 +1327,6 @@ Exit:
    vty_out(vty,"%-10s | %-18s | %-18s %s",
                "State", a_lacp_state, p_lacp_state, VTY_NEWLINE);
    vty_out(vty,"%s",VTY_NEWLINE);
-   if(a_lacp_state)
-      free((void *)a_lacp_state);
-   if(p_lacp_state)
-      free((void *)p_lacp_state);
 
    return CMD_SUCCESS;
 }
@@ -1347,6 +1342,184 @@ DEFUN (cli_lacp_show_interfaces,
   return lacp_show_interfaces(argv[0]);
 }
 
+/*
+* This function is used to make an LAG L3.
+* It attaches the port to the default VRF.
+*/
+static int lag_routing(const char *port_name)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *default_vrf_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsrec_port **ports;
+    size_t i, n;
+
+    status_txn = cli_do_config_start();
+
+    if (status_txn == NULL) {
+        VLOG_DBG(
+            "%s Got an error when trying to create a transaction using"
+            " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    port_row = port_check(port_name, false, false, status_txn);
+
+    if (check_port_in_vrf(port_name)) {
+        VLOG_DBG(
+            "%s Interface \"%s\" is already L3. No change required.",
+            __func__, port_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    default_bridge_row = ovsrec_bridge_first(idl);
+    ports = xmalloc(sizeof *default_bridge_row->ports *
+        (default_bridge_row->n_ports - 1));
+    for (i = n = 0; i < default_bridge_row->n_ports; i++) {
+        if (default_bridge_row->ports[i] != port_row) {
+            ports[n++] = default_bridge_row->ports[i];
+        }
+    }
+    ovsrec_bridge_set_ports(default_bridge_row, ports, n);
+
+    default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
+    xrealloc(ports, sizeof *default_vrf_row->ports *
+        (default_vrf_row->n_ports + 1));
+    for (i = 0; i < default_vrf_row->n_ports; i++) {
+        ports[i] = default_vrf_row->ports[i];
+    }
+    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    ports[default_vrf_row->n_ports] = temp_port_row;
+    ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
+    free(ports);
+
+    status = cli_do_config_finish(status_txn);
+
+    if (status == TXN_SUCCESS) {
+        VLOG_DBG(
+            "%s The command succeeded and interface \"%s\" is now L3"
+            " and attached to default VRF", __func__, port_name);
+        return CMD_SUCCESS;
+    }
+    else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+            "%s The command resulted in no change. Check if"
+            " LAG \"%s\" is already L3",
+            __func__, port_name);
+        return CMD_SUCCESS;
+    }
+    else {
+        VLOG_DBG(
+            "%s While trying to commit transaction to DB, got a status"
+            " response : %s", __func__,
+            ovsdb_idl_txn_status_to_string(status));
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+/*
+* This function is used to make an LAG L2.
+* It attaches the port to the default VRF.
+* It also removes all L3 related configuration like IP addresses.
+*/
+static int lag_no_routing(const char *port_name)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsrec_port **vrf_ports;
+    struct ovsrec_port **bridge_ports;
+    size_t i, n;
+
+    status_txn = cli_do_config_start();
+
+    if (status_txn == NULL) {
+        VLOG_DBG(
+            "%s Got an error when trying to create a transaction using"
+            " cli_do_config_start()", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    port_row = port_check(port_name, true, false, status_txn);
+    if (check_port_in_bridge(port_name)) {
+        VLOG_DBG(
+            "%s Interface \"%s\" is already L2. No change required.",
+            __func__, port_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+    else if ((vrf_row = port_vrf_lookup(port_row)) != NULL) {
+        vrf_ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
+        for (i = n = 0; i < vrf_row->n_ports; i++){
+            if (vrf_row->ports[i] != port_row) {
+                vrf_ports[n++] = vrf_row->ports[i];
+            }
+        }
+        ovsrec_vrf_set_ports(vrf_row, vrf_ports, n);
+        free(vrf_ports);
+    }
+    default_bridge_row = ovsrec_bridge_first(idl);
+    bridge_ports = xmalloc(sizeof *default_bridge_row->ports
+        * (default_bridge_row->n_ports + 1));
+    for (i = 0; i < default_bridge_row->n_ports; i++) {
+        bridge_ports[i] = default_bridge_row->ports[i];
+    }
+    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    bridge_ports[default_bridge_row->n_ports] = temp_port_row;
+    ovsrec_bridge_set_ports(default_bridge_row, bridge_ports,
+        default_bridge_row->n_ports + 1);
+    free(bridge_ports);
+    ovsrec_port_set_ip4_address(port_row, NULL);
+    ovsrec_port_set_ip4_address_secondary(port_row, NULL, 0);
+    ovsrec_port_set_ip6_address(port_row, NULL);
+    ovsrec_port_set_ip6_address_secondary(port_row, NULL, 0);
+
+    status = cli_do_config_finish(status_txn);
+    if (status == TXN_SUCCESS) {
+        VLOG_DBG(
+            "%s The command succeeded and interface \"%s\" is now L2"
+            " and attached to default bridge", __func__, port_name);
+        return CMD_SUCCESS;
+    }
+    else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+            "%s The command resulted in no change. Check if"
+            " interface \"%s\" is already L2",
+            __func__, port_name);
+        return CMD_SUCCESS;
+    }
+    else {
+        VLOG_DBG(
+            "%s While trying to commit transaction to DB, got a status"
+            " response : %s", __func__,
+            ovsdb_idl_txn_status_to_string(status));
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+DEFUN(cli_lag_routing,
+    cli_lag_routing_cmd,
+    "routing",
+    "Configure LAG as L3.\n")
+{
+    return lag_routing((char*) vty->index);
+}
+
+DEFUN(cli_lag_no_routing,
+    cli_lag_no_routing_cmd,
+    "no routing",
+    NO_STR
+    "Configure LAG as L3.\n")
+{
+    return lag_no_routing((char*) vty->index);
+}
 
 /* Install LACP related vty commands. */
 void
@@ -1354,7 +1527,8 @@ lacp_vty_init (void)
 {
   install_element (LINK_AGGREGATION_NODE, &lacp_set_mode_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_mode_no_cmd);
-
+  install_element(LINK_AGGREGATION_NODE, &cli_lag_routing_cmd);
+  install_element(LINK_AGGREGATION_NODE, &cli_lag_no_routing_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_hash_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_no_hash_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_fallback_cmd);

@@ -3122,6 +3122,7 @@ DEFUN (config_exit,
       vty_config_unlock (vty);
       break;
     case INTERFACE_NODE:
+    case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
     case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
@@ -3176,6 +3177,7 @@ DEFUN (config_end,
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case VLAN_NODE:
     case LINK_AGGREGATION_NODE:
     case MGMT_INTERFACE_NODE:
     case ZEBRA_NODE:

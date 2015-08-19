@@ -28,4 +28,6 @@
 int vtysh_init_intf_context_clients();
 vtysh_ret_val vtysh_intf_context_clientcallback(void *p_private);
 
+struct ovsrec_port* port_lookup(const char *if_name, const struct ovsdb_idl *idl);
+
 #endif /* VTYSH_OVSDB_INTF_CONTEXT_H */
