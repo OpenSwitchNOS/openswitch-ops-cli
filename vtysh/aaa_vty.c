@@ -651,11 +651,14 @@ static int show_auto_provisioning()
       return CMD_OVSDB_FAILURE;
   }
 
-  if ( smap_get(&row->auto_provisioning_status,"performed") != NULL ) {
-      vty_out(vty, " Performed : %s%s", smap_get(&row->auto_provisioning_status,"performed"), VTY_NEWLINE);
-  }
-  if (!strcmp("True", smap_get(&row->auto_provisioning_status,"performed"))) {
-      vty_out(vty, " URL       : %s%s", smap_get(&row->auto_provisioning_status,"url"), VTY_NEWLINE);
+  if (smap_get(&row->auto_provisioning_status, "performed") != NULL) {
+      if (!strcmp(smap_get(&row->auto_provisioning_status,"performed"), "True")) {
+          vty_out(vty, " Performed : %s%s", "Yes", VTY_NEWLINE);
+          vty_out(vty, " URL       : %s%s", smap_get(&row->auto_provisioning_status, "url"), VTY_NEWLINE);
+      }
+      else {
+          vty_out(vty, " Performed : %s%s", "No", VTY_NEWLINE);
+      }
   }
 
   return CMD_SUCCESS;
