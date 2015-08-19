@@ -3575,6 +3575,113 @@ DEFUN (no_neighbor_filter_list,
     return CMD_SUCCESS;
 }
 
+struct ovsrec_route_map *
+get_neighbor_route_map (struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
+                        char *name, char *direction)
+{
+    struct ovsrec_route_map *rt_map = NULL;
+    char *direct, *rm_name;
+
+    int i;
+    for (i = 0; i < ovs_bgp_neighbor->n_route_maps; i++)
+    {
+        direct = ovs_bgp_neighbor->key_route_maps[i];
+        rm_name = ovs_bgp_neighbor->value_route_maps[i]->name;
+
+        if (!strcmp(name, rm_name) && !strcmp(direction, direct))
+        {
+            rt_map = ovs_bgp_neighbor->value_route_maps[i];
+            break;
+        }
+    }
+
+    return rt_map;
+}
+
+static int
+cli_neighbor_route_map_cmd_execute (char *ipAddr, char *name,
+                                    char *direction)
+{
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    struct ovsrec_route_map *rt_map_row;
+    bool rm_found = false;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+    if (!bgp_router_context)
+    {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                            bgp_router_context, ipAddr);
+    if (!ovs_bgp_neighbor)
+    {
+        ERRONEOUS_DB_TXN(txn, "no existing neighbor found");
+    }
+
+    // Since neighbor exists, we need to check the route-map name and
+    // direction to identify if it's a duplicate.
+    if (get_neighbor_route_map(ovs_bgp_neighbor, name, direction))
+    {
+        ABORT_DB_TXN(txn, "configuration exists");
+    }
+
+    // Check if the specified route-map exists.
+    OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl)
+    {
+        if (!strcmp(rt_map_row->name, name))
+        {
+            rm_found = true;
+            break;
+        }
+    }
+
+    if (!rm_found)
+    {
+        ERRONEOUS_DB_TXN(txn, "route-map doesn't exist");
+    }
+
+    int num_elems = ovs_bgp_neighbor->n_route_maps;
+    char **directions = xmalloc(sizeof(*directions) * (num_elems+1));
+    struct ovsrec_route_map **rt_maps = xmalloc(sizeof(*rt_maps) *
+                                                (num_elems+1));
+
+    int i;
+    bool dir_found = false;
+    for (i = 0; i < num_elems; i++)
+    {
+        directions[i] = ovs_bgp_neighbor->key_route_maps[i];
+        rt_maps[i] = ovs_bgp_neighbor->value_route_maps[i];
+
+        if (!strcmp(direction, directions[i]))
+        {
+            rt_maps[i] = rt_map_row;
+            dir_found = true;
+        }
+    }
+
+    if (!dir_found)
+    {
+        directions[num_elems] = direction;
+        rt_maps[num_elems] = rt_map_row;
+        num_elems++;
+    }
+
+    ovsrec_bgp_neighbor_set_route_maps(ovs_bgp_neighbor, directions,
+                                       rt_maps, num_elems);
+
+    free(directions);
+    free(rt_maps);
+
+    /* done */
+    END_DB_TXN(txn);
+}
+
+// Handle
 DEFUN (neighbor_route_map,
        neighbor_route_map_cmd,
        NEIGHBOR_CMD2 "route-map WORD (in|out|import|export)",
@@ -3587,8 +3694,82 @@ DEFUN (neighbor_route_map,
        "Apply map to routes going into a Route-Server client's table\n"
        "Apply map to routes coming from a Route-Server client")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_neighbor_route_map_cmd_execute(argv[0], argv[1], argv[2]);
+}
+
+static int
+cli_no_neighbor_route_map_cmd_execute (char *ipAddr, char *direction)
+{
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    struct ovsrec_route_map *rt_map_row;
+    bool rm_found = false;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+    if (!bgp_router_context)
+    {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                            bgp_router_context, ipAddr);
+    if (!ovs_bgp_neighbor)
+    {
+        ERRONEOUS_DB_TXN(txn, "no existing neighbor found");
+    }
+
+    if (!ovs_bgp_neighbor->n_route_maps)
+    {
+        ABORT_DB_TXN(txn, "no existing neighbor route-map to unset");
+    }
+
+    // Check to see if a route-map is configured for the direction
+    int num_elems = ovs_bgp_neighbor->n_route_maps;
+    char **directions = xmalloc(sizeof(*directions) * num_elems);
+    struct ovsrec_route_map **rt_maps = xmalloc(sizeof(*rt_maps) *
+                                                num_elems);
+    char *direct;
+
+    int i, j;
+    bool dir_found = false;
+    for (i = 0, j = 0; i < num_elems; i++)
+    {
+        direct = ovs_bgp_neighbor->key_route_maps[i];
+
+        if (!strcmp(direction, direct))
+        {
+            // If found, then we skip adding this route-map configuration.
+            dir_found = true;
+            num_elems--;
+            continue;
+        }
+        else
+        {
+            // This is not the entry we are deleting, so make sure it remains
+            // in the ovsdb.
+            directions[j] = direct;
+            rt_maps[j++] = ovs_bgp_neighbor->value_route_maps[i];
+        }
+    }
+
+    if (!dir_found)
+    {
+        free(directions);
+        free(rt_maps);
+        ABORT_DB_TXN(txn, "neighbor route-map for the direction doesn't exist");
+    }
+
+    ovsrec_bgp_neighbor_set_route_maps(ovs_bgp_neighbor, directions,
+                                       rt_maps, num_elems);
+
+    free(directions);
+    free(rt_maps);
+
+    /* done */
+    END_DB_TXN(txn);
 }
 
 DEFUN (no_neighbor_route_map,
@@ -3604,8 +3785,7 @@ DEFUN (no_neighbor_route_map,
        "Apply map to routes going into a Route-Server client's table\n"
        "Apply map to routes coming from a Route-Server client")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_neighbor_route_map_cmd_execute(argv[0], argv[2]);
 }
 
 DEFUN (neighbor_unsuppress_map,
