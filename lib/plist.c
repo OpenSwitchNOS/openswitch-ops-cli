@@ -174,7 +174,7 @@ prefix_list_entry_new (void)
   return new;
 }
 
-static void
+void
 prefix_list_entry_free (struct prefix_list_entry *pentry)
 {
   XFREE (MTYPE_PREFIX_LIST_ENTRY, pentry);
@@ -272,7 +272,7 @@ prefix_list_insert (afi_t afi, const char *name)
   return plist;
 }
 
-static struct prefix_list *
+struct prefix_list *
 prefix_list_get (afi_t afi, const char *name)
 {
   struct prefix_list *plist;
@@ -334,7 +334,7 @@ prefix_list_delete (struct prefix_list *plist)
     (*master->delete_hook) (NULL);
 }
 
-static struct prefix_list_entry *
+struct prefix_list_entry *
 prefix_list_entry_make (struct prefix *prefix, enum prefix_list_type type,
 			int seq, int le, int ge, int any)
 {
@@ -462,7 +462,7 @@ prefix_list_entry_delete (struct prefix_list *plist,
     }
 }
 
-static void
+void
 prefix_list_entry_add (struct prefix_list *plist,
 		       struct prefix_list_entry *pentry)
 {
@@ -623,7 +623,7 @@ prefix_list_print (struct prefix_list *plist)
 }
 
 /* Retrun 1 when plist already include pentry policy. */
-static struct prefix_list_entry *
+struct prefix_list_entry *
 prefix_entry_dup_check (struct prefix_list *plist,
 			struct prefix_list_entry *new)
 {
