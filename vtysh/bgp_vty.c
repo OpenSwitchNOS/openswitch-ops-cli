@@ -59,7 +59,7 @@
 /*
 ** enable this if exra debugging is required
 */
-#define EXTRA_DEBUG
+//#define EXTRA_DEBUG
 
 extern struct ovsdb_idl *idl;
 
