@@ -24,6 +24,8 @@
 #ifndef VTYSH_OVSDB_IF_H
 #define VTYSH_OVSDB_IF_H 1
 
+#define MAX_MACADDR_LEN 17
+
 void vtysh_ovsdb_init(int argc, char *argv[]);
 
 void vtysh_ovsdb_hostname_set(const char * in);

@@ -699,6 +699,37 @@ int vtysh_ovsdb_vlan_match(const char *str)
   return 1;
 }
 
+int vtysh_ovsdb_mac_match(const char *str)
+{
+  int i = 0;
+  /*
+   * HALON_TODO : Checking for reserved MAC addresses if needed
+   */
+  if(!str)
+      return 1;
+
+  while(i < MAX_MACADDR_LEN)
+  {
+     if (!str[i])
+        return 1;
+
+     switch (i % 3)
+     {
+        case 0:
+        case 1: if (!isxdigit(str[i]))
+                    return 1;
+                break;
+        case 2: if (str[i] != ':')
+                    return 1;
+                break;
+     }
+     i++;
+  }
+
+  /*Not including str[MAX_MACADDR_LEN] == '\0' assuming its handled */
+  return 0;
+}
+
 /*
  * Check if the input string matches the given regex
  */
@@ -892,6 +923,7 @@ void vtysh_ovsdb_lib_init()
    lib_vtysh_ovsdb_interface_match = &vtysh_ovsdb_interface_match;
    lib_vtysh_ovsdb_port_match = &vtysh_ovsdb_port_match;
    lib_vtysh_ovsdb_vlan_match = &vtysh_ovsdb_vlan_match;
+   lib_vtysh_ovsdb_mac_match = &vtysh_ovsdb_mac_match;
 }
 
 /*
