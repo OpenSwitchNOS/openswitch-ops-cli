@@ -1366,7 +1366,7 @@ static int lag_routing(const char *port_name)
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(port_name, false, false, status_txn);
+    port_row = port_check_and_add(port_name, false, false, status_txn);
 
     if (check_port_in_vrf(port_name)) {
         VLOG_DBG(
@@ -1447,7 +1447,7 @@ static int lag_no_routing(const char *port_name)
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(port_name, true, false, status_txn);
+    port_row = port_check_and_add(port_name, true, false, status_txn);
     if (check_port_in_bridge(port_name)) {
         VLOG_DBG(
             "%s Interface \"%s\" is already L2. No change required.",
