@@ -27,3 +27,4 @@
 int (*lib_vtysh_ovsdb_interface_match)(const char *str) = NULL;
 int (*lib_vtysh_ovsdb_port_match)(const char *str) = NULL;
 int (*lib_vtysh_ovsdb_vlan_match)(const char *str) = NULL;
+int (*lib_vtysh_ovsdb_mac_match)(const char *str) = NULL;
