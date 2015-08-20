@@ -2092,6 +2092,33 @@ ALIAS (no_neighbor_local_as,
        "Do not prepend local-as to updates from ebgp peers\n"
        "Do not prepend local-as to updates from ibgp peers\n")
 
+static int
+cli_neighbor_password_execute(int argc, char *argv[])
+{
+    char *ip_addr = argv[0];
+    char *str;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    }else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (ovs_bgp_neighbor) {
+        // to write to ovsdb nbr table
+        ovsrec_bgp_neighbor_set_password(ovs_bgp_neighbor, argv[1]);
+    }
+    END_DB_TXN(txn);
+}
+
 DEFUN (neighbor_password,
        neighbor_password_cmd,
        NEIGHBOR_CMD2 "password LINE",
@@ -2100,8 +2127,12 @@ DEFUN (neighbor_password,
        "Set a password\n"
        "The password\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    if (argc != 2) {
+		vty_out(vty, "\n%%Insufficient parameters, neighbor <ipaddr> password <pwd>\n");
+		return CMD_WARNING;
+    }
+
+    return cli_neighbor_password_execute(argc, argv);
 }
 
 DEFUN (no_neighbor_password,
@@ -2112,8 +2143,28 @@ DEFUN (no_neighbor_password,
        NEIGHBOR_ADDR_STR2
        "Set a password\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    char *ip_addr = argv[0];
+    char *str;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    }else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (ovs_bgp_neighbor) {
+        // to write to ovsdb nbr table
+        ovsrec_bgp_neighbor_set_password(ovs_bgp_neighbor, NULL);
+    }
+    END_DB_TXN(txn);
 }
 
 DEFUN (neighbor_activate,
@@ -3148,6 +3199,36 @@ ALIAS (no_neighbor_disable_connected_check,
        NEIGHBOR_ADDR_STR2
        "Enforce EBGP neighbors perform multihop\n")
 
+static int
+cli_neighbor_description_execute(int argc, char *argv[])
+{
+    char *ip_addr = argv[0];
+    char *str;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    }else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (ovs_bgp_neighbor) {
+        str = argv_concat(argv, argc, 1);
+        // to write to ovsdb nbr table
+        ovsrec_bgp_neighbor_set_description(ovs_bgp_neighbor, str);
+        XFREE (MTYPE_TMP, str);
+    }
+    END_DB_TXN(txn);
+}
+
 DEFUN (neighbor_description,
        neighbor_description_cmd,
        NEIGHBOR_CMD2 "description .LINE",
@@ -3156,8 +3237,12 @@ DEFUN (neighbor_description,
        "Neighbor specific description\n"
        "Up to 80 characters describing this neighbor\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    if (argc == 1) {
+        vty_out(vty, "\n%%Insufficient parameters: neighbor <ipaddr> description <desc>\n");
+        return CMD_WARNING;
+    }
+
+    return cli_neighbor_description_execute(argc, argv);
 }
 
 DEFUN (no_neighbor_description,
@@ -3168,8 +3253,27 @@ DEFUN (no_neighbor_description,
        NEIGHBOR_ADDR_STR2
        "Neighbor specific description\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    char *ip_addr = argv[0];
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    }else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (ovs_bgp_neighbor) {
+        ovsrec_bgp_neighbor_set_description(ovs_bgp_neighbor, NULL);
+    }
+    END_DB_TXN(txn);
 }
 
 ALIAS (no_neighbor_description,
@@ -3368,6 +3472,53 @@ DEFUN (no_neighbor_strict_capability,
     return CMD_SUCCESS;
 }
 
+typedef struct timer_val {
+    int64_t keepalive;
+    int64_t holdtime;
+} timer_val_t;
+
+static int
+cli_neighbor_timers_execute (int argc, char *argv[])
+{
+    char *ip_addr = argv[0];
+    char *key_timers[2];
+    timer_val_t tim_val;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+
+    VTY_GET_INTEGER_RANGE ("Keepalive", tim_val.keepalive, argv[1], 0, 65535);
+    VTY_GET_INTEGER_RANGE ("Holdtime", tim_val.holdtime, argv[2], 0, 65535);
+
+     if (tim_val.holdtime < 3 && tim_val.holdtime != 0) {
+        vty_out(vty, "\n%%Hold time cannot be 1 or 2\n",
+        argc, __FILE__, __LINE__);
+        return CMD_WARNING;
+    }
+    tim_val.keepalive = (tim_val.keepalive < (tim_val.holdtime / 3) ? tim_val.keepalive : (tim_val.holdtime / 3));
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    } else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+        ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+
+    if (ovs_bgp_neighbor) {
+        key_timers[0] = OVSDB_BGP_TIMER_KEEPALIVE;
+        key_timers[1] = OVSDB_BGP_TIMER_HOLDTIME;
+        // to write to ovsdb nbr table
+        ovsrec_bgp_neighbor_set_timers(ovs_bgp_neighbor, key_timers, (int64_t *)&tim_val, 2);
+    }
+    END_DB_TXN(txn);
+
+}
+
 DEFUN (neighbor_timers,
        neighbor_timers_cmd,
        NEIGHBOR_CMD2 "timers <0-65535> <0-65535>",
@@ -3377,8 +3528,11 @@ DEFUN (neighbor_timers,
        "Keepalive interval\n"
        "Holdtime\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+if (argc != 3) {
+    vty_out(vty, "\n%%Insufficient parameters, neighbor <ipaddr> timers <keepalive timer><holdtime value>");
+    return CMD_WARNING;
+    }
+    return cli_neighbor_timers_execute(argc, argv);
 }
 
 DEFUN (no_neighbor_timers,
@@ -3389,8 +3543,35 @@ DEFUN (no_neighbor_timers,
        NEIGHBOR_ADDR_STR2
        "BGP per neighbor timers\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    char *ip_addr = argv[0];
+    char *key_timers[2];
+    timer_val_t tim_val;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    } else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+        ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+
+    if (ovs_bgp_neighbor) {
+        key_timers[0] = "Keepalive";
+        key_timers[1] = "Holdtimer";
+        tim_val.keepalive = 0;
+        tim_val.holdtime = 0;
+        // to write to ovsdb nbr table
+        ovsrec_bgp_neighbor_set_timers(ovs_bgp_neighbor, key_timers, (int64_t *)&tim_val,0);
+    }
+    END_DB_TXN(txn);
+
 }
 
 DEFUN (neighbor_timers_connect,
@@ -3975,6 +4156,35 @@ ALIAS (no_neighbor_maximum_prefix,
        "Restart bgp connection after limit is exceeded\n"
        "Restart interval in minutes")
 
+static int
+cli_allow_as_in_execute(int argc, char *argv[])
+{
+    char *ip_addr = argv[0];
+    char *str;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+    int64_t allow_num;
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    }else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+
+    if (ovs_bgp_neighbor) {
+        VTY_GET_INTEGER_RANGE ("AS number", allow_num, argv[1], 1, 10);
+        // to write to ovsdb nbr table
+        ovsrec_bgp_neighbor_set_allow_as_in(ovs_bgp_neighbor, &allow_num, 1);
+    }
+    END_DB_TXN(txn);
+}
 /* "neighbor allowas-in" */
 DEFUN (neighbor_allowas_in,
        neighbor_allowas_in_cmd,
@@ -3983,8 +4193,11 @@ DEFUN (neighbor_allowas_in,
        NEIGHBOR_ADDR_STR2
        "Accept as-path with my AS present in it\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    if (argc != 2) {
+    vty_out(vty, "\n%%Insufficient parameters, neighbor <ipaddr> allowas-in <val>\n");
+    return CMD_WARNING;
+    }
+    return cli_allow_as_in_execute(argc, argv);
 }
 
 ALIAS (neighbor_allowas_in,
@@ -4003,8 +4216,31 @@ DEFUN (no_neighbor_allowas_in,
        NEIGHBOR_ADDR_STR2
        "allow local ASN appears in aspath attribute\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    char *ip_addr = argv[0];
+    char *str;
+    int64_t allow_num;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+
+    if (bgp_router_context) {
+        VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
+    }else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+
+    if (ovs_bgp_neighbor) {
+        // to write to ovsdb nbr table
+        ovsrec_bgp_neighbor_set_allow_as_in(ovs_bgp_neighbor, &allow_num, 0);
+    }
+    END_DB_TXN(txn);
 }
 
 DEFUN (neighbor_ttl_security,
