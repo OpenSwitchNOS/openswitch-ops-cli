@@ -256,7 +256,7 @@ vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 static vtysh_ret_val
 vtysh_ovsdb_radiusservertable_parse_options(struct ovsrec_radius_server *row, vtysh_ovsdb_cbmsg *p_msg)
 {
-    int timeout_check = 1;
+    int64_t local_retries = 1;
     char ip[1000]={0}, *ipaddr=NULL,*udp_port=NULL,*timeout=NULL,*passkey=NULL;
     char file_name[]="/etc/raddb/server";
     FILE *fp=NULL;
@@ -289,15 +289,16 @@ vtysh_ovsdb_radiusservertable_parse_options(struct ovsrec_radius_server *row, vt
            vtysh_ovsdb_cli_print(p_msg, "radius-server host %s auth_port %s", ipaddr, udp_port);
        }
 
-       if (*(row->retries) != RADIUS_SERVER_DEFAULT_RETRIES) {
-           vtysh_ovsdb_cli_print(p_msg, "radius-server retries %lld", *(row->retries));
-       }
-
-       if (atoi(timeout) != RADIUS_SERVER_DEFAULT_TIMEOUT) {
-           vtysh_ovsdb_cli_print(p_msg, "radius-server timeout %d", atoi(timeout));
-       }
-
+       local_retries = *(row->retries);
        row = ovsrec_radius_server_next(row);
+    }
+
+    if (local_retries != RADIUS_SERVER_DEFAULT_RETRIES) {
+        vtysh_ovsdb_cli_print(p_msg, "radius-server retries %ld", local_retries);
+    }
+
+    if (atoi(timeout) != RADIUS_SERVER_DEFAULT_TIMEOUT) {
+        vtysh_ovsdb_cli_print(p_msg, "radius-server timeout %d", atoi(timeout));
     }
 
     return e_vtysh_ok;

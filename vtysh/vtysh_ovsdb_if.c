@@ -278,6 +278,7 @@ radius_server_ovsdb_init(struct ovsd_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_udp_port);
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_timeout);
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_passkey);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_priority);
 
     return;
 }
