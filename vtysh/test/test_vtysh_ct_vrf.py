@@ -45,17 +45,17 @@ class vrfCLITest( HalonTest ):
 
         # Checking VRF name more than 32 characters
         ret = s1.cmdCLI("vrf thisisavrfnamewhichismorethan32characters")
-        assert 'Error: VRF name cannot be more than 32 characters.' in ret, 'VRF name validation failed'
+        assert 'Non-default VRFs not supported.' in ret, 'VRF name validation failed'
         info('### VRF name validation passed ###\n')
 
         # Adding another VRF
         ret = s1.cmdCLI("vrf thisisavrfnamewhichisexactly32c")
-        assert 'Command not supported. Default VRF already exists.' in ret, 'VRF add validation failed'
+        assert 'Non-default VRFs not supported.' in ret, 'VRF add validation failed'
         info('### VRF add validation passed ###\n')
 
         # Adding default VRF
         ret = s1.cmdCLI("vrf vrf_default")
-        assert 'Command not supported. Default VRF already exists.' in ret, 'Default VRF add validation failed'
+        assert 'Default VRF already exists.' in ret, 'Default VRF add validation failed'
         info('### Default VRF add validation passed ###\n')
 
         # Deleting default VRF
@@ -65,7 +65,7 @@ class vrfCLITest( HalonTest ):
 
         # Deleting VRF which does not exist
         ret = s1.cmdCLI("no vrf abcd")
-        assert 'Error: VRF abcd not found.' in ret, 'VRF lookup validation failed'
+        assert 'Non-default VRFs not supported.' in ret, 'VRF lookup validation failed'
         info('### VRF lookup validation passed ###\n')
 
         #Cleanup
@@ -88,7 +88,7 @@ class vrfCLITest( HalonTest ):
 
         # Attaching to VRF which does not exist
         ret = s1.cmdCLI("vrf attach abcd")
-        assert 'Error: VRF abcd not found.' in ret, 'VRF lookup validation failed'
+        assert 'Non-default VRFs not supported.' in ret, 'VRF lookup validation failed'
         info('### VRF lookup validation passed### \n')
 
         # Attaching L2 interface to default VRF
@@ -107,7 +107,7 @@ class vrfCLITest( HalonTest ):
 
         # Detaching from default VRF
         ret = s1.cmdCLI("no vrf attach vrf_default")
-        assert 'Command not supported. Cannot detach from default VRF.' in ret, 'VRF detach interface validation failed'
+        assert 'Cannot detach from default VRF.' in ret, 'VRF detach interface validation failed'
         info('### VRF detach interface validation passed ###\n')
 
         # Using no routing to check if detach passed

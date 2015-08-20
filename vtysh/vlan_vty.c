@@ -554,7 +554,7 @@ DEFUN(cli_intf_vlan_access,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -582,7 +582,7 @@ DEFUN(cli_intf_vlan_access,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
@@ -651,7 +651,7 @@ DEFUN(cli_intf_no_vlan_access,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -679,7 +679,7 @@ DEFUN(cli_intf_no_vlan_access,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     if (vlan_port_row->vlan_mode != NULL,
@@ -780,7 +780,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -808,7 +808,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     if (vlan_port_row->vlan_mode == NULL)
@@ -915,7 +915,7 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -943,7 +943,7 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
@@ -1066,7 +1066,7 @@ DEFUN(cli_intf_vlan_trunk_native,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -1094,7 +1094,7 @@ DEFUN(cli_intf_vlan_trunk_native,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     if (vlan_port_row->vlan_mode == NULL)
@@ -1176,7 +1176,7 @@ DEFUN(cli_intf_no_vlan_trunk_native,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -1204,7 +1204,7 @@ DEFUN(cli_intf_no_vlan_trunk_native,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
@@ -1278,7 +1278,7 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -1306,7 +1306,7 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
@@ -1376,7 +1376,7 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
     port_row = ovsrec_port_first(idl);
     if (port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
     else
     {
@@ -1404,7 +1404,7 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
 
     if (vlan_port_row == NULL)
     {
-        vlan_port_row = port_check(ifname, true, true, status_txn);
+        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
     if (vlan_port_row->vlan_mode != NULL &&

@@ -67,7 +67,7 @@ const struct ovsrec_vrf* vrf_lookup(const char *vrf_name)
  * create -> flag to create port if not found
  * attach_to_default_vrf -> attach newly created port to default VRF
  */
-const struct ovsrec_port* port_check(const char *port_name, bool create,
+const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                bool attach_to_default_vrf,
                                struct ovsdb_idl_txn *txn)
 {
@@ -157,12 +157,11 @@ static int vrf_add(const char *vrf_name)
         return CMD_OVSDB_FAILURE;
     }
 
-    if (strlen(vrf_name) > VRF_NAME_MAX_LENGTH) {
-        vty_out(vty, "Error: VRF name cannot be more than 32 characters.%s",
-        VTY_NEWLINE);
+    if (!strcmp(vrf_name, DEFAULT_VRF_NAME)) {
+        vty_out(vty, "Default VRF already exists.%s", VTY_NEWLINE);
         VLOG_DBG(
-                "%s VRF Name can only be 32 characters. Check the VRF name"
-                " \"%s\" and try again!", __func__, vrf_name);
+                "%s The default VRF is"
+                " created as part of system bootup.", __func__);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -181,7 +180,7 @@ static int vrf_add(const char *vrf_name)
     vrf_row = ovsrec_vrf_first(idl);
     if (vrf_row) {
         vty_out(vty,
-                "Command not supported. Default VRF already exists.%s",
+                "Non-default VRFs not supported.%s",
                 VTY_NEWLINE);
         VLOG_DBG(
                 "%s Only default VRF is allowed right now. This default VRF is"
@@ -190,6 +189,16 @@ static int vrf_add(const char *vrf_name)
         return CMD_SUCCESS;
     }
 #endif
+
+    if (strlen(vrf_name) > VRF_NAME_MAX_LENGTH) {
+        vty_out(vty, "Error: VRF name cannot be more than 32 characters.%s",
+        VTY_NEWLINE);
+        VLOG_DBG(
+                "%s VRF Name can only be 32 characters. Check the VRF name"
+                " \"%s\" and try again!", __func__, vrf_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
 
     ovs_row = ovsrec_open_vswitch_first(idl);
     if (!ovs_row) {
@@ -244,12 +253,12 @@ static int vrf_delete(const char *vrf_name) {
      */
 
     const struct ovsrec_vrf *vrf_row = NULL;
-    const struct ovsrec_vrf *default_vrf_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     const struct ovsrec_open_vswitch *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i, new_n_ports;
-    struct ovsrec_port **ports;
+    size_t i;
+    char *port_name;
 
     status_txn = cli_do_config_start();
 
@@ -261,6 +270,17 @@ static int vrf_delete(const char *vrf_name) {
         return CMD_OVSDB_FAILURE;
     }
 
+    if (!strcmp(vrf_name, DEFAULT_VRF_NAME)) {
+        vty_out(vty, "Error: Cannot delete default VRF.%s", VTY_NEWLINE);
+        VLOG_DBG("%s Cannot delete default VRF.", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    /*
+     * HALON_TODO: In case of multiple VRFs.
+     */
+#if 0
     vrf_row = vrf_lookup(vrf_name);
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -268,25 +288,26 @@ static int vrf_delete(const char *vrf_name) {
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
-
-    if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
-        vty_out(vty, "Error: Cannot delete default VRF.%s", VTY_NEWLINE);
-        VLOG_DBG("%s Cannot delete default VRF.", __func__);
+#else
+    vrf_row = ovsrec_vrf_first(idl);
+    if (vrf_row) {
+        vty_out(vty,
+                "Non-default VRFs not supported.%s",
+                VTY_NEWLINE);
+        VLOG_DBG(
+                "%s All L3 ports are part of default VRF."
+                "Cannot attach to any other VRF.", __func__);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
+#endif
 
-    default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
-    new_n_ports = default_vrf_row->n_ports + vrf_row->n_ports;
-    ports = xmalloc(sizeof *vrf_row->ports * new_n_ports);
-    for (i = 0; i < default_vrf_row->n_ports; i++) {
-        ports[i] = default_vrf_row->ports[i];
-    }
     for (i = 0; i < vrf_row->n_ports; i++) {
-        ports[default_vrf_row->n_ports + i] = vrf_row->ports[i];
+        port_name = xstrdup(vrf_row->ports[i]->name);
+        ovsrec_port_delete(vrf_row->ports[i]);
+        port_row = port_check_and_add(port_name, true, true, status_txn);
+        free(port_name);
     }
-    ovsrec_vrf_set_ports(default_vrf_row, ports, new_n_ports);
-    free(ports);
 
     ovs_row = ovsrec_open_vswitch_first(idl);
     if (!ovs_row) {
@@ -359,19 +380,11 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(if_name, true, true, status_txn);
+    port_row = port_check_and_add(if_name, true, true, status_txn);
     if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
-
-    vrf_row = vrf_lookup(vrf_name);
-    if (!vrf_row) {
-        vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
-        VLOG_DBG("%s VRF \"%s\" is not present in VRF table.", __func__, vrf_name);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -381,12 +394,37 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
      * Error message should be "To attach to default VRF, use the no
      * vrf attach command."
      */
-    if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
+    if (!strcmp(vrf_name, DEFAULT_VRF_NAME)) {
         vty_out(vty, "Already attached to default VRF.%s", VTY_NEWLINE);
         VLOG_DBG("%s Already attached to default VRF.", __func__);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
+
+    /*
+     * HALON_TODO: In case of multiple VRFs.
+     */
+#if 0
+    vrf_row = vrf_lookup(vrf_name);
+    if (!vrf_row) {
+        vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
+        VLOG_DBG("%s VRF \"%s\" is not found.", __func__, vrf_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+#else
+    vrf_row = ovsrec_vrf_first(idl);
+    if (vrf_row) {
+        vty_out(vty,
+                "Non-default VRFs not supported.%s",
+                VTY_NEWLINE);
+        VLOG_DBG(
+                "%s All L3 ports are part of default VRF."
+                "Cannot attach to any other VRF.", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+#endif
 
     unlink_vrf_row = port_vrf_lookup(port_row);
     if (unlink_vrf_row == vrf_row) {
@@ -405,6 +443,8 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
         }
     }
     ovsrec_vrf_set_ports(unlink_vrf_row, ports, n);
+    ovsrec_port_delete(port_row);
+    port_row = port_check_and_add(if_name, true, false, status_txn);
 
     xrealloc(ports, sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
     for (i = 0; i < vrf_row->n_ports; i++) {
@@ -460,6 +500,17 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
         return CMD_OVSDB_FAILURE;
     }
 
+    if (!strcmp(vrf_name, DEFAULT_VRF_NAME)) {
+        vty_out(vty, "Cannot detach from default VRF.%s", VTY_NEWLINE);
+        VLOG_DBG("%s Cannot detach from default VRF.", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    /*
+     * HALON_TODO: In case of multiple VRFs.
+     */
+#if 0
     vrf_row = vrf_lookup(vrf_name);
     if (!vrf_row) {
         vty_out(vty, "Error: VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -467,16 +518,21 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
-
-    if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
-        vty_out(vty, "Command not supported. Cannot detach from"
-                " default VRF.%s", VTY_NEWLINE);
-        VLOG_DBG("%s Cannot detach from default VRF.", __func__);
+#else
+    vrf_row = ovsrec_vrf_first(idl);
+    if (vrf_row) {
+        vty_out(vty,
+                "Non-default VRFs not supported.%s",
+                VTY_NEWLINE);
+        VLOG_DBG(
+                "%s All L3 ports are part of default VRF."
+                "Cannot attach to any other VRF.", __func__);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
+#endif
 
-    port_row = port_check(if_name, false, false, status_txn);
+    port_row = port_check_and_add(if_name, false, false, status_txn);
     if (!port_row) {
         VLOG_DBG(
                 "%s Interface \"%s\" does not have any port configuration",
@@ -516,16 +572,8 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
         }
     }
     ovsrec_vrf_set_ports(vrf_row, ports, n);
-
-    default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
-    xrealloc(ports, sizeof *default_vrf_row->ports *
-            (default_vrf_row->n_ports + 1));
-    for (i = 0; i < vrf_row->n_ports; i++) {
-        ports[i] = default_vrf_row->ports[i];
-    }
-    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
-    ports[default_vrf_row->n_ports] = temp_port_row;
-    ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
+    ovsrec_port_delete(port_row);
+    port_row = port_check_and_add(if_name, true, true, status_txn);
     free(ports);
 
     status = cli_do_config_finish(status_txn);
@@ -557,7 +605,6 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
 static int vrf_routing(const char *if_name)
 {
     const struct ovsrec_port *port_row = NULL;
-    const struct ovsrec_vrf *default_vrf_row = NULL;
     const struct ovsrec_bridge *default_bridge_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
@@ -574,7 +621,7 @@ static int vrf_routing(const char *if_name)
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(if_name, false, false, status_txn);
+    port_row = port_check_and_add(if_name, false, false, status_txn);
     if (!port_row) {
         VLOG_DBG(
                 "%s Interface \"%s\" does not have any port configuration",
@@ -600,16 +647,8 @@ static int vrf_routing(const char *if_name)
         }
     }
     ovsrec_bridge_set_ports(default_bridge_row, ports, n);
-
-    default_vrf_row = vrf_lookup(DEFAULT_VRF_NAME);
-    xrealloc(ports, sizeof *default_vrf_row->ports *
-            (default_vrf_row->n_ports + 1));
-    for (i = 0; i < default_vrf_row->n_ports; i++) {
-        ports[i] = default_vrf_row->ports[i];
-    }
-    struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
-    ports[default_vrf_row->n_ports] = temp_port_row;
-    ovsrec_vrf_set_ports(default_vrf_row, ports, default_vrf_row->n_ports + 1);
+    ovsrec_port_delete(port_row);
+    port_row = port_check_and_add(if_name, true, true, status_txn);
     free(ports);
 
     status = cli_do_config_finish(status_txn);
@@ -660,7 +699,7 @@ static int vrf_no_routing(const char *if_name)
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(if_name, true, false, status_txn);
+    port_row = port_check_and_add(if_name, true, false, status_txn);
     if (check_iface_in_bridge(if_name)) {
         VLOG_DBG(
                 "%s Interface \"%s\" is already L2. No change required.",
@@ -669,29 +708,30 @@ static int vrf_no_routing(const char *if_name)
         return CMD_SUCCESS;
     } else if ((vrf_row = port_vrf_lookup(port_row)) != NULL) {
         vrf_ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
-        for (i = n = 0; i < vrf_row->n_ports; i++){
+        for (i = n = 0; i < vrf_row->n_ports; i++) {
             if (vrf_row->ports[i] != port_row) {
                 vrf_ports[n++] = vrf_row->ports[i];
             }
         }
         ovsrec_vrf_set_ports(vrf_row, vrf_ports, n);
         free(vrf_ports);
+        ovsrec_port_delete(port_row);
+        port_row = port_check_and_add(if_name, true, false, status_txn);
     }
+
     default_bridge_row = ovsrec_bridge_first(idl);
     bridge_ports = xmalloc(sizeof *default_bridge_row->ports
             * (default_bridge_row->n_ports + 1));
     for (i = 0; i < default_bridge_row->n_ports; i++) {
         bridge_ports[i] = default_bridge_row->ports[i];
     }
+
     struct ovsrec_port *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
     bridge_ports[default_bridge_row->n_ports] = temp_port_row;
     ovsrec_bridge_set_ports(default_bridge_row, bridge_ports,
             default_bridge_row->n_ports + 1);
     free(bridge_ports);
-    ovsrec_port_set_ip4_address(port_row, NULL);
-    ovsrec_port_set_ip4_address_secondary(port_row, NULL, 0);
-    ovsrec_port_set_ip6_address(port_row, NULL);
-    ovsrec_port_set_ip6_address_secondary(port_row, NULL, 0);
+
     status = cli_do_config_finish(status_txn);
     if (status == TXN_SUCCESS) {
         VLOG_DBG(
@@ -735,7 +775,7 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(if_name, true, true, status_txn);
+    port_row = port_check_and_add(if_name, true, true, status_txn);
     if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
@@ -804,7 +844,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(if_name, false, false, status_txn);
+    port_row = port_check_and_add(if_name, false, false, status_txn);
 
     if (!port_row) {
         VLOG_DBG(
@@ -924,7 +964,7 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(if_name, true, true, status_txn);
+    port_row = port_check_and_add(if_name, true, true, status_txn);
 
     if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
@@ -997,7 +1037,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
         return CMD_OVSDB_FAILURE;
     }
 
-    port_row = port_check(if_name, false, false, status_txn);
+    port_row = port_check_and_add(if_name, false, false, status_txn);
 
     if(!port_row){
         VLOG_DBG(
