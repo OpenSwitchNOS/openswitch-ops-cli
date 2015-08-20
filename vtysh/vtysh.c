@@ -2903,10 +2903,14 @@ DEFUN(vtysh_user_add,
        "Adding a new user\n"
        "User name to be added\n")
 {
-       char *arg[2];
+       char *arg[6];
        arg[0] = "/usr/sbin/adduser";
-       arg[1] = argv[0];
-       execute_command("sudo", 2,(const char **)arg);
+       arg[1] = "-G";
+       arg[2] = "ovsdb_users";
+       arg[3] = "-s";
+       arg[4] = "/usr/bin/vtysh";
+       arg[5] = argv[0];
+       execute_command("sudo", 6,(const char **)arg);
        return CMD_SUCCESS;
 }
 
