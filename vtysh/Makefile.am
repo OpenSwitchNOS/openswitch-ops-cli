@@ -41,7 +41,7 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   vtysh_ovsdb_router_context.h aaa_vty.h \
                   logrotate_vty.h neighbor_vty.h \
                   powersupply_vty.h vtysh_ovsdb_intf_lag_context.h\
-                  lacp_vty.h
+                  lacp_vty.h vtysh_utils.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@
