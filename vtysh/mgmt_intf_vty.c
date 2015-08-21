@@ -50,7 +50,6 @@ static int mgmt_intf_set_dhcp()
 {
     const struct ovsrec_open_vswitch *row = NULL;
     struct smap smap = SMAP_INITIALIZER(&smap);
-    struct smap smap_status = SMAP_INITIALIZER(&smap_status);
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
 
@@ -74,13 +73,17 @@ static int mgmt_intf_set_dhcp()
     smap_clone(&smap, &row->mgmt_intf);
 
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_MODE, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_DHCP);
+    /* Remove all the statically configured values */
+    smap_remove(&smap,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
+    smap_remove(&smap,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
+    smap_remove(&smap,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
+    smap_remove(&smap,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
+    smap_remove(&smap,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
+
 
     ovsrec_open_vswitch_set_mgmt_intf(row, &smap);
 
-    ovsrec_open_vswitch_set_mgmt_intf_status(row, &smap_status);
-
     smap_destroy(&smap);
-    smap_destroy(&smap_status);
 
     status = cli_do_config_finish(status_txn);
     if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -108,10 +111,8 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
 {
     const struct ovsrec_open_vswitch *row = NULL;
     struct smap smap = SMAP_INITIALIZER(&smap);
-    struct smap smap_status = SMAP_INITIALIZER(&smap_status);
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    const char* mode = NULL;
 
     if (!is_valid_ip_address(ip))
     {
@@ -143,29 +144,14 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
     }
 
     smap_clone(&smap, &row->mgmt_intf);
-    smap_clone(&smap_status, &row->mgmt_intf_status);
-
-    mode = smap_get(&smap,OPEN_VSWITCH_MGMT_INTF_MAP_MODE);
-    if(!mode || (mode && (strcmp(mode, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_DHCP)) == 0))
-    {
-        smap_remove(&smap_status,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
-        smap_remove(&smap_status,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
-        smap_remove(&smap_status,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
-    }
 
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_MODE, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_STATIC);
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_IP, ip);
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK, subnet);
 
-
-    smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_IP,ip);
-    smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK,subnet);
-
     ovsrec_open_vswitch_set_mgmt_intf(row, &smap);
-    ovsrec_open_vswitch_set_mgmt_intf_status(row, &smap_status);
 
     smap_destroy(&smap);
-    smap_destroy(&smap_status);
 
     status = cli_do_config_finish(status_txn);
     if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -206,7 +192,6 @@ static int mgmt_intf_set_default_gw(bool set, const char *gw)
 {
     const struct ovsrec_open_vswitch *row = NULL;
     struct smap smap = SMAP_INITIALIZER(&smap);
-    struct smap smap_status = SMAP_INITIALIZER(&smap_status);
     const char *cfg_gw = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
@@ -242,12 +227,10 @@ static int mgmt_intf_set_default_gw(bool set, const char *gw)
     }
 
     smap_clone(&smap, &row->mgmt_intf);
-    smap_clone(&smap_status, &row->mgmt_intf_status);
 
     if(set)
     {
         smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY, gw);
-        smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY, gw);
     }
     else
     {
@@ -260,14 +243,11 @@ static int mgmt_intf_set_default_gw(bool set, const char *gw)
         }
 
         smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY, MGMT_INTF_DEFAULT_IP);
-        smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY, MGMT_INTF_DEFAULT_IP);
     }
 
     ovsrec_open_vswitch_set_mgmt_intf(row, &smap);
-    ovsrec_open_vswitch_set_mgmt_intf_status(row, &smap_status);
 
     smap_destroy(&smap);
-    smap_destroy(&smap_status);
 
     status = cli_do_config_finish(status_txn);
     if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -305,7 +285,6 @@ static int mgmt_intf_set_dns(bool set, const char *dns1, const char *dns2)
 {
     const struct ovsrec_open_vswitch *row = NULL;
     struct smap smap = SMAP_INITIALIZER(&smap);
-    struct smap smap_status = SMAP_INITIALIZER(&smap_status);
     const char *cfg_dns1 = NULL;
     const char *cfg_dns2 = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
@@ -336,24 +315,20 @@ static int mgmt_intf_set_dns(bool set, const char *dns1, const char *dns2)
     }
 
     smap_clone(&smap, &row->mgmt_intf);
-    smap_clone(&smap_status, &row->mgmt_intf_status);
 
 
     /* Handle primary DNS server configuration */
     if(set)
     {
         smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1, dns1);
-        smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1, dns1);
 
         if(dns2)
         {
             smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2, dns2);
-            smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2, dns2);
         }
         else
         {
             smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2, MGMT_INTF_DEFAULT_IP);
-            smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2, MGMT_INTF_DEFAULT_IP);
         }
     }
     else
@@ -377,7 +352,6 @@ static int mgmt_intf_set_dns(bool set, const char *dns1, const char *dns2)
             }
 
             smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2, MGMT_INTF_DEFAULT_IP);
-            smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2, MGMT_INTF_DEFAULT_IP);
         }
         else if (cfg_dns2)
         {
@@ -387,14 +361,11 @@ static int mgmt_intf_set_dns(bool set, const char *dns1, const char *dns2)
         }
 
         smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1, MGMT_INTF_DEFAULT_IP);
-        smap_replace(&smap_status, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1, MGMT_INTF_DEFAULT_IP);
     }
 
     ovsrec_open_vswitch_set_mgmt_intf(row, &smap);
-    ovsrec_open_vswitch_set_mgmt_intf_status(row, &smap_status);
 
     smap_destroy(&smap);
-    smap_destroy(&smap_status);
 
     status = cli_do_config_finish(status_txn);
     if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
