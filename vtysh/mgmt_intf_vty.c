@@ -353,7 +353,7 @@ static int mgmt_intf_set_dns(bool set, const char *dns1, const char *dns2)
 
             smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2, MGMT_INTF_DEFAULT_IP);
         }
-        else if (cfg_dns2)
+        else if (cfg_dns2 && strcmp(cfg_dns2, MGMT_INTF_DEFAULT_IP) != 0)
         {
             VLOG_ERR(OVSDB_DNS_DEPENDENCY_ERROR);
             cli_do_config_abort(status_txn);
