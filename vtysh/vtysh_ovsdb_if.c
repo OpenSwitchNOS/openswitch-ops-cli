@@ -159,7 +159,7 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
  }
 
 static void
-l3static_ovsdb_init(struct ovsdb_idl *idl)
+l3routes_ovsdb_init(struct ovsdb_idl *idl)
 {
   ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
   ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
@@ -434,7 +434,7 @@ ovsdb_init(const char *db_path)
 
     /* BGP tables */
     bgp_ovsdb_init(idl);
-    l3static_ovsdb_init(idl);
+    l3routes_ovsdb_init(idl);
 
     /* VRF tables */
     vrf_ovsdb_init(idl);

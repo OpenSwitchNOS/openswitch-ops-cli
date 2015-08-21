@@ -17,15 +17,15 @@
 /****************************************************************************
  * @ingroup quagga
  *
- * @file l3static_vty.h
+ * @file l3routes_vty.h
  * Source for config l3 static routes into ovsdb tables.
  *
  ***************************************************************************/
 
-#ifndef _L3STATIC_VTY_H
-#define _L3STATIC_VTY_H
+#ifndef _L3ROUTES_VTY_H
+#define _L3ROUTES_VTY_H
 
 void
-l3static_vty_init (void);
+l3routes_vty_init (void);
 
-#endif /* _L3STATIC_VTY_H */
+#endif /* _L3ROUTES_VTY_H */
