@@ -6,7 +6,7 @@
  not use this file except in compliance with the License. You may obtain
  a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+     http://www.apache.org/licenses/LICENSE-2.0.9
 
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -15,29 +15,17 @@
  under the License.
 */
 /****************************************************************************
- * @ingroup quagga/vtysh
+ * @ingroup quagga
  *
- * @file vrf_vty.h
- * To add declarations required for vrf_vty.c
+ * @file l3routes_vty.h
+ * Source for config l3 static routes into ovsdb tables.
  *
  ***************************************************************************/
 
-#ifndef _VRF_VTY_H
-#define _VRF_VTY_H
-
-#define VRF_NAME_MAX_LENGTH 32
-#define IP_ADDRESS_LENGTH 18
-#define IPV6_ADDRESS_LENGTH 49
+#ifndef _L3ROUTES_VTY_H
+#define _L3ROUTES_VTY_H
 
 void
-vrf_vty_init(void);
+l3routes_vty_init (void);
 
-const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
-                               bool attach_to_default_vrf,
-                               struct ovsdb_idl_txn *txn);
-
-const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
-
-const struct ovsrec_vrf* vrf_lookup(const char *vrf_name);
-
-#endif /* _VRF_VTY_H */
+#endif /* _L3ROUTES_VTY_H */

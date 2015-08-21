@@ -34,5 +34,14 @@
 #define RADIUS_SERVER_DEFAULT_RETRIES         1
 #define RADIUS_SERVER_DEFAULT_TIMEOUT         5
 
+#define AUTO_PROVISIONING_ENABLE              "enable"
+#define AUTO_PROVISIONING_DISABLE             "disable"
+
+#define SSH_AUTH_ENABLE                       "enable"
+#define SSH_AUTH_DISABLE                      "disable"
+
+#define SSH_PUBLICKEY_AUTHENTICATION          "ssh_publickeyauthentication"
+#define SSH_PASSWORD_AUTHENTICATION           "ssh_passkeyauthentication"
+
 void
 aaa_vty_init (void);

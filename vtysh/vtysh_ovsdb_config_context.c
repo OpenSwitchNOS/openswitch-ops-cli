@@ -32,6 +32,7 @@
 #include "fan_vty.h"
 #include "aaa_vty.h"
 #include "logrotate_vty.h"
+#include "openhalon-dflt.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
 
@@ -194,6 +195,36 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_lacpcfg
+| Responsibility : parse lacp_config in open_vswitch table
+| Parameters :
+|    ifrow_config : lacp_config object pointer
+|    fp : file pointer
+| Return : void
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_lacpcfg(const struct smap *lacp_config, vtysh_ovsdb_cbmsg *p_msg)
+{
+  const char *data = NULL;
+
+  if(NULL == lacp_config)
+  {
+    return e_vtysh_error;
+  }
+
+  data = smap_get(lacp_config,  PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY);
+  if (data)
+  {
+    if (DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY != atoi(data))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "lacp system-priority %d", atoi(data));
+    }
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_parse_alias
 | Responsibility : parse alias column in open_vswitch table
 | Parameters :
@@ -225,7 +256,7 @@ vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 static vtysh_ret_val
 vtysh_ovsdb_radiusservertable_parse_options(struct ovsrec_radius_server *row, vtysh_ovsdb_cbmsg *p_msg)
 {
-    int timeout_check = 1;
+    int64_t local_retries = 1;
     char ip[1000]={0}, *ipaddr=NULL,*udp_port=NULL,*timeout=NULL,*passkey=NULL;
     char file_name[]="/etc/raddb/server";
     FILE *fp=NULL;
@@ -258,15 +289,16 @@ vtysh_ovsdb_radiusservertable_parse_options(struct ovsrec_radius_server *row, vt
            vtysh_ovsdb_cli_print(p_msg, "radius-server host %s auth_port %s", ipaddr, udp_port);
        }
 
-       if (*(row->retries) != RADIUS_SERVER_DEFAULT_RETRIES) {
-           vtysh_ovsdb_cli_print(p_msg, "radius-server retries %lld", *(row->retries));
-       }
-
-       if (atoi(timeout) != RADIUS_SERVER_DEFAULT_TIMEOUT) {
-           vtysh_ovsdb_cli_print(p_msg, "radius-server timeout %d", atoi(timeout));
-       }
-
+       local_retries = *(row->retries);
        row = ovsrec_radius_server_next(row);
+    }
+
+    if (local_retries != RADIUS_SERVER_DEFAULT_RETRIES) {
+        vtysh_ovsdb_cli_print(p_msg, "radius-server retries %ld", local_retries);
+    }
+
+    if (atoi(timeout) != RADIUS_SERVER_DEFAULT_TIMEOUT) {
+        vtysh_ovsdb_cli_print(p_msg, "radius-server timeout %d", atoi(timeout));
     }
 
     return e_vtysh_ok;
@@ -351,6 +383,58 @@ vtysh_ovsdb_ovstable_parse_logrotate_cfg(const struct smap *ifrow_config, vtysh_
 
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_aaa_cfg
+| Responsibility : parse aaa column in open_vswitch table
+| Parameters :
+|    ifrow_aaa   : aaa column object pointer
+|    pmsg        : callback arguments from show running config handler|
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbmsg *p_msg)
+{
+  const char *data = NULL;
+
+  if(NULL == ifrow_aaa)
+  {
+    return e_vtysh_error;
+  }
+
+  data = smap_get(ifrow_aaa, OPEN_VSWITCH_AAA_RADIUS);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, HALON_FALSE_STR))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "aaa authentication login radius");
+    }
+  }
+
+  data = smap_get(ifrow_aaa, OPEN_VSWITCH_AAA_FALLBACK);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, HALON_TRUE_STR))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "no aaa authentication login fallback error local");
+    }
+  }
+
+  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
+        vtysh_ovsdb_cli_print(p_msg, "ssh password-authentication disable");
+  }
+
+  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
+        vtysh_ovsdb_cli_print(p_msg, "ssh publickey-authentication disable");
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_config_context_global_clientcallback
 | Responsibility : client callback routine
 | Parameters :
@@ -381,8 +465,14 @@ vtysh_config_context_global_clientcallback(void *p_private)
     /* parse other config param */
     vtysh_ovsdb_ovstable_parse_othercfg(&vswrow->other_config, p_msg);
 
+    /* parse lacp config param */
+    vtysh_ovsdb_ovstable_parse_lacpcfg(&vswrow->lacp_config, p_msg);
+
     /* parse logrotate config param */
     vtysh_ovsdb_ovstable_parse_logrotate_cfg(&vswrow->logrotate_config, p_msg);
+
+    /* parse aaa config param */
+    vtysh_ovsdb_ovstable_parse_aaa_cfg(&vswrow->aaa, p_msg);
   }
 
   /* display radius server commands */
@@ -509,6 +599,7 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
   int ipv6_flag = 0;
   int len = 0;
   char str[50];
+  int i;
 
   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                            "vtysh_config_context_staticroute_clientcallback entered");
@@ -525,48 +616,49 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
       } else {
           break;
       }
+
       if (ipv4_flag == 1 || ipv6_flag == 1) {
-          if (row_route->prefix) {
-              memset(str, 0, sizeof(str));
-              len = 0;
-              len = snprintf(str, sizeof(str), "%s", row_route->prefix);
-              if (ipv4_flag == 1 && ipv6_flag == 0) {
-                  snprintf(str_temp, sizeof(str_temp), "ip route %s", str);
-              }
-              else {
-                  snprintf(str_temp, sizeof(str_temp), "ipv6 route %s", str);
-              }
-          } else {
-              return e_vtysh_error;
-          }
-
-          if (row_route->distance != NULL) {
-              if (row_route->n_nexthops && row_route->nexthops[0]->ip_address &&
-                  row_route->distance) {
-                  if (*row_route->distance == 1) {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
-                          row_route->nexthops[0]->ip_address);
-                  } else {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
-                          row_route->nexthops[0]->ip_address, *row_route->distance);
+          for (i = 0; i < row_route->n_nexthops; i++) {
+              if (row_route->prefix) {
+                  memset(str, 0, sizeof(str));
+                  len = 0;
+                  len = snprintf(str, sizeof(str), "%s", row_route->prefix);
+                  if (ipv4_flag == 1 && ipv6_flag == 0) {
+                      snprintf(str_temp, sizeof(str_temp), "ip route %s", str);
                   }
-
-              } else if (row_route->n_nexthops && row_route->nexthops[0]->ports
-                  && row_route->distance) {
-                  if (*row_route->distance == 1) {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
-                          row_route->nexthops[0]->ports[0]->name);
-                  } else {
-                      vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
-                          row_route->nexthops[0]->ports[0]->name, *row_route->distance);
+                  else {
+                      snprintf(str_temp, sizeof(str_temp), "ipv6 route %s", str);
                   }
               } else {
                   return e_vtysh_error;
               }
-          }
 
+              if (row_route->distance != NULL) {
+                if (row_route->n_nexthops && row_route->nexthops[i]->ip_address &&
+                    row_route->distance) {
+                    if (*row_route->distance == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                            row_route->nexthops[i]->ip_address);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
+                            row_route->nexthops[i]->ip_address, *row_route->distance);
+                    }
+
+                } else if (row_route->n_nexthops && row_route->nexthops[i]->ports
+                    && row_route->distance) {
+                    if (*row_route->distance == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                            row_route->nexthops[i]->ports[0]->name);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
+                            row_route->nexthops[i]->ports[0]->name, *row_route->distance);
+                    }
+                } else {
+                    return e_vtysh_error;
+                }
+            }
+         }
       }
-
   }
   return e_vtysh_ok;
 }

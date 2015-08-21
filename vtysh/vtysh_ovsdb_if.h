@@ -47,4 +47,8 @@ void *vtysh_ovsdb_main_thread(void *arg);
 bool check_iface_in_bridge(const char *if_name);
 
 bool check_iface_in_vrf(const char *if_name);
+
+bool check_port_in_bridge(const char *port_name);
+
+bool check_port_in_vrf(const char *port_name);
 #endif /* VTYSH_OVSDB_IF_H */

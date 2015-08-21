@@ -59,7 +59,7 @@
 /*
 ** enable this if exra debugging is required
 */
-#define EXTRA_DEBUG
+//#define EXTRA_DEBUG
 
 extern struct ovsdb_idl *idl;
 
@@ -568,11 +568,13 @@ show_route_detail(struct vty *vty,
     vty_out (vty, ", metric %d", metric);
     vty_out (vty, ", localpref %d", ppsd->local_pref);
     vty_out (vty, ", weight %d", bgp_get_peer_weight(rib_row, ppsd->peer_id));
-    if (! ppsd->flags & BGP_INFO_HISTORY)
+    if (! (ppsd->flags & BGP_INFO_HISTORY))
         vty_out (vty, ", valid");
     if (!static_route) {
         if (ppsd->internal)
             vty_out (vty, ", internal");
+        else
+            vty_out (vty, ", external");
     } else if (static_route) {
         vty_out (vty, ", sourced, local");
     } else {

@@ -272,6 +272,7 @@ vty_prompt (struct vty *vty)
 	{
 	  uname (&names);
 	  hostname = names.nodename;
+          host.name = XSTRDUP (MTYPE_HOST, hostname);
 	}
       vty_out (vty, cmd_prompt (vty->node), hostname);
     }
@@ -701,7 +702,9 @@ vty_end_config (struct vty *vty)
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
+    case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
@@ -1112,6 +1115,8 @@ vty_stop_input (struct vty *vty)
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case VLAN_NODE:
+    case LINK_AGGREGATION_NODE:
     case MGMT_INTERFACE_NODE:
     case ZEBRA_NODE:
     case RIP_NODE:

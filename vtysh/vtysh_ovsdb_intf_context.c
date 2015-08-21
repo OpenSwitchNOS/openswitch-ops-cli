@@ -29,6 +29,16 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
+#include "lacp_vty.h"
+#include "vrf_vty.h"
+
+#define PRINT_INTERFACE_NAME(name_written, p_msg, if_name)\
+  if (!(name_written))\
+  {\
+    vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);\
+    name_written = true;\
+  }
+
 
 typedef enum vtysh_ovsdb_intf_lldptxrx_enum
 {
@@ -95,6 +105,85 @@ struct ovsrec_port* port_lookup(const char *if_name,
       }
     }
     return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_parse_lacp_othercfg
+| Responsibility : parse other_config in intf table to display lacp config
+| Parameters :
+|              ifrow_config : other_config object pointer
+|                     p_msg : vtysh_ovsdb_cbmsg_ptr data
+|                  intf_cfg : pointer of type vtysh_ovsdb_intf_cfg
+|                   if_name : interface name
+| Return : void
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_intftable_parse_lacp_othercfg(const struct smap *ifrow_config,
+                                          vtysh_ovsdb_cbmsg_ptr p_msg,
+                                          vtysh_ovsdb_intf_cfg *intf_cfg,
+                                          const char *if_name)
+{
+  const char *data = NULL;
+
+  data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_ID);
+  if (data)
+  {
+    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-id", atoi(data));
+  }
+  data = NULL;
+  data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
+  if (data)
+  {
+    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-priority", atoi(data));
+  }
+  data = NULL;
+  data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
+  if (data)
+  {
+    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp aggregation-key", atoi(data));
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_print_lag
+| Responsibility : print lag information of an interface
+| Parameters :
+|                     p_msg : vtysh_ovsdb_cbmsg_ptr data
+|                  intf_cfg : pointer of type vtysh_ovsdb_intf_cfg
+|                   if_name : interface name
+| Return : void
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_intftable_print_lag(vtysh_ovsdb_cbmsg_ptr p_msg,
+                                vtysh_ovsdb_intf_cfg *intf_cfg,
+                                const char *if_name)
+{
+  const struct ovsrec_port *port_row = NULL;
+  const struct ovsrec_interface *if_row = NULL;
+  int k=0;
+
+   OVSREC_PORT_FOR_EACH(port_row, p_msg->idl)
+   {
+     if (strncmp(port_row->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
+     {
+        for (k = 0; k < port_row->n_interfaces; k++)
+        {
+           if_row = port_row->interfaces[k];
+           if(strcmp(if_name, if_row->name) == 0)
+           {
+             PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+             vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ", "lag", atoi(&port_row->name[LAG_PORT_NAME_PREFIX_LENGTH]));
+           }
+        }
+     }
+   }
+
+  return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -242,11 +331,87 @@ vtysh_intf_context_clientcallback(void *p_private)
           vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
         }
       }
+      vtysh_ovsdb_intftable_parse_lacp_othercfg(&ifrow->other_config, p_msg,
+                                                &intfcfg, ifrow->name);
+      vtysh_ovsdb_intftable_print_lag(p_msg, &intfcfg, ifrow->name);
       vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg, intfcfg.disp_intf_cfg);
     }
   }
 
   return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_parse_vlan
+| Responsibility : Used for VLAN related config
+| Parameters :
+|     const char *if_name           : Name of interface
+|     vtysh_ovsdb_cbmsg_ptr p_msg   : Used for idl operations
+|     bool interfaceNameWritten     : Check if "interface x" has already been
+|                                     written
+| Return : vtysh_ret_val
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_intftable_parse_vlan(const char *if_name,
+vtysh_ovsdb_cbmsg_ptr p_msg,
+bool interfaceNameWritten)
+{
+    struct ovsrec_port *port_row;
+    bool displayL3Info = false;
+    int i;
+
+    port_row = port_lookup(if_name, p_msg->idl);
+    if (port_row == NULL)
+    {
+        return e_vtysh_ok;
+    }
+
+    if (port_row->vlan_mode == NULL)
+    {
+        return e_vtysh_ok;
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
+            *port_row->tag);
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
+    {
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk allowed ",
+                port_row->trunks[i]);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native ",
+                *port_row->tag);
+        }
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk allowed ",
+                port_row->trunks[i]);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native ",
+                *port_row->tag);
+        }
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "vlan trunk native tag");
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk allowed ",
+                port_row->trunks[i]);
+        }
+    }
+
+    return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -278,6 +443,7 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
       vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
     }
     vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no routing");
+    vtysh_ovsdb_intftable_parse_vlan(if_name, p_msg, interfaceNameWritten);
   }
   if (check_iface_in_vrf(if_name)) {
     vrf_row = port_vrf_match(p_msg->idl, port_row);

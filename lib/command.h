@@ -127,7 +127,9 @@ enum node_type
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
 #ifdef ENABLE_OVSDB
+  VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
+  LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
 #endif
   VTY_NODE,			/* Vty node. */
 };
@@ -530,12 +532,16 @@ struct cmd_token
 "(neighbor|interface|area|lsa|zebra|config|dbex|spf|route|lsdb|redistribute|hook|asbr|prefix|abr)"
 #define ISIS_STR    "IS-IS information\n"
 #define AREA_TAG_STR "[area tag]\n"
+#define RIB_STR    "Routing Information Base\n"
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration.\n"
 
 /* VLAN help strings */
 #define VLAN_STR            "VLAN Configuration\n"
+#define VLAN_NAME_STR            "NAME Configuration\n"
+#define VLAN_DESCRIPTION_STR     "VLAN Description\n"
+#define TRUNK_STR           "Trunk Configuration\n"
 #define VLAN_INT_STR        "VLAN internal configuration\n"
 #define VLAN_INT_RANGE_STR  "VLAN internal range configuration\n"
 #define SHOW_VLAN_STR       "Show VLAN Configuration\n"

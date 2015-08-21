@@ -70,7 +70,7 @@ vtysh_mgmt_intf_context_clientcallback(void *p_private)
             vtysh_ovsdb_cli_print(p_msg, "%4sip static %s %s","",ip,subnet);
     }
     else
-        return e_vtysh_error;
+        return e_vtysh_ok;
 
     data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
     if (data && (strcmp(data,MGMT_INTF_DEFAULT_IP) != 0))

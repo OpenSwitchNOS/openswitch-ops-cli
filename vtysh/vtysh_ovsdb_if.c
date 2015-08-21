@@ -160,7 +160,7 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
  }
 
 static void
-l3static_ovsdb_init(struct ovsdb_idl *idl)
+l3routes_ovsdb_init(struct ovsdb_idl *idl)
 {
   ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
   ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
@@ -187,10 +187,14 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_vlan_mode);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_trunks);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_tag);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_bridges);
 }
@@ -275,6 +279,7 @@ radius_server_ovsdb_init(struct ovsd_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_udp_port);
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_timeout);
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_passkey);
+    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_priority);
 
     return;
 }
@@ -355,12 +360,19 @@ logrotate_ovsdb_init(struct ovsdb_idl *idl)
 }
 
 static void
-vlan_ovsdb_init(struct ovsdb_idl *idl)
+vlan_ovsdb_init()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_vlan);
     ovsdb_idl_add_column(idl, &ovsrec_vlan_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vlan_col_id);
     ovsdb_idl_add_column(idl, &ovsrec_vlan_col_admin);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_description);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_hw_vlan_config);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state_reason);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_internal_usage);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_external_ids);
+    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_other_config);
 }
 
 static void
@@ -368,6 +380,14 @@ mgmt_intf_ovsdb_init()
 {
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf_status);
+}
+
+static void
+lacp_ovsdb_init()
+{
+   ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lacp_config);
+   ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
+   ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
 }
 
 /*
@@ -395,6 +415,9 @@ ovsdb_init(const char *db_path)
     /* Add AAA columns */
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_aaa);
 
+    /* Add Auto Provision Column */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_auto_provisioning_status);
+
     /* Add tables and columns for LLDP configuration */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_cur_cfg);
@@ -412,7 +435,7 @@ ovsdb_init(const char *db_path)
 
     /* BGP tables */
     bgp_ovsdb_init(idl);
-    l3static_ovsdb_init(idl);
+    l3routes_ovsdb_init(idl);
 
     /* VRF tables */
     vrf_ovsdb_init(idl);
@@ -430,10 +453,12 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
 
     /* vlan table */
-    vlan_ovsdb_init(idl);
+    vlan_ovsdb_init();
 
     /* Logrotate tables */
     logrotate_ovsdb_init(idl);
+    /* Add tables/columns needed for LACP config commands */
+    lacp_ovsdb_init();
 
     /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands */
     ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
@@ -493,21 +518,24 @@ void vtysh_ovsdb_hostname_set(const char* in)
 {
     const struct ovsrec_open_vswitch *ovs= NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
-    enum ovsdb_idl_txn_status status;
+    enum ovsdb_idl_txn_status status = TXN_ERROR;
 
     ovs = ovsrec_open_vswitch_first(idl);
-
     if(ovs)
     {
         status_txn = cli_do_config_start();
         if(status_txn == NULL)
         {
-            cli_do_config_abort(status_txn);
-            VLOG_ERR("Failed to create a transaction");
+          cli_do_config_abort(status_txn);
+          VLOG_ERR("Couldn't create the OVSDB transaction.");
         }
-        ovsrec_open_vswitch_set_hostname(ovs, in);
-        status = cli_do_config_finish(txn);
-        VLOG_DBG("Hostname set to %s in table",in);
+        else
+        {
+          ovsrec_open_vswitch_set_hostname(ovs, in);
+          status = cli_do_config_finish(status_txn);
+        }
+        if(!(status == TXN_SUCCESS || status == TXN_UNCHANGED))
+          VLOG_ERR("Committing transaction to DB failed.");
     }
     else
     {
@@ -526,8 +554,6 @@ char* vtysh_ovsdb_hostname_get()
 
     if(ovs)
     {
-        vty_out(vty, "hostname in table is %s%s", ovs->hostname, VTY_NEWLINE);
-        VLOG_DBG("retrieved hostname %s from table", ovs->hostname);
         return ovs->hostname;
     }
     else
@@ -779,6 +805,32 @@ bool check_iface_in_bridge(const char *if_name)
 }
 
 /*
+* Checks if port is already part of bridge.
+*/
+bool check_port_in_bridge(const char *port_name)
+{
+    struct ovsrec_open_vswitch *ovs_row = NULL;
+    struct ovsrec_bridge *br_cfg = NULL;
+    struct ovsrec_port *port_cfg = NULL;
+    size_t i, j, k;
+    ovs_row = ovsrec_open_vswitch_first(idl);
+    if (ovs_row == NULL)
+    {
+        return false;
+    }
+    for (i = 0; i < ovs_row->n_bridges; i++) {
+        br_cfg = ovs_row->bridges[i];
+        for (j = 0; j < br_cfg->n_ports; j++) {
+            port_cfg = br_cfg->ports[j];
+            if (strcmp(port_name, port_cfg->name) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/*
  * Checks if interface is already part of a VRF.
  */
 bool check_iface_in_vrf(const char *if_name)
@@ -807,6 +859,31 @@ bool check_iface_in_vrf(const char *if_name)
   return false;
 }
 
+/*
+* Checks if interface is already part of a VRF.
+*/
+bool check_port_in_vrf(const char *port_name)
+{
+    struct ovsrec_open_vswitch *ovs_row = NULL;
+    struct ovsrec_vrf *vrf_cfg = NULL;
+    struct ovsrec_port *port_cfg = NULL;
+    size_t i, j, k;
+    ovs_row = ovsrec_open_vswitch_first(idl);
+    if (ovs_row == NULL)
+    {
+        return false;
+    }
+    for (i = 0; i < ovs_row->n_vrfs; i++) {
+        vrf_cfg = ovs_row->vrfs[i];
+        for (j = 0; j < vrf_cfg->n_ports; j++) {
+            port_cfg = vrf_cfg->ports[j];
+            if (strcmp(port_name, port_cfg->name) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 /*
  * init the vtysh lib routines
  */
