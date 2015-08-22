@@ -142,6 +142,7 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_other_config);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_capability);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_timers);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_route_maps);
 
     /* RIB */
     ovsdb_idl_add_table(idl, &ovsrec_table_route);
