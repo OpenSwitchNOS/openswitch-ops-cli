@@ -23,6 +23,13 @@
 #ifndef _VTYSH_UTILS_H
 #define _VTYSH_UTILS_H
 
+typedef unsigned char boolean;
+
+#define TRUE 1
+#define FALSE 0
+
+#define MAX_IPV6_STRING_LENGTH 45
+
 #define  IS_BROADCAST_IPV4(i)      (((long)(i) & 0xffffffff) == 0xffffffff)
 #define  IS_LOOPBACK_IPV4(i)       (((long)(i)) == 0x7F000001)
 #define  IS_MULTICAST_IPV4(i)      (((long)(i) & 0xf0000000) == 0xe0000000)
