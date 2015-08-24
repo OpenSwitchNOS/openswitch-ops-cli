@@ -28,20 +28,23 @@
 void vty_mgmt_int_init (void);
 
 
-#define MGMT_INTF_MODE_IP_STR         "Set the mode for management interface\n"
+#define MGMT_INTF_MODE_IP_STR         "Set the mode for management interface (static/dhcp)\n"
 #define MGMT_INTF_DHCP_STR            "Set the mode as dhcp\n"
 #define MGMT_INTF_STATIC_STR          "Set the mode as static\n"
-#define MGMT_INTF_DEFAULT_GW_STR      "Configure the Default gateway address\n"
+#define MGMT_INTF_DEFAULT_GW_STR      "Configure the Default gateway address (IPv4 and IPv6)\n"
 #define MGMT_INTF_DNS_STR             "Configure the nameserver\n"
-#define MGMT_INTF_DNS_1_STR           "Configure the primary nameserver address\n"
-#define MGMT_INTF_DNS_2_STR           "Configure the secondary nameserver address\n"
+#define MGMT_INTF_DNS_1_STR           "Configure the primary nameserver IPv4 address\n"
+#define MGMT_INTF_DNS_2_STR           "Configure the secondary nameserver IPv4 address\n"
+#define MGMT_INTF_DNS_1_IPV6_STR      "Configure the primary nameserver IPv6 address\n"
+#define MGMT_INTF_DNS_2_IPV6_STR      "Configure the secondary nameserver IPv6 address\n"
 #define MGMT_INTF_IP_STR              "Enter the IP address\n"
 #define MGMT_INTF_IPV4_STR            "Enter the IPv4 address\n"
+#define MGMT_INTF_IPV6_STR            "Enter the IPv6 address\n"
 #define MGMT_INTF_SUBNET_STR          "Enter the subnet mask\n"
 #define MGMT_INTF_MGMT_STR            "Management interface details\n"
 
 #define MGMT_INTF_DEFAULT_IP          "0.0.0.0"
-
+#define MGMT_INTF_DEFAULT_IPV6         "::"
 
 #define OVSDB_MODE_ERROR                      "Configurations not allowed in dhcp mode"
 #define OVSDB_DNS_DEPENDENCY_ERROR            "Deletion not allowed. Secondary Nameserver present"
