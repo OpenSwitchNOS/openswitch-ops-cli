@@ -2853,13 +2853,8 @@ vtysh_prompt (void)
    hostname = host.name;
    if (!hostname)
    {
-      hostname = vtysh_ovsdb_hostname_get();
-     if(hostname && hostname[0]);
-     else if (!names.nodename[0])
-     {
-         uname (&names);
-         hostname = names.nodename;
-     }
+     uname (&names);
+     hostname = names.nodename;
      host.name = XSTRDUP (MTYPE_HOST,hostname);
    }
 

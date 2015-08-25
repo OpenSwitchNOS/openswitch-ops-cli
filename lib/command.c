@@ -3507,6 +3507,9 @@ DEFUN (config_no_hostname,
   return CMD_SUCCESS;
 }
 #else
+#define MAX_HOSTNAME_LEN 32
+/* HALON_TODO : Different hostname depending on platform */
+#define DEFAULT_HOSTNAME "as5712"
 extern void  vtysh_ovsdb_hostname_set(const char * in);
 extern char* vtysh_ovsdb_hostname_get();
 /* Hostname configuration */
@@ -3517,18 +3520,34 @@ DEFUN (config_hostname,
        "Configure hostname as alphanumeric string. First letter must be alphabet(Max Length 64)\n")
 {
  char* hostname = NULL;
+ int   ret = 0;
  if (argv[0])
  {
-     if(strlen(argv[0]) > 64)
-       {
-         vty_out (vty, "Please specify string of Maximum 64 characters%s", VTY_NEWLINE);
-         return CMD_WARNING;
-       }
+     if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
+     {
+        vty_out (vty, "Please specify string of Maximum %d Character%s",MAX_HOSTNAME_LEN, VTY_NEWLINE);
+        return CMD_WARNING;
+     }
      if (!isalpha((int) *argv[0]))
+     {
+        vty_out (vty, "Please specify string starting with alphabet%s", VTY_NEWLINE);
+        return CMD_WARNING;
+     }
+
+     ret = sethostname(argv[0],MAX_HOSTNAME_LEN);
+     if(CMD_SUCCESS != ret)
+     {
+       if (EPERM == ret)
        {
-         vty_out (vty, "Please specify string starting with alphabet%s", VTY_NEWLINE);
-         return CMD_WARNING;
+          vty_out(vty,"Operation Not permitted%s",VTY_NEWLINE);
+          return CMD_WARNING;
        }
+       else
+       {
+          vty_out(vty,"Set Hostname Failed%s",VTY_NEWLINE);
+          return CMD_WARNING;
+       }
+     }
 
      if (host.name)
         XFREE (MTYPE_HOST, host.name);
@@ -3540,25 +3559,8 @@ DEFUN (config_hostname,
  }
  else
  {
-    hostname = vtysh_ovsdb_hostname_get();
-    if(hostname && hostname[0])
+    if (host.name)
     {
-         vty_out (vty,"%s%s",hostname,VTY_NEWLINE);
-         if( (NULL == host.name) || (0 != strcmp(hostname,host.name)))
-         {
-               if (host.name)
-                     XFREE (MTYPE_HOST, host.name);
-               /* If hostname is changed using ovs-vsctl */
-               host.name = XSTRDUP (MTYPE_HOST, hostname);
-         }
-    }
-   /*
-    * This is because even when host.name is NULL VTY prompt shows default
-    * hostname (system hostname). To avoid mismacth when hostname is NULL
-    * in DB this is done.
-    */
-    else if (host.name)
-    {/* Not needed but one can't be too sure */
         vty_out (vty,"%s%s",host.name,VTY_NEWLINE);
         vtysh_ovsdb_hostname_set(host.name);
     }
@@ -3577,17 +3579,30 @@ DEFUN (config_no_hostname,
        "Configure hostname as alphanumeric string. First letter must be alphabet(Max Length 64)\n")
 {
   struct utsname name;
+  int ret = 0;
   memset(&name,0,sizeof(name));
+
+   ret = sethostname(DEFAULT_HOSTNAME,MAX_HOSTNAME_LEN);
+   if (0 != CMD_SUCCESS)
+   {
+     if (EPERM == ret)
+     {
+        vty_out(vty,"Operation Not permitted%s",VTY_NEWLINE);
+        return CMD_WARNING;
+     }
+     else
+     {
+        vty_out(vty,"Failed to set Default Hostname%s",VTY_NEWLINE);
+        return CMD_WARNING;
+     }
+   }
 
   if (host.name)
     XFREE (MTYPE_HOST, host.name);
 
-  /* when host.name is NULL, VTY prompt updates with default system
-   * hostname. So DB is updated accordingly.
-   */
-  host.name = NULL;
-  uname (&name);
-  vtysh_ovsdb_hostname_set(name.nodename);
+  host.name = XSTRDUP (MTYPE_HOST, DEFAULT_HOSTNAME);
+
+  vtysh_ovsdb_hostname_set(host.name);
 
   return CMD_SUCCESS;
 }
