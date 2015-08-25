@@ -170,6 +170,13 @@ safe_print_bool (size_t count, bool *bvalue)
     return _undefined;
 }
 
+static char *
+safe_print_smap_value (struct smap *smap, char *key)
+{
+    const char *value = smap_get(smap, key);
+    return value ? value : _undefined;
+}
+
 /*
 ** find the vrf with matching name
 */
@@ -196,55 +203,71 @@ get_ovsrec_bgp_router_with_asn (int asn)
 }
 
 /*
-** Find the bgp neighbor with matching bgp_router asn and name.
+** This function determines if an object represented
+** by the bgp_neighbor is actually a peer object or
+** a peer group object.  If is_peer_group is not
+** specified, then object *IS* a peer/neighbor.
+** If specified, its bool value determines the object
+** type.
+*/
+static bool
+object_is_bgp_peer_group (struct ovsrec_bgp_neighbor *bgpn)
+{
+    if (0 == bgpn->n_is_peer_group) return false;
+    return
+	*(bgpn->is_peer_group) ? true: false;
+}
+
+/*
+** generic bgp neighbor/peer group object find function
+** for matching bgp router and matching name.  for a bgp
+** neighbor object, name is an ip address and for a peer
+** group object, it is just a user defined name.
 */
 static struct ovsrec_bgp_neighbor *
-get_bgp_neighbor_with_bgp_router_and_name (struct ovsrec_bgp_router *ovs_bgp,
-                                           char *name, bool is_peer_group,
-                                           bool check_is_peer_group)
+find_matching_neighbor_or_peer_group_object (bool is_peer_group,
+    struct ovsrec_bgp_router *ovs_bgpr, char *name)
 {
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsrec_bgp_neighbor *ovs_bgpn;
+    bool object_type_matches;
 
-    OVSREC_BGP_NEIGHBOR_FOR_EACH(ovs_bgp_neighbor, idl) {
-        if ((ovs_bgp_neighbor->bgp_router->asn == ovs_bgp->asn) &&
-            (strcmp(ovs_bgp_neighbor->name, name) == 0)) {
-            if (!check_is_peer_group ||
-                (check_is_peer_group && (ovs_bgp_neighbor->is_peer_group ==
-                                         is_peer_group)))
-            {
-                return ovs_bgp_neighbor;
-            }
-        }
+    OVSREC_BGP_NEIGHBOR_FOR_EACH(ovs_bgpn, idl) {
+
+	/* looking for a bgp neighbor or a peer group object */
+	object_type_matches =
+	    (is_peer_group && object_is_bgp_peer_group(ovs_bgpn)) ||
+	    (!is_peer_group && !object_is_bgp_peer_group(ovs_bgpn));
+	if (!object_type_matches) continue;
+
+	/* correct type, now match its parent bgp router and name */
+	if (ovs_bgpn->bgp_router &&
+	    (ovs_bgpn->bgp_router->asn == ovs_bgpr->asn) &&
+	    (0 == strcmp(ovs_bgpn->name, name)))
+		return ovs_bgpn;
     }
     return NULL;
 }
 
 /*
-** Find the bgp neighbor with matching bgp_router asn and ip_addr.
+** Find the bgp neighbor with matching bgp_router and ip address.
 */
 static struct ovsrec_bgp_neighbor *
-get_bgp_neighbor_with_bgp_router_and_ipaddr (struct ovsrec_bgp_router *ovs_bgp,
-                                             char *ipaddr)
+get_bgp_neighbor_with_bgp_router_and_ipaddr (struct ovsrec_bgp_router *ovs_bgpr,
+    char *ipaddr)
 {
-    bool is_peer_group = false;
-    bool check_is_peer_group = true;
-    return get_bgp_neighbor_with_bgp_router_and_name (ovs_bgp, ipaddr,
-                                                      is_peer_group,
-                                                      check_is_peer_group);
+    return
+	find_matching_neighbor_or_peer_group_object(false, ovs_bgpr, ipaddr);
 }
 
 /*
-** Find the bgp peer group with matching bgp_router asn and name
+** Find the bgp peer group with matching bgp_router and name
 */
 static struct ovsrec_bgp_neighbor *
-get_bgp_peer_group_with_bgp_router_and_name (struct ovsrec_bgp_router *ovs_bgp,
-                                             char *name)
+get_bgp_peer_group_with_bgp_router_and_name (struct ovsrec_bgp_router *ovs_bgpr,
+    char *name)
 {
-    bool is_peer_group = true;
-    bool check_is_peer_group = true;
-    return get_bgp_neighbor_with_bgp_router_and_name (ovs_bgp, name,
-                                                      is_peer_group,
-                                                      check_is_peer_group);
+    return
+	find_matching_neighbor_or_peer_group_object(true, ovs_bgpr, name);
 }
 
 /********************************************************************************/
@@ -322,15 +345,15 @@ get_rib_protocol_specific_data(const struct ovsrec_route *rib_row, route_psd_bgp
  * BGP neighbor IP address.
  */
 static const struct ovsrec_bgp_neighbor*
-bgp_peer_lookup(const char *peer_id)
+bgp_peer_lookup (const char *peer_id)
 {
     const struct ovsrec_bgp_neighbor *peer_row;
     assert(peer_id);
 
     OVSREC_BGP_NEIGHBOR_FOR_EACH(peer_row, idl) {
-        if ((!peer_row->is_peer_group)
-            && strcmp(peer_row->name, peer_id) == 0)
-            return peer_row;
+	if (!object_is_bgp_peer_group(peer_row) &&
+            (0 == strcmp(peer_row->name, peer_id)))
+		return peer_row;
     }
     return NULL;
 }
@@ -1746,6 +1769,13 @@ ALIAS (no_bgp_default_local_preference,
        "local preference (higher=more preferred)\n"
        "Configure default local preference value\n")
 
+/*
+** Assigns a remote-as to an *EXISTING* peer group OR
+** creates a NEW peer with remote-as if none exists or
+** changes the remote-as of an already existing peer.
+** Note that if the peer already exists and is bound
+** to a peer group, its remote-as cannot be changed.
+*/
 static int
 cli_neighbor_remote_as_cmd_execute (struct vty *vty,
     int argc, char *argv[])
@@ -1755,53 +1785,52 @@ cli_neighbor_remote_as_cmd_execute (struct vty *vty,
     struct ovsrec_bgp_router *bgp_router_context;
     struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
+    bool is_peer_group;
+    union sockunion su;
 
     START_DB_TXN(txn);
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
-    if (bgp_router_context) {
-#ifdef EXTRA_DEBUG
-        vty_out(vty, "in router asn %d\n", bgp_router_context->asn);
-#endif // EXTRA_DEBUG
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "% Bgp router context not available");
+    }
+
+    /* a name, must be a peer group */
+    if (str2sockunion(peer_str, &su) < 0) {
+	is_peer_group = true;
+	ovs_bgp_neighbor =
+	    get_bgp_peer_group_with_bgp_router_and_name
+		(bgp_router_context, peer_str);
+	if (!ovs_bgp_neighbor) {
+	    ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
+	}
+    /* an ipv4 or v6 address, must be a neighbor/peer */
     } else {
-        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+	is_peer_group = false;
+	ovs_bgp_neighbor =
+	    get_bgp_neighbor_with_bgp_router_and_ipaddr
+		(bgp_router_context, peer_str);
+	if (ovs_bgp_neighbor) {
+	    if (ovs_bgp_neighbor->bgp_peer_group) {
+		char error_message[128];
+		sprintf(error_message,
+		    "%% Bound to peer group %s already, cannot change remote-as\n",
+		    ovs_bgp_neighbor->bgp_peer_group->name);
+		ABORT_DB_TXN(txn, error_message);
+	    }
+	} else {
+	    ovs_bgp_neighbor = ovsrec_bgp_neighbor_insert(txn);
+	    if (!ovs_bgp_neighbor) {
+	       ERRONEOUS_DB_TXN(txn, "%% Bgp neighbor object creation failed\n");
+	    }
+	    ovsrec_bgp_neighbor_set_bgp_router
+		(ovs_bgp_neighbor, bgp_router_context);
+	    ovsrec_bgp_neighbor_set_name
+		(ovs_bgp_neighbor, peer_str);
+	    ovsrec_bgp_neighbor_set_is_peer_group
+		(ovs_bgp_neighbor, &is_peer_group, 1);
+	}
     }
-
-    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_name(
-                                bgp_router_context, peer_str,
-                                false /* is_peer_group */,
-                                false /* check_is_peer_group */);
-    if (ovs_bgp_neighbor && ovs_bgp_neighbor->remote_as) {
-        if (*ovs_bgp_neighbor->remote_as == remote_as) {
-           ABORT_DB_TXN(txn, "configuration already exists.");
-        }
-    } else if (!ovs_bgp_neighbor) {
-        union sockunion su;
-
-        // If peer was not found, then check if it's of type peer-group. If it
-        // is, then we should not allow setting of remote-as without peer-group
-        // created first.
-        if (str2sockunion(peer_str, &su) < 0)
-        {
-            ERRONEOUS_DB_TXN(txn, "Create the peer-group first");
-        }
-
-#ifdef EXTRA_DEBUG
-        vty_out(vty, "new neighbor, addr %s as %d\n", peer_str, remote_as);
-#endif // EXTRA_DEBUG
-        ovs_bgp_neighbor = ovsrec_bgp_neighbor_insert(txn);
-        if (!ovs_bgp_neighbor) {
-           ERRONEOUS_DB_TXN(txn, "bgp neighbor object creation failed");
-        }
-
-        ovsrec_bgp_neighbor_set_bgp_router(ovs_bgp_neighbor,
-                                           bgp_router_context);
-        ovsrec_bgp_neighbor_set_name(ovs_bgp_neighbor, peer_str);
-        ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_neighbor, false);
-    }
-#ifdef EXTRA_DEBUG
-    vty_out(vty, "setting remote as to %d\n", remote_as);
-#endif // EXTRA_DEBUG
     ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor, &remote_as, 1);
 
     /* done */
@@ -1878,19 +1907,15 @@ cli_no_neighbor_cmd_execute (const char *peer_str)
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
 
-    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                                bgp_router_context, peer_str);
-    if (ovs_bgp_neighbor)
-    {
-        ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
-    }
-    else
-    {
+    ovs_bgp_neighbor =
+	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, peer_str);
+    if (ovs_bgp_neighbor) {
+	ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
+    } else {
         // Try to process as peer-group
         int res = delete_neighbor_peer_group(bgp_router_context, peer_str);
 
-        if (res == CMD_ERR_NO_MATCH)
-        {
+        if (res == CMD_ERR_NO_MATCH) {
             ERRONEOUS_DB_TXN(txn, "neighbor does not exist.");
         }
     }
@@ -1944,10 +1969,12 @@ cli_no_neighbor_peer_group_cmd_execute (const char *name)
 }
 
 static int
-cli_neighbor_peer_group_cmd_execute(const char *groupName) {
+cli_neighbor_peer_group_cmd_execute(const char *groupName)
+{
     struct ovsrec_bgp_router *bgp_router_context;
     struct ovsrec_bgp_neighbor *ovs_bgp_peer_group;
     struct ovsdb_idl_txn *txn;
+    bool is_peer_group;
 
     START_DB_TXN(txn);
 
@@ -1970,8 +1997,8 @@ cli_neighbor_peer_group_cmd_execute(const char *groupName) {
     ovsrec_bgp_neighbor_set_bgp_router(ovs_bgp_peer_group,
                                        bgp_router_context);
     ovsrec_bgp_neighbor_set_name(ovs_bgp_peer_group, groupName);
-    ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_peer_group,
-                                          true);
+    is_peer_group = true;
+    ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_peer_group, &is_peer_group, 1);
 
     /* done */
     END_DB_TXN(txn);
@@ -2147,6 +2174,7 @@ cli_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
     struct ovsrec_bgp_neighbor *ovs_bgp_peer_group;
     struct ovsrec_bgp_neighbor *ovs_bgp_neighbors_peer_group;
     struct ovsdb_idl_txn *txn;
+    bool is_peer_group;
 
     START_DB_TXN(txn);
 
@@ -2155,15 +2183,14 @@ cli_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
 
-    ovs_bgp_peer_group = get_bgp_peer_group_with_bgp_router_and_name(
-                                    bgp_router_context, peer_group);
-    if (!ovs_bgp_peer_group)
-    {
+    ovs_bgp_peer_group =
+	get_bgp_peer_group_with_bgp_router_and_name(bgp_router_context, peer_group);
+    if (!ovs_bgp_peer_group) {
         ERRONEOUS_DB_TXN(txn, "Configure the peer-group first.");
     }
 
-    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                               bgp_router_context, ip_addr);
+    ovs_bgp_neighbor =
+	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
     if (!ovs_bgp_neighbor) {
         // Need to create a new neighbor and assign it values from the peer
         // group
@@ -2172,49 +2199,37 @@ cli_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
            ERRONEOUS_DB_TXN(txn, "bgp neighbor object creation failed");
         }
 
-        ovsrec_bgp_neighbor_set_bgp_router(ovs_bgp_neighbor,
-                                           bgp_router_context);
+        ovsrec_bgp_neighbor_set_bgp_router(ovs_bgp_neighbor, bgp_router_context);
         ovsrec_bgp_neighbor_set_name(ovs_bgp_neighbor, ip_addr);
-        ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_neighbor, false);
+	is_peer_group = false;
+        ovsrec_bgp_neighbor_set_is_peer_group(ovs_bgp_neighbor, &is_peer_group, 1);
 
-        if (!ovs_bgp_peer_group->n_remote_as)
-        {
+        if (!ovs_bgp_peer_group->n_remote_as) {
             ERRONEOUS_DB_TXN(txn, "Specify remote-as or peer-group "
                                   "remote AS first");
-        }
-        else
-        {
+        } else {
             ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor,
-                                              ovs_bgp_peer_group->remote_as, 1);
+		ovs_bgp_peer_group->remote_as, 1);
         }
-    }
-    else
-    {
+    } else {
         // Check if the existing peer is already configured with a peer group.
         ovs_bgp_neighbors_peer_group = ovs_bgp_neighbor->bgp_peer_group;
-        if (ovs_bgp_neighbors_peer_group)
-        {
-            if (!strcmp(ovs_bgp_neighbors_peer_group->name, peer_group))
-            {
+        if (ovs_bgp_neighbors_peer_group) {
+            if (!strcmp(ovs_bgp_neighbors_peer_group->name, peer_group)) {
                 ABORT_DB_TXN(txn, "Configuration already exists.");
-            }
-            else
-            {
+            } else {
                 ERRONEOUS_DB_TXN(txn, "Cannot change the peer-group. "
                                       "Deconfigure first");
             }
         }
     }
 
-    ovsrec_bgp_neighbor_set_bgp_peer_group(ovs_bgp_neighbor,
-                                           ovs_bgp_peer_group);
+    ovsrec_bgp_neighbor_set_bgp_peer_group(ovs_bgp_neighbor, ovs_bgp_peer_group);
 
     // Update the AS if peer-group contains it
-    if (ovs_bgp_peer_group->n_remote_as)
-    {
+    if (ovs_bgp_peer_group->n_remote_as) {
         ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor,
-                                          ovs_bgp_peer_group->remote_as,
-                                          1);
+	    ovs_bgp_peer_group->remote_as, 1);
     }
 
     /* done */
@@ -2248,37 +2263,30 @@ cli_no_neighbor_set_peer_group_cmd_execute(const char *ip_addr,
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
 
-    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                               bgp_router_context, ip_addr);
+    ovs_bgp_neighbor =
+	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
     if (!ovs_bgp_neighbor) {
         ERRONEOUS_DB_TXN(txn, "neighbor does not exist");
     }
 
     // Check if the existing peer is configured with a peer group.
     ovs_bgp_neighbors_peer_group = ovs_bgp_neighbor->bgp_peer_group;
-    if (ovs_bgp_neighbors_peer_group)
-    {
-        if (strcmp(ovs_bgp_neighbors_peer_group->name, peer_group))
-        {
+    if (ovs_bgp_neighbors_peer_group) {
+        if (strcmp(ovs_bgp_neighbors_peer_group->name, peer_group)) {
             ERRONEOUS_DB_TXN(txn, "Cannot have different peer-group "
                              "for the neighbor");
         }
 
         // Removing the peer group causes the peer to be deleted if remote-as
         // is set for the peer-group
-        if (ovs_bgp_neighbors_peer_group->n_remote_as)
-        {
+        if (ovs_bgp_neighbors_peer_group->n_remote_as) {
             ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
-        }
-        else
-        {
+        } else {
             // Since remote-as was not set, we only unset the peer_group info
             // of this neighbor
             ovsrec_bgp_neighbor_set_bgp_peer_group(ovs_bgp_neighbor, NULL);
         }
-    }
-    else
-    {
+    } else {
         ABORT_DB_TXN(txn, "No peer-group configured.");
     }
 
@@ -2612,7 +2620,7 @@ DEFUN (no_neighbor_send_community_type,
 }
 
 static int
-cli_neighbor_soft_reconfiguration_inbound_cmd_execute(const char *ip_addr)
+cli_neighbor_soft_reconfiguration_inbound_cmd_execute (const char *ip_addr)
 {
     struct ovsrec_bgp_router *bgp_router_context;
     struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
@@ -2622,17 +2630,16 @@ cli_neighbor_soft_reconfiguration_inbound_cmd_execute(const char *ip_addr)
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
     if (bgp_router_context) {
-        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                               bgp_router_context, ip_addr);
-
+        ovs_bgp_neighbor =
+	    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
         if (ovs_bgp_neighbor) {
             if (ovs_bgp_neighbor->inbound_soft_reconfiguration) {
                 ABORT_DB_TXN(txn, "inbound_soft_reconfiguration already set");
             } else {
                 const bool inb_soft_rcfg = true;
 
-                ovsrec_bgp_neighbor_set_inbound_soft_reconfiguration(
-                        ovs_bgp_neighbor, &inb_soft_rcfg, 1);
+                ovsrec_bgp_neighbor_set_inbound_soft_reconfiguration
+		    (ovs_bgp_neighbor, &inb_soft_rcfg, 1);
             }
         } else {
             ABORT_DB_TXN(txn, "no neighbor");
@@ -2668,15 +2675,14 @@ cli_no_neighbor_soft_reconfiguration_inbound_cmd_execute(const char *ip_addr)
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
     if (bgp_router_context) {
-        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                               bgp_router_context, ip_addr);
-
+        ovs_bgp_neighbor =
+	    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
         if (ovs_bgp_neighbor) {
             if (!ovs_bgp_neighbor->inbound_soft_reconfiguration) {
                 ABORT_DB_TXN(txn, "inbound_soft_reconfiguration doesn't exist");
             } else {
-                ovsrec_bgp_neighbor_set_inbound_soft_reconfiguration(
-                        ovs_bgp_neighbor, NULL, 0);
+                ovsrec_bgp_neighbor_set_inbound_soft_reconfiguration
+		    (ovs_bgp_neighbor, NULL, 0);
             }
         } else {
             ABORT_DB_TXN(txn, "no neighbor");
@@ -3613,68 +3619,58 @@ cli_neighbor_route_map_cmd_execute (char *ipAddr, char *name,
     START_DB_TXN(txn);
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
-    if (!bgp_router_context)
-    {
+    if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
 
-    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                            bgp_router_context, ipAddr);
-    if (!ovs_bgp_neighbor)
-    {
+    ovs_bgp_neighbor =
+	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ipAddr);
+    if (!ovs_bgp_neighbor) {
         ERRONEOUS_DB_TXN(txn, "no existing neighbor found");
     }
 
     // Since neighbor exists, we need to check the route-map name and
     // direction to identify if it's a duplicate.
-    if (get_neighbor_route_map(ovs_bgp_neighbor, name, direction))
-    {
+    if (get_neighbor_route_map(ovs_bgp_neighbor, name, direction)) {
         ABORT_DB_TXN(txn, "configuration exists");
     }
 
     // Check if the specified route-map exists.
-    OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl)
-    {
-        if (!strcmp(rt_map_row->name, name))
-        {
+    OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
+        if (!strcmp(rt_map_row->name, name)) {
             rm_found = true;
             break;
         }
     }
 
-    if (!rm_found)
-    {
+    if (!rm_found) {
         ERRONEOUS_DB_TXN(txn, "route-map doesn't exist");
     }
 
     int num_elems = ovs_bgp_neighbor->n_route_maps;
     char **directions = xmalloc(sizeof(*directions) * (num_elems+1));
-    struct ovsrec_route_map **rt_maps = xmalloc(sizeof(*rt_maps) *
-                                                (num_elems+1));
+    struct ovsrec_route_map **rt_maps =
+	xmalloc(sizeof(*rt_maps) * (num_elems+1));
 
     int i;
     bool dir_found = false;
-    for (i = 0; i < num_elems; i++)
-    {
+    for (i = 0; i < num_elems; i++) {
         directions[i] = ovs_bgp_neighbor->key_route_maps[i];
         rt_maps[i] = ovs_bgp_neighbor->value_route_maps[i];
-
-        if (!strcmp(direction, directions[i]))
-        {
+        if (!strcmp(direction, directions[i])) {
             rt_maps[i] = rt_map_row;
             dir_found = true;
         }
     }
 
-    if (!dir_found)
-    {
+    if (!dir_found) {
         directions[num_elems] = direction;
         rt_maps[num_elems] = rt_map_row;
         num_elems++;
     }
 
     ovsrec_bgp_neighbor_set_route_maps(ovs_bgp_neighbor, directions,
-                                       rt_maps, num_elems);
+	rt_maps, num_elems);
 
     free(directions);
     free(rt_maps);
@@ -3711,45 +3707,38 @@ cli_no_neighbor_route_map_cmd_execute (char *ipAddr, char *direction)
     START_DB_TXN(txn);
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
-    if (!bgp_router_context)
-    {
+    if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
 
-    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                            bgp_router_context, ipAddr);
-    if (!ovs_bgp_neighbor)
-    {
+    ovs_bgp_neighbor =
+	get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ipAddr);
+    if (!ovs_bgp_neighbor) {
         ERRONEOUS_DB_TXN(txn, "no existing neighbor found");
     }
 
-    if (!ovs_bgp_neighbor->n_route_maps)
-    {
+    if (!ovs_bgp_neighbor->n_route_maps) {
         ABORT_DB_TXN(txn, "no existing neighbor route-map to unset");
     }
 
     // Check to see if a route-map is configured for the direction
     int num_elems = ovs_bgp_neighbor->n_route_maps;
     char **directions = xmalloc(sizeof(*directions) * num_elems);
-    struct ovsrec_route_map **rt_maps = xmalloc(sizeof(*rt_maps) *
-                                                num_elems);
+    struct ovsrec_route_map **rt_maps =
+	xmalloc(sizeof(*rt_maps) * num_elems);
     char *direct;
 
     int i, j;
     bool dir_found = false;
-    for (i = 0, j = 0; i < num_elems; i++)
-    {
+    for (i = 0, j = 0; i < num_elems; i++) {
         direct = ovs_bgp_neighbor->key_route_maps[i];
 
-        if (!strcmp(direction, direct))
-        {
+        if (!strcmp(direction, direct)) {
             // If found, then we skip adding this route-map configuration.
             dir_found = true;
             num_elems--;
             continue;
-        }
-        else
-        {
+        } else {
             // This is not the entry we are deleting, so make sure it remains
             // in the ovsdb.
             directions[j] = direct;
@@ -3757,15 +3746,14 @@ cli_no_neighbor_route_map_cmd_execute (char *ipAddr, char *direction)
         }
     }
 
-    if (!dir_found)
-    {
+    if (!dir_found) {
         free(directions);
         free(rt_maps);
         ABORT_DB_TXN(txn, "neighbor route-map for the direction doesn't exist");
     }
 
-    ovsrec_bgp_neighbor_set_route_maps(ovs_bgp_neighbor, directions,
-                                       rt_maps, num_elems);
+    ovsrec_bgp_neighbor_set_route_maps
+	(ovs_bgp_neighbor, directions, rt_maps, num_elems);
 
     free(directions);
     free(rt_maps);
@@ -6442,11 +6430,17 @@ static void
 show_one_bgp_neighbor (struct vty *vty,
     struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
 {
-    vty_out(vty, "  name: %s, remote-as: %d, active: %s\n",
+    int i;
+
+    vty_out(vty, "  name: %s, remote-as: %s\n",
 	safe_print_string(1, ovs_bgp_neighbor->name),
-	ovs_bgp_neighbor->remote_as,
-	safe_print_bool(ovs_bgp_neighbor->n_active,
-	    ovs_bgp_neighbor->active));
+	safe_print_integer(ovs_bgp_neighbor->n_remote_as,
+	    ovs_bgp_neighbor->remote_as));
+    vty_out(vty, "    state: %s\n",
+	safe_print_smap_value(&ovs_bgp_neighbor->status, BGP_PEER_STATE));
+    vty_out(vty, "    shutdown: %s\n",
+	safe_print_bool(ovs_bgp_neighbor->n_shutdown,
+	    ovs_bgp_neighbor->shutdown));
     vty_out(vty, "    description: %s\n",
 	safe_print_string(1, ovs_bgp_neighbor->description));
     vty_out(vty, "    capability: %s\n",
@@ -6464,6 +6458,15 @@ show_one_bgp_neighbor (struct vty *vty,
     vty_out(vty, "    maximum_prefix_limit: %s\n",
 	safe_print_integer(ovs_bgp_neighbor->n_maximum_prefix_limit,
 	    ovs_bgp_neighbor->maximum_prefix_limit));
+    vty_out(vty, "    tcp_port_number: %s\n",
+	safe_print_integer(ovs_bgp_neighbor->n_tcp_port_number,
+	    ovs_bgp_neighbor->tcp_port_number));
+    vty_out(vty, "    statistics:\n");
+    for (i = 0; i < ovs_bgp_neighbor->n_statistics; i++) {
+	vty_out(vty, "       %s: %d\n",
+	    ovs_bgp_neighbor->key_statistics[i],
+	    ovs_bgp_neighbor->value_statistics[i]);
+    }
 }
 
 /*
@@ -6483,8 +6486,8 @@ show_bgp_router_neighbors (struct vty *vty,
     ** neighbor filter (peer) is taken into account.
     */
     OVSREC_BGP_NEIGHBOR_FOR_EACH(ovs_bgp_neighbor, idl) {
-	if ((ovs_bgp_neighbor->bgp_router == ovs_bgp_router) &&
-	    (ovs_bgp_neighbor->is_peer_group == false) &&
+	if (!object_is_bgp_peer_group(ovs_bgp_neighbor) &&
+	    (ovs_bgp_neighbor->bgp_router == ovs_bgp_router) &&
 	    ((NULL == peer) ||
 	     (peer && (0 == strcmp(ovs_bgp_neighbor->name, peer))))) {
 		show_one_bgp_neighbor(vty, ovs_bgp_neighbor);
