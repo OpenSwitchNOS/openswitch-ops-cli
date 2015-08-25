@@ -315,6 +315,148 @@ DEFUN (cli_radius_server_add_host,
     return radius_server_add_host(argv[0]);
 }
 
+static int radius_server_remove_auth_port(const char *ipv4, const char *authport)
+{
+  int64_t port = atoi(authport);
+  int64_t default_udp_port = RADIUS_SERVER_DEFAULT_PORT;
+  const struct ovsrec_radius_server *tempRow = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct in_addr addr;
+  enum ovsdb_idl_txn_status txn_status;
+
+  if (status_txn == NULL) {
+      VLOG_ERR("Couldn't create the OVSDB transaction in function=%s, line=%d \n", __func__, __LINE__ );
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+  }
+
+  if (inet_pton(AF_INET, ipv4, &addr) <= 0) {
+      VLOG_ERR("Invalid IPv4 address in function=%s, line=%d \n", __func__, __LINE__);
+      cli_do_config_abort(status_txn);
+      return CMD_ERR_NOTHING_TODO;
+  }
+
+  if (!IS_VALID_IPV4(htonl(addr.s_addr))) {
+      VLOG_ERR("Broadcast, multicast and loopback addresses are not allowed in function=%s, line=%d \n", __func__, __LINE__);
+      cli_do_config_abort(status_txn);
+      return CMD_ERR_NOTHING_TODO;
+  }
+
+  OVSREC_RADIUS_SERVER_FOR_EACH(tempRow, idl)
+  {
+      if(!strcmp(tempRow->ip_address,ipv4)) {
+          break;
+       }
+  }
+
+  if (!tempRow) {
+      vty_out(vty, "No radius server configured with this IP.%s",VTY_NEWLINE);
+      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+      cli_do_config_abort(status_txn);
+      return CMD_ERR_NOTHING_TODO;
+  }
+  if(*(tempRow->udp_port)!=port) {
+     vty_out(vty, " Wrong authentication port.%s",VTY_NEWLINE);
+     cli_do_config_abort(status_txn);
+     return CMD_ERR_NOTHING_TODO;
+  }
+
+  ovsrec_radius_server_set_udp_port(tempRow,&default_udp_port,1);
+  txn_status = cli_do_config_finish(status_txn);
+
+  if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
+      return CMD_SUCCESS;
+  }
+  else {
+      VLOG_ERR("Commiting transaction to DB failed in function=%s, line=%d \n", __func__, __LINE__);
+      return CMD_OVSDB_FAILURE;
+  }
+
+}
+
+DEFUN (cli_radius_server_remove_auth_port,
+       radius_server_remove_auth_port_cmd,
+       "no radius-server host A.B.C.D auth-port <0-65535>",
+       NO_STR
+       "Radius server configuration\n"
+       "Host IP address\n"
+       "Radius server IPv4 address\n"
+       "Set authentication port\n"
+       "UDP port range is 0 to 65535. (Default: 1812)\n")
+{
+    return radius_server_remove_auth_port(argv[0],argv[1]);
+}
+
+static int radius_server_remove_passkey(const char *ipv4, const char *passkey)
+{
+  const char  *default_passkey = RADIUS_SERVER_DEFAULT_PASSKEY;
+  const struct ovsrec_radius_server *tempRow = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct in_addr addr;
+  enum ovsdb_idl_txn_status txn_status;
+
+  if (status_txn == NULL) {
+      VLOG_ERR("Couldn't create the OVSDB transaction in function=%s, line=%d \n", __func__, __LINE__ );
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+  }
+
+  if (inet_pton(AF_INET, ipv4, &addr) <= 0) {
+      VLOG_ERR("Invalid IPv4 address in function=%s, line=%s \n", __func__, __LINE__);
+      cli_do_config_abort(status_txn);
+      return CMD_ERR_NOTHING_TODO;
+  }
+
+  if (!IS_VALID_IPV4(htonl(addr.s_addr))) {
+      VLOG_ERR("Broadcast, multicast and loopback addresses are not allowed in function=%s, line=%s \n", __func__, __LINE__);
+      cli_do_config_abort(status_txn);
+      return CMD_ERR_NOTHING_TODO;
+  }
+
+  OVSREC_RADIUS_SERVER_FOR_EACH(tempRow, idl)
+  {
+      if(!strcmp(tempRow->ip_address,ipv4)) {
+          break;
+       }
+  }
+
+  if (!tempRow) {
+      vty_out(vty, "No radius server configured with this IP.%s",VTY_NEWLINE);
+      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+  }
+  if(strcmp(tempRow->passkey,passkey)) {
+      vty_out(vty, " passkey mismatched.%s", VTY_NEWLINE);
+      cli_do_config_abort(status_txn);
+      return CMD_ERR_NOTHING_TODO;
+  }
+  ovsrec_radius_server_set_passkey(tempRow,default_passkey);
+
+  txn_status = cli_do_config_finish(status_txn);
+
+  if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
+      return CMD_SUCCESS;
+  }
+  else {
+      VLOG_ERR("Commiting transaction to DB failed in function=%s, line=%d \n", __func__, __LINE__);
+      return CMD_OVSDB_FAILURE;
+  }
+
+}
+
+DEFUN (cli_radius_server_remove_passkey,
+       radius_server_remove_passkey_cmd,
+       "no radius-server host A.B.C.D key WORD",
+       NO_STR
+       "Radius server configuration\n"
+       "Host IP address\n"
+       "Radius server IPv4 address\n"
+       "Set shared secret\n"
+       "Radius shared secret\n")
+{
+    return radius_server_remove_passkey(argv[0],argv[1]);
+}
 static int radius_server_remove_host(const char *ipv4)
 {
   int n = 0,i = 0;
@@ -505,6 +647,52 @@ DEFUN (cli_radius_server_retries,
   return radius_server_set_retries(argv[0]);
 }
 
+static int radius_server_remove_retries(const char *retries_t)
+{
+  int64_t retries, retry=atoi(retries_t);
+  const struct ovsrec_radius_server *tempRow = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  enum ovsdb_idl_txn_status txn_status;
+
+  if (status_txn == NULL) {
+      VLOG_ERR("Couldn't create the OVSDB transaction in function=%s, line=%d \n", __func__, __LINE__ );
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+  }
+  retries = RADIUS_SERVER_DEFAULT_RETRIES;
+
+  tempRow = ovsrec_radius_server_first(idl);
+  if (*(tempRow->retries) == retry) {
+      OVSREC_RADIUS_SERVER_FOR_EACH(tempRow, idl){
+          ovsrec_radius_server_set_retries(tempRow,&retries,1);
+      }
+  }
+  else {
+      vty_out(vty, "Mismatched retries value.%s",VTY_NEWLINE);
+  }
+
+  txn_status = cli_do_config_finish(status_txn);
+
+  if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
+      return CMD_SUCCESS;
+  }
+  else {
+      VLOG_ERR("Commiting transaction to DB failed in function=%s, line=%d \n", __func__, __LINE__);
+      return CMD_OVSDB_FAILURE;
+  }
+}
+
+
+DEFUN (cli_radius_server_remove_retries,
+       radius_server_remove_retries_cmd,
+       "no radius-server retries <0-5>",
+       NO_STR
+       "Radius server configuration\n"
+       "Set the number of retries\n"
+       "Set the range from 0 to 5. (Default: 1)\n")
+{
+    return radius_server_remove_retries(argv[0]);
+}
 
 static int radius_server_set_timeout(const char *timeout)
 {
@@ -554,6 +742,52 @@ DEFUN (cli_radius_server_configure_timeout,
     return radius_server_set_timeout(argv[0]);
 }
 
+static int radius_server_remove_timeout(const char *timeout_t)
+{
+  int64_t timeout1, time=atoi(timeout_t);
+
+  const struct ovsrec_radius_server *tempRow = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+
+  enum ovsdb_idl_txn_status txn_status;
+
+  timeout1 = RADIUS_SERVER_DEFAULT_TIMEOUT;
+  if (status_txn == NULL) {
+     VLOG_ERR("Couldn't create the OVSDB transaction in function=%s, line=%d \n", __func__, __LINE__ );
+     cli_do_config_abort(status_txn);
+     return CMD_OVSDB_FAILURE;
+  }
+  tempRow = ovsrec_radius_server_first(idl);
+  if (*(tempRow->timeout) == time) {
+      OVSREC_RADIUS_SERVER_FOR_EACH(tempRow, idl){
+          ovsrec_radius_server_set_timeout(tempRow,&timeout1,1);
+      }
+  }
+  else {
+      vty_out(vty, "Mismatched timeout value.%s",VTY_NEWLINE);
+  }
+
+  txn_status = cli_do_config_finish(status_txn);
+
+  if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
+      return CMD_SUCCESS;
+  }
+  else {
+      VLOG_ERR("Commiting transaction to DB failed in function=%s, line=%d \n", __func__, __LINE__);
+      return CMD_OVSDB_FAILURE;
+  }
+}
+
+DEFUN (cli_radius_server_remove_timeout,
+       radius_server_remove_timeout_cmd,
+       "no radius-server timeout <1-60>",
+       NO_STR
+       "Radius server configuration\n"
+       "Set the transmission timeout interval\n"
+       "Timeout interval 1 to 60 seconds. (Default: 5)\n")
+{
+    return radius_server_remove_timeout(argv[0]);
+}
 
 static int radius_server_set_auth_port(const char *ipv4, const char *port)
 {
@@ -839,7 +1073,7 @@ DEFUN (cli_set_ssh_password_auth,
 {
     return set_ssh_password_auth(argv[0]);
 }
-
+Xxxx
 /* Install AAA related vty commands. */
 void
 aaa_vty_init (void)
@@ -850,6 +1084,10 @@ aaa_vty_init (void)
     install_element (CONFIG_NODE, &aaa_no_remove_fallback_cmd);
     install_element (CONFIG_NODE, &radius_server_add_host_cmd);
     install_element (CONFIG_NODE, &radius_server_remove_host_cmd);
+    install_element (CONFIG_NODE, &radius_server_remove_passkey_cmd);
+    install_element (CONFIG_NODE, &radius_server_remove_auth_port_cmd);
+    install_element (CONFIG_NODE, &radius_server_remove_retries_cmd);
+    install_element (CONFIG_NODE, &radius_server_remove_timeout_cmd);
     install_element (CONFIG_NODE, &radius_server_passkey_host_cmd);
     install_element (CONFIG_NODE, &radius_server_retries_cmd);
     install_element (CONFIG_NODE, &radius_server_configure_timeout_cmd);

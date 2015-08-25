@@ -147,6 +147,185 @@ class AutoProvisioning( HalonTest ):
                 return True
         assert 0, "Failed to disable public key authentication"
 
+    def SetRadiusServerHost(self):
+        ''' This function is used to configure the radius server host IP'''
+        s1 = self.net.switches [ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        if 'Unknown command' in out:
+             assert 0, "Failed to enter configuration terminal"
+
+        out = s1.cmdCLI("radius-server host 192.168.1.5")
+        if 'Command failed' in out:
+             assert 0, "Failed to to configure radius server"
+        s1.cmdCLI("exit")
+        out = s1.cmdCLI("show radius-server")
+        lines = out.split("\n")
+        for line in lines:
+            if "Host IP address	: 192.168.1.5" in line:
+                return True
+        assert 0, "Radius server not configured"
+
+    def SetRadiusServerTimeout(self):
+        ''' This function is used to configure radius server Timeout'''
+
+        s1 = self.net.switches [ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        if 'Unknown command' in out:
+             assert 0, "Failed to enter configuration terminal"
+
+        out = s1.cmdCLI("radius-server timeout 10")
+        if 'Command failed' in out:
+             assert 0, "Failed to configure radius server timeout"
+        s1.cmdCLI("exit")
+        out = s1.cmdCLI("show radius-server")
+        lines = out.split("\n")
+        for line in lines:
+            if "Timeout		: 10" in line:
+                return True
+        assert 0, "Radius server not configured"
+
+    def SetRadiusServerRetries(self):
+        '''This function is used to configure radius server Retries'''
+
+
+        s1 = self.net.switches [ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        if 'Unknown command' in out:
+             assert 0, "Failed to enter configuration terminal"
+
+        out = s1.cmdCLI("radius-server retries 2")
+        if 'Command failed' in out:
+             assert 0, "Failed to configure radius server retries"
+        s1.cmdCLI("exit")
+        out = s1.cmdCLI("show radius-server")
+        lines = out.split("\n")
+        for line in lines:
+            if "Retries		: 2" in line:
+                return True
+        assert 0, "Radius server not configured"
+
+    def SetRadiusAuthPort(self):
+        '''This function is used to configure radius server authentication port'''
+
+        s1 = self.net.switches [ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        if 'Unknown command' in out:
+             assert 0, "Failed to enter configuration terminal"
+
+        out = s1.cmdCLI("radius-server host 192.168.1.5 auth-port 3333")
+        if 'Command failed' in out:
+             assert 0, "Failed to configure radius server authentication port"
+        s1.cmdCLI("exit")
+        out = s1.cmdCLI("show radius-server")
+        lines = out.split("\n")
+        for line in lines:
+            if "Auth port		: 3333" in line:
+                return True
+        assert 0, "Radius server not configured"
+
+    def SetRadiuspasskey(self):
+       ''' This function is used to configure radius server passkey'''
+
+       s1 = self.net.switches [ 0 ]
+       out = s1.cmdCLI("configure terminal")
+       if 'Unknown command' in out:
+            assert 0, "Failed to enter configuration terminal"
+
+       out = s1.cmdCLI("radius-server host 192.168.1.5 key halonhost")
+       if 'Command failed' in out:
+             assert 0, "Failed to configure radius server passkey"
+       s1.cmdCLI("exit")
+       out = s1.cmdCLI("show radius-server")
+       lines = out.split("\n")
+       for line in lines:
+           if "Shared secret		: halonhost" in line:
+               return True
+       assert 0, "Radius server not configured"
+
+    def NoRadiusPassky(self):
+       '''This function is used to remove passkey provided and resets to defaults value'''
+
+       s1 = self.net.switches [ 0 ]
+       out = s1.cmdCLI("configure terminal")
+       if 'Unknown command' in out:
+            assert 0, "Failed to enter configuration terminal"
+       out =s1.cmdCLI("radius-server host 192.168.1.5 key halonhost")
+       out = s1.cmdCLI("no radius-server host 192.168.1.5 key halonhost")
+       if 'Command failed' in out:
+             assert 0, "Failed to configure radius server passkey"
+       s1.cmdCLI("exit")
+       out = s1.cmdCLI("show radius-server")
+       lines = out.split("\n")
+       for line in lines:
+           if "Host IP address	: 192.168.1.5" in line:
+               for line in lines:
+                   if "Shared secret		: testing123-1" in line:
+                        return True
+       assert 0, "Radius server not configured"
+
+    def NoRadiusAuthPort(self):
+       '''This function is used to remove authentication port provided and resets to defaults value'''
+
+       s1 = self.net.switches [ 0 ]
+       out = s1.cmdCLI("configure terminal")
+       if 'Unknown command' in out:
+            assert 0, "Failed to enter configuration terminal"
+       out =s1.cmdCLI("radius-server host 192.168.1.5 auth-port 3333")
+       out = s1.cmdCLI("no radius-server host 192.168.1.5 auth-port 3333")
+       if 'Command failed' in out:
+             assert 0, "Failed to configure radius server passkey"
+       s1.cmdCLI("exit")
+       out = s1.cmdCLI("show radius-server")
+       lines = out.split("\n")
+       for line in lines:
+           if "Host IP address	: 192.168.1.5" in line:
+               for line in lines:
+                   if "Auth port		: 1812" in line:
+                        return True
+       assert 0, "Radius server not configured"
+
+    def NoRadiusTimeout(self):
+        ''' This function is used to remove the configured timeout and resets to default radius server Timeout'''
+
+        s1 = self.net.switches [ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        if 'Unknown command' in out:
+             assert 0, "Failed to enter configuration terminal"
+
+        out = s1.cmdCLI("radius-server timeout 10")
+        out = s1.cmdCLI("no radius-server timeout 10")
+        if 'Command failed' in out:
+             assert 0, "Failed to configure radius server timeout"
+        s1.cmdCLI("exit")
+        out = s1.cmdCLI("show radius-server")
+        lines = out.split("\n")
+        for line in lines:
+            if "Timeout		: 5" in line:
+                return True
+        assert 0, "Radius server not configured"
+
+
+    def NoRadiusRetries(self):
+        '''This function is used to remove  radius server Retries and resets to default'''
+
+
+        s1 = self.net.switches [ 0 ]
+        out = s1.cmdCLI("configure terminal")
+        if 'Unknown command' in out:
+             assert 0, "Failed to enter configuration terminal"
+
+        out = s1.cmdCLI("radius-server retries 2")
+        out = s1.cmdCLI("no radius-server retries 2")
+        if 'Command failed' in out:
+             assert 0, "Failed to configure radius server retries"
+        s1.cmdCLI("exit")
+        out = s1.cmdCLI("show radius-server")
+        lines = out.split("\n")
+        for line in lines:
+            if "Retries		: 1" in line:
+                return True
+        assert 0, "Radius server not configured"
+
 class Test_autoProvision:
     def setup(self):
         pass
@@ -187,3 +366,39 @@ class Test_autoProvision:
     def test_DisablePublickeyAuth(self):
         if self.test.DisablePublickeyAuth():
             print 'Passed DisablePublickeyAuth'
+
+    def test_SetRadiusServerHost(self):
+        if self.test.SetRadiusServerHost():
+            print 'Passed RadiusServerHost'
+
+    def test_SetRadiusServerTimeout(self):
+        if self.test.SetRadiusServerTimeout():
+            print 'Passed SetRadiusServerTimeout'
+
+    def test_SetRadiusServerRetries(self):
+        if self.test.SetRadiusServerRetries():
+            print 'passed SetRadiusServerRetrie'
+
+    def test_SetRadiusAuthPort(self):
+        if self.test.SetRadiusAuthPort():
+            print 'passed SetRadiusAuthPort'
+
+    def test_SetRadiuspasskey(self):
+        if self.test.SetRadiuspasskey():
+            print 'passed SetRadiuspasskey'
+
+    def test_NoRadiusPassky(self):
+        if self.test.NoRadiusPassky():
+            print 'passed NoRadiusPassky'
+
+    def test_NoRadiusAuthPort(self):
+        if self.test.NoRadiusAuthPort():
+            print 'passed NoRadiusAuthPort'
+
+    def test_NoRadiusTimeout(self):
+        if self.test.NoRadiusTimeout():
+            print 'passed NoRadiusTimeout'
+
+    def test_NoRadiusRetries(self):
+        if self.test.NoRadiusRetries():
+            print 'passed NoRadiusRetries'
