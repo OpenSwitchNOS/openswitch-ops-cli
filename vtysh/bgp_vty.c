@@ -398,6 +398,7 @@ static void show_routes (struct vty *vty)
                 for (ii = 0; ii < rib_row->n_nexthops; ii++) {
                     if (ii != 0)
                         vty_out (vty, VTY_NEWLINE);
+                    vty_out (vty, "%*s", NET_BUFSZ, " ");
                     nexthop_row = rib_row->nexthops[ii];
                     vty_out (vty, "%-19s", nexthop_row->ip_address);
                 }
