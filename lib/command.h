@@ -480,6 +480,10 @@ struct cmd_token
 
 /* Some macroes */
 #define CMD_OPTION(S)   ((S[0]) == '[')
+/*
+ * HALON_TODO: Not sure what variable is checked in CMD_VARIABLE with '<'
+ * Token syntax verification may change accordingly
+ */
 #define CMD_VARIABLE(S) (((S[0]) >= 'A' && (S[0]) <= 'Z') || ((S[0]) == '<'))
 #define CMD_VARARG(S)   ((S[0]) == '.')
 #define CMD_RANGE(S)	((S[0] == '<'))
