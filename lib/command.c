@@ -810,6 +810,7 @@ enum match_type
   ifname_match,
   port_match,
   vlan_match,
+  mac_match,
 #endif
   range_match,
   vararg_match,
@@ -1153,6 +1154,18 @@ cmd_port_match (const char *str)
 }
 
 static int
+cmd_mac_match (const char *str)
+{
+  if(NULL == lib_vtysh_ovsdb_mac_match)
+    return 1;
+
+  if(((*lib_vtysh_ovsdb_mac_match)(str)) == 0)
+    return 0;
+
+  return 1;
+}
+
+static int
 cmd_vlan_match (const char *str)
 {
   if(NULL == lib_vtysh_ovsdb_vlan_match)
@@ -1283,6 +1296,11 @@ cmd_word_match(struct cmd_token *token,
     {
       if(cmd_vlan_match(word) == 0)
         return vlan_match;
+    }
+  else if (CMD_MAC(str))
+    {
+      if(0 == cmd_mac_match(word))
+         return mac_match;
     }
 #endif
   else if (CMD_OPTION(str) || CMD_VARIABLE(str))
@@ -2015,6 +2033,10 @@ is_cmd_ambiguous (vector cmd_vector,
 		  if (CMD_VLAN(str))
 		    match++;
 		  break;
+                case mac_match:
+		  if (CMD_MAC(str))
+		    match++;
+		  break;
 #endif
 		case extend_match:
 		  if (CMD_OPTION (str) || CMD_VARIABLE (str))
@@ -2110,6 +2132,8 @@ cmd_entry_function_desc (const char *src, const char *dst)
     return dst;
 
   if (CMD_VLAN(dst))
+    return dst;
+  if (CMD_MAC(dst))
     return dst;
 #endif
 

@@ -497,6 +497,7 @@ struct cmd_token
 #define CMD_IFNAME(S)   ((strcmp ((S), "IFNAME") == 0))
 #define CMD_PORT(S)     ((strcmp ((S), "PORT") == 0))
 #define CMD_VLAN(S)     ((strcmp ((S), "VLAN") == 0))
+#define CMD_MAC(S)     ((strcmp ((S), "MAC") == 0))
 #endif
 
 /* Common descriptions. */

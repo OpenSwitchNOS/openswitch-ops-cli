@@ -2955,6 +2955,16 @@ DEFUN (vtysh_demo_cli2,
 		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_DISABLED;
    return CMD_SUCCESS;
 }
+
+DEFUN (vtysh_demo_mac_tok,
+       vtysh_demo_mac_tok_cmd,
+       "demo_mac_tok MAC",
+       "Demo command to check MAC type token\n"
+       "MAC address\n")
+{
+   vty_out(vty,"MAC type token verified:%s%s",argv[0],VTY_NEWLINE);
+   return CMD_SUCCESS;
+}
 #endif
 
 
@@ -3605,6 +3615,7 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
