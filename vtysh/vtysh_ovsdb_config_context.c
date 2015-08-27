@@ -254,7 +254,7 @@ vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 | Return : vtysh_ret_val, e_vtysh_ok
 -----------------------------------------------------------------------------*/
 static vtysh_ret_val
-vtysh_ovsdb_radiusservertable_parse_options(struct ovsrec_radius_server *row, vtysh_ovsdb_cbmsg *p_msg)
+vtysh_ovsdb_radiusservertable_parse_options(const struct ovsrec_radius_server *row, vtysh_ovsdb_cbmsg *p_msg)
 {
     int64_t local_retries = 1;
     char ip[1000]={0}, *ipaddr=NULL,*udp_port=NULL,*timeout=NULL,*passkey=NULL;
@@ -319,7 +319,7 @@ vtysh_display_radiusservertable_commands(void *p_private)
 {
   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
-  struct ovsrec_radius_server *row;
+  const struct ovsrec_radius_server *row;
   int server_count = 0;
 
   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
@@ -421,14 +421,14 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
-        vtysh_ovsdb_cli_print(p_msg, "ssh password-authentication disable");
+        vtysh_ovsdb_cli_print(p_msg, "no ssh password-authentication");
   }
 
   data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION);
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
-        vtysh_ovsdb_cli_print(p_msg, "ssh publickey-authentication disable");
+        vtysh_ovsdb_cli_print(p_msg, "no ssh public-key-authentication");
   }
 
   return e_vtysh_ok;
