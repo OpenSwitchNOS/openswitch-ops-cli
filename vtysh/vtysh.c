@@ -3851,5 +3851,8 @@ vtysh_init_vty (void)
   /* Initialise power supply cli */
   powersupply_vty_init();
   lacp_vty_init();
+
+  /* Initialize ECMP CLI */
+  ecmp_vty_init();
 #endif
 }
