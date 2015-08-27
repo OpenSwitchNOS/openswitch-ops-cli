@@ -564,6 +564,13 @@ char* vtysh_ovsdb_hostname_get()
     return NULL;
 }
 
+/* Wait for database sysnchronization in case *
+ * of command execution outside of vtysh */
+bool vtysh_c_idl_load_tables()
+{
+   return (ovsdb_idl_has_ever_connected(idl));
+}
+
 /*
  * When exiting vtysh destroy the idl cache
  */
