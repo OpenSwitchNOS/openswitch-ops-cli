@@ -438,7 +438,7 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
   if (!port_row) {
     return e_vtysh_ok;
   }
-  if (check_iface_in_bridge(if_name)) {
+  if (!check_iface_in_vrf(if_name)) {
     if (!interfaceNameWritten) {
       vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
     }
