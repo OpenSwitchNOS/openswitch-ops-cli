@@ -1118,6 +1118,9 @@ vty_stop_input (struct vty *vty)
     case VLAN_NODE:
     case LINK_AGGREGATION_NODE:
     case MGMT_INTERFACE_NODE:
+#ifdef ENABLE_OVSDB
+    case VLAN_INTERFACE_NODE:
+#endif
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
