@@ -69,6 +69,8 @@ struct vtysh_alias_data {
 #define OVSDB_ROW_FETCH_ERROR  "Couldn't fetch row from the DB."
 #define OVSDB_TXN_COMMIT_ERROR "Committing transaction to DB failed."
 
+#define MAX_TIMEOUT_FOR_IDL_CHANGE 10
+
 #define OVSDB_INVALID_IPV4_IPV6_ERROR      "Invalid IPv4 or IPv6 address"
 #define OVSDB_INVALID_SUBNET_ERROR    "Invalid subnet address"
 #define OVSDB_INVALID_VALUE_ERROR     "Address entered is not present"
