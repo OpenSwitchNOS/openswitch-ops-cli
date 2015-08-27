@@ -56,6 +56,7 @@ static int aaa_set_global_status(const char *status)
   const struct ovsrec_open_vswitch *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap smap_aaa;
 
   if (status_txn == NULL) {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
@@ -71,14 +72,17 @@ static int aaa_set_global_status(const char *status)
      return CMD_OVSDB_FAILURE;
   }
 
+  smap_clone(&smap_aaa, &row->aaa);
+
   if (strcmp(OPEN_VSWITCH_AAA_RADIUS, status) == 0) {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_RADIUS , HALON_TRUE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_RADIUS , HALON_TRUE_STR);
   }
   else if (strcmp(OPEN_VSWITCH_AAA_RADIUS_LOCAL,status) == 0) {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_RADIUS  ,HALON_FALSE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_RADIUS  ,HALON_FALSE_STR);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &row->aaa);
+  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
+  smap_destroy(&smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
 
@@ -109,6 +113,7 @@ static int aaa_fallback_option(const char *value)
   const struct ovsrec_open_vswitch *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap smap_aaa;
 
   if (status_txn == NULL) {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
@@ -124,14 +129,17 @@ static int aaa_fallback_option(const char *value)
       return CMD_OVSDB_FAILURE;
   }
 
+  smap_clone(&smap_aaa, &row->aaa);
+
   if ((strcmp(value,HALON_TRUE_STR) == 0) ) {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_TRUE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_TRUE_STR);
   }
   else {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_FALSE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_FALSE_STR);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &row->aaa);
+  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
+  smap_destroy(&smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
 
@@ -168,12 +176,10 @@ DEFUN (cli_aaa_no_remove_fallback,
        "Switch login\n"
        "Fallback authentication\n"
        "Radius server unreachable\n"
-	"Local authentication")
+       "Local authentication")
 {
     return aaa_fallback_option(HALON_FALSE_STR);
 }
-
-
 
 static int aaa_show_aaa_authenctication()
 {
@@ -219,8 +225,8 @@ static int radius_server_add_host(const char *ipv4)
 {
   const char  *passkey = RADIUS_SERVER_DEFAULT_PASSKEY;
   int64_t udp_port = 0, timeout = 0, retries = 0, i = 0, priority = 1;
-  const struct ovsrec_radius_server  *tempRow = NULL;
-  struct ovsrec_radius_server **radius_info = NULL, *row = NULL;
+  const struct ovsrec_radius_server *tempRow = NULL, **radius_info = NULL;
+  struct ovsrec_radius_server *row = NULL;
   const struct ovsrec_open_vswitch *ovs = NULL;
   struct in_addr addr;
   struct ovsdb_idl_txn *status_txn = NULL;
@@ -290,7 +296,7 @@ static int radius_server_add_host(const char *ipv4)
       radius_info[i] = ovs->radius_servers[i];
   }
   radius_info[ovs->n_radius_servers] = row;
-  ovsrec_open_vswitch_set_radius_servers(ovs,radius_info,ovs->n_radius_servers + 1);
+  ovsrec_open_vswitch_set_radius_servers(ovs, (struct ovsrec_radius_server**)radius_info, ovs->n_radius_servers + 1);
   free(radius_info);
 
   txn_status = cli_do_config_finish(status_txn);
@@ -462,7 +468,7 @@ static int radius_server_remove_host(const char *ipv4)
   int n = 0,i = 0;
   int64_t priority = 0;
   const struct ovsrec_radius_server *row = NULL, *tempRow = NULL;
-  struct ovsrec_radius_server **radius_info = NULL;
+  const struct ovsrec_radius_server **radius_info = NULL;
   const struct ovsrec_open_vswitch *ovs = NULL;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct in_addr addr;
@@ -519,7 +525,7 @@ static int radius_server_remove_host(const char *ipv4)
           radius_info[n++] = ovs->radius_servers[i];
       }
   }
-  ovsrec_open_vswitch_set_radius_servers(ovs,radius_info,n);
+  ovsrec_open_vswitch_set_radius_servers(ovs, (struct ovsrec_radius_server**)radius_info, n);
   free(radius_info);
 
   txn_status = cli_do_config_finish(status_txn);
@@ -547,7 +553,6 @@ DEFUN (cli_radius_server_remove_host,
 
 static int radius_server_passkey_host(const char *ipv4, const char *passkey)
 {
-  const char  *key= NULL;
   const struct ovsrec_radius_server *row= NULL;
   int ret = 0;
   enum ovsdb_idl_txn_status txn_status;
@@ -871,7 +876,7 @@ static int show_radius_server_info()
       vty_out(vty, " Host IP address\t: %s%s",pp,VTY_NEWLINE);
       vty_out(vty, " Shared secret\t\t: %s%s",passkey,VTY_NEWLINE);
       vty_out(vty, " Auth port\t\t: %s%s",udp,VTY_NEWLINE);
-      vty_out(vty, " Retries\t\t: %lld%s",*(row->retries),VTY_NEWLINE);
+      vty_out(vty, " Retries\t\t: %ld%s",*(row->retries),VTY_NEWLINE);
       vty_out(vty, " Timeout\t\t: %s%s",timeout,VTY_NEWLINE);
   }
 
@@ -985,10 +990,10 @@ static int set_ssh_publickey_auth(const char *status)
 
   smap_clone(&smap_aaa, &row->aaa);
 
-  if (strcmp("enable", status) == 0) {
+  if (strcmp(SSH_AUTH_ENABLE, status) == 0) {
       smap_replace(&smap_aaa, SSH_PUBLICKEY_AUTHENTICATION, SSH_AUTH_ENABLE);
   }
-  else if (strcmp("disable", status) == 0) {
+  else if (strcmp(SSH_AUTH_DISABLE, status) == 0) {
       smap_replace(&smap_aaa, SSH_PUBLICKEY_AUTHENTICATION, SSH_AUTH_DISABLE);
   }
 
@@ -1006,17 +1011,27 @@ static int set_ssh_publickey_auth(const char *status)
   }
 }
 
-/* CLI to enable or disable ssh public key authentication */
+/* CLI to enable ssh public key authentication */
 DEFUN (cli_set_ssh_publickey_auth,
        set_ssh_publickey_auth_cmd,
-       "ssh publickey-authentication (enable | disable)",
+       "ssh public-key-authentication",
        "SSH authentication\n"
-       "Publickey authentication method\n"
-       "Enable publickey authentication\n"
-       "Disable publickey authentication\n")
+       "Enable publickey authentication method\n")
 {
-    return set_ssh_publickey_auth(argv[0]);
+    return set_ssh_publickey_auth(SSH_AUTH_ENABLE);
 }
+
+/* CLI to disable ssh public key authentication */
+DEFUN (cli_no_set_ssh_publickey_auth,
+       no_set_ssh_publickey_auth_cmd,
+       "no ssh public-key-authentication",
+       NO_STR
+       "SSH authentication\n"
+       "Enable publickey authentication method\n")
+{
+    return set_ssh_publickey_auth(SSH_AUTH_DISABLE);
+}
+
 
 static int set_ssh_password_auth(const char *status)
 {
@@ -1041,10 +1056,10 @@ static int set_ssh_password_auth(const char *status)
 
   smap_clone(&smap_aaa, &row->aaa);
 
-  if (strcmp("enable", status) == 0) {
+  if (strcmp(SSH_AUTH_ENABLE, status) == 0) {
       smap_replace(&smap_aaa, SSH_PASSWORD_AUTHENTICATION, SSH_AUTH_ENABLE);
   }
-  else if (strcmp("disable", status) == 0) {
+  else if (strcmp(SSH_AUTH_DISABLE, status) == 0) {
       smap_replace(&smap_aaa, SSH_PASSWORD_AUTHENTICATION, SSH_AUTH_DISABLE);
   }
 
@@ -1062,16 +1077,25 @@ static int set_ssh_password_auth(const char *status)
   }
 }
 
-/* CLI to enable or disable ssh password athentication */
+/* CLI to enable ssh password athentication */
 DEFUN (cli_set_ssh_password_auth,
        set_ssh_password_auth_cmd,
-       "ssh password-authentication (enable | disable)",
+       "ssh password-authentication",
        "SSH authentication\n"
-       "Password authentication method\n"
-       "Enable password authentication\n"
-       "Disable password authentication\n")
+       "Enable password authentication method\n")
 {
-    return set_ssh_password_auth(argv[0]);
+    return set_ssh_password_auth(SSH_AUTH_ENABLE);
+}
+
+/* CLI to disable ssh password athentication */
+DEFUN (cli_no_set_ssh_password_auth,
+       no_set_ssh_password_auth_cmd,
+       "no ssh password-authentication",
+       NO_STR
+       "SSH authentication\n"
+       "Enable password authentication method\n")
+{
+    return set_ssh_password_auth(SSH_AUTH_DISABLE);
 }
 /* Install AAA related vty commands. */
 void
@@ -1095,5 +1119,7 @@ aaa_vty_init (void)
     install_element (ENABLE_NODE, &show_auto_provisioning_cmd);
     install_element (ENABLE_NODE, &show_ssh_auth_method_cmd);
     install_element (CONFIG_NODE, &set_ssh_publickey_auth_cmd);
+    install_element (CONFIG_NODE, &no_set_ssh_publickey_auth_cmd);
     install_element (CONFIG_NODE, &set_ssh_password_auth_cmd);
+    install_element (CONFIG_NODE, &no_set_ssh_password_auth_cmd);
 }
