@@ -68,7 +68,7 @@ class AutoProvisioning( HalonTest ):
         if 'Unknown command' in out:
             assert 0, "Failed to enter configuration terminal"
 
-        out = s1.cmdCLI("ssh password-authentication enable")
+        out = s1.cmdCLI("ssh password-authentication")
         if 'Command failed' in out:
             assert 0, "Failed to enable local authentication"
 
@@ -90,7 +90,7 @@ class AutoProvisioning( HalonTest ):
         if 'Unknown command' in out:
             assert 0, "Failed to enter configuration terminal"
 
-        out = s1.cmdCLI("ssh password-authentication disable")
+        out = s1.cmdCLI("no ssh password-authentication")
         if 'Command failed' in out:
             assert 0, "Failed to enable local authentication"
 
@@ -112,7 +112,7 @@ class AutoProvisioning( HalonTest ):
         if 'Unknown command' in out:
             assert 0, "Failed to enter configuration terminal"
 
-        out = s1.cmdCLI("ssh publickey-authentication enable")
+        out = s1.cmdCLI("ssh public-key-authentication")
         if 'Command failed' in out:
             assert 0, "Failed to enable local authentication"
 
@@ -134,7 +134,7 @@ class AutoProvisioning( HalonTest ):
         if 'Unknown command' in out:
             assert 0, "Failed to enter configuration terminal"
 
-        out = s1.cmdCLI("ssh publickey-authentication disable")
+        out = s1.cmdCLI("no ssh public-key-authentication")
         if 'Command failed' in out:
             assert 0, "Failed to enable local authentication"
 
