@@ -268,7 +268,7 @@ alias_ovsdb_init(struct ovsdb_idl *idl)
 }
 
 static void
-radius_server_ovsdb_init(struct ovsd_idl *idl)
+radius_server_ovsdb_init()
 {
 
     /* Add radius-server columns */
@@ -441,7 +441,7 @@ ovsdb_init(const char *db_path)
     vrf_ovsdb_init(idl);
 
     /* Radius server table */
-    radius_server_ovsdb_init(idl);
+    radius_server_ovsdb_init();
 
     /* Policy tables */
     policy_ovsdb_init(idl);
