@@ -2534,6 +2534,38 @@ DEFUN (no_neighbor_nexthop_self,
     return CMD_SUCCESS;
 }
 
+static int
+cli_neighbor_remove_private_as_cmd_execute (struct vty *vty,
+    int argc, char *argv[])
+{
+    char *ip_addr = argv[0];
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    const bool remove_private_as = true;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+    if (bgp_router_context) {
+#ifdef EXTRA_DEBUG
+        vty_out(vty, "in router asn %d\n", bgp_router_context->asn);
+#endif // EXTRA_DEBUG
+    } else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ABORT_DB_TXN(txn, "no neighbor");
+    }
+    if (ovs_bgp_neighbor->remove_private_as) {
+        ABORT_DB_TXN(txn, "no op command");
+    }
+    ovsrec_bgp_neighbor_set_remove_private_as(ovs_bgp_neighbor, &remove_private_as, 1);
+    END_DB_TXN(txn);
+}
+
 /* neighbor remove-private-AS. */
 DEFUN (neighbor_remove_private_as,
        neighbor_remove_private_as_cmd,
@@ -2542,8 +2574,43 @@ DEFUN (neighbor_remove_private_as,
        NEIGHBOR_ADDR_STR2
        "Remove private AS number from outbound updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    if (argc != 1) {
+        vty_out(vty, "\nargc should be 1, it is %d; %s: %d\n",
+            argc, __FILE__, __LINE__);
+        return CMD_WARNING;
+    }
+    return cli_neighbor_remove_private_as_cmd_execute(vty, argc, argv);
+}
+
+static int
+cli_no_neighbor_remove_private_as_cmd_execute (struct vty *vty,
+    int argc, char *argv[])
+{
+    char *ip_addr = argv[0];
+    struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vty->index);
+    if (bgp_router_context) {
+#ifdef EXTRA_DEBUG
+        vty_out(vty, "in router asn %d\n", bgp_router_context->asn);
+#endif // EXTRA_DEBUG
+    } else {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ABORT_DB_TXN(txn, "no neighbor");
+    }
+    if (!ovs_bgp_neighbor->remove_private_as) {
+        ABORT_DB_TXN(txn, "no op command");
+    }
+    ovsrec_bgp_neighbor_set_remove_private_as(ovs_bgp_neighbor,NULL, 0);
+    END_DB_TXN(txn);
 }
 
 DEFUN (no_neighbor_remove_private_as,
@@ -2554,8 +2621,12 @@ DEFUN (no_neighbor_remove_private_as,
        NEIGHBOR_ADDR_STR2
        "Remove private AS number from outbound updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+     if (argc != 1) {
+        vty_out(vty, "\nargc should be 1, it is %d; %s: %d\n",
+            argc, __FILE__, __LINE__);
+        return CMD_WARNING;
+    }
+    return cli_no_neighbor_remove_private_as_cmd_execute(vty, argc, argv);
 }
 
 /* neighbor send-community. */
