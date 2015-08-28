@@ -923,6 +923,7 @@ int check_internal_vlan(uint16_t vlanid)
             VLOG_DBG("%s Used internally for l3 interface", __func__);
             /* now check if this vlan is used for creating vlan interface */
             if (vlanid == vlan_row->id) {
+                VLOG_DBG("%s This is a internal vlan = %d", __func__, vlanid);
                 return 0;
             }
         }
@@ -986,7 +987,7 @@ int create_vlan_interface(const char *vlan_if)
 
     /* If both port and interface exists return success nothing to change here */
     if (intf_exist == true && port_exist == true) {
-        VLOG_DBG("%s Both interface and port exists for this Vlan interface name", __func__);
+        VLOG_ERR("%s Both interface and port exists for this Vlan interface name", __func__);
         cli_do_config_finish(status_txn);
         return CMD_SUCCESS;
     } else if (!(intf_exist == false && port_exist == false)) {
@@ -1225,9 +1226,9 @@ verify_ifname(char *str)
             vlanid = strtol(str, &endptr, 10);
             VLOG_DBG("%s vlanid = %d, str = %s\n", __func__, vlanid, str);
             if ((*endptr != '\0')  || /* There are characters after <vlan id> */
-                    (vlanid <= 0 && vlanid >= 4094) ||
+                    (vlanid <= 0 || vlanid >= 4095) ||
                     (check_internal_vlan(vlanid) == 0)) {
-                VLOG_DBG("%s Check failed for valid input", __func__);
+                VLOG_DBG("Invalid input!! Enter valid VLAN id in the range of <1 to 4094>\n");
                 return 0;
             }
             break;
