@@ -68,6 +68,12 @@ vtysh_mgmt_intf_context_clientcallback(void *p_private)
         subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
         if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
             vtysh_ovsdb_cli_print(p_msg, "%4sip static %s %s","",ip,subnet);
+
+        ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
+        if (ip && (strcmp(ip,MGMT_INTF_DEFAULT_IPV6) != 0))
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4sip static %s","",ip);
+        }
     }
     else
         return e_vtysh_ok;
@@ -77,6 +83,14 @@ vtysh_mgmt_intf_context_clientcallback(void *p_private)
     {
         vtysh_ovsdb_cli_print(p_msg, "%4sdefault-gateway %s","",data);
     }
+/* Ipv6 show running commands */
+
+    data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
+    if (data && (strcmp(data,MGMT_INTF_DEFAULT_IPV6) != 0))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "%4sdefault-gateway %s","",data);
+    }
+
     dns_1 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
     dns_2 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
     if (dns_1 && dns_2 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0) &&

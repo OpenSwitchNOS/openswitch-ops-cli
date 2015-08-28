@@ -37,6 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "vty_utils.h"
 #endif
 
+#define MAX_CMD_LEN 256
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec = NULL;
@@ -809,6 +810,7 @@ enum match_type
   ifname_match,
   port_match,
   vlan_match,
+  mac_match,
 #endif
   range_match,
   vararg_match,
@@ -1152,6 +1154,18 @@ cmd_port_match (const char *str)
 }
 
 static int
+cmd_mac_match (const char *str)
+{
+  if(NULL == lib_vtysh_ovsdb_mac_match)
+    return 1;
+
+  if(((*lib_vtysh_ovsdb_mac_match)(str)) == 0)
+    return 0;
+
+  return 1;
+}
+
+static int
 cmd_vlan_match (const char *str)
 {
   if(NULL == lib_vtysh_ovsdb_vlan_match)
@@ -1283,6 +1297,11 @@ cmd_word_match(struct cmd_token *token,
       if(cmd_vlan_match(word) == 0)
         return vlan_match;
     }
+  else if (CMD_MAC(str))
+    {
+      if(0 == cmd_mac_match(word))
+         return mac_match;
+    }
 #endif
   else if (CMD_OPTION(str) || CMD_VARIABLE(str))
     {
@@ -1376,7 +1395,9 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
 {
   const char *word;
   enum match_type word_match;
-
+  static char szToken[MAX_CMD_LEN] = {0};
+  char* temp = NULL;
+  int nCopysize = 0;
   assert(token->type == TOKEN_TERMINAL);
 
   if (!cmd_matcher_words_left(matcher))
@@ -1395,12 +1416,22 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
   /* We have to record the input word as argument if it matched
    * against a variable. */
   if (CMD_VARARG(token->cmd)
-      || CMD_VARIABLE(token->cmd)
-      || CMD_OPTION(token->cmd))
+      || CMD_VARIABLE(token->cmd))
     {
       if (push_argument(argc, argv, word))
         return MATCHER_EXCEED_ARGC_MAX;
     }
+  /* For pushing complete token for '[]' tokens */
+  else if (CMD_OPTION(token->cmd))
+  {
+     /* Before pushing the token remove '[' and ']'*/
+     /* increment to point to next byte after */
+     temp = strchr(token->cmd,'[') + 1;
+     nCopysize = strlen(token->cmd)-2;
+     strncpy(szToken,temp,nCopysize);
+     if (push_argument(argc, argv, (const char*)szToken))
+        return MATCHER_EXCEED_ARGC_MAX;
+  }
 
   cmd_matcher_record_match(matcher, word_match, token);
 
@@ -1430,7 +1461,6 @@ cmd_matcher_match_multiple(struct cmd_matcher *matcher,
   const char *arg;
   struct cmd_token *word_token;
   enum match_type word_match;
-
   assert(token->type == TOKEN_MULTIPLE);
 
   multiple_match = no_match;
@@ -1454,7 +1484,10 @@ cmd_matcher_match_multiple(struct cmd_matcher *matcher,
       if (word_match > multiple_match)
         {
           multiple_match = word_match;
-          arg = word;
+          if(partly_match == word_match)
+                arg = word_token->cmd;
+          else
+                arg = word;
         }
       /* To mimic the behavior of the old command implementation, we
        * tolerate any ambiguities here :/ */
@@ -1487,7 +1520,6 @@ cmd_matcher_read_keywords(struct cmd_matcher *matcher,
   int keyword_argc;
   const char **keyword_argv;
   enum matcher_rv rv = MATCHER_NO_MATCH;
-
   keyword_mask = 0;
   while (1)
     {
@@ -1587,11 +1619,12 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
                                vector keyword_args_vector)
 {
   unsigned int i, j;
-  const char **keyword_args;
+  const char **keyword_args = NULL;
   vector keyword_vector;
   struct cmd_token *word_token;
-  const char *arg;
+  const char *arg = NULL;
   enum matcher_rv rv;
+  enum match_type match_type = no_match;
 
   rv = MATCHER_OK;
 
@@ -1609,15 +1642,22 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
           if (keyword_args)
             {
               word_token = vector_slot(keyword_vector, 0);
-              arg = word_token->cmd;
-            }
-          else
-            {
-              arg = NULL;
+              if (match_type = cmd_word_match(word_token,FILTER_RELAXED,
+                               (const char *)matcher->vline->index[(matcher->word_index) - 1]))
+              {
+                    if(partly_match == match_type)
+                          arg = word_token->cmd;
+                    else
+                          arg = (const char *)matcher->vline->index[(matcher->word_index) - 1];
+              }
+              else
+              {
+                    rv = MATCHER_INCOMPLETE;
+              }
             }
 
-          if (push_argument(argc, argv, arg))
-            rv = MATCHER_EXCEED_ARGC_MAX;
+            if (push_argument(argc, argv, arg))
+                 rv = MATCHER_EXCEED_ARGC_MAX;
         }
       else
         {
@@ -1662,7 +1702,6 @@ cmd_matcher_match_keyword(struct cmd_matcher *matcher,
   vector keyword_args_vector;
   enum matcher_rv reader_rv;
   enum matcher_rv builder_rv;
-
   assert(token->type == TOKEN_KEYWORD);
 
   if (argc && argv)
@@ -1994,6 +2033,10 @@ is_cmd_ambiguous (vector cmd_vector,
 		  if (CMD_VLAN(str))
 		    match++;
 		  break;
+                case mac_match:
+		  if (CMD_MAC(str))
+		    match++;
+		  break;
 #endif
 		case extend_match:
 		  if (CMD_OPTION (str) || CMD_VARIABLE (str))
@@ -2089,6 +2132,8 @@ cmd_entry_function_desc (const char *src, const char *dst)
     return dst;
 
   if (CMD_VLAN(dst))
+    return dst;
+  if (CMD_MAC(dst))
     return dst;
 #endif
 

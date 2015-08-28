@@ -21,6 +21,8 @@
 
 #ifdef ENABLE_OVSDB
 #include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
 #include <vty_utils.h>
 #include "vtysh/vtysh_ovsdb_if.h"
 #else
@@ -56,6 +58,7 @@
 #endif
 
 #include "aaa_vty.h"
+#include "vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -64,6 +67,13 @@ int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 
 #endif
+
+
+#define IS_IPV6_GLOBAL_UNICAST(i) !(IN6_IS_ADDR_UNSPECIFIED(i) | IN6_IS_ADDR_LOOPBACK(i) | \
+                                    IN6_IS_ADDR_SITELOCAL(i)  |  IN6_IS_ADDR_MULTICAST(i)| \
+                                    IN6_IS_ADDR_LINKLOCAL(i))
+
+#define MINIMUM(x,y) (x < y) ? x : y
 
 /* Struct VTY. */
 struct vty *vty;
@@ -2718,7 +2728,12 @@ DEFUN (vtysh_passwd,
        "Change user password \n"
        "User whose password is to be changed\n")
 {
-  execute_command ("passwd", 1, argv);
+
+  char *arg[2];
+  arg[0] = "passwd";
+  arg[1] = argv[0];
+  execute_command("sudo", 2,(const char **)arg);
+
   return CMD_SUCCESS;
 }
 
@@ -2943,6 +2958,16 @@ DEFUN (vtysh_demo_cli2,
 		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_NOT_ENABLED;
 	if(3 == val)
 		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_DISABLED;
+   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_demo_mac_tok,
+       vtysh_demo_mac_tok_cmd,
+       "demo_mac_tok MAC",
+       "Demo command to check MAC type token\n"
+       "MAC address\n")
+{
+   vty_out(vty,"MAC type token verified:%s%s",argv[0],VTY_NEWLINE);
    return CMD_SUCCESS;
 }
 #endif
@@ -3444,19 +3469,50 @@ void alias_vty_init()
 int is_valid_ip_address(const char *ip_value)
 {
     struct in_addr addr;
+    struct in6_addr addrv6;
+    boolean  is_ipv4 = TRUE;
+    unsigned int ipv6_length;
+    char ipv6addr[MAX_IPV6_STRING_LENGTH];
+    memset(ipv6addr, 0, MAX_IPV6_STRING_LENGTH);
+
     memset (&addr, 0, sizeof (struct in_addr));
+    memset (&addrv6, 0, sizeof (struct in6_addr));
+
+    if(NULL == ip_value)
+    {
+        VLOG_ERR("Invalid IPv4 or IPv6 address\n");
+        return FALSE;
+    }
+    ipv6_length = MINIMUM(strlen(ip_value),MAX_IPV6_STRING_LENGTH);
 
     if(inet_pton(AF_INET, ip_value,&addr) <= 0)
     {
-        return 0;
+
+        strncpy(ipv6addr,ip_value,ipv6_length);
+        ipv6addr[ipv6_length + 1] = "\0";
+        strtok(ipv6addr,"/");
+
+        if(inet_pton(AF_INET6, ipv6addr, &addrv6) <= 0)
+        {
+            VLOG_ERR("Invalid IPv4 or IPv6 address\n");
+            return FALSE;
+        }
+        is_ipv4 = FALSE;
     }
 
-    if(!IS_VALID_IPV4(htonl(addr.s_addr)))
+    if((is_ipv4) && (!IS_VALID_IPV4(htonl(addr.s_addr))))
     {
-        return 0;
+        VLOG_ERR("IPv4: Broadcast, multicast and loopback addresses are not allowed\n");
+        return FALSE;
     }
 
-    return 1;
+    if((!is_ipv4) && (!IS_IPV6_GLOBAL_UNICAST(&addrv6)))
+    {
+        VLOG_ERR("IPv6: Link-local, multicast and loopback addresses are not allowed\n");
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 int is_valid_ip_subnet_mask(const char *subnet_value)
@@ -3564,6 +3620,7 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
+  install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
