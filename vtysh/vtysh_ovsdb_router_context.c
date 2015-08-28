@@ -40,12 +40,99 @@ char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
 |     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
+/*vtysh_ret_val
+vtysh_router_context_bgp_clientcallback(void *p_private)
+{
+  /* HALON-TODO /
+  return e_vtysh_ok;
+}*/
+
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_neighbor_callback
+| Responsibility : Neighbor commands
+| Parameters :
+|     vtysh_ovsdb_cbmsg_ptr p_msg: struct vtysh_ovsdb_cbmsg_struct *
+| Return : void
+-----------------------------------------------------------------------------*/
+
+void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
+{
+   struct ovsrec_bgp_neighbor *ovs_bgp_neighbor=NULL;
+   int i=0;
+
+    OVSREC_BGP_NEIGHBOR_FOR_EACH(ovs_bgp_neighbor, p_msg->idl)
+    {
+       vtysh_ovsdb_cli_print(p_msg,"    neighbor %s remote-as %d",ovs_bgp_neighbor->name,*(ovs_bgp_neighbor->remote_as));
+
+       if(ovs_bgp_neighbor->description)
+         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s description %s",ovs_bgp_neighbor->name,ovs_bgp_neighbor->description);
+
+       if(ovs_bgp_neighbor->password)
+         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s password %s",ovs_bgp_neighbor->name,ovs_bgp_neighbor->password);
+
+       if(ovs_bgp_neighbor->n_timers > 0)
+         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s timers %d %d",ovs_bgp_neighbor->name,ovs_bgp_neighbor->value_timers[0],ovs_bgp_neighbor->value_timers[1]);
+
+       i=0;
+       while(i< ovs_bgp_neighbor->n_route_maps)
+       {
+          vtysh_ovsdb_cli_print(p_msg,"    neighbor %s route-map %s %s",ovs_bgp_neighbor->name,ovs_bgp_neighbor->value_route_maps[i]->name,ovs_bgp_neighbor->key_route_maps[i]);
+          i++;
+       }
+
+       if(ovs_bgp_neighbor->n_allow_as_in)
+         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s allowas-in %d",ovs_bgp_neighbor->name,*(ovs_bgp_neighbor->allow_as_in));
+
+       if(ovs_bgp_neighbor->n_remove_private_as)
+         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s remove-private-AS",ovs_bgp_neighbor->name);
+    }
+}
+
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_clientcallback
+| Responsibility : client callback routine
+| Parameters :
+     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
 vtysh_ret_val
 vtysh_router_context_bgp_clientcallback(void *p_private)
 {
-  /* HALON-TODO */
-  return e_vtysh_ok;
+   struct ovsrec_bgp_router *bgp_router_context=NULL;
+   int i=0;
+
+   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+
+   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                           "vtysh_context_router_bgp_clientcallback entered");
+
+
+   OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_context,p_msg->idl)
+   {
+      vtysh_ovsdb_cli_print(p_msg,"%s %d","router bgp ",bgp_router_context->asn);
+
+      if(bgp_router_context->router_id)
+        vtysh_ovsdb_cli_print(p_msg,"%s %s","    bgp router-id ",bgp_router_context->router_id);
+
+      while(i < bgp_router_context->n_networks)
+      {
+        vtysh_ovsdb_cli_print(p_msg,"%s %s","    network ",bgp_router_context->networks[i]);
+        i++;
+      }
+
+      if(bgp_router_context->n_maximum_paths)
+        vtysh_ovsdb_cli_print(p_msg,"    maximum-paths %d",*(bgp_router_context->maximum_paths));
+   }
+
+    vtysh_router_context_bgp_neighbor_callback(p_msg);
+
+    vtysh_ovsdb_cli_print(p_msg,"!");
+
+   return e_vtysh_ok;
 }
+
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_ospf_clientcallback
@@ -71,8 +158,8 @@ int
 vtysh_init_router_context_clients()
 {
   vtysh_context_client client;
-  vtysh_ret_val retval = e_vtysh_error;
 
+  vtysh_ret_val retval = e_vtysh_error;
   client.p_client_name = routercontextbgpclientname;
   client.client_id = e_vtysh_router_context_bgp;
   client.p_callback = &vtysh_router_context_bgp_clientcallback;
