@@ -1,0 +1,10 @@
+Verified-1: Zuul <zuul@lists.openswitch.net>
+Code-Review+2: Madhulika Madishetty <madhulika.madishetty@hp.com>
+Workflow+1: Cihangir Akyol <cihangir.m.akyol@hpe.com>
+Verified+2: jennahung <jenna.hung@hpe.com>
+Verified+2: Diego Dompe <dompe@hp.com>
+Submitted-by: Diego Dompe <dompe@hp.com>
+Submitted-at: Fri, 28 Aug 2015 18:42:24 +0000
+Reviewed-on: https://review.openswitch.net/33
+Project: openswitch/ops-cli
+Branch: refs/heads/master
