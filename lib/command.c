@@ -1396,10 +1396,12 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
   const char *word;
   enum match_type word_match;
   static char szToken[MAX_CMD_LEN] = {0};
+  struct cmd_token temptoken;
   char* temp = NULL;
   int nCopysize = 0;
-  assert(token->type == TOKEN_TERMINAL);
 
+  assert(token->type == TOKEN_TERMINAL);
+  memset(&temptoken,0,sizeof(struct cmd_token));
   if (!cmd_matcher_words_left(matcher))
     {
       if (CMD_OPTION(token->cmd))
@@ -1424,13 +1426,41 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
   /* For pushing complete token for '[]' tokens */
   else if (CMD_OPTION(token->cmd))
   {
-     /* Before pushing the token remove '[' and ']'*/
-     /* increment to point to next byte after */
-     temp = strchr(token->cmd,'[') + 1;
-     nCopysize = strlen(token->cmd)-2;
-     strncpy(szToken,temp,nCopysize);
-     if (push_argument(argc, argv, (const char*)szToken))
-        return MATCHER_EXCEED_ARGC_MAX;
+    /* Before pushing the token remove '[' and ']'*/
+    /* increment to point to next byte after */
+    temp = strchr(token->cmd,'[') + 1;
+    nCopysize = strlen(token->cmd)-2;
+    strncpy(szToken,temp,nCopysize);
+    memcpy(&temptoken,token,sizeof(struct cmd_token));
+    temptoken.cmd = XSTRDUP(MTYPE_CMD_TOKENS,szToken);
+
+    word_match = cmd_word_match(&temptoken, matcher->filter, word);
+    /* .LINE cannot be an optional type toke ([]) */
+    if ((no_match == word_match) ||
+        (vararg_match == word_match))
+    {
+       XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
+       return MATCHER_NO_MATCH;
+    }
+    else if ((partly_match == word_match) ||
+         (exact_match == word_match))
+    {
+       if (push_argument(argc, argv, szToken))
+       {
+         XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
+         return MATCHER_EXCEED_ARGC_MAX;
+       }
+    }
+    else
+    {
+       if (push_argument(argc, argv, word))
+       {
+         XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
+         return MATCHER_EXCEED_ARGC_MAX;
+       }
+    }
+    word_match = extend_match;
+    XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
   }
 
   cmd_matcher_record_match(matcher, word_match, token);
