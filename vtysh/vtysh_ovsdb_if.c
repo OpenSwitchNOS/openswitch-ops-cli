@@ -724,6 +724,8 @@ int vtysh_ovsdb_mac_match(const char *str)
      }
      i++;
   }
+  if('\0' != str[MAX_MACADDR_LEN])
+     return 1;
 
   return 0;
 }
