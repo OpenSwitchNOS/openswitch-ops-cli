@@ -1395,9 +1395,6 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
 {
   const char *word;
   enum match_type word_match;
-  static char szToken[MAX_CMD_LEN] = {0};
-  char* temp = NULL;
-  int nCopysize = 0;
   assert(token->type == TOKEN_TERMINAL);
 
   if (!cmd_matcher_words_left(matcher))
@@ -1416,22 +1413,13 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
   /* We have to record the input word as argument if it matched
    * against a variable. */
   if (CMD_VARARG(token->cmd)
-      || CMD_VARIABLE(token->cmd))
+      || CMD_VARIABLE(token->cmd)
+      || CMD_OPTION(token->cmd))
     {
+      /* HALON_TODO : Validating each optional token */
       if (push_argument(argc, argv, word))
         return MATCHER_EXCEED_ARGC_MAX;
     }
-  /* For pushing complete token for '[]' tokens */
-  else if (CMD_OPTION(token->cmd))
-  {
-     /* Before pushing the token remove '[' and ']'*/
-     /* increment to point to next byte after */
-     temp = strchr(token->cmd,'[') + 1;
-     nCopysize = strlen(token->cmd)-2;
-     strncpy(szToken,temp,nCopysize);
-     if (push_argument(argc, argv, (const char*)szToken))
-        return MATCHER_EXCEED_ARGC_MAX;
-  }
 
   cmd_matcher_record_match(matcher, word_match, token);
 
