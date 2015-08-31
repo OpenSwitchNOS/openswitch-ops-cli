@@ -1141,7 +1141,7 @@ DEFUNSH (VTYSH_RMAP,
    return CMD_SUCCESS;
 }
 #endif
-
+#ifndef ENABLE_OVSDB
 DEFUNSH (VTYSH_ALL,
       vtysh_line_vty,
       vtysh_line_vty_cmd,
@@ -1152,6 +1152,7 @@ DEFUNSH (VTYSH_ALL,
    vty->node = VTY_NODE;
    return CMD_SUCCESS;
 }
+#endif
 
 DEFUNSH (VTYSH_ALL,
       vtysh_enable,
@@ -1746,16 +1747,6 @@ DEFUN (vtysh_interface_mgmt,
   vty->node = MGMT_INTERFACE_NODE;
   return CMD_SUCCESS;
 }
-DEFUN ( vtysh_mult_cxt_test,
-      vtysh_mult_cxt_test_cmd,
-      "test-interfaceCxt",
-      "Prints the interface context number\n")
-{
-   if (vty->index)
-      printf("The current context is %s\n",(char*)vty->index);
-
-   return CMD_SUCCESS;
-}
 #else
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_interface,
@@ -1846,65 +1837,8 @@ DEFUN (vtysh_show_memory,
    return ret;
 }
 
-#ifdef ENABLE_OVSDB
 
-DEFUN (vtysh_test_port,
-      vtysh_test_port_cmd,
-      "test-port PORT",
-      "Testing the type PORT\n"
-      "Give a valid port value present in the DB\n")
-{
-   printf("The port given is %s\n", argv[0]);
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_test_vlan,
-      vtysh_test_vlan_cmd,
-      "test-vlan VLAN",
-      "Testing the type VLAN\n"
-      "Give a valid vlan value present in the DB\n")
-{
-   printf("The vlan given is %s\n", argv[0]);
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_test_interface,
-      vtysh_test_interface_cmd,
-      "test-interface IFNAME",
-      "Testing the type Interface\n"
-      "Give a valid interface value present in the DB\n")
-{
-   printf("The interface given is %s\n", argv[0]);
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_test_ip,
-      vtysh_test_ip_cmd,
-      "test-ip (A.B.C.D|X:X::X:X)",
-      "Testing the type ip\n"
-      "Give a valid ipv4 address\n"
-      "Give a valid ipv6 address\n")
-{
-   if (argv)
-      printf("The ip address given is %s\n", argv[0]);
-   else
-      printf("The argument is NULL\n");
-
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_test_regex,
-      vtysh_test_regex_cmd,
-      "test-regex WORD",
-      "Testing the input for regex\n"
-      "Enter regex\n")
-{
-   if(vtysh_regex_match("regex", argv[0]) == 0)
-      printf("We matched successfully\n");
-   return CMD_SUCCESS;
-}
-#endif /* ENABLE_OVSDB */
-
+#ifndef ENABLE_OVSDB
 /* Logging commands. */
 DEFUN (vtysh_show_logging,
       vtysh_show_logging_cmd,
@@ -2165,6 +2099,7 @@ DEFUNSH (VTYSH_ALL,
 {
    return CMD_SUCCESS;
 }
+#endif
 
 DEFUNSH (VTYSH_ALL,
       vtysh_service_password_encrypt,
@@ -2448,6 +2383,7 @@ ALIAS (vtysh_write_terminal,
       "Current operating configuration\n")
 #endif /* ENABLE_OVSDB */
 
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_terminal_length,
       vtysh_terminal_length_cmd,
       "terminal length <0-512>",
@@ -2497,6 +2433,7 @@ DEFUN (vtysh_terminal_no_length,
    vtysh_pager_init();
    return CMD_SUCCESS;
 }
+#endif
 
 DEFUN (vtysh_show_daemons,
       vtysh_show_daemons_cmd,
@@ -2928,38 +2865,6 @@ DEFUN(vtysh_user_del,
        return CMD_SUCCESS;
 }
 
-DEFUN (vtysh_demo_cli1,
-      vtysh_demo_cli1_cmd,
-      "demo_cli to_be_hidden",
-      "Sprint 1 Demo Cli command\n"
-      "This cli will be hidden/disabled during runtime.\n")
-{
-	if (vty_flags & CMD_FLAG_NO_CMD)
-	{
-		vty_out(vty, "Demo Cli executed, with \"no\" flag ON.\n");
-	}
-	else
-	{
-      vty_out(vty, "Demo Cli executed.\n");
-	}
-}
-
-DEFUN (vtysh_demo_cli2,
-      vtysh_demo_cli2_cmd,
-      "hide demo_cli level <0-3>",
-      "Hide the demo cli\ndemo_cli to_be_hidden\n0: Active, 1: Hide, 2: Not active, 3: Disabled.\n")
-{
-   int val = atoi(argv[0]);
-
-	vtysh_demo_cli1_cmd.attr &= ~(CMD_ATTR_HIDDEN | CMD_ATTR_NOT_ENABLED | CMD_ATTR_DISABLED);
-	if(1 == val)
-		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_HIDDEN;
-	if(2 == val)
-		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_NOT_ENABLED;
-	if(3 == val)
-		vtysh_demo_cli1_cmd.attr |= CMD_ATTR_DISABLED;
-   return CMD_SUCCESS;
-}
 
 DEFUN (vtysh_demo_mac_tok,
        vtysh_demo_mac_tok_cmd,
@@ -3605,21 +3510,8 @@ vtysh_init_vty (void)
    vtysh_install_default (VTY_NODE);
 
 #ifdef ENABLE_OVSDB
-  install_element (VIEW_NODE, &vtysh_test_port_cmd);
-  install_element (ENABLE_NODE, &vtysh_test_port_cmd);
-  install_element (VIEW_NODE, &vtysh_test_vlan_cmd);
-  install_element (ENABLE_NODE, &vtysh_test_vlan_cmd);
-  install_element (VIEW_NODE, &vtysh_test_interface_cmd);
-  install_element (ENABLE_NODE, &vtysh_test_interface_cmd);
-  install_element (VIEW_NODE, &vtysh_test_ip_cmd);
-  install_element (ENABLE_NODE, &vtysh_test_ip_cmd);
-  install_element (VIEW_NODE, &vtysh_test_regex_cmd);
-  install_element (ENABLE_NODE, &vtysh_test_regex_cmd);
-  install_element (INTERFACE_NODE, &vtysh_mult_cxt_test_cmd);
   install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
   install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
-  install_element(CONFIG_NODE, &vtysh_demo_cli1_cmd);
-  install_element(CONFIG_NODE, &vtysh_demo_cli2_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 #endif /* ENABLE_OVSDB */
 
@@ -3721,7 +3613,9 @@ vtysh_init_vty (void)
    install_element (BGP_IPV6M_NODE, &exit_address_family_cmd);
    install_element (CONFIG_NODE, &key_chain_cmd);
    //install_element (CONFIG_NODE, &route_map_cmd);
+#ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_line_vty_cmd);
+#endif
    install_element (KEYCHAIN_NODE, &key_cmd);
    install_element (KEYCHAIN_NODE, &key_chain_cmd);
    install_element (KEYCHAIN_KEY_NODE, &key_chain_cmd);
@@ -3756,10 +3650,12 @@ vtysh_init_vty (void)
   /* "write memory" command. */
   install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
 #endif
+#ifndef ENABLE_OVSDB
   install_element (VIEW_NODE, &vtysh_terminal_length_cmd);
   install_element (ENABLE_NODE, &vtysh_terminal_length_cmd);
   install_element (VIEW_NODE, &vtysh_terminal_no_length_cmd);
   install_element (ENABLE_NODE, &vtysh_terminal_no_length_cmd);
+#endif
   install_element (VIEW_NODE, &vtysh_show_daemons_cmd);
   install_element (ENABLE_NODE, &vtysh_show_daemons_cmd);
 #ifdef ENABLE_OVSDB
@@ -3797,7 +3693,7 @@ vtysh_init_vty (void)
 #endif
   install_element (VIEW_NODE, &vtysh_show_memory_cmd);
   install_element (ENABLE_NODE, &vtysh_show_memory_cmd);
-
+#ifndef ENABLE_OVSDB
   /* Logging */
   install_element (ENABLE_NODE, &vtysh_show_logging_cmd);
   install_element (VIEW_NODE, &vtysh_show_logging_cmd);
@@ -3822,6 +3718,7 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_log_record_priority_cmd);
   install_element (CONFIG_NODE, &vtysh_log_timestamp_precision_cmd);
   install_element (CONFIG_NODE, &no_vtysh_log_timestamp_precision_cmd);
+#endif
   install_element (CONFIG_NODE, &vtysh_service_password_encrypt_cmd);
   install_element (CONFIG_NODE, &no_vtysh_service_password_encrypt_cmd);
 
