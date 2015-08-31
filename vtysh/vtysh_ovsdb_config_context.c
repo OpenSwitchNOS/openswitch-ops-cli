@@ -607,6 +607,10 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
   OVSREC_ROUTE_FOR_EACH(row_route, p_msg->idl) {
       ipv4_flag = 0;
       ipv6_flag = 0;
+      if (strcmp(row_route->from, OVSREC_ROUTE_FROM_STATIC)) {
+          continue;
+      }
+
       if (row_route->address_family != NULL) {
           if (!strcmp(row_route->address_family, "ipv4")) {
               ipv4_flag = 1;
