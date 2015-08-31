@@ -118,9 +118,8 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
 
     /* BGP neighbor table */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_active);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_weight);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_is_peer_group);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_weight);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_bgp_peer_group);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_bgp_router);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_strict_capability_match);

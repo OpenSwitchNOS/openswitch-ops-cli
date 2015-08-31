@@ -2832,7 +2832,12 @@ DEFUN (vtysh_passwd,
        "Change user password \n"
        "User whose password is to be changed\n")
 {
-  execute_command ("passwd", 1, argv);
+
+  char *arg[2];
+  arg[0] = "passwd";
+  arg[1] = argv[0];
+  execute_command("sudo", 2,(const char **)arg);
+
   return CMD_SUCCESS;
 }
 
