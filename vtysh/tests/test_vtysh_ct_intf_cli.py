@@ -34,50 +34,36 @@ class InterfaceCommandsTests( HalonTest ):
                        build=True)
 
   def interfaceConfigCliTest(self):
-        print('\n=========================================================')
-        print('***    Test to verify interface congfiguration clis     ***')
-        print('===========================================================')
+        print('\n########## Test to verify interface congfiguration clis  ##########\n')
         s1 = self.net.switches[ 0 ]
         out = s1.cmdCLI("configure terminal")
         s1.cmdCLI("interface 2")
         out = s1.cmdCLI("mtu 2500")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'mtu 2500' not in out:
-            print out
-            return False
+        assert 'mtu 2500' in out,'Test to verify interface congfiguration clis - FAILED!'
+
         s1.cmdCLI("speed 4000")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'speed 4000' not in out:
-            print out
-            return False
+        assert 'speed 4000' in out,'Test to verify interface congfiguration clis - FAILED!'
+
         s1.cmdCLI("duplex half")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'duplex half' not in out:
-            print out
-            return False
+        assert 'duplex half' in out,'Test to verify interface congfiguration clis - FAILED!'
+
         s1.cmdCLI("autonegotiation off")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'autonegotiation off' not in out:
-            print out
-            return False
+        assert 'autonegotiation off' in out,'Test to verify interface congfiguration clis - FAILED!'
+
         s1.cmdCLI("flowcontrol send on")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'flowcontrol tx' not in out:
-            print out
-            return False
+        assert 'flowcontrol send on' in out,'Test to verify interface congfiguration clis - FAILED!'
+
         s1.cmdCLI("flowcontrol receive on")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'flowcontrol rxtx' not in out:
-            print out
-            return False
-        out = s1.cmdCLI("do show interface 2")
-        if 'Interface 2' not in out:
-            print out
-            return False
+        assert 'flowcontrol receive on' in out,'Test to verify interface congfiguration clis - FAILED!'
         out = s1.cmdCLI("end")
         return True
 
-@pytest.mark.skipif(True, reason="Does not work")
 class Test_interfaceCommands:
 
   def setup(self):
@@ -91,9 +77,7 @@ class Test_interfaceCommands:
 
   def test_interfaceConfigCli(self):
     if self.test.interfaceConfigCliTest():
-      print 'Passed interfaceConfigCliTest'
-    else:
-      assert 0, "Failed interfaceConfigCliTest"
+        print('\n########## Test to verify interface congfiguration clis - SUCCESS! ##########\n')
 
   def teardown_class(cls):
     # Stop the Docker containers, and

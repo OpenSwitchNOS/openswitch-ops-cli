@@ -35,29 +35,23 @@ class DBTests( HalonTest ):
                        build=True)
 
   def createdbTest(self):
-    print('\n=========================================================')
-    print('***            Test method to create db                 ***')
-    print('===========================================================')
+    print('\n########## Test method to create db ##########\n')
     s1 = self.net.switches[ 0 ]
     for j in range(1, 49):
         ovsout = s1.cmd("/usr/bin/ovs-vsctl list interface " + str(j))
-        if '_uuid' not in ovsout:
-            assert 0, "\nUnable to find interface " + str(j) + "in DB"
+        assert '_uuid' in ovsout, "\nUnable to find interface " + str(j) + "in DB"
 
     s1.cmdCLI("configure terminal")
     for i in range(1, 49):
-        s1.cmdCLI("interface " + str(i), 0)
-        s1.cmdCLI("no shutdown", 0)
-        s1.cmdCLI("exit", 0)
+        s1.cmdCLI("interface " + str(i))
+        s1.cmdCLI("no shutdown")
+        s1.cmdCLI("exit")
     return True
 
   def retrievedbTest(self):
-    print('\n=========================================================')
-    print('***          Test method to retrieve db                 ***')
-    print('===========================================================')
+    print('\n########## Test method to retrieve db ##########\n')
     s1 = self.net.switches[ 0 ]
-    ovsout = s1.cmdCLI("show running-config", 1)
-    print ovsout
+    ovsout = s1.cmdCLI("do show running-config")
     ovssptout = ovsout.split('\n')
     for i in range(1, 49):
         lines = ovssptout
@@ -67,9 +61,8 @@ class DBTests( HalonTest ):
             if linechk in line:
                 ret = True
                 break
-        if ret == False:
-            print ("\nUnable to find interface "+str(i))
-            return False
+        assert ret == True, "\nUnable to find interface "+str(i)
+
     return True
 
 class Test_db:
@@ -86,16 +79,11 @@ class Test_db:
   # DB config tests.
   def test_create_db(self):
     if self.test.createdbTest():
-      print 'Passed createdbTest'
-    else:
-      assert 0, "Failed createdbTest"
+      print '\n########## Test method to create db - PASSED ##########\n'
 
-  @pytest.mark.skipif(True, reason="Does not work")
   def test_retrieve_db(self):
     if self.test.retrievedbTest():
-      print 'Passed retrievedbTest'
-    else:
-      assert 0, "Failed retrievedbTest"
+      print('\n########## Test method to retrieve db - PASSED ##########\n')
 
   def teardown_class(cls):
     # Stop the Docker containers, and

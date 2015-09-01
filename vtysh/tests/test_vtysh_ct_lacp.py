@@ -33,6 +33,8 @@ class LACPCliTest(HalonTest):
                            build=True)
 
     def createLagPort(self):
+        info('\n########## Test to create LAG Port ##########\n')
+        lag_port_found = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("interface lag 1")
@@ -40,10 +42,13 @@ class LACPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if '\"lag1\"' in line:
-                return True
-        return False
+                lag_port_found = True
+        assert lag_port_found == True, 'Test to create LAG Port - FAILED!!'
+        return True
 
     def showLacpAggregates(self):
+        info('\n########## Test Show lacp aggregates command ##########\n')
+        lag_port_found_in_cmd = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("interface lag 2")
@@ -51,10 +56,13 @@ class LACPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lag2' in line:
-                return True
-        return False
+                lag_port_found_in_cmd = True
+        assert lag_port_found_in_cmd == True, 'Test Show lacp aggregates command - FAILED!!'
+        return True
 
     def deleteLagPort(self):
+        info('\n########## Test to delete LAG port ##########\n')
+        lag_port_found = True
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("interface lag 3")
@@ -67,15 +75,20 @@ class LACPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if '\"lag3\"' in line:
-                return False
+                lag_port_found = False
+        assert lag_port_found == True, 'Test to delete LAG port - FAILED!'
         out = s1.cmd("do show running")
+        lag_port_found = True
         lines = out.split('\n')
         for line in lines:
             if '\"lag3\"' in line:
-                return False
+                lag_port_found = False
+        assert lag_port_found == True, 'Test to delete LAG port - FAILED!'
         return True
 
     def addInterfacesToLags(self):
+        info('\n########## Test to add interfaces to LAG ports ##########\n')
+        interface_found_in_lag = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("interface 1")
@@ -90,10 +103,14 @@ class LACPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'Aggregated-interfaces' in line and '3' in line and '4' in line:
-                return True
-        return False
+                interface_found_in_lag = True
+
+        assert interface_found_in_lag == True, 'Test to add interfaces to LAG ports - FAILED!'
+        return True
 
     def globalLacpCommands(self):
+        info('\n########## Test global LACP commands ##########\n')
+        global_lacp_cmd_found = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lacp system-priority 999")
@@ -101,10 +118,13 @@ class LACPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lacp-system-priority=\"999\"' in line:
-                return True
-        return False
+                global_lacp_cmd_found = True
+        assert global_lacp_cmd_found == True, 'Test global LACP commands - FAILED!'
+        return True
 
     def lagContextCommands(self):
+        info('\n########## Test LAG context commands ##########\n')
+        lag_context_cmds_found = True
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("interface lag 1")
@@ -138,7 +158,8 @@ class LACPCliTest(HalonTest):
                 success +=1
                 break
         if success != 4:
-            return False
+            lag_context_cmds_found = False
+        assert  lag_context_cmds_found == True, 'Test LAG context commands - FAILED!'
 
         success = 0
         #Test "no" forms of commands
@@ -171,11 +192,14 @@ class LACPCliTest(HalonTest):
                 success +=1
                 break
         if success != 0:
-            return False
+            lag_context_cmds_found = False
+        assert  lag_context_cmds_found == True, 'Test LAG context commands - FAILED!'
         return True
 
 
     def interfaceContext(self):
+        info('\n########## Test interface context commands ##########\n')
+        interface_context_cmds_found = True
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("interface 1")
@@ -200,7 +224,8 @@ class LACPCliTest(HalonTest):
                 success +=1
 
         if success !=3:
-            return False
+            interface_context_cmds_found = False
+        assert interface_context_cmds_found == True, 'Test interface context commands - FAILED!'
         return True
 
 class Test_lacp_cli:
@@ -216,45 +241,31 @@ class Test_lacp_cli:
 
     def test_createLagPort(self):
         if self.test.createLagPort():
-            print '\nPassed createLagPort test.'
-        else:
-            assert 0, 'Failed createLagPort test.'
+            info('\n########## Test to create LAG Port - SUCCESS! ##########\n')
 
     def test_showLacpAggregates(self):
         if self.test.showLacpAggregates():
-            print '\nPassed showLacpAggregates test.'
-        else:
-            assert 0, 'Failed showLacpAggregates test.'
+            info('\n########## Test Show lacp aggregates command - SUCCESS! ##########\n')
 
     def test_deleteLagPort(self):
         if self.test.deleteLagPort():
-            print '\nPassed deleteLagPort test.'
-        else:
-            assert 0, 'Failed deleteLagPort test.'
+            info('\n########## Test to delete LAG port - SUCCESS! ##########\n')
 
     def test_addInterfacesToLags(self):
         if self.test.addInterfacesToLags():
-            print '\nPassed addInterfacesToLags test.'
-        else:
-            assert 0, 'Failed addInterfacesToLags test.'
+            info('\n########## Test to add interfaces to LAG ports - SUCCESS! ##########\n')
 
     def test_globalLacpCommands(self):
         if self.test.globalLacpCommands():
-            print '\nPassed globalLacpCommands test.'
-        else:
-            assert 0, 'Failed globalLacpCommands test.'
+            info('\n########## Test global LACP commands - SUCCESS! ##########\n')
 
     def test_lagContextCommands(self):
         if self.test.lagContextCommands():
-            print '\nPassed lagContextCommands test.'
-        else:
-            assert 0, 'Failed lagContextCommands test.'
+            info('\n########## Test LAG context commands - SUCCESS! ##########\n')
 
     def test_interfaceContext(self):
         if self.test.interfaceContext():
-            print '\nPassed interfaceContext test.'
-        else:
-            assert 0, 'Failed interfaceContext test.'
+            info('\n########## Test interface context commands - SUCCESS! ##########\n')
 
     def teardown_class(cls):
         Test_lacp_cli.test.net.stop()
