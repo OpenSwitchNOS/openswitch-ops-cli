@@ -172,7 +172,9 @@ struct option longopts[] =
   /* For compatibility with older zebra/quagga versions */
   { "eval",                 required_argument,       NULL, 'e'},
   { "command",              required_argument,       NULL, 'c'},
+#ifndef ENABLE_OVSDB
   { "daemon",               required_argument,       NULL, 'd'},
+#endif
   { "echo",                 no_argument,             NULL, 'E'},
   { "dryrun",		    no_argument,	     NULL, 'C'},
   { "help",                 no_argument,             NULL, 'h'},
@@ -235,7 +237,9 @@ main (int argc, char **argv, char **env)
   int opt;
   int dryrun = 0;
   int boot_flag = 0;
+#ifndef ENABLE_OVSDB
   const char *daemon_name = NULL;
+#endif
   struct cmd_rec {
     const char *line;
     struct cmd_rec *next;
@@ -260,7 +264,7 @@ main (int argc, char **argv, char **env)
 #ifdef ENABLE_OVSDB
       opt = getopt_long (argc, argv, "be:c:d:nEhCtv:", longopts, 0);
 #else
-      opt = getopt_long (argc, argv, "be:c:d:nEhC", longopts, 0);
+      opt = getopt_long (argc, argv, "be:c:nEhC", longopts, 0);
 #endif
 
       if (opt == EOF)
@@ -287,9 +291,11 @@ main (int argc, char **argv, char **env)
 	    tail = cr;
 	  }
 	  break;
+#ifndef ENABLE_OVSDB
 	case 'd':
 	  daemon_name = optarg;
 	  break;
+#endif
 	case 'n':
 	  no_error = 1;
 	  break;

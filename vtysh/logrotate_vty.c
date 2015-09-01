@@ -233,6 +233,7 @@ DEFUN (configure_logrotate_period,
        LOGROTATE_HELP_STR_PERIOD)
 {
     set_logrotate_period(argv[0]);
+    return CMD_SUCCESS;
 }
 
 DEFUN (configure_no_logrotate_period,
@@ -241,6 +242,7 @@ DEFUN (configure_no_logrotate_period,
        LOGROTATE_NO_HELP_STR_PERIOD)
 {
     set_logrotate_period(OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT);
+    return CMD_SUCCESS;
 }
 
 DEFUN (configure_logrotate_maxsize,
@@ -249,6 +251,7 @@ DEFUN (configure_logrotate_maxsize,
        LOGROTATE_HELP_STR_MAXSIZE)
 {
     set_logrotate_maxsize(argv[0]);
+    return CMD_SUCCESS;
 }
 
 DEFUN (configure_no_logrotate_maxsize,
@@ -257,6 +260,7 @@ DEFUN (configure_no_logrotate_maxsize,
        LOGROTATE_NO_HELP_STR_MAXSIZE)
 {
     set_logrotate_maxsize(OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT);
+    return CMD_SUCCESS;
 }
 
 
@@ -266,6 +270,7 @@ DEFUN (configure_logrotate_targetRemote,
        LOGROTATE_HELP_STR_TARGET)
 {
     set_logrotate_target(argv[0]);
+    return CMD_SUCCESS;
 }
 
 DEFUN (configure_no_logrotate_targetRemote,
@@ -274,6 +279,7 @@ DEFUN (configure_no_logrotate_targetRemote,
        LOGROTATE_NO_HELP_STR_TARGET)
 {
     set_logrotate_target(OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT);
+    return CMD_SUCCESS;
 }
 
 DEFUN (show_logrotate_config,

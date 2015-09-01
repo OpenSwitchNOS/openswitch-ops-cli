@@ -32,14 +32,6 @@
 #define LED_STR 	"Shows LED information\n"
 #define LED_SET_STR 	"Set LED state\n"
 
-typedef enum
-{
-	CLI_FAN,
-	CLI_PSU,
-	CLI_LED,
-	CLI_TEMP
-};
-
 int cli_system_no_set_led(char* sLedName);
 int cli_system_get_led();
 int  cli_system_set_led(char* sLedName,char* sLedState);

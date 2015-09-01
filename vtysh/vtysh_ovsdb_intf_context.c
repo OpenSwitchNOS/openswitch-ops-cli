@@ -23,7 +23,8 @@
  ***************************************************************************/
 
 #include <zebra.h>
-
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -70,10 +71,10 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
 |    const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
 | Return : pointer to VRF row
 -----------------------------------------------------------------------------*/
-struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
+const struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
                                   const struct ovsrec_port *port_row)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
     OVSREC_VRF_FOR_EACH(vrf_row, idl)
     {
@@ -94,11 +95,10 @@ struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
 |   const struct ovsdb_idl *idl : IDL for vtysh
 | Return : bool : returns true/false
 -----------------------------------------------------------------------------*/
-struct ovsrec_port* port_lookup(const char *if_name,
+const struct ovsrec_port* port_lookup(const char *if_name,
                                 const struct ovsdb_idl *idl)
 {
-    struct ovsrec_port *port_row = NULL;
-    size_t i;
+    const struct ovsrec_port *port_row = NULL;
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
       if (strcmp(port_row->name, if_name) == 0) {
@@ -221,7 +221,7 @@ vtysh_ovsdb_intftable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsd
 
   return e_vtysh_ok;
 }
-
+#if 0
 /*-----------------------------------------------------------------------------
 | Function : intfd_get_user_cfg_adminstate
 | Responsibility : get teh admin state form user_config column in specific row
@@ -242,7 +242,7 @@ intfd_get_user_cfg_adminstate(const struct smap *ifrow_config,
     *adminstate = true;
   }
 }
-
+#endif
 /*-----------------------------------------------------------------------------
 | Function : display_l3_info
 | Responsibility : Decide if L3 info needs to be printed
@@ -282,7 +282,6 @@ vtysh_intf_context_clientcallback(void *p_private)
 {
    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
    const struct ovsrec_interface *ifrow;
-   bool adminstate = false;
    const char *cur_state =NULL;
 
    OVSREC_INTERFACE_FOR_EACH(ifrow, p_msg->idl)
@@ -402,8 +401,7 @@ vtysh_ovsdb_intftable_parse_vlan(const char *if_name,
 vtysh_ovsdb_cbmsg_ptr p_msg,
 bool interfaceNameWritten)
 {
-    struct ovsrec_port *port_row;
-    bool displayL3Info = false;
+    const struct ovsrec_port *port_row;
     int i;
 
     port_row = port_lookup(if_name, p_msg->idl);
@@ -475,9 +473,8 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
                                      vtysh_ovsdb_cbmsg_ptr p_msg,
                                      bool interfaceNameWritten)
 {
-  struct ovsrec_port *port_row;
-  struct ovsrec_vrf *vrf_row;
-  bool displayL3Info = false;
+  const struct ovsrec_port *port_row;
+  const struct ovsrec_vrf *vrf_row;
   size_t i;
 
   port_row = port_lookup(if_name, p_msg->idl);

@@ -38,7 +38,7 @@
 ** depending on the outcome of the db transaction, returns
 ** the appropriate value for the cli command execution.
 */
-static int
+inline static int
 cli_command_result (enum ovsdb_idl_txn_status status)
 {
     if ((status == TXN_SUCCESS) || (status == TXN_UNCHANGED)) {
@@ -46,12 +46,10 @@ cli_command_result (enum ovsdb_idl_txn_status status)
     }
     return CMD_WARNING;
 }
-
 /********************** standard database txn operations ***********************/
 
 #define START_DB_TXN(txn)                                       \
     do {                                                        \
-        enum ovsdb_idl_txn_status status;                       \
         txn = cli_do_config_start();                            \
         if (txn == NULL) {                                      \
             vty_out(vty, "ovsdb_idl_txn_create failed: %s: %d\n",   \

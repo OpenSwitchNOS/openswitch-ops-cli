@@ -23,7 +23,8 @@
  ***************************************************************************/
 
 #include <zebra.h>
-
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -45,7 +46,7 @@ char routercontextbgproutemapclientname[] = "vtysh_router_context_bgp_routemap_c
 
 void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
-   struct ovsrec_bgp_neighbor *ovs_bgp_neighbor = NULL;
+   const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor = NULL;
    int i=0;
 
     OVSREC_BGP_NEIGHBOR_FOR_EACH(ovs_bgp_neighbor, p_msg->idl)
@@ -113,8 +114,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 vtysh_ret_val
 vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
 {
-   struct ovsrec_prefix_list_entries *ovs_prefix_list_entries = NULL;
-   int i=0;
+   const struct ovsrec_prefix_list_entries *ovs_prefix_list_entries = NULL;
 
    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
@@ -143,8 +143,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
 vtysh_ret_val
 vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 {
-   struct ovsrec_route_map_entries *ovs_route_map_entries = NULL;
-   int i=0;
+   const struct ovsrec_route_map_entries *ovs_route_map_entries = NULL;
 
    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
@@ -186,7 +185,7 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 vtysh_ret_val
 vtysh_router_context_bgp_clientcallback(void *p_private)
 {
-   struct ovsrec_bgp_router *bgp_router_context=NULL;
+   const struct ovsrec_bgp_router *bgp_router_context=NULL;
    int i=0;
 
    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
