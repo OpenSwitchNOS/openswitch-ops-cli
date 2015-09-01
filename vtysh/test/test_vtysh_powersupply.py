@@ -64,38 +64,48 @@ class PlatformPSUTests( HalonTest ):
     def showSystemPSUTest(self):
         # Test to verify show system command
         s1 = self.net.switches[ 0 ]
-        print('\n==============================================================')
-        print('*** Test to verify \'show system power-supply\' command ***')
-        print('================================================================')
+        print('\n########## Test to verify \'show system power-supply\' command ##########\n')
+        system_psu_config_present = False
         out = s1.cmdCLI("show system power-supply")
         lines = out.split('\n')
         for line in lines:
             if 'Psu_base' in line:
                 if 'ok' in line:
-                    return True
+                    system_psu_config_present = True
+                    break
                 else:
-                    return False
+                    system_psu_config_present = False
+                    break
             if 'Psu_base1' in line:
                 if 'Input Fault' in line:
-                    return True
+                    system_psu_config_present = True
+                    break
                 else:
-                    return False
+                    system_psu_config_present = False
+                    break
             if 'Psu_base2' in line:
                 if 'Output Fault' in line:
-                    return True
+                    system_psu_config_present = True
+                    break
                 else:
-                    return False
+                    system_psu_config_present = False
+                    break
             if 'Psu_base3' in line:
                 if 'Absent' in line:
-                    return True
+                    system_psu_config_present = True
+                    break
                 else:
-                    return False
+                    system_psu_config_present = False
+                    break
             if 'Psu_base4' in line:
                 if 'Unknown' in line:
-                    return True
+                    system_psu_config_present = True
+                    break
                 else:
-                    return False
-        return False
+                    system_psu_config_present = False
+                    break
+        assert system_psu_config_present == True, 'Test to verify \'show system power-supply\' command - FAILED!'
+        return True
 
 class Test_psu:
 
@@ -129,6 +139,4 @@ class Test_psu:
     # show system test.
     def test_show_system_psu_command(self):
        if self.test.showSystemPSUTest():
-           print 'Passed Power Supply Test'
-       else:
-           assert 0, "Failed Power Supply Test"
+           print '\n########## Test to verify \'show system power-supply\' command - SUCCESS! ##########\n'
