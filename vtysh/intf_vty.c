@@ -534,10 +534,176 @@ DEFUN_NO_FORM (cli_intf_autoneg,
 }
 
 
-int cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
+
+/*-----------------------------------------------------------------------------
+| Function : port_match_in_vrf
+| Responsibility : Lookup VRF to which interface is connected
+| Parameters :
+|    const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
+| Return : pointer to VRF row
+-----------------------------------------------------------------------------*/
+struct ovsrec_vrf* port_match_in_vrf(const struct ovsrec_port *port_row)
+{
+    struct ovsrec_vrf *vrf_row = NULL;
+    size_t i;
+    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+      for (i = 0; i < vrf_row->n_ports; i++) {
+        if (vrf_row->ports[i] == port_row) {
+          return vrf_row;
+        }
+      }
+    }
+    return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : port_find
+| Responsibility : Lookup port table entry for interface name
+| Parameters :
+|   const char *if_name : Interface name
+| Return : bool : returns true/false
+-----------------------------------------------------------------------------*/
+struct ovsrec_port* port_find(const char *if_name)
+{
+    struct ovsrec_port *port_row = NULL;
+    size_t i;
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+      if (strcmp(port_row->name, if_name) == 0) {
+        return port_row;
+      }
+    }
+    return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : parse_vlan
+| Responsibility : Used for VLAN related config
+| Parameters :
+|     const char *if_name           : Name of interface
+|     struct vty* vty               : Used for ouput
+-----------------------------------------------------------------------------*/
+static int
+parse_vlan(const char *if_name, struct vty* vty)
+{
+    struct ovsrec_port *port_row;
+    bool displayL3Info = false;
+    int i;
+
+    port_row = port_find(if_name);
+    if (port_row == NULL)
+    {
+        return 0;
+    }
+
+    if (port_row->vlan_mode == NULL)
+    {
+        return 0;
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vty_out(vty, "%3s%s%d%s", "", "vlan access ",
+            *port_row->tag, VTY_NEWLINE);
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
+    {
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+                port_row->trunks[i], VTY_NEWLINE);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk native ",
+                *port_row->tag, VTY_NEWLINE);
+        }
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+                port_row->trunks[i], VTY_NEWLINE);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk native ",
+                *port_row->tag, VTY_NEWLINE);
+        }
+        vty_out(vty, "%3s%s%s", "", "vlan trunk native tag");
+        for (i = 0; i < port_row->n_trunks; i++, VTY_NEWLINE)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+                port_row->trunks[i], VTY_NEWLINE);
+        }
+    }
+
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : parse_l3config
+| Responsibility : Used for L3 related config
+| Parameters :
+|     const char *if_name           : Name of interface
+|     struct vty* vty               : Used for ouput
+-----------------------------------------------------------------------------*/
+static int
+parse_l3config(const char *if_name, struct vty *vty)
+{
+  struct ovsrec_port *port_row;
+  struct ovsrec_vrf *vrf_row;
+  bool displayL3Info = false;
+  size_t i;
+
+  port_row = port_find(if_name);
+  if (!port_row) {
+    return 0;
+  }
+  if (check_iface_in_bridge(if_name)) {
+    vty_out(vty, "%3s%s%s", "", "no routing", VTY_NEWLINE);
+    parse_vlan(if_name, vty);
+  }
+  if (check_iface_in_vrf(if_name)) {
+    vrf_row = port_match_in_vrf(port_row);
+    if (display_l3_info(port_row, vrf_row)) {
+      if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0) {
+        vty_out(vty, "%3s%s%s", "", "vrf attach %s", vrf_row->name,
+                VTY_NEWLINE);
+      }
+      if (port_row->ip4_address) {
+        vty_out(vty, "%3s%s%s%s", "", "ip address ", port_row->ip4_address,
+                VTY_NEWLINE);
+      }
+      for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+        vty_out(vty, "%3s%s%s%s%s", "", "ip address ",
+                port_row->ip4_address_secondary[i], " secondary",
+                VTY_NEWLINE);
+      }
+      if (port_row->ip6_address) {
+        vty_out(vty, "%3s%s%s%s", "", "ipv6 address ", port_row->ip6_address,
+                VTY_NEWLINE);
+      }
+      for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
+        vty_out(vty, "%3s%s%s%s%s", "", "ipv6 address ",
+                port_row->ip6_address_secondary[i], " secondary",
+                VTY_NEWLINE);
+      }
+    }
+  }
+  return 0;
+}
+
+static int
+cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[])
 {
    struct ovsrec_interface *row = NULL;
+   struct ovsrec_port *port_row;
    const char *cur_state =NULL;
    bool bPrinted = false;
 
@@ -615,6 +781,13 @@ int cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
          PRINT_INT_HEADER_IN_SHOW_RUN
          vty_out(vty, "   autonegotiation %s %s", cur_state, VTY_NEWLINE);
       }
+
+      if (port_find(row->name)) {
+          PRINT_INT_HEADER_IN_SHOW_RUN
+      }
+
+      parse_l3config(row->name, vty);
+
       if(bPrinted)
       {
          vty_out(vty, "   exit%s", VTY_NEWLINE);

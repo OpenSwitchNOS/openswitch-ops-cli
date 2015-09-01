@@ -320,7 +320,11 @@ static int show_routes(struct vty *vty, char * ip_addr_family)
 
                     vty_out(vty, ",  [%d", *row_route->distance);
 
-                    vty_out(vty, "/%d]", row_route->metric);
+                    if (row_route->metric) {
+                        vty_out(vty, "/%d]", *row_route->metric);
+                    } else {
+                        vty_out(vty, "/0]");
+                    }
 
                     vty_out(vty, ",  %s", row_route->from);
 
@@ -848,7 +852,11 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
 
                     vty_out(vty, ",  [%d", *row_route->distance);
 
-                    vty_out(vty, "/%d]", row_route->metric);
+                    if (row_route->metric) {
+                        vty_out(vty, "/%d]", *row_route->metric);
+                    } else {
+                        vty_out(vty, "/0]");
+                    }
 
                     vty_out(vty, ",  %s", row_route->from);
 
