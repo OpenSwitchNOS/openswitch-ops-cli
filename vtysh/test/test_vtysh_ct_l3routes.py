@@ -19,6 +19,7 @@ from halonvsi.docker import *
 from halonvsi.halon import *
 from halonutils.halonutil import *
 import time
+import pytest
 
 class myTopo( Topo ):
     '''
@@ -286,7 +287,7 @@ class staticRouteConfigTest( HalonTest ):
         assert(found == 8), 'show running-config command failure'
         info('### show running-config verification successful ###\n\n\n')
 
-
+@pytest.mark.skipif(True, reason="Test is hanging")
 class Test_vtysh_static_routes_ct:
 
     def setup_class(cls):
