@@ -54,104 +54,76 @@ class PlatformLedTests( HalonTest ):
 
 
     def setLedTest(self):
-        print('\n=====================================')
-        print('*** Test to verify \'led\' command ***')
-        print('=======================================')
+        print('\n########## Test to verify \'led\' command ##########\n')
         s1 = self.net.switches[ 0 ]
+        is_led_set = False
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            print out
-            return False
         out = s1.cmdCLI("led base1 on")
-        if 'Cannot Find LED' in out:
-            print out
-            s1.cmdCLI("exit")
-            return False
         s1.cmdCLI("exit")
         out = s1.cmd("ovs-vsctl list led base1")
         lines = out.split('\n')
         for line in lines:
             if "state" in line:
                 if "on" in line:
-                    return True
-                else:
-                    return False
-
-        return False
+                    is_led_set = True
+                    break
+        assert is_led_set == True,'Test to verify \'led\' command - FAILED!'
+        return True
 
     def showLedTest(self):
-        print('\n=================================================')
-        print('*** Test to verify \'show system led\' command ***')
-        print('===================================================')
+        print('\n########## Test to verify \'show system led\' command ##########\n')
         s1 = self.net.switches[ 0 ]
+        led_config_present = False
         out = s1.cmdCLI("show system led")
-        if 'Unknown command' in out:
-            print out
-            return False
         lines = out.split('\n')
         for line in lines:
             if "base1" in line:
                 if "on" in line:
-                    return True
+                    led_config_present = True
+                    break
                 elif "off" in line:
-                    return True
+                    led_config_present = True
+                    break
                 elif "flashing" in line:
-                    return True
+                    led_config_present = True
+                    break
                 else:
-                    return False
+                    led_config_present = False
 
-        return False
+        assert led_config_present == True,'Test to verify \'show system led\' command - FAILED!'
+        return True
 
     def noLedTest(self):
-        print('\n=====================================')
-        print('*** Test to verify \'no led\' command ***')
-        print('=======================================')
+        print('\n########## Test to verify \'no led\' command  ##########\n')
         s1 = self.net.switches[ 0 ]
+        led_state_off = False
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            print out
-            return False
         out = s1.cmdCLI("no led base1")
-        if 'Cannot Find LED' in out:
-            print out
-            s1.cmdCLI("exit")
-            return False
-
         s1.cmdCLI("exit")
         out = s1.cmd("ovs-vsctl list led base1")
         lines = out.split('\n')
         for line in lines:
             if "state" in line:
                 if "off" in line:
-                    return True
-                else:
-                    return False
-
-        return False
+                    led_state_off = True
+                    break
+        assert led_state_off == True,'Test to verify \'no led\' command - FAILED!'
+        return True
 
     def showRunningLedTest(self):
-        print('\n=====================================')
-        print('*** Test to verify show running-config command ***')
-        print('=======================================')
+        print('\n########## Test to verify show running-config command ##########\n')
         s1 = self.net.switches[ 0 ]
+        led_config_present = False
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            print out
-            return False
         out = s1.cmdCLI("led base1 on")
-        if 'Cannot Find LED!!' in out:
-            print out
-            s1.cmdCLI("exit")
-            return False
-
         s1.cmdCLI("exit")
         out = s1.cmdCLI("show running-config")
         lines = out.split('\n')
         for line in lines:
             if "led base1 on" in line:
-                return True
-
-        return False
+                 led_config_present = True
+        assert led_config_present == True, 'Test to verify show running-config command - FAILED!'
+        return True
 
 class Test_led:
 
@@ -170,30 +142,22 @@ class Test_led:
     # led <led name> on|off|flashing test.
     def test_led_command(self):
        if self.test.setLedTest():
-           print 'Passed led Test'
-       else:
-           assert 0, "Failed led Test"
+           print '\n########## Test to verify \'led\' command - SUCCESS! ##########\n'
 
     # show system led test.
     def test_show_system_led_command(self):
         if self.test.showLedTest():
-            print 'Passed show system led Test'
-        else:
-            assert 0, "Failed show system led Test"
+            print '\n########## Test to verify \'show system led\' command - SUCCESS! ##########\n'
 
     #no led <led name> test
     def test_no_led_command(self):
         if self.test.noLedTest():
-            print 'Passed no led Test'
-        else:
-            assert 0, "Failed no led Test"
+            print '\n########## Test to verify \'no led\' command - SUCCESS! ##########\n'
 
     #no led show running-config test
     def test_show_running_led_command(self):
         if self.test.showRunningLedTest():
-            print 'Passed Show running-config Test'
-        else:
-            assert 0, "Failed Show running-config Test"
+            print '\n########## Test to verify show running-config command - SUCCESS! ##########\n'
 
     def teardown_class(cls):
         # Delete Dummy data to avoid clash with other test scripts

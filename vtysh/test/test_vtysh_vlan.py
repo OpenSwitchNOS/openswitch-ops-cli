@@ -33,6 +33,8 @@ class VLANCliTest(HalonTest):
                            build=True)
 
     def createVlan(self):
+        info('\n########## Test to create VLAN ##########\n')
+        vlan_created = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1")
@@ -40,11 +42,14 @@ class VLANCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if "vlan 1" in line:
-                return True
-        return False
+                vlan_created = True
+        assert vlan_created == True,'Test to create VLAN - FAILED!'
+        return True
 
     def showVlanSummary(self):
         s1 = self.net.switches[ 0 ]
+        info('\n########## Test \"show vlan summary\" command ##########\n')
+        vlan_summary_present = False
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1")
         s1.cmdCLI("exit")
@@ -58,11 +63,14 @@ class VLANCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if "Number of existing VLANs: 4" in line:
-                return True
-        return False
+                vlan_summary_present = True
+        assert vlan_summary_present == True,'Test \"show vlan summary\" command - FAILED!'
+        return True
 
     def deleteVlan(self):
         s1 = self.net.switches[ 0 ]
+        info('\n########## Test to delete VLAN ##########\n')
+        vlan_deleted = True
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 99")
         s1.cmdCLI("exit")
@@ -71,10 +79,12 @@ class VLANCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if "vlan99" in line:
-                return False
+                vlan_deleted = False
+        assert vlan_deleted == True,'Test to delete VLAN - FAILED!'
         return True
 
     def addAccessVlanToInterface(self):
+        info('\n########## Test \"vlan access\" command ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1")
@@ -82,8 +92,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 21")
         out = s1.cmdCLI("vlan access 1")
         success = 0;
-        if "Disable routing on the interface" not in out:
-            return False
+        assert "Disable routing on the interface" in out,'Test \"vlan access\" command - FAILED!'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 1")
@@ -99,12 +108,16 @@ class VLANCliTest(HalonTest):
             if "vlan1" in line and "21" in line:
                 success += 1
 
+        assert 'success == 2','Test \"vlan access\" command - FAILED!'
+
+        vlan_access_cmd_found = False
         s1.cmdCLI("no vlan access")
         out = s1.cmdCLI("do show running-config")
         lines = out.split('\n')
         for line in lines:
             if "vlan access 1" in line:
-                return False
+                vlan_access_cmd_found = True
+        assert vlan_access_cmd_found == False,'Test \"vlan access\" command - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("interface lag 1")
@@ -112,16 +125,14 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 21")
         s1.cmdCLI("lag 1")
         out = s1.cmdCLI("vlan access 1")
-        if "Can't configure VLAN. Interface is part of LAG" not in out:
-            return False
+        assert "Can't configure VLAN. Interface is part of LAG" in out,'Test \"vlan access\" command - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("no interface lag 1")
-        if success == 2:
-            return True
-        return False
+        return True
 
     def addTrunkVlanToInterface(self):
+        info('\n########## Test to add VLAN to interface ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1")
@@ -131,14 +142,12 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 52-1")
         out = s1.cmdCLI("vlan trunk allowed 1")
         success = 0
-        if "Disable routing on the interface" not in out:
-            return False
+        assert "Disable routing on the interface" in out,'Test to add VLAN to interface - FAILED!'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 1")
         out = s1.cmdCLI("vlan trunk allowed 1")
-        if "The interface is in access mode" not in out:
-            return False
+        assert "The interface is in access mode" in out,'Test to add VLAN to interface - FAILED!'
 
         s1.cmdCLI("no vlan access")
         s1.cmdCLI("vlan trunk allowed 1")
@@ -153,13 +162,17 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if "vlan1" in line and "52-1" in line:
                 success += 1
+        assert success == 2,'Test to add VLAN to interface - FAILED!'
 
+        vlan_trunk_allowed_cmd_found = True
         s1.cmdCLI("no vlan trunk allowed 1")
         out = s1.cmdCLI("do show running-config")
         lines = out.split('\n')
         for line in lines:
             if "vlan trunk allowed 1" in line:
-                return False
+                vlan_trunk_allowed_cmd_found = False
+
+        assert vlan_trunk_allowed_cmd_found == True,'Test to add VLAN to interface - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("interface lag 1")
@@ -167,16 +180,14 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 52-1")
         s1.cmdCLI("lag 1")
         out = s1.cmdCLI("vlan trunk allowed 1")
-        if "Can't configure VLAN. Interface is part of LAG" not in out:
-            return False
+        assert "Can't configure VLAN. Interface is part of LAG" in out,'Test to add VLAN to interface - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("no interface lag 1")
-        if success == 2:
-            return True
-        return False
+        return True
 
     def addTrunkNativeVlanToInterface(self):
+        info('\n########## Test to add trunk native to interface ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1")
@@ -186,14 +197,12 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 52-2")
         out = s1.cmdCLI("vlan trunk native 1")
         success = 0;
-        if "Disable routing on the interface" not in out:
-            return False
+        assert "Disable routing on the interface" in out,'Test to add trunk native to interface - FAILED!'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 1")
         out = s1.cmdCLI("vlan trunk native 1")
-        if "The interface is in access mode" not in out:
-            return False
+        assert "The interface is in access mode" in out,'Test to add trunk native to interface - FAILED!'
 
         s1.cmdCLI("no vlan access")
         s1.cmdCLI("vlan trunk native 1")
@@ -214,12 +223,16 @@ class VLANCliTest(HalonTest):
             if "vlan77" in line and "52-2" in line:
                 success += 1
 
+        assert success == 4,'Test to add trunk native to interface - FAILED!'
+
+        vlan_trunk_native_cmd_found = False
         s1.cmdCLI("no vlan trunk native")
         out = s1.cmdCLI("do show running-config")
         lines = out.split('\n')
         for line in lines:
             if "vlan trunk native" in line:
-                return False
+                vlan_trunk_native_cmd_found = True
+        assert vlan_trunk_native_cmd_found == False,'Test to add trunk native to interface - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("interface lag 1")
@@ -227,16 +240,14 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 52-2")
         s1.cmdCLI("lag 1")
         out = s1.cmdCLI("vlan trunk native 1")
-        if "Can't configure VLAN. Interface is part of LAG" not in out:
-            return False
+        assert "Can't configure VLAN. Interface is part of LAG" in out,'Test to add trunk native to interface - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("no interface lag 1")
-        if success == 4:
-            return True
-        return False
+        return True
 
     def addTrunkNativeTagVlanToInterface(self):
+        info('\n########## Test add trunk native tag vlan to interface ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1789")
@@ -246,14 +257,12 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 52-3")
         out = s1.cmdCLI("vlan trunk native tag")
         success = 0;
-        if "Disable routing on the interface" not in out:
-            return False
+        assert "Disable routing on the interface" in out,'Test add trunk native tag vlan to interface - FAILED!'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 1789")
         out = s1.cmdCLI("vlan trunk native tag")
-        if "The interface is in access mode" not in out:
-            return False
+        assert "The interface is in access mode" in out,'Test add trunk native tag vlan to interface - FAILED!'
 
         s1.cmdCLI("no vlan access")
         s1.cmdCLI("vlan trunk native 1789")
@@ -277,12 +286,16 @@ class VLANCliTest(HalonTest):
             if "vlan88" in line and "52-3" in line:
                 success += 1
 
+        assert success == 5,'Test add trunk native tag vlan to interface - FAILED!'
+
+        vlan_trunk_native_tag_present = False
         s1.cmdCLI("no vlan trunk native tag")
         out = s1.cmdCLI("do show running-config")
         lines = out.split('\n')
         for line in lines:
             if "vlan trunk native tag" in line:
-                return False
+                return True
+        assert vlan_trunk_native_tag_present == False,'Test add trunk native tag vlan to interface - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("interface lag 1")
@@ -290,16 +303,14 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface 52-3")
         s1.cmdCLI("lag 1")
         out = s1.cmdCLI("vlan trunk native tag")
-        if "Can't configure VLAN. Interface is part of LAG" not in out:
-            return False
+        assert "Can't configure VLAN. Interface is part of LAG" in out,'Test add trunk native tag vlan to interface - FAILED!'
 
         s1.cmdCLI("exit")
         s1.cmdCLI("no interface lag 1")
-        if success == 5:
-            return True
-        return False
+        return True
 
     def addAccessVlanToLAG(self):
+        info('\n########## Test to add access vlan to LAG ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1")
@@ -307,8 +318,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface lag 21")
         out = s1.cmdCLI("vlan access 1")
         success = 0;
-        if "Disable routing on the LAG" not in out:
-            return False
+        assert "Disable routing on the LAG" in out,'Test to add access vlan to LAG - FAILED!'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 1")
@@ -324,18 +334,20 @@ class VLANCliTest(HalonTest):
             if "vlan1" in line and "lag21" in line:
                 success += 1
 
+        assert success == 2,'Test to add access vlan to LAG - FAILED!'
+        vlan_access_cmd_present = False
         s1.cmdCLI("no vlan access")
         out = s1.cmdCLI("do show running-config")
         lines = out.split('\n')
         for line in lines:
             if "vlan access 1" in line:
-                return False
+                vlan_access_cmd_present = True
 
-        if success == 2:
-            return True
-        return False
+        assert vlan_access_cmd_present == False,'Test to add access vlan to LAG - FAILED!'
+        return True
 
     def addTrunkVlanToLAG(self):
+        info('\n########## Test to add trunk vlan to LAG ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 2345")
@@ -345,14 +357,12 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface lag 31")
         out = s1.cmdCLI("vlan trunk allowed 55")
         success = 0;
-        if "Disable routing on the LAG" not in out:
-            return False
+        assert "Disable routing on the LAG" in out,'Test to add trunk vlan to LAG - FAILED'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 2345")
         out = s1.cmdCLI("vlan trunk allowed 55")
-        if "The LAG is in access mode" not in out:
-            return False
+        assert "The LAG is in access mode" in out,'Test to add trunk vlan to LAG - FAILED!'
 
         s1.cmdCLI("no vlan access")
         s1.cmdCLI("vlan trunk allowed 55")
@@ -367,19 +377,19 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if "vlan55" in line and "lag31" in line:
                 success += 1
-
+        assert success == 2,'Test to add trunk vlan to LAG - FAILED!'
+        vlan_trunk_allowed_cmd_present = False
         s1.cmdCLI("no vlan trunk allowed 55")
         s1.cmdCLI("do show running-config")
         lines = out.split('\n')
         for line in lines:
             if "vlan trunk allowed 55" in line:
-                return False
-
-        if success == 2:
-            return True
-        return False
+                vlan_trunk_allowed_cmd_present = True
+        assert vlan_trunk_allowed_cmd_present == False,'Test to add trunk vlan to LAG - FAILED!'
+        return True
 
     def addTrunkNativeVlanToLAG(self):
+        info('\n########## Test to add trunk native vlan to LAG ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1234")
@@ -389,14 +399,12 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface lag 41")
         out = s1.cmdCLI("vlan trunk native 1234")
         success = 0;
-        if "Disable routing on the LAG" not in out:
-            return False
+        assert "Disable routing on the LAG" in out,'Test to add trunk native vlan to LAG - FAILED!'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 1234")
         out = s1.cmdCLI("vlan trunk native 1234")
-        if "The LAG is in access mode" not in out:
-            return False
+        assert "The LAG is in access mode" in out,'Test to add trunk native vlan to LAG - FAILED!'
 
         s1.cmdCLI("no vlan access")
         s1.cmdCLI("vlan trunk native 1234")
@@ -420,11 +428,11 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("no vlan trunk native")
         out = s1.cmdCLI("do show running-config")
 
-        if success == 4:
-            return True
-        return False
+        assert success == 4,'Test to add trunk native vlan to LAG - FAILED!'
+        return True
 
     def addTrunkNativeTagVlanToLAG(self):
+        info('\n########## Test to add trunk native tag vlan to LAG ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1567")
@@ -434,14 +442,12 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI("interface lag 51")
         out = s1.cmdCLI("vlan trunk native tag")
         success = 0;
-        if "Disable routing on the LAG" not in out:
-            return False
+        assert "Disable routing on the LAG" in out,'Test to add trunk native tag vlan to LAG - FAILED!'
 
         s1.cmdCLI("no routing")
         s1.cmdCLI("vlan access 1")
         out = s1.cmdCLI("vlan trunk native tag")
-        if "The LAG is in access mode" not in out:
-            return False
+        assert "The LAG is in access mode" in out,'Test to add trunk native tag vlan to LAG - FAILED!'
 
         s1.cmdCLI("no vlan access")
         s1.cmdCLI("vlan trunk native 1567")
@@ -464,19 +470,20 @@ class VLANCliTest(HalonTest):
                 success += 1
             if "vlan44" in line and "lag51" in line:
                 success += 1
+        assert success == 5,'Test to add trunk native tag vlan to LAG - FAILED!'
 
+        vlan_trunk_native_tag_present = False
         s1.cmdCLI("no vlan trunk native tag")
         out = s1.cmdCLI("do show running-config")
         lines = out.split('\n')
         for line in lines:
             if "vlan trunk native tag" in line:
-                return False
-
-        if success == 5:
-            return True
-        return False
+                vlan_trunk_native_tag_present = True
+        assert vlan_trunk_native_tag_present == False,'Test to add trunk native tag vlan to LAG - FAILED!'
+        return True
 
     def vlanCommands(self):
+        info('\n########## Test to check VLAN commands ##########\n')
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("vlan 1")
@@ -495,9 +502,8 @@ class VLANCliTest(HalonTest):
             if "description asdf" in line:
                 success += 1
 
-        if success == 2:
-            return True
-        return False
+        assert success == 2,'Test to check VLAN commands - FAILED!'
+        return True
 
 class Test_vlan_cli:
 
@@ -512,75 +518,51 @@ class Test_vlan_cli:
 
     def test_createVlan(self):
         if self.test.createVlan():
-            print '\nPassed createVlan test.'
-        else:
-            assert 0, 'Failed createVlan test.'
+            info('\n########## Test to create VLAN - SUCCESS! ##########\n')
 
     def test_showVlanSummary(self):
         if self.test.showVlanSummary():
-            print '\nPassed showVlanSummary test.'
-        else:
-            assert 0, 'Failed showVlanSummary test.'
+            info('\n########## Test \"show vlan summary\" command - SUCCESS! ##########\n')
 
     def test_deleteVlan(self):
         if self.test.deleteVlan():
-            print '\nPassed deleteVlan test.'
-        else:
-            assert 0, 'Failed deleteVlan test.'
+            info('\n########## Test to delete VLAN - SUCCESS! ##########\n')
 
     def test_addAccessVlanToInterface(self):
         if self.test.addAccessVlanToInterface():
-            print '\nPassed addAccessVlanToInterface test.'
-        else:
-            assert 0, 'Failed addAccessVlanToInterface test.'
+            info('\n########## Test \"vlan access\" command - SUCCESS! ##########\n')
 
     def test_addTrunkVlanToInterface(self):
         if self.test.addTrunkVlanToInterface():
-            print '\nPassed addTrunkVlanToInterface test.'
-        else:
-            assert 0, 'Failed addTrunkVlanToInterface test.'
+            info('\n########## Test to add VLAN to interface - SUCCESS! ##########\n')
 
     def test_addTrunkNativeVlanToInterface(self):
         if self.test.addTrunkNativeVlanToInterface():
-            print '\nPassed addTrunkNativeVlanToInterface test.'
-        else:
-            assert 0, 'Failed addTrunkNativeVlanToInterface test.'
+            info('\n########## Test to add trunk native to interface - SUCCESS! ##########\n')
 
     def test_addTrunkNativeTagVlanToInterface(self):
         if self.test.addTrunkNativeTagVlanToInterface():
-            print '\nPassed addTrunkNativeTagVlanToInterface test.'
-        else:
-            assert 0, 'Failed addTrunkNativeTagVlanToInterface test.'
+            info('\n########## Test to add trunk native to interface - SUCCESS! ##########\n')
 
     def test_addAccessVlanToLAG(self):
         if self.test.addAccessVlanToLAG():
-            print '\nPassed addAccessVlanToLAG test.'
-        else:
-            assert 0, 'Failed addAccessVlanToLAG test.'
+            info('\n########## Test add trunk native tag vlan to interface - SUCCESS! ##########\n')
 
     def test_addTrunkVlanToLAG(self):
         if self.test.addTrunkVlanToLAG():
-            print '\nPassed addTrunkVlanToLAG test.'
-        else:
-            assert 0, 'Failed addTrunkVlanToLAG test.'
+            info('\n########## Test to add access vlan to LAG - SUCCESS! ##########\n')
 
     def test_addTrunkNativeVlanToLAG(self):
         if self.test.addTrunkNativeVlanToLAG():
-            print '\nPassed addTrunkNativeVlanToLAG test.'
-        else:
-            assert 0, 'Failed addTrunkNativeVlanToLAG test.'
+            info('\n########## Test to add trunk native vlan to LAG - SUCCESS! ##########\n')
 
     def test_addTrunkNativeTagVlanToLAG(self):
         if self.test.addTrunkNativeTagVlanToLAG():
-            print '\nPassed addTrunkNativeTagVlanToLAG test.'
-        else:
-            assert 0, 'Failed addTrunkNativeTagVlanToLAG test.'
+            info('\n########## Test to add trunk native vlan to LAG - SUCCESS!  ##########\n')
 
     def test_vlanCommands(self):
         if self.test.vlanCommands():
-            print '\nPassed vlanCommands test.'
-        else:
-            assert 0, 'Failed vlanCommands test.'
+            info('\n########## Test to add trunk native tag vlan to LAG - SUCCESS! ##########\n')
 
     def teardown_class(cls):
         Test_vlan_cli.test.net.stop()
