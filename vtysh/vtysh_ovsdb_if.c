@@ -282,6 +282,24 @@ radius_server_ovsdb_init(struct ovsd_idl *idl)
 
     return;
 }
+/*DHCP_TFTP */
+static void
+dhcp_tftp_ovsdb_init()
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
+    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_range);
+    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_option);
+    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_host);
+    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_tftp_interfaces);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_range_col_dhcp_range);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_host_col_dhcp_host);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_option_col_dhcp_option);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_dhcp_range);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_dhcp_host);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_dhcp_option);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_dhcp_tftp_interfaces);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_dhcp_tftp_config);
+}
 
 /***********************************************************
  * @func        : system_ovsdb_init
@@ -453,7 +471,8 @@ ovsdb_init(const char *db_path)
 
     /* vlan table */
     vlan_ovsdb_init();
-
+    /*Add tables/columns needed for DHCP_TFTP configuration commands */
+    dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init(idl);
     /* Add tables/columns needed for LACP config commands */

@@ -3842,7 +3842,7 @@ vtysh_init_vty (void)
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();
-
+   dhcp_tftp_vty_init();
   /* Initialise System LED cli */
   led_vty_init();
   mgmt_intf_vty_init();
