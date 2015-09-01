@@ -381,7 +381,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     }
 
     port_row = port_check_and_add(if_name, true, true, status_txn);
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
@@ -541,7 +541,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
         return CMD_SUCCESS;
     }
 
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
@@ -630,7 +630,7 @@ static int vrf_routing(const char *if_name)
         return CMD_SUCCESS;
     }
 
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         VLOG_DBG(
                 "%s Interface \"%s\" is already L3. No change required.",
                 __func__, if_name);
@@ -700,7 +700,7 @@ static int vrf_no_routing(const char *if_name)
     }
 
     port_row = port_check_and_add(if_name, true, false, status_txn);
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         VLOG_DBG(
                 "%s Interface \"%s\" is already L2. No change required.",
                 __func__, if_name);
@@ -776,7 +776,7 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
     }
 
     port_row = port_check_and_add(if_name, true, true, status_txn);
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
@@ -854,7 +854,7 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
         return CMD_SUCCESS;
     }
 
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
@@ -966,7 +966,7 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
 
     port_row = port_check_and_add(if_name, true, true, status_txn);
 
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
@@ -1047,7 +1047,7 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
         return CMD_SUCCESS;
     }
 
-    if (!check_iface_in_vrf(if_name)) {
+    if (check_iface_in_bridge(if_name)) {
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
@@ -1313,6 +1313,4 @@ void vrf_vty_init(void)
     install_element(VLAN_INTERFACE_NODE, &cli_vrf_config_ipv6_cmd);
     install_element(VLAN_INTERFACE_NODE, &cli_vrf_del_ip_cmd);
     install_element(VLAN_INTERFACE_NODE, &cli_vrf_del_ipv6_cmd);
-    install_element(VLAN_INTERFACE_NODE, &cli_vrf_routing_cmd);
-    install_element(VLAN_INTERFACE_NODE, &cli_vrf_no_routing_cmd);
 }
