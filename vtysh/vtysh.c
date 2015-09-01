@@ -55,6 +55,16 @@
 #ifdef ENABLE_OVSDB
 #include "vswitch-idl.h"
 #include "smap.h"
+#include "lldp_vty.h"
+#include "vrf_vty.h"
+#include "neighbor_vty.h"
+#include "intf_vty.h"
+#include "l3routes_vty.h"
+#include "vlan_vty.h"
+#include "led_vty.h"
+#include "mgmt_intf_vty.h"
+#include "system_vty.h"
+#include "lacp_vty.h"
 #endif
 
 #include "aaa_vty.h"
@@ -123,7 +133,7 @@ vclient_close (struct vtysh_client *vclient)
       vclient->fd = -1;
    }
 }
-
+#ifndef ENABLE_OVSDB
 /* Following filled with debug code to trace a problematic condition
  * under load - it SHOULD handle it. */
 #define ERR_WHERE_STRING "vtysh(): vtysh_client_config(): "
@@ -224,7 +234,7 @@ vtysh_client_config (struct vtysh_client *vclient, char *line)
    XFREE(MTYPE_TMP, buf);
    return ret;
 }
-
+#endif
 static int
 vtysh_client_execute (struct vtysh_client *vclient, const char *line, FILE *fp)
 {
@@ -1419,7 +1429,7 @@ DEFUN(vtysh_vlan,
 {
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_bridge *bridge_row = NULL;
-    struct ovsrec_bridge *default_bridge_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
     bool vlan_found = false;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
@@ -1450,7 +1460,7 @@ DEFUN(vtysh_vlan,
 
         if (status_txn == NULL)
         {
-            VLOG_DBG("Trasaction creation failed by cli_do_config_start().Function=%s, Line=%s", __func__, __LINE__);
+            VLOG_DBG("Transaction creation failed by cli_do_config_start().Function=%s, Line=%d", __func__, __LINE__);
             cli_do_config_abort(status_txn);
             vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
             return CMD_SUCCESS;
@@ -1477,7 +1487,7 @@ DEFUN(vtysh_vlan,
 
             if (default_bridge_row == NULL)
             {
-                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%s", __func__, __LINE__);
+                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%d", __func__, __LINE__);
                 cli_do_config_abort(status_txn);
                 vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
                 return CMD_SUCCESS;
@@ -1490,7 +1500,7 @@ DEFUN(vtysh_vlan,
         {
             vlans[i] = default_bridge_row->vlans[i];
         }
-        vlans[default_bridge_row->n_vlans] = vlan_row;
+        vlans[default_bridge_row->n_vlans] = CONST_CAST(struct ovsrec_vlan*,vlan_row);
         ovsrec_bridge_set_vlans(default_bridge_row, vlans,
             default_bridge_row->n_vlans + 1);
 
@@ -1503,7 +1513,7 @@ DEFUN(vtysh_vlan,
         }
         else
         {
-            VLOG_DBG("Transaction failed to create vlan. Function:%s, LINE:%s", __func__, __LINE__);
+            VLOG_DBG("Transaction failed to create vlan. Function:%s, LINE:%d", __func__, __LINE__);
             vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
             return CMD_SUCCESS;
         }
@@ -1514,6 +1524,7 @@ DEFUN(vtysh_vlan,
         vty->index = (char *) vlan;
         return CMD_SUCCESS;
     }
+    return CMD_SUCCESS;
 }
 
 DEFUN(vtysh_no_vlan,
@@ -1526,7 +1537,7 @@ DEFUN(vtysh_no_vlan,
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_bridge *bridge_row = NULL;
-    struct ovsrec_bridge *default_bridge_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
     bool vlan_found = false;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
@@ -1556,7 +1567,7 @@ DEFUN(vtysh_no_vlan,
 
         if (status_txn == NULL)
         {
-            VLOG_DBG("Trasaction creation failed by cli_do_config_start().Function=%s, Line=%s", __func__, __LINE__);
+            VLOG_DBG("Trasaction creation failed by cli_do_config_start().Function=%s, Line=%d", __func__, __LINE__);
             cli_do_config_abort(status_txn);
             vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
             return CMD_SUCCESS;
@@ -1576,7 +1587,7 @@ DEFUN(vtysh_no_vlan,
 
             if (default_bridge_row == NULL)
             {
-                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%s", __func__, __LINE__);
+                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%d", __func__, __LINE__);
                 cli_do_config_abort(status_txn);
                 vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
                 return CMD_SUCCESS;
@@ -1634,7 +1645,7 @@ DEFUN(vtysh_no_vlan,
         }
         else
         {
-            VLOG_DBG("Transaction failed to delete vlan. Function:%s, LINE:%s", __func__, __LINE__);
+            VLOG_DBG("Transaction failed to delete vlan. Function:%s, LINE:%d", __func__, __LINE__);
             vty_out(vty, "Failed to delete the vlan%s", VTY_NEWLINE);
             return CMD_SUCCESS;
         }
@@ -1658,8 +1669,8 @@ DEFUN (vtysh_intf_link_aggregation,
   struct ovsdb_idl_txn *txn = NULL;
   enum ovsdb_idl_txn_status status_txn;
   static char lag_number[LAG_NAME_LENGTH]={0};
-  struct ovsrec_vrf *default_vrf_row = NULL;
-  struct ovsrec_vrf *vrf_row = NULL;
+  const struct ovsrec_vrf *default_vrf_row = NULL;
+  const struct ovsrec_vrf *vrf_row = NULL;
   int i=0;
   struct ovsrec_port **ports = NULL;
 
@@ -1679,7 +1690,7 @@ DEFUN (vtysh_intf_link_aggregation,
     txn = cli_do_config_start();
     if (txn == NULL)
     {
-      VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d"
+      VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d",
                " cli_do_config_start()", __func__, __LINE__);
           cli_do_config_abort(txn);
           return CMD_OVSDB_FAILURE;
@@ -1711,7 +1722,7 @@ DEFUN (vtysh_intf_link_aggregation,
     {
       ports[i] = default_vrf_row->ports[i];
     }
-    ports[default_vrf_row->n_ports] = port_row;
+    ports[default_vrf_row->n_ports] = CONST_CAST(struct ovsrec_port*,port_row);
     ovsrec_vrf_set_ports(default_vrf_row, ports,
                          default_vrf_row->n_ports + 1);
     free(ports);
@@ -2307,7 +2318,7 @@ DEFUN (vtysh_integrated_config,
    vtysh_writeconfig_integrated = 1;
    return CMD_SUCCESS;
 }
-
+#ifndef ENABLE_OVSDB
 DEFUN (no_vtysh_integrated_config,
       no_vtysh_integrated_config_cmd,
       "no service integrated-vtysh-config",
@@ -2318,12 +2329,10 @@ DEFUN (no_vtysh_integrated_config,
    vtysh_writeconfig_integrated = 0;
    return CMD_SUCCESS;
 }
-
 static int
 write_config_integrated(void)
 {
    u_int i;
-   int ret;
    char line[] = "write terminal\n";
    FILE *fp;
    char *integrate_sav = NULL;
@@ -2349,7 +2358,7 @@ write_config_integrated(void)
    }
 
    for (i = 0; i < array_size(vtysh_client); i++)
-      ret = vtysh_client_config (&vtysh_client[i], line);
+      vtysh_client_config (&vtysh_client[i], line);
 
    vtysh_config_dump (fp);
 
@@ -2368,7 +2377,7 @@ write_config_integrated(void)
 
    return CMD_SUCCESS;
 }
-
+#endif
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_write_memory,
       vtysh_write_memory_cmd,
@@ -2519,9 +2528,9 @@ DEFUN (vtysh_show_daemons,
 int
 execute_command (const char *command, int argc, const char *arg[])
 {
-  int ret = 0;
   pid_t pid = 0;
   int status = 0;
+  int ret = 0;
   int index = 0;
   char **cmd_argv = NULL;
   /* Call fork(). */
@@ -2567,7 +2576,7 @@ execute_command (const char *command, int argc, const char *arg[])
       ret = wait4 (pid, &status, 0, NULL);
       execute_flag = 0;
    }
-   return 0;
+   return ret;
 }
 
 /* Write startup configuration into the terminal. */
@@ -2731,7 +2740,7 @@ DEFUN (vtysh_passwd,
 
   char *arg[2];
   arg[0] = "passwd";
-  arg[1] = argv[0];
+  arg[1] = CONST_CAST(char *,argv[0]);
   execute_command("sudo", 2,(const char **)arg);
 
   return CMD_SUCCESS;
@@ -2880,7 +2889,7 @@ vtysh_prompt (void)
 
 #ifdef ENABLE_OVSDB
    static char newhost[100];
-   char* temphost = cmd_prompt(vty->node);
+   const char* temphost = cmd_prompt(vty->node);
    strcpy(newhost, temphost);
    if (enable_mininet_test_prompt == 1)
    {
@@ -2910,7 +2919,7 @@ DEFUN(vtysh_user_add,
        arg[2] = "ovsdb_users";
        arg[3] = "-s";
        arg[4] = "/usr/bin/vtysh";
-       arg[5] = argv[0];
+       arg[5] = CONST_CAST(char*,argv[0]);
        execute_command("sudo", 6,(const char **)arg);
        return CMD_SUCCESS;
 }
@@ -2923,7 +2932,7 @@ DEFUN(vtysh_user_del,
 {
        char *arg[2];
        arg[0] = "/usr/sbin/deluser";
-       arg[1] = argv[0];
+       arg[1] = CONST_CAST(char*,argv[0]);
        execute_command("sudo", 2,(const char **)arg);
        return CMD_SUCCESS;
 }
@@ -2942,6 +2951,7 @@ DEFUN (vtysh_demo_cli1,
 	{
       vty_out(vty, "Demo Cli executed.\n");
 	}
+    return CMD_SUCCESS;
 }
 
 DEFUN (vtysh_demo_cli2,
@@ -2989,7 +2999,7 @@ char vtysh_alias_cmd_help_string[] = VTYSH_ALIAS_CMD_HELPSTRING;
 -----------------------------------------------------------------------------*/
 int vty_alias_load_alias_table(void)
 {
-   struct ovsrec_cli_alias *alias_row = NULL;
+   const struct ovsrec_cli_alias *alias_row = NULL;
 
    vtysh_alias_count = 0;
 
@@ -3036,7 +3046,6 @@ int vtysh_alias_save_alias(char *name, char *definition)
 {
    struct ovsrec_cli_alias *alias_row = NULL;
    struct ovsdb_idl_txn *status_txn = NULL;
-   struct ovsrec_open_vswitch *ovs_row = NULL;
    enum ovsdb_idl_txn_status status;
 
    status_txn = cli_do_config_start();
@@ -3069,7 +3078,7 @@ int vtysh_alias_save_alias(char *name, char *definition)
 -----------------------------------------------------------------------------*/
 int vtysh_alias_delete_alias(char *name)
 {
-   struct ovsrec_cli_alias *alias_row = NULL;
+   const struct ovsrec_cli_alias *alias_row = NULL;
    struct ovsdb_idl_txn *status_txn = NULL;
    enum ovsdb_idl_txn_status status;
 
@@ -3173,7 +3182,7 @@ DEFUN (vtysh_alias_cli,
    }
 
    /* check if command already exists */
-   ret_val =  cmd_try_execute_command (vty, argv[0]);
+   ret_val =  cmd_try_execute_command (vty, CONST_CAST(char*,argv[0]));
    if(CMD_ERR_NO_MATCH != ret_val)
    {
       vty_out(vty, VTYSH_ERROR_ALIAS_NAME_ALREADY_EXISTS);
@@ -3396,6 +3405,7 @@ int vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
       vty_command (vty, vty->buf);
    }
    vty->buf = prev_buf;
+   return CMD_SUCCESS;
 }
 
 
@@ -3405,7 +3415,7 @@ DEFUN (vtysh_show_alias_cli,
       SHOW_STR
       "Short names configured for a set of commands\n")
 {
-   int len = 0, i = 0;
+   int i = 0;
 
    vty_out(vty, " %-30s %s %s", "Alias Name", "Alias Definition", VTY_NEWLINE);
    vty_out(vty, " -------------------------------------------------------------------------------%s", VTY_NEWLINE);
@@ -3489,7 +3499,7 @@ int is_valid_ip_address(const char *ip_value)
     {
 
         strncpy(ipv6addr,ip_value,ipv6_length);
-        ipv6addr[ipv6_length + 1] = "\0";
+        ipv6addr[ipv6_length + 1] = '\0';
         strtok(ipv6addr,"/");
 
         if(inet_pton(AF_INET6, ipv6addr, &addrv6) <= 0)
@@ -3751,8 +3761,8 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_write_terminal_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (CONFIG_NODE, &vtysh_integrated_config_cmd);
-  install_element (CONFIG_NODE, &no_vtysh_integrated_config_cmd);
 #ifndef ENABLE_OVSDB
+  install_element (CONFIG_NODE, &no_vtysh_integrated_config_cmd);
   /* "write memory" command. */
   install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
 #endif

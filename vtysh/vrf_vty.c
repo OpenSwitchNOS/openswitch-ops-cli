@@ -253,7 +253,6 @@ static int vrf_delete(const char *vrf_name) {
      */
 
     const struct ovsrec_vrf *vrf_row = NULL;
-    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     const struct ovsrec_open_vswitch *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
@@ -305,7 +304,7 @@ static int vrf_delete(const char *vrf_name) {
     for (i = 0; i < vrf_row->n_ports; i++) {
         port_name = xstrdup(vrf_row->ports[i]->name);
         ovsrec_port_delete(vrf_row->ports[i]);
-        port_row = port_check_and_add(port_name, true, true, status_txn);
+        port_check_and_add(port_name, true, true, status_txn);
         free(port_name);
     }
 
@@ -483,7 +482,6 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
 static int vrf_del_port(const char *if_name, const char *vrf_name)
 {
     const struct ovsrec_vrf *vrf_row = NULL;
-    const struct ovsrec_vrf *default_vrf_row = NULL;
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;

@@ -22,6 +22,8 @@
  *
  ***************************************************************************/
 
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -47,8 +49,7 @@ static vtysh_ret_val
 vtysh_ovsdb_porttable_parse_vlan(const char *if_name,
                                  vtysh_ovsdb_cbmsg_ptr p_msg)
 {
-    struct ovsrec_port *port_row;
-    bool displayL3Info = false;
+    const struct ovsrec_port *port_row;
     int i;
 
     port_row = port_lookup(if_name, p_msg->idl);

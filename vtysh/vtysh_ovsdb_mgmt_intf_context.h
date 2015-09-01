@@ -25,7 +25,7 @@
 #ifndef VTYSH_OVSDB_MGMT_INTF_CONTEXT_H
 #define VTYSH_OVSDB_MGMT_INTF_CONTEXT_H
 
-int vtysh_mgmt_init_intf_context_clients();
+int vtysh_init_mgmt_intf_context_clients(void);
 vtysh_ret_val vtysh_mgmt_intf_context_clientcallback(void *p_private);
 
 #endif /* VTYSH_OVSDB_MGMT_INTF_CONTEXT_H */

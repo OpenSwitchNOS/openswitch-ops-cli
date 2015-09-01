@@ -23,7 +23,8 @@
  ***************************************************************************/
 
 #include <zebra.h>
-
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -44,7 +45,6 @@ vtysh_vlan_context_clientcallback(void *p_private)
 {
   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
   const struct ovsrec_vlan *vlan_row;
-  int printed_vlan_name = false;
 
   vlan_row = ovsrec_vlan_first(p_msg->idl);
   if (vlan_row == NULL)

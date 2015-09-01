@@ -23,7 +23,8 @@
  ***************************************************************************/
 
 #include <zebra.h>
-
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"

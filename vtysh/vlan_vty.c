@@ -23,6 +23,9 @@
  * show vlan internal
  ***************************************************************************/
 
+#include <zebra.h>
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -296,7 +299,6 @@ static int show_vlan_int_range()
         vty_out(vty, "\t%-4s\t\t%-16s\n", port_vlan_str, port_row->name);
     }
 
-done:
     if (cli_do_config_finish(status_txn)) {
         return CMD_SUCCESS;
     } else {
@@ -325,12 +327,12 @@ DEFUN(cli_vlan_description,
     const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    char *description = argv[0];
+    char *description = CONST_CAST(char*,argv[0]);
     int vlan_id = atoi((char *) vty->index);
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_VLAN_SET_DESCRIPTION_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -358,7 +360,7 @@ DEFUN(cli_vlan_description,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set description. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set description. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_VLAN_SET_DESCRIPTION_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -377,7 +379,7 @@ DEFUN(cli_no_vlan_description,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_VLAN_REMOVE_DESCRIPTION_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -399,7 +401,7 @@ DEFUN(cli_no_vlan_description,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove description. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove description. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_VLAN_SET_DESCRIPTION_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -417,7 +419,7 @@ DEFUN(cli_vlan_admin,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_VLAN_SHUTDOWN_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -440,7 +442,7 @@ DEFUN(cli_vlan_admin,
     }
     else
     {
-        VLOG_DBG("Transaction failed to shutdown vlan. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to shutdown vlan. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_VLAN_SHUTDOWN_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -459,7 +461,7 @@ DEFUN(cli_no_vlan_admin,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_VLAN_NO_SHUTDOWN_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -481,7 +483,7 @@ DEFUN(cli_no_vlan_admin,
     }
     else
     {
-        VLOG_DBG("Transaction failed to enable vlan. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to enable vlan. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_VLAN_SET_DESCRIPTION_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -505,7 +507,7 @@ DEFUN(cli_intf_vlan_access,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_ACCESS_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -604,7 +606,7 @@ DEFUN(cli_intf_vlan_access,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set access vlan %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set access vlan %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_ACCESS_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -626,7 +628,7 @@ DEFUN(cli_intf_no_vlan_access,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_ACCESS_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -682,7 +684,7 @@ DEFUN(cli_intf_no_vlan_access,
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
     }
 
-    if (vlan_port_row->vlan_mode != NULL,
+    if (vlan_port_row->vlan_mode != NULL &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) != 0)
     {
         vty_out(vty, "The interface is not in access mode%s", VTY_NEWLINE);
@@ -706,7 +708,7 @@ DEFUN(cli_intf_no_vlan_access,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove access vlan. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove access vlan. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_ACCESS_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -731,7 +733,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_ALLOWED_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -840,7 +842,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
             }
             else
             {
-                VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+                VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
                 vty_out(vty, OVSDB_INTF_VLAN_TRUNK_ALLOWED_ERROR, vlan_id, VTY_NEWLINE);
                 return CMD_SUCCESS;
             }
@@ -865,7 +867,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_ALLOWED_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -886,11 +888,11 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
-    int i = 0, n = 0, found_trunk = 0;
+    int i = 0, n = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, "Failed to remove trunk VLAN%s", VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -992,7 +994,7 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove trunk VLAN. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove trunk VLAN. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_ALLOWED_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1017,7 +1019,7 @@ DEFUN(cli_intf_vlan_trunk_native,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_ERROR,vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1128,7 +1130,7 @@ DEFUN(cli_intf_vlan_trunk_native,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set native vlan %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set native vlan %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1147,11 +1149,11 @@ DEFUN(cli_intf_no_vlan_trunk_native,
     const struct ovsrec_interface *intf_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0, n = 0, found_trunk = 0;
+    int i = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1229,7 +1231,7 @@ DEFUN(cli_intf_no_vlan_trunk_native,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove native VLAN. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove native VLAN. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1246,14 +1248,13 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
     const struct ovsrec_interface *intf_row = NULL;
-    const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int i = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1327,7 +1328,7 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set native VLAN tagging. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set native VLAN tagging. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1347,11 +1348,11 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
     const struct ovsrec_interface *intf_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0, n = 0;
+    int i = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1424,7 +1425,7 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove native VLAN tagging. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove native VLAN tagging. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1439,16 +1440,15 @@ DEFUN(cli_lag_vlan_access,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
     const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
-    int i = 0, found_vlan = 0;
+    int found_vlan = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_ACCESS_ERROR,vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1514,7 +1514,7 @@ DEFUN(cli_lag_vlan_access,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set access VLAN %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set access VLAN %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_ACCESS_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1529,14 +1529,12 @@ DEFUN(cli_lag_no_vlan_access,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_ACCESS_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1582,7 +1580,7 @@ DEFUN(cli_lag_no_vlan_access,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove access VLAN. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove access VLAN. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_ACCESS_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1598,7 +1596,6 @@ DEFUN(cli_lag_vlan_trunk_allowed,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
     const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
@@ -1607,7 +1604,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_ALLOWED_ERROR, vlan_id,VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1683,7 +1680,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
             }
             else
             {
-                VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+                VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
                 vty_out(vty, OVSDB_INTF_VLAN_TRUNK_ALLOWED_ERROR, vlan_id, VTY_NEWLINE);
                 return CMD_SUCCESS;
             }
@@ -1708,7 +1705,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set allowed trunk VLAN %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_ALLOWED_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1725,15 +1722,14 @@ DEFUN(cli_lag_no_vlan_trunk_allowed,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
-    int i = 0, n = 0, found_trunk = 0;
+    int i = 0, n = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_ALLOWED_ERROR,vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1802,7 +1798,7 @@ DEFUN(cli_lag_no_vlan_trunk_allowed,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove trunk vlan. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove trunk vlan. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_ALLOWED_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1818,16 +1814,15 @@ DEFUN(cli_lag_vlan_trunk_native,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
     const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
-    int i = 0, found_vlan = 0;
+    int found_vlan = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1905,7 +1900,7 @@ DEFUN(cli_lag_vlan_trunk_native,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set native vlan %d. Function:%s, Line:%s", vlan_id, __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set native vlan %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1921,14 +1916,12 @@ DEFUN(cli_lag_no_vlan_trunk_native,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port* vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0, n = 0, found_trunk = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -1973,7 +1966,7 @@ DEFUN(cli_lag_no_vlan_trunk_native,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove native VLAN. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove native VLAN. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1989,15 +1982,12 @@ DEFUN(cli_lag_vlan_trunk_native_tag,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
-    const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -2038,7 +2028,7 @@ DEFUN(cli_lag_vlan_trunk_native_tag,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set native VLAN tagging. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set native VLAN tagging. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -2055,14 +2045,12 @@ DEFUN(cli_lag_no_vlan_trunk_native_tag,
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
-    const struct ovsrec_interface *intf_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0, n = 0;
 
     if (status_txn == NULL)
     {
-        VLOG_DBG("Failed to create transaction. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
@@ -2102,7 +2090,7 @@ DEFUN(cli_lag_no_vlan_trunk_native_tag,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove native VLAN tagging. Function:%s, Line:%s", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove native VLAN tagging. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_TAG_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -2160,12 +2148,15 @@ DEFUN(cli_show_vlan,
     OVSREC_VLAN_FOR_EACH(vlan_row, idl)
     {
         char vlan_id[5] = { 0 };
-        snprintf(vlan_id, 5, "%d", vlan_row->id);
+        snprintf(vlan_id, 5, "%ld", vlan_row->id);
         vty_out(vty, "%-8s", vlan_id);
         vty_out(vty, "%-10s", vlan_row->name);
         vty_out(vty, "%-9s", vlan_row->oper_state);
         vty_out(vty, "%-15s", vlan_row->oper_state_reason);
-        vty_out(vty, "%-15s", vlan_row->internal_usage);
+        if(!smap_is_empty(&vlan_row->internal_usage))
+            vty_out(vty, "%-15s", "l3port");
+        else
+            vty_out(vty, "%-15s", "");
         int count = 0, print_tag = 0;
         port_row = ovsrec_port_first(idl);
         if (port_row != NULL)
@@ -2257,7 +2248,10 @@ DEFUN(cli_show_vlan_id,
     vty_out(vty, "%-10s", temp_vlan_row->name);
     vty_out(vty, "%-9s", temp_vlan_row->oper_state);
     vty_out(vty, "%-15s", temp_vlan_row->oper_state_reason);
-    vty_out(vty, "%-15s", temp_vlan_row->internal_usage);
+    if(!smap_is_empty(&temp_vlan_row->internal_usage))
+        vty_out(vty, "%-15s", "l3port");
+    else
+        vty_out(vty, "%-15s", "");
     int count = 0, print_tag = 0;
     port_row = ovsrec_port_first(idl);
     if (port_row != NULL)

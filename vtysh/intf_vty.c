@@ -60,9 +60,10 @@ DEFUN (cli_intf_shutdown,
       "shutdown",
       "Enable/disable an interface\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -82,22 +83,23 @@ DEFUN (cli_intf_shutdown,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
+            smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
                   OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
          }
          else
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -126,9 +128,10 @@ DEFUN (cli_intf_speed,
       "Configure the interface speed\nAuto negotiate speed\n"
       "1Gb/s\n10Gb/s\n100Gb/s\n40Gb/s")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -148,29 +151,30 @@ DEFUN (cli_intf_speed,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config,&row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
          }
          else
          {
             if(strcmp(INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT, argv[0]) == 0)
             {
-               smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
+               smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
             }
             else
             {
-               smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS,
+               smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS,
                      argv[0]);
             }
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -198,9 +202,10 @@ DEFUN (cli_intf_mtu,
       "mtu (auto|<576-16360>)",
       "Configure mtu for the interface\nUse Default MTU (1500 bytes)\nEnter MTU (in bytes)\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -220,29 +225,30 @@ DEFUN (cli_intf_mtu,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_MTU);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU);
          }
          else
          {
             if(strcmp(INTERFACE_USER_CONFIG_MAP_MTU_DEFAULT, argv[0]) == 0)
             {
-               smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_MTU);
+               smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU);
             }
             else
             {
-               smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_MTU,
+               smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU,
                      argv[0]);
             }
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -270,9 +276,10 @@ DEFUN (cli_intf_duplex,
       "duplex (half|full)",
       "Configure the interface duplex mode\nConfigure half-duplex\nConfigure full-duplex")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -292,23 +299,24 @@ DEFUN (cli_intf_duplex,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if((vty_flags & CMD_FLAG_NO_CMD)
                || (strcmp(argv[0], "full") == 0))
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX);
          }
          else
          {
-            smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX,
+            smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX,
                   INTERFACE_USER_CONFIG_MAP_DUPLEX_HALF);
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -338,9 +346,10 @@ DEFUN (cli_intf_flowcontrol,
       "Receive pause frames\nSend pause frames\n"
       "Turn off flow-control\nTurn on flow-control\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -362,7 +371,7 @@ DEFUN (cli_intf_flowcontrol,
       {
          const char *state_value = smap_get(&row->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
          char new_value[INTF_NAME_SIZE] = {0};
-
+         smap_clone(&smap_user_config, &row->user_config);
          if (strcmp(argv[0], "send") == 0)
          {
             if(strcmp(argv[1], "on") == 0)
@@ -421,20 +430,20 @@ DEFUN (cli_intf_flowcontrol,
 
          if(strcmp(new_value, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) == 0)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
          }
          else
          {
-            smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE,
+            smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_PAUSE,
                   new_value);
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -465,9 +474,10 @@ DEFUN (cli_intf_autoneg,
       "Configure auto-negotiation process for the interface\n"
       "Turn on autonegotiation\nTurn off autonegotiation\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -487,29 +497,30 @@ DEFUN (cli_intf_autoneg,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
          }
          else
          {
             if(strcmp(INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT, argv[0]) == 0)
             {
-               smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
+               smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
             }
             else
             {
-               smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG,
+               smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG,
                      argv[0]);
             }
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -537,7 +548,7 @@ DEFUN_NO_FORM (cli_intf_autoneg,
 int cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[])
 {
-   struct ovsrec_interface *row = NULL;
+   const struct ovsrec_interface *row = NULL;
    const char *cur_state =NULL;
    bool bPrinted = false;
 
@@ -649,7 +660,7 @@ DEFUN (cli_intf_show_run_intf_if,
 int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[], bool brief)
 {
-   struct ovsrec_interface *ifrow = NULL;
+   const struct ovsrec_interface *ifrow = NULL;
 
    const struct ovsdb_datum *datum;
    static char *interface_statistics_keys [] = {
@@ -719,7 +730,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          }
          else
          {
-            vty_out(vty, " %-6d", intVal/1000000);
+            vty_out(vty, " %-6ld", intVal/1000000);
          }
          vty_out(vty, "   -- ");  /* Port channel */
          vty_out (vty, "%s", VTY_NEWLINE);
@@ -748,7 +759,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
          if(NULL!=datum) intVal = datum->keys[0].integer;
 
-         vty_out(vty, " MTU %d %s", intVal, VTY_NEWLINE);
+         vty_out(vty, " MTU %ld %s", intVal, VTY_NEWLINE);
 
          if(strcmp(ifrow->duplex, "half") == 0)
          {
@@ -762,7 +773,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          intVal = 0;
          datum = ovsrec_interface_get_link_speed(ifrow, OVSDB_TYPE_INTEGER);
          if(NULL!=datum) intVal = datum->keys[0].integer;
-         vty_out(vty, " Speed %lld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
+         vty_out(vty, " Speed %ld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
 
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
          if((NULL == cur_state) ||
@@ -809,54 +820,54 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          atom.string = interface_statistics_keys[0];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input packets  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input packets  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[1];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[8];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[4];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[5];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d short frame    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld short frame    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[6];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d overrun  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld overrun  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[7];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d CRC/FCS  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld CRC/FCS  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          vty_out(vty, " TX%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[2];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d output packets ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld output packets ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[3];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[11];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[9];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[10];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d collision  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld collision  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          vty_out(vty, "%s", VTY_NEWLINE);

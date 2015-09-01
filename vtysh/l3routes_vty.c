@@ -49,12 +49,12 @@ extern struct ovsdb_idl *idl;
 
 struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char * nh_entry,
                                           bool prefix_match, bool static_match, char * dist_entry,
-                                          struct ovsrec_route * row, char * ip_addr_family) {
+                                          const struct ovsrec_route * row, char * ip_addr_family) {
     struct ovsrec_nexthop *row_nh = NULL;
-    struct ovsrec_port *row_port = NULL;
+    const struct ovsrec_port *row_port = NULL;
     struct in_addr nexthop;
     struct in6_addr nexthop_ipv6;
-    int ret, i;
+    int ret = 0;
     int64_t distance;
 
     row_nh = ovsrec_nexthop_insert(status_txn);
@@ -78,7 +78,7 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
             vty_out(vty, "\nInterface %s not configured%s", nh_entry, VTY_NEWLINE);
             return NULL;
         }
-        ovsrec_nexthop_set_ports(row_nh, &row_port,row_nh->n_ports + 1);
+        ovsrec_nexthop_set_ports(row_nh, (struct ovsrec_port**)&row_port,row_nh->n_ports + 1);
     }
 
     if (!prefix_match) {
@@ -101,19 +101,19 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
                 if (*row->distance != DEFAULT_DISTANCE) {
                     vty_out(vty, "\nCannot configure default distance for this nexthop%s",
                             VTY_NEWLINE);
-                    vty_out(vty, "Distance for this route is set to %d, ", *row->distance);
+                    vty_out(vty, "Distance for this route is set to %ld, ", *row->distance);
                     vty_out(vty, "decided by the distance entered for the first nexthop\n%s",
                             VTY_NEWLINE);
-                    vty_out(vty, "Please enter the new route with distance %d%s",
+                    vty_out(vty, "Please enter the new route with distance %ld%s",
                             *row->distance, VTY_NEWLINE);
                     return NULL;
                 }
             } else if (*row->distance != atoi(dist_entry)) {
                 vty_out(vty, "\nCannot configure new distance for this nexthop%s", VTY_NEWLINE);
-                vty_out(vty, "Distance for this route is already set to %d, ", *row->distance);
+                vty_out(vty, "Distance for this route is already set to %ld, ", *row->distance);
                 vty_out(vty, "decided by the distance entered for the first nexthop\n%s",
                         VTY_NEWLINE);
-                vty_out(vty, "Please enter the new route with distance %d%s",
+                vty_out(vty, "Please enter the new route with distance %ld%s",
                         *row->distance, VTY_NEWLINE);
                 return NULL;
             }
@@ -135,11 +135,10 @@ DEFUN (vtysh_ip_route,
        "Outgoing interface\n"
        "Distance for this route. Default is 1 for static routes\n")
 {
-    struct ovsrec_route *row = NULL;
+    const struct ovsrec_route *row = NULL;
     struct ovsrec_nexthop *row_nh = NULL;
-    struct ovsrec_vrf *row_vrf = NULL;
+    const struct ovsrec_vrf *row_vrf = NULL;
 
-    struct in_addr mask;
     struct prefix_ipv4 p;
     int ret, i;
     enum ovsdb_idl_txn_status status;
@@ -167,7 +166,7 @@ DEFUN (vtysh_ip_route,
     * Convert to the final/optimized format before storing to DB
     */
     memset(prefix_str, 0 ,sizeof(prefix_str));
-    prefix2str(&p, prefix_str, sizeof(prefix_str));
+    prefix2str((const struct prefix*)&p, prefix_str, sizeof(prefix_str));
 
     OVSREC_ROUTE_FOR_EACH(row, idl) {
         if (row->prefix != NULL) {
@@ -199,8 +198,8 @@ DEFUN (vtysh_ip_route,
 
         ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
-        row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
-                                   argv[2], row, "ipv4");
+        row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
+                                   (char*)argv[2], row, "ipv4");
         if (row_nh == NULL) {
             cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
@@ -225,8 +224,8 @@ DEFUN (vtysh_ip_route,
         }
 
         if (!nh_match) {
-            row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
-                                       argv[2], row, "ipv4");
+            row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
+                                       (char*)argv[2], row, "ipv4");
             if (row_nh == NULL) {
                 cli_do_config_abort(status_txn);
                 return CMD_OVSDB_FAILURE;
@@ -262,10 +261,8 @@ DEFUN (vtysh_ip_route,
 static int show_routes(struct vty *vty, char * ip_addr_family)
 {
     const struct ovsrec_route *row_route = NULL;
-    const struct ovsrec_nexthop *row_nh = NULL;
     int flag = 0;
     int disp_flag = 1;
-    int len = 0;
     char str[50];
     int i;
 
@@ -291,36 +288,34 @@ static int show_routes(struct vty *vty, char * ip_addr_family)
 
         if (row_route->prefix) {
             memset(str, 0, sizeof(str));
-            len = 0;
-            len = snprintf(str, sizeof(str), "%s", row_route->prefix);
+            snprintf(str, sizeof(str), "%s", row_route->prefix);
             vty_out(vty, "%s", str);
         }
 
         if (row_route->n_nexthops) {
-            vty_out(vty, ",  %d %s next-hops %s", row_route->n_nexthops,
+            vty_out(vty, ",  %zd %s next-hops %s", row_route->n_nexthops,
                 row_route->sub_address_family, VTY_NEWLINE);
         }
 
         if (row_route->n_nexthops) {
             memset(str, 0, sizeof(str));
-            len = 0;
 
             for (i = 0; i < row_route->n_nexthops; i++) {
                 if (row_route->nexthops[i]->selected == NULL ||
                     row_route->nexthops[i]->selected[0] == true) {
                     if (row_route->nexthops[i]->ip_address) {
-                        len = snprintf(str, sizeof(str), " %s",
+                        snprintf(str, sizeof(str), " %s",
                             row_route->nexthops[i]->ip_address);
                         vty_out(vty, "\tvia %s", str);
                     } else if (row_route->nexthops[i]->ports[0]->name) {
-                        len = snprintf(str, sizeof(str), " %s",
+                        snprintf(str, sizeof(str), " %s",
                             row_route->nexthops[i]->ports[0]->name);
                         vty_out(vty, "\tvia %s", str);
                     }
 
-                    vty_out(vty, ",  [%d", *row_route->distance);
+                    vty_out(vty, ",  [%ld", *row_route->distance);
 
-                    vty_out(vty, "/%d]", row_route->metric);
+                    vty_out(vty, "/%ld]", *row_route->metric);
 
                     vty_out(vty, ",  %s", row_route->from);
 
@@ -373,7 +368,6 @@ DEFUN (vtysh_no_ip_route,
     struct prefix_ipv4 p;
     char prefix_str[256];
     int found_flag = 0;
-    int len = 0;
     char str[17];
     int distance_match = 0;
     int i, n;
@@ -399,7 +393,7 @@ DEFUN (vtysh_no_ip_route,
      * Convert to the final/optimized format before storing to DB
      */
     memset(prefix_str, 0 ,sizeof(prefix_str));
-    prefix2str(&p, prefix_str, sizeof(prefix_str));
+    prefix2str((const struct prefix*)&p, prefix_str, sizeof(prefix_str));
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -419,7 +413,6 @@ DEFUN (vtysh_no_ip_route,
             if (0 == strcmp(prefix_str,row_route->prefix )) {
                 if (row_route->n_nexthops) {
                     memset(str, 0, sizeof(str));
-                    len = 0;
                     distance_match = 0;
 
                     if (argv[2] != NULL) {
@@ -506,7 +499,6 @@ DEFUN (vtysh_ipv6_route,
     const struct ovsrec_nexthop *row_nh = NULL;
     const struct ovsrec_vrf *row_vrf = NULL;
 
-    struct in6_addr mask;
     struct prefix_ipv6 p;
     int ret, i;
     enum ovsdb_idl_txn_status status;
@@ -534,7 +526,7 @@ DEFUN (vtysh_ipv6_route,
      * Convert to the final/optimized format before storing to DB
      */
     memset(prefix_str, 0 ,sizeof(prefix_str));
-    prefix2str(&p, prefix_str, sizeof(prefix_str));
+    prefix2str((const struct prefix*)&p, prefix_str, sizeof(prefix_str));
 
     OVSREC_ROUTE_FOR_EACH(row, idl) {
         if (row->prefix != NULL) {
@@ -566,9 +558,9 @@ DEFUN (vtysh_ipv6_route,
 
     ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
-    row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
-                               argv[2], row, "ipv6");
-    ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);
+    row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
+                               (char*)argv[2], row, "ipv6");
+    ovsrec_route_set_nexthops(row, (struct ovsrec_nexthop**)&row_nh, row->n_nexthops + 1);
     } else {
         for (i = 0; i < row->n_nexthops; i++) {
             if (row->nexthops[i] != NULL && static_match) {
@@ -587,8 +579,8 @@ DEFUN (vtysh_ipv6_route,
         }
 
         if (!nh_match) {
-            row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
-                                       argv[2], row, "ipv6");
+            row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
+                                       (char*)argv[2], row, "ipv6");
 
             if (row_nh == NULL) {
                 cli_do_config_abort(status_txn);
@@ -601,7 +593,7 @@ DEFUN (vtysh_ipv6_route,
             for (i = 0; i < row->n_nexthops; i++) {
                 nexthops[i] = row->nexthops[i];
             }
-            nexthops[row->n_nexthops] = row_nh;
+            nexthops[row->n_nexthops] = (struct ovsrec_nexthop*)row_nh;
 
             ovsrec_route_set_nexthops(row, nexthops, row->n_nexthops + 1);
             free(nexthops);
@@ -654,7 +646,6 @@ DEFUN (vtysh_no_ipv6_route,
     struct prefix_ipv6 p;
     char prefix_str[256];
     int found_flag = 0;
-    int len = 0;
     char str[17];
     int distance_match = 0;
     int i, n;
@@ -680,7 +671,7 @@ DEFUN (vtysh_no_ipv6_route,
      * Convert to the final/optimized format before storing to DB
      */
     memset(prefix_str, 0 ,sizeof(prefix_str));
-    prefix2str(&p, prefix_str, sizeof(prefix_str));
+    prefix2str((const struct prefix*)&p, prefix_str, sizeof(prefix_str));
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -700,7 +691,6 @@ DEFUN (vtysh_no_ipv6_route,
             if(0 == strcmp(prefix_str,row_route->prefix )) {
                 if (row_route->n_nexthops) {
                     memset(str, 0, sizeof(str));;
-                    len = 0;
                     distance_match = 0;
 
                     if (argv[2] != NULL) {
@@ -774,10 +764,8 @@ DEFUN (vtysh_no_ipv6_route,
 static int show_rib(struct vty *vty, char * ip_addr_family)
 {
     const struct ovsrec_route *row_route = NULL;
-    const struct ovsrec_nexthop *row_nh = NULL;
     int flag = 0;
     int disp_flag = 1;
-    int len = 0;
     char str[50];
     int i;
 
@@ -808,8 +796,7 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
 
         if (row_route->prefix) {
             memset(str, 0, sizeof(str));
-            len = 0;
-            len = snprintf(str, sizeof(str), "%s", row_route->prefix);
+            snprintf(str, sizeof(str), "%s", row_route->prefix);
             if (row_route->selected != NULL && row_route->selected[0] == true) {
                 vty_out(vty, "*%s", str);
             } else {
@@ -818,22 +805,21 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
         }
 
         if (row_route->n_nexthops) {
-            vty_out(vty, ",  %d %s next-hops %s", row_route->n_nexthops,
+            vty_out(vty, ",  %zd %s next-hops %s", row_route->n_nexthops,
                 row_route->sub_address_family, VTY_NEWLINE);
         }
 
         if (row_route->n_nexthops) {
             memset(str, 0, sizeof(str));
-            len = 0;
 
             for (i = 0; i < row_route->n_nexthops; i++) {
                 if (row_route->nexthops[i]->selected == NULL ||
                     row_route->nexthops[i]->selected[0] == true) {
                     if (row_route->nexthops[i]->ip_address) {
-                        len = snprintf(str, sizeof(str), " %s",
+                        snprintf(str, sizeof(str), " %s",
                             row_route->nexthops[i]->ip_address);
                     } else if (row_route->nexthops[i]->ports[0]->name) {
-                        len = snprintf(str, sizeof(str), " %s",
+                        snprintf(str, sizeof(str), " %s",
                             row_route->nexthops[i]->ports[0]->name);
                     }
 
@@ -846,9 +832,9 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
                         vty_out(vty, "\tvia %s", str);
                     }
 
-                    vty_out(vty, ",  [%d", *row_route->distance);
+                    vty_out(vty, ",  [%ld", *row_route->distance);
 
-                    vty_out(vty, "/%d]", row_route->metric);
+                    vty_out(vty, "/%ld]", *row_route->metric);
 
                     vty_out(vty, ",  %s", row_route->from);
 

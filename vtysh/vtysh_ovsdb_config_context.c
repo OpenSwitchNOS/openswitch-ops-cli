@@ -23,7 +23,8 @@
  ***************************************************************************/
 
 #include <zebra.h>
-
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -235,7 +236,7 @@ vtysh_ovsdb_ovstable_parse_lacpcfg(const struct smap *lacp_config, vtysh_ovsdb_c
 static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 {
-  struct ovsrec_cli_alias *alias_row = NULL;
+  const struct ovsrec_cli_alias *alias_row = NULL;
   OVSREC_CLI_ALIAS_FOR_EACH (alias_row, p_msg->idl)
   {
      vtysh_ovsdb_cli_print(p_msg, "alias %s %s",
@@ -254,7 +255,7 @@ vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 | Return : vtysh_ret_val, e_vtysh_ok
 -----------------------------------------------------------------------------*/
 static vtysh_ret_val
-vtysh_ovsdb_radiusservertable_parse_options(struct ovsrec_radius_server *row, vtysh_ovsdb_cbmsg *p_msg)
+vtysh_ovsdb_radiusservertable_parse_options(const struct ovsrec_radius_server *row, vtysh_ovsdb_cbmsg *p_msg)
 {
     int64_t local_retries = 1;
     char ip[1000]={0}, *ipaddr=NULL,*udp_port=NULL,*timeout=NULL,*passkey=NULL;
@@ -319,8 +320,7 @@ vtysh_display_radiusservertable_commands(void *p_private)
 {
   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
-  struct ovsrec_radius_server *row;
-  int server_count = 0;
+  const struct ovsrec_radius_server *row;
 
   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                            "vtysh_ovsdb_radiusservertable_clientcallback entered");
@@ -345,8 +345,7 @@ vtysh_display_radiusservertable_commands(void *p_private)
 static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_logrotate_cfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
 {
-  const char *data = NULL, *uri = NULL;
-  int maxSize = 0;
+  const char *data = NULL;
 
   if(NULL == ifrow_config)
   {
@@ -564,7 +563,7 @@ vtysh_ret_val
 vtysh_config_context_led_clientcallback(void *p_private)
 {
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-    struct ovsrec_led *pLedRow = NULL;
+    const struct ovsrec_led *pLedRow = NULL;
 
     OVSREC_LED_FOR_EACH(pLedRow,p_msg->idl)
     {
@@ -597,7 +596,6 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
   char str_temp[80];
   int ipv4_flag = 0;
   int ipv6_flag = 0;
-  int len = 0;
   char str[50];
   int i;
 
@@ -625,8 +623,7 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
           for (i = 0; i < row_route->n_nexthops; i++) {
               if (row_route->prefix) {
                   memset(str, 0, sizeof(str));
-                  len = 0;
-                  len = snprintf(str, sizeof(str), "%s", row_route->prefix);
+                  snprintf(str, sizeof(str), "%s", row_route->prefix);
                   if (ipv4_flag == 1 && ipv6_flag == 0) {
                       snprintf(str_temp, sizeof(str_temp), "ip route %s", str);
                   }

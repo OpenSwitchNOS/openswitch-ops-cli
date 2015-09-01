@@ -35,7 +35,7 @@ typedef enum
 	CLI_PSU,
 	CLI_LED,
 	CLI_TEMP
-};
+}cli_subsystem;
 
 int cli_system_get_all();
 void system_vty_init();

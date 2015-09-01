@@ -52,10 +52,10 @@ const char *led_state_strings[] = {
  *  name    : Pointer to name of led character string
  * @return  : Pointer to ovsrec_led structure object
  ***********************************************************/
-static struct ovsrec_led *
+static const struct ovsrec_led *
 lookup_led(const char *name)
 {
-    static struct ovsrec_led *led;
+    const static struct ovsrec_led *led;
     /*
      * Re-caching the idl is necessary here because
      * If new data is added using ovs-vsctl command
@@ -78,8 +78,8 @@ lookup_led(const char *name)
  ***********************************************************/
 int cli_system_get_led()
 {
-    struct ovsrec_led* pLed = NULL;
-    struct ovsrec_subsystem* pSys = NULL;
+    const struct ovsrec_led* pLed = NULL;
+    const struct ovsrec_subsystem* pSys = NULL;
 
     pSys = ovsrec_subsystem_first(idl);
 
@@ -113,7 +113,7 @@ int cli_system_get_led()
  ***********************************************************/
 int  cli_system_set_led(char* sLedName,char* sLedState)
 {
-    struct ovsrec_led* pOvsLed = NULL;
+    const struct ovsrec_led* pOvsLed = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     pOvsLed = lookup_led(sLedName);
@@ -160,7 +160,7 @@ int  cli_system_set_led(char* sLedName,char* sLedState)
 
 int cli_system_no_set_led(char* sLedName)
 {
-    struct ovsrec_led* pOvsLed = NULL;
+    const struct ovsrec_led* pOvsLed = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     pOvsLed = lookup_led(sLedName);
@@ -223,7 +223,8 @@ DEFUN (cli_platform_set_led,
     "Blink the LED\n")
 {
 
-    return cli_system_set_led(argv[0],argv[1]);
+    return cli_system_set_led(CONST_CAST(char*,argv[0]),
+                              CONST_CAST(char*,argv[1]));
 }
 
 
@@ -235,7 +236,7 @@ DEFUN (no_cli_platform_set_led,
         "Name of LED e.g. <base-loc> for locator LED\n")
 {
 
-        return cli_system_no_set_led(argv[0]);
+        return cli_system_no_set_led(CONST_CAST(char*,argv[0]));
 }
 
 /***********************************************************

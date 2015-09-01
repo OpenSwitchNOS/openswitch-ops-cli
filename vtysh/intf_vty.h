@@ -25,14 +25,10 @@
 #ifndef _INTF_VTY_H
 #define _INTF_VTY_H
 
-#define OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction."
-#define OVSDB_ROW_FETCH_ERROR "Couldn't fetch row from the DB."
-#define OVSDB_TXN_COMMIT_ERROR "Commiting transaction to DB failed."
-
-#define INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT                "auto"
 #define INTERFACE_USER_CONFIG_MAP_MTU_DEFAULT                   "auto"
 #define INTERFACE_USER_CONFIG_MAP_PAUSE_DEFAULT                 "none"
 #define INTERFACE_USER_CONFIG_MAP_DUPLEX_DEFAULT                "full"
+#define INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT                "auto"
 
 void
 intf_vty_init (void);

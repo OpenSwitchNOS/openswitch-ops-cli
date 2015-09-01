@@ -56,6 +56,7 @@ static int aaa_set_global_status(const char *status)
   const struct ovsrec_open_vswitch *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap smap_aaa;
 
   if (status_txn == NULL) {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
@@ -70,18 +71,18 @@ static int aaa_set_global_status(const char *status)
      cli_do_config_abort(status_txn);
      return CMD_OVSDB_FAILURE;
   }
-
+  smap_clone(&smap_aaa, &row->aaa);
   if (strcmp(OPEN_VSWITCH_AAA_RADIUS, status) == 0) {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_RADIUS , HALON_TRUE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_RADIUS , HALON_TRUE_STR);
   }
   else if (strcmp(OPEN_VSWITCH_AAA_RADIUS_LOCAL,status) == 0) {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_RADIUS  ,HALON_FALSE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_RADIUS  ,HALON_FALSE_STR);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &row->aaa);
+  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_aaa);
   if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
       return CMD_SUCCESS;
   }
@@ -109,6 +110,7 @@ static int aaa_fallback_option(const char *value)
   const struct ovsrec_open_vswitch *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap smap_aaa;
 
   if (status_txn == NULL) {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
@@ -123,18 +125,18 @@ static int aaa_fallback_option(const char *value)
       cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
   }
-
+  smap_clone(&smap_aaa, &row->aaa);
   if ((strcmp(value,HALON_TRUE_STR) == 0) ) {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_TRUE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_TRUE_STR);
   }
   else {
-      smap_replace(&row->aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_FALSE_STR);
+      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_FALSE_STR);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &row->aaa);
+  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_aaa);
   if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
       return CMD_SUCCESS;
   }
@@ -402,13 +404,13 @@ static int radius_server_remove_passkey(const char *ipv4, const char *passkey)
   }
 
   if (inet_pton(AF_INET, ipv4, &addr) <= 0) {
-      VLOG_ERR("Invalid IPv4 address in function=%s, line=%s \n", __func__, __LINE__);
+      VLOG_ERR("Invalid IPv4 address in function=%s, line=%d\n", __func__, __LINE__);
       cli_do_config_abort(status_txn);
       return CMD_ERR_NOTHING_TODO;
   }
 
   if (!IS_VALID_IPV4(htonl(addr.s_addr))) {
-      VLOG_ERR("Broadcast, multicast and loopback addresses are not allowed in function=%s, line=%s \n", __func__, __LINE__);
+      VLOG_ERR("Broadcast, multicast and loopback addresses are not allowed in function=%s, line=%d\n", __func__, __LINE__);
       cli_do_config_abort(status_txn);
       return CMD_ERR_NOTHING_TODO;
   }
@@ -547,7 +549,6 @@ DEFUN (cli_radius_server_remove_host,
 
 static int radius_server_passkey_host(const char *ipv4, const char *passkey)
 {
-  const char  *key= NULL;
   const struct ovsrec_radius_server *row= NULL;
   int ret = 0;
   enum ovsdb_idl_txn_status txn_status;
@@ -871,7 +872,7 @@ static int show_radius_server_info()
       vty_out(vty, " Host IP address\t: %s%s",pp,VTY_NEWLINE);
       vty_out(vty, " Shared secret\t\t: %s%s",passkey,VTY_NEWLINE);
       vty_out(vty, " Auth port\t\t: %s%s",udp,VTY_NEWLINE);
-      vty_out(vty, " Retries\t\t: %lld%s",*(row->retries),VTY_NEWLINE);
+      vty_out(vty, " Retries\t\t: %ld%s",*(row->retries),VTY_NEWLINE);
       vty_out(vty, " Timeout\t\t: %s%s",timeout,VTY_NEWLINE);
   }
 

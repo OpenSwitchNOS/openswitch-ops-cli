@@ -53,4 +53,6 @@ bool check_iface_in_vrf(const char *if_name);
 bool check_port_in_bridge(const char *port_name);
 
 bool check_port_in_vrf(const char *port_name);
+
+void utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width);
 #endif /* VTYSH_OVSDB_IF_H */
