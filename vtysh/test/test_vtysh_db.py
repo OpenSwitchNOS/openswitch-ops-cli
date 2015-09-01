@@ -44,7 +44,6 @@ class DBTests( HalonTest ):
     for i in range(1, 4095):
         #ovsout = s1.cmd("/usr/bin/ovs-vsctl add-vlan br0 " + str(i) + " admin=up")
         ovsout = s1.cmd("/usr/bin/ovs-vsctl add-vlan br0 " + str(i))
-        print ovsout
     return True
 
   def retrievedbTest(self):
@@ -122,6 +121,10 @@ class DBTests( HalonTest ):
             return True
     return False
 
+@pytest.mark.skipif(True, reason="Takes too long and not needed for CIT")
+#This test was mainly needed for performance analysis of DB.
+#As this is not testing any functionality, skipping this file from CIT execution.
+
 class Test_db:
 
   def setup(self):
@@ -148,7 +151,6 @@ class Test_db:
     del self.test
 
   # DB config tests.
-  @pytest.mark.skipif(True, reason="Takes too long")
   def test_create_db(self):
     if self.test.createdbTest():
       print 'Passed createdbTest'

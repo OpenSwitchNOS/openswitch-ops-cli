@@ -33,6 +33,8 @@ class LLDPCliTest(HalonTest):
                            build=True)
 
     def enableLLDPFeatureTest(self):
+        info('\n########## Test to enable LLDP feature ##########\n')
+        lldp_feature_enabled = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("feature lldp")
@@ -40,10 +42,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_enable' in line:
-                return True
-        return False
+                lldp_feature_enabled = True
+        assert lldp_feature_enabled == True, 'Test to enable LLDP feature - FAILED'
+        return True
 
     def disableLLDPFeatureTest(self):
+        info('\n########## Test to disable LLDP feature ##########\n')
+        lldp_feature_enabled = True
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("no feature lldp")
@@ -51,10 +56,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_enable' in line:
-                return False
+                lldp_feature_enabled = False
+        assert lldp_feature_enabled == True,'Test to disable LLDP feature - FAILED!'
         return True
 
     def setLLDPholdtimeTest(self):
+        info('\n########## Test setting LLDP holdtime ##########\n')
+        lldp_hold_time_set = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lldp holdtime 7")
@@ -62,10 +70,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_hold=\"7\"' in line:
-                return True
-        return False
+                lldp_hold_time_set = True
+        assert lldp_hold_time_set == True, 'Test setting LLDP holdtime - FAILED!'
+        return True
 
     def setLLDPDefaultHoldtimeTest(self):
+        info('\n########## Test setting LLDP default holdtime ##########\n')
+        lldp_default_hold_time_set = True
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lldp holdtime 4")
@@ -73,10 +84,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_hold' in line:
-                return False
+                lldp_default_hold_time_set = False
+        assert lldp_default_hold_time_set == True,'Test setting LLDP default holdtime - FAILED!'
         return True
 
     def setLLDPTimerTest(self):
+        info('\n########## Test setting LLDP timer ##########\n')
+        lldp_timer_set = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lldp timer 100")
@@ -84,10 +98,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_tx_interval=\"100\"' in line:
-                return True
-        return False
+                lldp_timer_set = True
+        assert lldp_timer_set == True,'Test setting LLDP timer - FAILED!'
+        return True
 
     def setLLDPDefaultTimerTest(self):
+        info('\n########## Test setting default LLDP timer ##########\n')
+        lldp_default_timer_set = True
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lldp timer 30")
@@ -95,10 +112,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_tx_interval' in line:
-                return False
+                lldp_default_timer_set = False
+        assert lldp_default_timer_set == True, 'Test setting default LLDP timer - FAILED!'
         return True
 
     def setLLDPMgmtAddressTest(self):
+        info('\n########## Test setting LLDP management address ##########\n')
+        lldp_mgmt_addr_set = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lldp management-address 1.1.1.1")
@@ -106,10 +126,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_mgmt_addr=\"1.1.1.1\"' in line:
-                return True
-        return False
+                lldp_mgmt_addr_set = True
+        assert lldp_mgmt_addr_set == True, 'Test setting LLDP management address - FAILED!'
+        return True
 
     def unsetLLDPMgmtAddressTest(self):
+        info('\n########## Test unsetting LLDP management address ##########\n')
+        lldp_mgmt_addr_set = True
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("no lldp management-address")
@@ -117,10 +140,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_mgmt_addr' in line:
-                return False
+                lldp_mgmt_addr_set = False
+        assert lldp_mgmt_addr_set == True, 'Test unsetting LLDP management address'
         return True
 
     def setLLDPClearCountersTest(self):
+        info('\n########## Test LLDP clear counters ##########\n')
+        lldp_clear_counters_set = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lldp clear counters")
@@ -128,10 +154,13 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_num_clear_counters_requested=\"1\"' in line:
-                return True
-        return False
+                lldp_clear_counters_set = True
+        assert lldp_clear_counters_set == True,'Test LLDP clear counters - FAILED!'
+        return True
 
     def setLLDPClearNeighborsTest(self):
+        info('\n########## Test LLDP clear neighbors ##########\n')
+        lldp_clear_neighbors_set = False
         s1 = self.net.switches[ 0 ]
         s1.cmdCLI("conf t")
         s1.cmdCLI("lldp clear neighbors")
@@ -139,8 +168,9 @@ class LLDPCliTest(HalonTest):
         lines = out.split('\n')
         for line in lines:
             if 'lldp_num_clear_table_requested=\"1\"' in line:
-                return True
-        return False
+                lldp_clear_neighbors_set = True
+        assert lldp_clear_neighbors_set == True, 'Test LLDP clear neighbors - FAILED!'
+        return True
 
 
 class Test_lldp_cli:
@@ -156,63 +186,43 @@ class Test_lldp_cli:
 
     def test_enableLLDPFeatureTest(self):
         if self.test.enableLLDPFeatureTest():
-            print '\nPassed enableLLDPFeatureTest'
-        else:
-            assert 0, 'Failed enableLLDPFeatureTest'
+            info('\n########## Test to enable LLDP feature - SUCCESS ##########\n')
 
     def test_disableLLDPFeatureTest(self):
         if self.test.disableLLDPFeatureTest():
-            print 'Passed disableLLDPFeatureTest'
-        else:
-            assert 0, 'Failed disableLLDPFeatureTest'
+            info('\n########## Test to disable LLDP feature - SUCCESS ##########\n')
 
     def test_setLLDPholdtimeTest(self):
         if self.test.setLLDPholdtimeTest():
-            print 'Passed setLLDPholdtimeTest'
-        else:
-            assert 0, 'Failed setLLDPholdtimeTest'
+            info('\n########## Test setting LLDP holdtime - SUCCESS ##########\n')
 
     def test_setLLDPDefaultHoldtimeTest(self):
         if self.test.setLLDPDefaultHoldtimeTest():
-            print 'Passed setLLDPDefaultHoldtimeTest'
-        else:
-            assert 0, 'Failed setLLDPDefaultHoldtimeTest'
+            info('\n########## Test setting LLDP default holdtime - SUCCESS ##########\n')
 
     def test_setLLDPTimerTest(self):
         if self.test.setLLDPTimerTest():
-            print 'Passed setLLDPTimerTest'
-        else:
-            assert 0, 'Failed setLLDPTimerTest'
+            info('\n########## Test setting LLDP timer - SUCCESS ##########\n')
 
-    def test_setLLDPDefaultHoldtimeTest(self):
-        if self.test.setLLDPDefaultHoldtimeTest():
-            print 'Passed setLLDPDefaultTimerTest'
-        else:
-            assert 0, 'Failed setLLDPDefaultTimerTest'
+    def test_setLLDPDefaultTimerTest(self):
+        if self.test.setLLDPDefaultTimerTest():
+            info('\n########## Test setting default LLDP timer - SUCCESS ##########\n')
 
     def test_setLLDPMgmtAddressTest(self):
         if self.test.setLLDPMgmtAddressTest():
-            print 'Passed setLLDPMgmtAddressTest'
-        else:
-            assert 0, 'Failed setLLDPMgmtAddressTest'
+            info('\n########## Test setting LLDP management address - SUCCESS ##########\n')
 
     def test_unsetLLDPMgmtAddressTest(self):
         if self.test.unsetLLDPMgmtAddressTest():
-            print 'Passed unsetLLDPMgmtAddressTest'
-        else:
-            assert 0, 'Failed unsetLLDPMgmtAddressTest'
+            info('\n########## Test unsetting LLDP management address - SUCCESS ##########\n')
 
     def test_setLLDPClearCountersTest(self):
         if self.test.setLLDPClearCountersTest():
-            print 'Passed setLLDPClearCountersTest'
-        else:
-            assert 0, 'Failed setLLDPClearCountersTest'
+            info('\n########## Test LLDP clear counters - SUCCESS ##########\n')
 
     def test_setLLDPClearNeighborsTest(self):
         if self.test.setLLDPClearNeighborsTest():
-            print 'Passed setLLDPClearNeighborsTest'
-        else:
-            assert 0, 'Failed setLLDPClearNeighborsTest'
+            info('\n########## Test LLDP clear neighbors - SUCCESS ##########\n')
 
     def teardown_class(cls):
         Test_lldp_cli.test.net.stop()

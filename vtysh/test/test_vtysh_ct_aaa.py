@@ -62,15 +62,16 @@ class AutoProvisioning( HalonTest ):
     def EnablePasskeyAuth(self):
         ''' This function is to enable passkey authentication for
         SSH authentication method'''
+        info('########## Test to enable password authentication ##########\n')
 
         s1 = self.net.switches [ 0 ]
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            assert 0, "Failed to enter configuration terminal"
+        assert 'Unknown command' not in out, "Failed to enter configuration" \
+                                             " terminal"
 
-        out = s1.cmdCLI("ssh password-authentication enable")
-        if 'Command failed' in out:
-            assert 0, "Failed to enable local authentication"
+        out = s1.cmdCLI("ssh password-authentication")
+        assert 'Command failed' not in out, "Failed to execute ssh password" \
+                                            " authentication"
 
         s1.cmdCLI("exit")
 
@@ -79,20 +80,22 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if "PasswordAuthentication yes" in line:
                 return True
-        assert 0, "Failed to enable password key authentication"
+        assert "PasswordAuthentication yes" not in out, "Failed to enable" \
+                                                     " password authentication"
 
     def DisablePasskeyAuth(self):
         ''' This function is to enable passkey authentication for
         SSH authentication method'''
+        info('########## Test to disable password authentication ##########\n')
 
         s1 = self.net.switches [ 0 ]
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            assert 0, "Failed to enter configuration terminal"
+        assert 'Unknown command' not in out, "Failed to enter configuration" \
+                                             " terminal"
 
-        out = s1.cmdCLI("ssh password-authentication disable")
-        if 'Command failed' in out:
-            assert 0, "Failed to enable local authentication"
+        out = s1.cmdCLI("no ssh password-authentication")
+        assert 'Command failed' not in out, "Failed to execute no ssh password" \
+                                            " authentication command"
 
         s1.cmdCLI("exit")
 
@@ -101,20 +104,22 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if "PasswordAuthentication no" in line:
                 return True
-        assert 0, "Failed to disable password key authentication"
+        assert "PasswordAuthentication no" not in out, "Failed to disable" \
+                                                " password key authentication"
 
     def EnablePublickeyAuth(self):
         ''' This function is to enable passkey authentication for
         SSH authentication method'''
+        info('########## Test to enable public key authentication ##########\n')
 
         s1 = self.net.switches [ 0 ]
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            assert 0, "Failed to enter configuration terminal"
+        assert 'Unknown command' not in out, "Failed to enter configuration" \
+                                             " terminal"
 
-        out = s1.cmdCLI("ssh publickey-authentication enable")
-        if 'Command failed' in out:
-            assert 0, "Failed to enable local authentication"
+        out = s1.cmdCLI("ssh public-key-authentication")
+        assert 'Command failed' not in out, "Failed to execute ssh public-key" \
+                                            " authentication command"
 
         s1.cmdCLI("exit")
 
@@ -123,20 +128,22 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if "PubkeyAuthentication yes" in line:
                 return True
-        assert 0, "Failed to enable public key authentication"
+        assert "PubkeyAuthentication yes" not in out, "Failed to enable public" \
+                                                      " key authentication"
 
     def DisablePublickeyAuth(self):
         ''' This function is to enable passkey authentication for
         SSH authentication method'''
+        info('########## Test to disable public key authentication ##########\n')
 
         s1 = self.net.switches [ 0 ]
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            assert 0, "Failed to enter configuration terminal"
+        assert 'Unknown command' not in out, "Failed to enter configuration" \
+                                             " terminal"
 
-        out = s1.cmdCLI("ssh publickey-authentication disable")
-        if 'Command failed' in out:
-            assert 0, "Failed to enable local authentication"
+        out = s1.cmdCLI("no ssh public-key-authentication")
+        assert 'Command failed' not in out, "Failed to execute ssh no" \
+                                            " public-key authentication command"
 
         s1.cmdCLI("exit")
 
@@ -145,8 +152,8 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if "PubkeyAuthentication no" in line:
                 return True
-        assert 0, "Failed to disable public key authentication"
-
+        assert "PubkeyAuthentication no" not in out, "Failed to disable public" \
+                                                     " key authentication"
 
     def SetRadiusServerHost(self):
         info('\n########## Test to configure the radius server host IP ##########\n')
@@ -162,7 +169,7 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if 'Host IP address	: 192.168.1.5' in line:
                 return True
-        assert 'Host IP address : 192.168.1.5' in line, 'Test to configure the radius server host IP: Failed'
+        assert 'Host IP address : 192.168.1.5' not  in out, 'Test to configure the radius server host IP: Failed'
 
     def SetRadiusServerTimeout(self):
         info('\n########## Test to configure radius server Timeout ##########\n')
@@ -180,7 +187,7 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if "Timeout		: 10"  in line:
                  return True
-        assert 'Timeout         : 10' in line, 'Test to configure radius server Timeout: Failed'
+        assert 'Timeout         : 10' not in out, 'Test to configure radius server Timeout: Failed'
 
     def SetRadiusServerRetries(self):
         info('\n########## Test to configure radius server Retries ##########\n')
@@ -199,7 +206,7 @@ class AutoProvisioning( HalonTest ):
             if "Retries		: 2" in line:
                 return True
 
-        assert 'Retries         : 2' in line, 'Test to configure radius server Retries: Failed'
+        assert 'Retries         : 2' not in out, 'Test to configure radius server Retries: Failed'
 
     def SetRadiusAuthPort(self):
         info('\n########## Test to configure radius server Authentication port ##########\n')
@@ -217,7 +224,7 @@ class AutoProvisioning( HalonTest ):
             if "Auth port		: 3333" in line:
                 return True
 
-        assert 'Auth port               : 3333' in line, 'Test to configure radius server Authentication port: Failed'
+        assert 'Auth port               : 3333' not in out, 'Test to configure radius server Authentication port: Failed'
 
     def SetRadiuspasskey(self):
         info('\n########## Test to configure radius server Passkey ##########\n')
@@ -235,7 +242,7 @@ class AutoProvisioning( HalonTest ):
             if "Shared secret		: halonhost" in line:
                 return True
 
-        assert 'Shared secret           : halonhost' in line, 'Test to configure radius server Passkey: Failed'
+        assert 'Shared secret           : halonhost' not in out, 'Test to configure radius server Passkey: Failed'
 
     def NoRadiusPassky(self):
         info('\n########## Test to remove radius server Passkey and reset to default ##########\n')
@@ -255,7 +262,7 @@ class AutoProvisioning( HalonTest ):
                 for line in lines:
                          return True
 
-        assert 'Host IP address : 192.168.1.5' in line, 'Test to remove radius server Passkey and reset to default'
+        assert 'Host IP address : 192.168.1.5' not in out, 'Test to remove radius server Passkey and reset to default: Failed'
 
     def NoRadiusAuthPort(self):
         info('\n########## Test to remove radius server Authentication port and resets to default ##########\n')
@@ -275,7 +282,7 @@ class AutoProvisioning( HalonTest ):
                 for line in lines:
                     if "Auth port		: 1812" in line:
                          return True
-        assert 'Host IP address : 192.168.1.5' in line, 'Test to remove radius server Authentication port and reset to default: Failed'
+        assert 'Host IP address : 192.168.1.5' not in out, 'Test to remove radius server Authentication port and reset to default: Failed'
 
     def NoRadiusTimeout(self):
         info('\n########## Test to remove radius server timeout and resets to default ##########\n')
@@ -294,7 +301,7 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if "Timeout		: 5" in line:
                 return True
-        assert 'Timeout         : 5' in line, 'Test to remove radius server timeout and reset to default: Failed'
+        assert 'Timeout         : 5' not in out, 'Test to remove radius server timeout and reset to default: Failed'
 
     def NoRadiusRetries(self):
         info('\n########## Test to remove radius server Retries and resets to default ##########\n')
@@ -314,7 +321,7 @@ class AutoProvisioning( HalonTest ):
         for line in lines:
             if "Retries		: 1" in line:
                 return True
-        assert 'Retries         : 1' in line, 'Test to remove radius server Retries and reset to default: Failed'
+        assert 'Retries         : 1' not in out, 'Test to remove radius server Retries and reset to default: Failed'
 
 class Test_autoProvision:
     def setup_class(cls):
@@ -330,19 +337,19 @@ class Test_autoProvision:
 
     def test_EnablePasskeyAuth(self):
         if self.test.EnablePasskeyAuth():
-            print 'EnablePasskeyAuth'
+            info('### Test to enable SSH password authentication: Passed ###\n')
 
     def test_DisablePasskeyAuth(self):
         if self.test.DisablePasskeyAuth():
-            print 'DisablePasskeyAuth'
+            info('### Test to disable SSH password authentication: Passed ###\n')
 
     def test_EnablePublickeyAuth(self):
         if self.test.EnablePublickeyAuth():
-            print 'Passed EnablePublickeyAuth'
+            info('### Test to enable SSH public key authentication: Passed ###\n')
 
     def test_DisablePublickeyAuth(self):
         if self.test.DisablePublickeyAuth():
-            print 'Passed DisablePublickeyAuth'
+            info('### Test to disable SSH public key authentication: Passed ###\n')
 
     def test_SetRadiusServerHost(self):
         if self.test.SetRadiusServerHost():

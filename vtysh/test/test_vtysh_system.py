@@ -66,9 +66,7 @@ class PlatformSystemTests( HalonTest ):
         # Test to verify show system command
         s1 = self.net.switches[ 0 ]
         counter = 0
-        print('\n==============================================================')
-        print('*** Test to verify \'show system\' command ***')
-        print('================================================================')
+        print('\n##########  Test to verify \'show system\' command ##########\n')
         out = s1.cmdCLI("show system")
         lines = out.split('\n')
         for line in lines:
@@ -76,17 +74,39 @@ class PlatformSystemTests( HalonTest ):
                 counter += 1
 
             if 'Manufacturer' in line:
-                if "HP Enterprise" in line:
-                    counter += 1
-                elif "Accton" in line:
+                out=s1.cmd("ovs-vsctl list Subsystem")
+                lines1 = out.split('\n')
+                for line1 in lines1 :
+                    if 'other_info' in line1 :
+                        lines1 = line1.split(',')
+                        manufacturerValue = lines1[9].split('=')
+                        manufacturerValue = manufacturerValue[1].strip()
+                        manufacturer = manufacturerValue.split("\"")[1].strip()
+                if manufacturer in line:
                     counter += 1
 
             if 'Interface Count' in line:
-                if '70' in line[:-32]:
+                out=s1.cmd("ovs-vsctl list Subsystem")
+                lines1 = out.split('\n')
+                for line1 in lines1 :
+                    if 'other_info' in line1 :
+                        lines1 = line1.split(',')
+                        interfaceValue = lines1[5].split('=')
+                        interfaceValue = interfaceValue[1].strip()
+                        interfaceCount = interfaceValue.split("\"")[1].strip()
+                if interfaceCount in line[:-32]:
                     counter += 1
 
             if 'Max Interface Speed' in line:
-                if '40000' in line[42:]:
+                out=s1.cmd("ovs-vsctl list Subsystem")
+                lines1 = out.split('\n')
+                for line1 in lines1 :
+                    if 'other_info' in line1 :
+                        lines1 = line1.split(',')
+                        interfaceSpeedValue = lines1[12].split('=')
+                        interfaceSpeedValue = interfaceSpeedValue[1].strip()
+                        interfaceSpeed = interfaceSpeedValue.split("\"")[1].strip()
+                if interfaceSpeed in line[42:]:
                     counter += 1
 
             if 'Led_base' in line:
@@ -101,10 +121,8 @@ class PlatformSystemTests( HalonTest ):
             if 'Temp_base' in line:
                 counter += 1
 
-        if counter == 8:
-            return True
-
-        return False
+        assert counter == 8,'Test to verify \'show system\' command - FAILED!'
+        return True
 
 class Test_sys:
 
@@ -122,9 +140,7 @@ class Test_sys:
     # show system test.
     def test_show_system_command(self):
        if self.test.showSystemTest():
-           print 'Passed System Test'
-       else:
-           assert 0, "Failed System Test"
+           print('\n##########  Test to verify \'show system\' command - SUCCESS! ##########\n')
 
     def teardown_class(cls):
         # Delete Dummy data to avoid clash with other test scripts
