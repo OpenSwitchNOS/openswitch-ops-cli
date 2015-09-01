@@ -45,6 +45,7 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "vtysh/mgmt_intf_vty.h"
+#include "vtysh/vtysh_ovsdb_intf_context.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_interface_cli);
 extern struct ovsdb_idl *idl;
@@ -60,9 +61,10 @@ DEFUN (cli_intf_shutdown,
       "shutdown",
       "Enable/disable an interface\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -82,22 +84,23 @@ DEFUN (cli_intf_shutdown,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
+            smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
                   OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
          }
          else
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -126,9 +129,10 @@ DEFUN (cli_intf_speed,
       "Configure the interface speed\nAuto negotiate speed\n"
       "1Gb/s\n10Gb/s\n100Gb/s\n40Gb/s")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -148,29 +152,30 @@ DEFUN (cli_intf_speed,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config,&row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
          }
          else
          {
             if(strcmp(INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT, argv[0]) == 0)
             {
-               smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
+               smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
             }
             else
             {
-               smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS,
+               smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS,
                      argv[0]);
             }
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -198,9 +203,10 @@ DEFUN (cli_intf_mtu,
       "mtu (auto|<576-16360>)",
       "Configure mtu for the interface\nUse Default MTU (1500 bytes)\nEnter MTU (in bytes)\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -220,29 +226,30 @@ DEFUN (cli_intf_mtu,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_MTU);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU);
          }
          else
          {
             if(strcmp(INTERFACE_USER_CONFIG_MAP_MTU_DEFAULT, argv[0]) == 0)
             {
-               smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_MTU);
+               smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU);
             }
             else
             {
-               smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_MTU,
+               smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU,
                      argv[0]);
             }
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -270,9 +277,10 @@ DEFUN (cli_intf_duplex,
       "duplex (half|full)",
       "Configure the interface duplex mode\nConfigure half-duplex\nConfigure full-duplex")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -292,23 +300,24 @@ DEFUN (cli_intf_duplex,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if((vty_flags & CMD_FLAG_NO_CMD)
                || (strcmp(argv[0], "full") == 0))
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX);
          }
          else
          {
-            smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX,
+            smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX,
                   INTERFACE_USER_CONFIG_MAP_DUPLEX_HALF);
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -338,9 +347,10 @@ DEFUN (cli_intf_flowcontrol,
       "Receive pause frames\nSend pause frames\n"
       "Turn off flow-control\nTurn on flow-control\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -362,7 +372,7 @@ DEFUN (cli_intf_flowcontrol,
       {
          const char *state_value = smap_get(&row->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
          char new_value[INTF_NAME_SIZE] = {0};
-
+         smap_clone(&smap_user_config, &row->user_config);
          if (strcmp(argv[0], "send") == 0)
          {
             if(strcmp(argv[1], "on") == 0)
@@ -421,20 +431,20 @@ DEFUN (cli_intf_flowcontrol,
 
          if(strcmp(new_value, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) == 0)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
          }
          else
          {
-            smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE,
+            smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_PAUSE,
                   new_value);
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -465,9 +475,10 @@ DEFUN (cli_intf_autoneg,
       "Configure auto-negotiation process for the interface\n"
       "Turn on autonegotiation\nTurn off autonegotiation\n")
 {
-   struct ovsrec_interface * row = NULL;
+   const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
    enum ovsdb_idl_txn_status status;
+   struct smap smap_user_config;
 
    if(status_txn == NULL)
    {
@@ -487,29 +498,30 @@ DEFUN (cli_intf_autoneg,
    {
       if(strcmp(row->name, (char*)vty->index) == 0)
       {
+         smap_clone(&smap_user_config, &row->user_config);
          if(vty_flags & CMD_FLAG_NO_CMD)
          {
-            smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
+            smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
          }
          else
          {
             if(strcmp(INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT, argv[0]) == 0)
             {
-               smap_remove(&row->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
+               smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
             }
             else
             {
-               smap_replace(&row->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG,
+               smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG,
                      argv[0]);
             }
          }
-         ovsrec_interface_set_user_config(row, &row->user_config);
+         ovsrec_interface_set_user_config(row, &smap_user_config);
          break;
       }
    }
 
    status = cli_do_config_finish(status_txn);
-
+   smap_destroy(&smap_user_config);
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
@@ -542,9 +554,9 @@ DEFUN_NO_FORM (cli_intf_autoneg,
 |    const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
 | Return : pointer to VRF row
 -----------------------------------------------------------------------------*/
-struct ovsrec_vrf* port_match_in_vrf(const struct ovsrec_port *port_row)
+const struct ovsrec_vrf* port_match_in_vrf(const struct ovsrec_port *port_row)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
     OVSREC_VRF_FOR_EACH(vrf_row, idl)
     {
@@ -564,10 +576,9 @@ struct ovsrec_vrf* port_match_in_vrf(const struct ovsrec_port *port_row)
 |   const char *if_name : Interface name
 | Return : bool : returns true/false
 -----------------------------------------------------------------------------*/
-struct ovsrec_port* port_find(const char *if_name)
+const struct ovsrec_port* port_find(const char *if_name)
 {
-    struct ovsrec_port *port_row = NULL;
-    size_t i;
+    const struct ovsrec_port *port_row = NULL;
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
       if (strcmp(port_row->name, if_name) == 0) {
@@ -588,7 +599,6 @@ static int
 parse_vlan(const char *if_name, struct vty* vty)
 {
     struct ovsrec_port *port_row;
-    bool displayL3Info = false;
     int i;
 
     port_row = port_find(if_name);
@@ -603,14 +613,14 @@ parse_vlan(const char *if_name, struct vty* vty)
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vty_out(vty, "%3s%s%d%s", "", "vlan access ",
+        vty_out(vty, "%3s%s%ld%s", "", "vlan access ",
             *port_row->tag, VTY_NEWLINE);
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
     {
         for (i = 0; i < port_row->n_trunks; i++)
         {
-            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+            vty_out(vty, "%3s%s%ld%s", "", "vlan trunk allowed ",
                 port_row->trunks[i], VTY_NEWLINE);
         }
     }
@@ -618,12 +628,12 @@ parse_vlan(const char *if_name, struct vty* vty)
     {
         if (port_row->n_tag == 1)
         {
-            vty_out(vty, "%3s%s%d%s", "", "vlan trunk native ",
+            vty_out(vty, "%3s%s%ld%s", "", "vlan trunk native ",
                 *port_row->tag, VTY_NEWLINE);
         }
         for (i = 0; i < port_row->n_trunks; i++)
         {
-            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+            vty_out(vty, "%3s%s%ld%s", "", "vlan trunk allowed ",
                 port_row->trunks[i], VTY_NEWLINE);
         }
     }
@@ -631,13 +641,13 @@ parse_vlan(const char *if_name, struct vty* vty)
     {
         if (port_row->n_tag == 1)
         {
-            vty_out(vty, "%3s%s%d%s", "", "vlan trunk native ",
+            vty_out(vty, "%3s%s%ld%s", "", "vlan trunk native ",
                 *port_row->tag, VTY_NEWLINE);
         }
-        vty_out(vty, "%3s%s%s", "", "vlan trunk native tag");
-        for (i = 0; i < port_row->n_trunks; i++, VTY_NEWLINE)
+        vty_out(vty, "%3s%s%s", "", "vlan trunk native tag",VTY_NEWLINE);
+        for (i = 0; i < port_row->n_trunks; i++)
         {
-            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+            vty_out(vty, "%3s%s%ld%s", "", "vlan trunk allowed ",
                 port_row->trunks[i], VTY_NEWLINE);
         }
     }
@@ -657,7 +667,6 @@ parse_l3config(const char *if_name, struct vty *vty)
 {
   struct ovsrec_port *port_row;
   struct ovsrec_vrf *vrf_row;
-  bool displayL3Info = false;
   size_t i;
 
   port_row = port_find(if_name);
@@ -672,7 +681,7 @@ parse_l3config(const char *if_name, struct vty *vty)
     vrf_row = port_match_in_vrf(port_row);
     if (display_l3_info(port_row, vrf_row)) {
       if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0) {
-        vty_out(vty, "%3s%s%s", "", "vrf attach %s", vrf_row->name,
+        vty_out(vty, "%3s%s%s%s", "", "vrf attach ", vrf_row->name,
                 VTY_NEWLINE);
       }
       if (port_row->ip4_address) {
@@ -702,8 +711,7 @@ static int
 cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[])
 {
-   struct ovsrec_interface *row = NULL;
-   struct ovsrec_port *port_row;
+   const struct ovsrec_interface *row = NULL;
    const char *cur_state =NULL;
    bool bPrinted = false;
 
@@ -900,7 +908,7 @@ DEFUN (cli_intf_show_run_intf_mgmt,
 int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[], bool brief)
 {
-   struct ovsrec_interface *ifrow = NULL;
+   const struct ovsrec_interface *ifrow = NULL;
 
    const struct ovsdb_datum *datum;
    static char *interface_statistics_keys [] = {
@@ -977,7 +985,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          }
          else
          {
-            vty_out(vty, " %-6d", intVal/1000000);
+            vty_out(vty, " %-6ld", intVal/1000000);
          }
          vty_out(vty, "   -- ");  /* Port channel */
          vty_out (vty, "%s", VTY_NEWLINE);
@@ -1006,7 +1014,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
          if(NULL!=datum) intVal = datum->keys[0].integer;
 
-         vty_out(vty, " MTU %d %s", intVal, VTY_NEWLINE);
+         vty_out(vty, " MTU %ld %s", intVal, VTY_NEWLINE);
 
          if((NULL != ifrow->duplex) && (strcmp(ifrow->duplex, "half") == 0))
          {
@@ -1020,7 +1028,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          intVal = 0;
          datum = ovsrec_interface_get_link_speed(ifrow, OVSDB_TYPE_INTEGER);
          if(NULL!=datum) intVal = datum->keys[0].integer;
-         vty_out(vty, " Speed %lld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
+         vty_out(vty, " Speed %ld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
 
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
          if((NULL == cur_state) ||
@@ -1296,11 +1304,15 @@ int create_vlan_interface(const char *vlan_if)
     ovsrec_interface_set_name(if_row, vlan_if);
     ovsrec_interface_set_type(if_row, "internal");
 
+    struct smap smap_user_config;
+    smap_clone(&smap_user_config,&if_row->user_config);
+
     /* Set the admin state */
-    smap_replace(&if_row->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
+    smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
                           OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
 
-    ovsrec_interface_set_user_config(if_row, &if_row->user_config);
+    ovsrec_interface_set_user_config(if_row, &smap_user_config);
+    smap_destroy(&smap_user_config);
 
     iface_list = xmalloc(sizeof(struct ovsrec_interface));
     iface_list[0] = (struct ovsrec_interface *)if_row;
@@ -1472,8 +1484,8 @@ int delete_vlan_interface(const char *vlan_if)
 bool
 verify_ifname(char *str)
 {
-    uint16_t vlanid;
-    char *endptr;
+    uint16_t vlanid = 0;
+    char *endptr = NULL;
 
     if (VERIFY_VLAN_IFNAME(str) != 0) {
         return 0;

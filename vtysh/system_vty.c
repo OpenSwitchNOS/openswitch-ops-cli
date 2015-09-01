@@ -55,7 +55,7 @@ const char *psu_state_string[] = {
  *  b   : Pointer to next element in the array
  * @return      : comparative difference between names.
  ***********************************************************/
-static inline int compare_fan(void* a, void* b)
+static inline int compare_fan(const void* a,const void* b)
 {
     struct ovsrec_fan* s1 = (struct ovsrec_fan*)a;
     struct ovsrec_fan* s2 = (struct ovsrec_fan*)b;
@@ -71,7 +71,7 @@ static inline int compare_fan(void* a, void* b)
  *      status  : Pointer to status string
  * @return      : Pointer to formatted status string
  ***********************************************************/
-static char* format_psu_string(char* status)
+static const char* format_psu_string(char* status)
 {
     if(!status)
         return NULL;
@@ -94,10 +94,10 @@ static char* format_psu_string(char* status)
  *  pSys    : Pointer to ovsrec_subsystem structure
  *  pVswitch: Pointer to ovsrec_open_vswitch structure
  ***********************************************************/
-static void format_sys_output(struct vty* vty, struct ovsrec_subsystem* pSys,
-            struct ovsrec_open_vswitch* pVswitch)
+static void format_sys_output(struct vty* vty, const struct ovsrec_subsystem* pSys,
+            const struct ovsrec_open_vswitch* pVswitch)
 {
-    char* buf = NULL;
+    const char* buf = NULL;
     (pVswitch->switch_version) ? vty_out(vty,"%-20s%s%-30s%s","openwitchVersion",": ",pVswitch->switch_version,VTY_NEWLINE):\
     vty_out(vty,"%-20s%s%-30s%s","openswitch Version",": "," ",VTY_NEWLINE);
 
@@ -176,13 +176,13 @@ static void format_sys_output(struct vty* vty, struct ovsrec_subsystem* pSys,
  ***********************************************************/
 int cli_system_get_all()
 {
-    struct ovsrec_subsystem* pSys = NULL;
-    struct ovsrec_open_vswitch* pVswitch = NULL;
-    struct ovsrec_fan* pFan = NULL;
+    const struct ovsrec_subsystem* pSys = NULL;
+    const struct ovsrec_open_vswitch* pVswitch = NULL;
+    const struct ovsrec_fan* pFan = NULL;
     struct ovsrec_fan* pFanSort = NULL;
-    struct ovsrec_led* pLed = NULL;
-    struct ovsrec_power_supply* pPSU = NULL;
-    struct ovsrec_temp_sensor* pTempSen = NULL;
+    const struct ovsrec_led* pLed = NULL;
+    const struct ovsrec_power_supply* pPSU = NULL;
+    const struct ovsrec_temp_sensor* pTempSen = NULL;
     int n = 0, i = 0;
 
     pSys = ovsrec_subsystem_first(idl);
@@ -193,7 +193,7 @@ int cli_system_get_all()
         format_sys_output(vty, pSys,pVswitch);
     }
     else
-        VLOG_ERR(vty,"Product Data Not Available%s",VTY_NEWLINE);
+        VLOG_ERR("Product Data Not Available\n");
 
 
     vty_out(vty,"%sFan details:%s%s",VTY_NEWLINE,VTY_NEWLINE, VTY_NEWLINE);
