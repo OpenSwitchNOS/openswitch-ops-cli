@@ -1439,18 +1439,25 @@ DEFUN (vtysh_interface_vlan,
         VLAN_STR
        "name of the VLAN\n")
 {
-  vty->node = VLAN_INTERFACE_NODE;
+   vty->node = VLAN_INTERFACE_NODE;
    static char vlan_if[MAX_IFNAME_LENGTH];
    uint16_t vlanid = atoi(argv[0]);
 
    VLANIF_NAME(vlan_if, argv[0]);
 
-   if ((verify_ifname(vlan_if) == 0))
+   if ((verify_ifname(vlan_if) == 0)) {
+       vty->node = CONFIG_NODE;
+       vty_out(vty,
+               "Error: Invalid vlan ID. Enter valid Vlan ID in the"
+               " range of <1 to 4094> and not part of internal VLAN%s",
+               VTY_NEWLINE);
        return CMD_OVSDB_FAILURE;
+   }
 
    VLOG_DBG("%s vlan interface = %s\n", __func__, vlan_if);
 
    if (create_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
+       vty->node = CONFIG_NODE;
        return CMD_OVSDB_FAILURE;
    }
    vty->index = vlan_if;
@@ -1502,8 +1509,15 @@ DEFUN (no_vtysh_interface_vlan,
 
    VLANIF_NAME(vlan_if, argv[0]);
 
-   if ((verify_ifname(vlan_if) == 0))
-       return CMD_OVSDB_FAILURE;
+   if ((verify_ifname(vlan_if) == 0)) {
+       if (check_internal_vlan(vlanid) != 0) {
+           vty_out(vty,
+                   "Error: Invalid vlan ID. Enter valid Vlan ID in the"
+                   " range of <1 to 4094> and not part of internal VLAN%s",
+                   VTY_NEWLINE);
+           return CMD_OVSDB_FAILURE;
+       }
+   }
 
    VLOG_DBG("s: vlan interface = %s\n", __func__, vlan_if);
 
