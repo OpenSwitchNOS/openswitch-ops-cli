@@ -23,6 +23,7 @@
  ***************************************************************************/
 
 #include "openvswitch/vlog.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_config.h"
@@ -33,6 +34,7 @@
 #include "vtysh_ovsdb_vlan_context.h"
 #include "vtysh_ovsdb_router_context.h"
 #include "vtysh_ovsdb_intf_lag_context.h"
+#include "vtysh_ovsdb_mgmt_intf_context.h"
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
@@ -40,13 +42,13 @@ VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 extern struct ovsdb_idl *idl;
 
 /* vtysh context client list defintions */
-vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_interface_lag_context_client_list[e_vtysh_interface_lag_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {NULL};
+vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_interface_lag_context_client_list[e_vtysh_interface_lag_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {{NULL}};
 
 /* static array of vtysh context lists
    context traversal order as shown below.
@@ -214,7 +216,7 @@ vtysh_context_addclient(vtysh_contextid contextid,
 
   if(NULL == p_client)
   {
-    VLOG_ERR("add_client: NULL Client callback for contextid %d, client id",contextid, clientid);
+    VLOG_ERR("add_client: NULL Client callback for contextid %d, client id %d",contextid, clientid);
     return e_vtysh_error;
   }
 
@@ -236,7 +238,7 @@ vtysh_context_addclient(vtysh_contextid contextid,
   else
   {
     /* client callback is already registered  */
-    VLOG_ERR("add_client: Client callback exists for client id %d in context id", clientid, contextid);
+    VLOG_ERR("add_client: Client callback exists for client id %d in context id %d", clientid, contextid);
     return e_vtysh_error;
   }
 
@@ -344,16 +346,15 @@ vtysh_ovsdb_read_config(FILE *fp)
 {
   vtysh_contextid contextid=0;
   vtysh_ovsdb_cbmsg msg;
-  int loopcnt = 0;
 
-  VLOG_DBG("readconfig:before- idl 0x%x seq no 0x%x", idl, ovsdb_idl_get_seqno(idl));
+  VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
 
   msg.fp = fp;
   msg.idl = idl;
   msg.contextid = 0;
   msg.clientid = 0;
 
-  VLOG_DBG("readconfig:after idl 0x%x seq no 0x%x", idl, ovsdb_idl_get_seqno(idl));
+  VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
   fprintf(fp, "Current configuration:\n");
   fprintf(fp, "!\n");
 
@@ -443,6 +444,7 @@ vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, ...)
   fflush(p_msg->fp);
 
   va_end(args);
+  return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------

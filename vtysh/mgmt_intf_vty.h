@@ -27,6 +27,8 @@
 
 void vty_mgmt_int_init (void);
 
+void mgmt_intf_vty_init (void );
+
 #define MGMT_INTF_MODE_IP_STR         "Set the mode for management interface (static/dhcp)\n"
 #define MGMT_INTF_DHCP_STR            "Set the mode as dhcp\n"
 #define MGMT_INTF_STATIC_STR          "Set the mode as static\n"

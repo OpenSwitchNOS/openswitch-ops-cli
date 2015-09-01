@@ -55,4 +55,6 @@ bool check_port_in_bridge(const char *port_name);
 bool check_port_in_vrf(const char *port_name);
 
 bool vtysh_ovsdb_is_loaded(void);
+
+void utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width);
 #endif /* VTYSH_OVSDB_IF_H */

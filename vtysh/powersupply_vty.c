@@ -47,7 +47,7 @@ extern char *psu_state_string[];
  *  b   : Pointer to next element in the array
  * @return      : comparative difference between names.
  ***********************************************************/
-static inline int compare_psu(void* a, void* b)
+static inline int compare_psu(const void* a,const void* b)
 {
     struct ovsrec_power_supply* s1 = (struct ovsrec_power_supply*)a;
     struct ovsrec_power_supply* s2 = (struct ovsrec_power_supply*)b;
@@ -80,14 +80,11 @@ static char* format_psu_string(char* status)
 
 int cli_system_get_psu()
 {
-        struct ovsrec_power_supply* pPSU = NULL;
+        const struct ovsrec_power_supply* pPSU = NULL;
         struct ovsrec_power_supply* pPSUsort = NULL;
-        struct ovsrec_subsystem* pSys = NULL;
+        const struct ovsrec_subsystem* pSys = NULL;
 
         int nPres = 0,nOK = 0,i = 0, n = 0;
-        ovsdb_idl_run(idl);
-        ovsdb_idl_wait(idl);
-
         /*
          * HALON_TODO : Support for multiple subsystem
          */
