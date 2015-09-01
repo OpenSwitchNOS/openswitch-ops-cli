@@ -62,22 +62,17 @@ class InterfaceCommandsTests( HalonTest ):
             return False
         s1.cmdCLI("flowcontrol send on")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'flowcontrol tx' not in out:
+        if 'flowcontrol send on' not in out:
             print out
             return False
         s1.cmdCLI("flowcontrol receive on")
         out = s1.cmdCLI("do show running-conf interface 2")
-        if 'flowcontrol rxtx' not in out:
-            print out
-            return False
-        out = s1.cmdCLI("do show interface 2")
-        if 'Interface 2' not in out:
+        if 'flowcontrol receive on' not in out:
             print out
             return False
         out = s1.cmdCLI("end")
         return True
 
-@pytest.mark.skipif(True, reason="Does not work")
 class Test_interfaceCommands:
 
   def setup(self):

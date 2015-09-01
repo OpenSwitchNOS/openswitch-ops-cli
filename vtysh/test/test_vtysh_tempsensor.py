@@ -54,15 +54,15 @@ class TemperatureSystemTests( HalonTest ):
     def showSystemTemperatureTest(self):
         # Test to verify show system command
         s1 = self.net.switches[ 0 ]
-        print('\n==============================================================')
-        print('*** Test to verify \'show system temperature\' command ***')
-        print('================================================================')
+        temperature_config_present = False
+        print('\n##########  Test to verify \'show system temperature\' command ##########\n')
         out = s1.cmdCLI("show system temperature")
         lines = out.split('\n')
         for line in lines:
             if 'base-1' and 'Faceplate_side_of_switch_chip_U16' and 'normal' and 'normal' in line:
-                return True
-        return False
+                temperature_config_present = True
+        assert temperature_config_present == True,'Test to verify \'show system temperature\' command - FAILED!'
+        return True
 
 
 class Test_sys:
@@ -97,6 +97,4 @@ class Test_sys:
     # show system fan test.
     def test_show_system_temperature_command(self):
        if self.test.showSystemTemperatureTest():
-           print 'Passed show system temperature test'
-       else:
-           assert 0, "Failed show system temperature test"
+           print('\n##########  Test to verify \'show system temperature\' command - SUCCESS! ##########\n')

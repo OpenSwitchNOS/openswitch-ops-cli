@@ -53,57 +53,50 @@ class FanSystemTests( HalonTest ):
     def showSystemFanTest(self):
         # Test to verify show system command
         s1 = self.net.switches[ 0 ]
-        print('\n==============================================================')
-        print('*** Test to verify \'show system fan\' command ***')
-        print('================================================================')
+        print('\n########## Test to verify \'show system fan\' command ##########\n')
+        fan_keywords_found = False
         out = s1.cmdCLI("show system fan")
         lines = out.split('\n')
         for line in lines:
             if 'base-FAN-1L' and 'front-to-back' and 'normal' and 'ok' and '9000' in line:
-                return True
-        return False
+                fan_keywords_found = True
+        assert fan_keywords_found == True,' Test to verify \'show system fan\' command - FAILED!'
+        return True
 
     def setSystemFanSpeedTest(self):
         # Test to verify fan-speed command
         s1 = self.net.switches[ 0 ]
-        print('\n==============================================================')
-        print('*** Test to verify \'fan-speed\' command ***')
-        print('================================================================')
+        print('\n########## Test to verify \'fan-speed\' command  ##########\n')
+        fan_speed_set = False
         out = s1.cmdCLI("configure terminal")
-        if 'Unknown command' in out:
-            print out
-            return False
         out = s1.cmdCLI("fan-speed slow")
-        if 'Unknown command' in out:
-            print out
-            return False
         out = s1.cmdCLI("do show system fan")
         s1.cmdCLI("exit")
         lines = out.split('\n')
         for line in lines:
             if "Fan speed override is set to : slow" in line:
-                return True
-        return False
+                fan_speed_set = True
+        assert fan_speed_set == True,'Test to verify \'fan-speed\' command - FAILED!'
+        return True
 
     def showrunningFanSpeed(self):
         # Test to verify if the fan-speed config is reflected in show running config
         s1 = self.net.switches[ 0 ]
-        print('\n====================================================================')
-        print('*** Test to verify \'show running\' command for fan-speed config ***')
-        print('======================================================================')
+        print('\n########## Test to verify \'show running\' command for fan-speed config ##########\n')
+        fan_speed_keyword_found = False
         out = s1.cmdCLI("show running-config")
         lines = out.split('\n')
         for line in lines:
             if "fan-speed slow" in line:
-                return True
-        return False
+                fan_speed_keyword_found = True
+        assert fan_speed_keyword_found == True, 'Test to verify \'show running\' command for fan-speed config - FAILED!'
+        return True
 
     def unsetSystemFanSpeedTest(self):
         # Test to verify no fan-speed command
         s1 = self.net.switches[ 0 ]
-        print('\n==============================================================')
-        print('*** Test to verify \'no fan-speed\' command ***')
-        print('================================================================')
+        print('\n########## Test to verify \'no fan-speed\' command ##########\n')
+        fan_speed_unset = False
         out = s1.cmdCLI("configure terminal")
         if 'Unknown command' in out:
             print out
@@ -117,8 +110,9 @@ class FanSystemTests( HalonTest ):
         lines = out.split('\n')
         for line in lines:
             if "Fan speed override is not configured" in line:
-                return True
-        return False
+                fan_speed_unset = True
+        assert fan_speed_unset == True, 'Test to verify \'no fan-speed\' command - FAILED!'
+        return True
 
 class Test_sys_fan:
 
@@ -136,30 +130,22 @@ class Test_sys_fan:
     # show system fan test.
     def test_show_system_fan_command(self):
        if self.test.showSystemFanTest():
-           print 'Passed system fan show test'
-       else:
-           assert 0, "Failed system fan show test"
+           print '\n########## Test to verify \'show system fan\' command - SUCCESS! ##########\n'
 
     # set system fan speed test.
     def test_set_system_fan_speed_command(self):
         if self.test.setSystemFanSpeedTest():
-            print 'Passed system set fan speed test'
-        else:
-            assert 0, "Failed system set fan speed test"
+            print '\n########## Test to verify \'fan-speed\' command - SUCCESS! ##########\n'
 
     # showrunningFanSpeed
     def test_show_run_for_fan_speed_config(self):
       if self.test.showrunningFanSpeed():
-            print 'Passed show running test for fan-speed config'
-      else:
-            assert 0, "Failed show running test for fan-speed config"
+            print '\n########## Test to verify \'show running\' command for fan-speed config - SUCCESSS! ##########\n'
 
     # unset system fan speed test
     def test_unset_system_fan_speed_command(self):
         if self.test.unsetSystemFanSpeedTest():
-            print 'Passed system unset fan speed test'
-        else:
-            assert 0, "Failed system unset fan speed test"
+            print '\n########## Test to verify \'no fan-speed\' command - SUCCESS! ##########\n'
 
     def teardown_class(cls):
         # Delete Dummy data to avoid clash with other test scripts
