@@ -34,21 +34,6 @@ char routercontextbgpclientname[] = "vtysh_router_context_bgp_clientcallback";
 char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_router_context_bgp_clientcallback
-| Responsibility : client callback routine
-| Parameters :
-|     void *p_private: void type object typecast to required
-| Return : void
------------------------------------------------------------------------------*/
-/*vtysh_ret_val
-vtysh_router_context_bgp_clientcallback(void *p_private)
-{
-  /* HALON-TODO /
-  return e_vtysh_ok;
-}*/
-
-
-/*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
 | Responsibility : Neighbor commands
 | Parameters :
@@ -58,37 +43,106 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
 
 void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
-   struct ovsrec_bgp_neighbor *ovs_bgp_neighbor=NULL;
+   struct ovsrec_bgp_neighbor *ovs_bgp_neighbor = NULL;
    int i=0;
 
     OVSREC_BGP_NEIGHBOR_FOR_EACH(ovs_bgp_neighbor, p_msg->idl)
     {
-       vtysh_ovsdb_cli_print(p_msg,"    neighbor %s remote-as %d",ovs_bgp_neighbor->name,*(ovs_bgp_neighbor->remote_as));
+       if(ovs_bgp_neighbor->n_remote_as)
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor", ovs_bgp_neighbor->name, "remote-as", *(ovs_bgp_neighbor->remote_as));
 
        if(ovs_bgp_neighbor->description)
-         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s description %s",ovs_bgp_neighbor->name,ovs_bgp_neighbor->description);
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s", "", "neighbor", ovs_bgp_neighbor->name, "description", ovs_bgp_neighbor->description);
 
        if(ovs_bgp_neighbor->password)
-         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s password %s",ovs_bgp_neighbor->name,ovs_bgp_neighbor->password);
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s", "", "neighbor", ovs_bgp_neighbor->name, "password", ovs_bgp_neighbor->password);
 
        if(ovs_bgp_neighbor->n_timers > 0)
-         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s timers %d %d",ovs_bgp_neighbor->name,ovs_bgp_neighbor->value_timers[0],ovs_bgp_neighbor->value_timers[1]);
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d %d", "", "neighbor", ovs_bgp_neighbor->name, "timers", ovs_bgp_neighbor->value_timers[1], ovs_bgp_neighbor->value_timers[0]);
 
        i=0;
        while(i< ovs_bgp_neighbor->n_route_maps)
        {
-          vtysh_ovsdb_cli_print(p_msg,"    neighbor %s route-map %s %s",ovs_bgp_neighbor->name,ovs_bgp_neighbor->value_route_maps[i]->name,ovs_bgp_neighbor->key_route_maps[i]);
+          vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "", "neighbor", ovs_bgp_neighbor->name, "route-map", ovs_bgp_neighbor->value_route_maps[i]->name, ovs_bgp_neighbor->key_route_maps[i]);
           i++;
        }
 
        if(ovs_bgp_neighbor->n_allow_as_in)
-         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s allowas-in %d",ovs_bgp_neighbor->name,*(ovs_bgp_neighbor->allow_as_in));
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor", ovs_bgp_neighbor->name, "allowas-in", *(ovs_bgp_neighbor->allow_as_in));
 
        if(ovs_bgp_neighbor->n_remove_private_as)
-         vtysh_ovsdb_cli_print(p_msg,"    neighbor %s remove-private-AS",ovs_bgp_neighbor->name);
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "neighbor", ovs_bgp_neighbor->name, "remove-private-AS");
+
+
+       //Neighbor peer group commands
+       if(*(ovs_bgp_neighbor->is_peer_group))
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "neighbor ", ovs_bgp_neighbor->name, "peer-group");
+
+       if(ovs_bgp_neighbor->bgp_peer_group)
+          vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s", "", "neighbor", ovs_bgp_neighbor->name, "peer-group", ovs_bgp_neighbor->bgp_peer_group->name);
+
+       if(ovs_bgp_neighbor->n_inbound_soft_reconfiguration)
+         vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s", "", "neighbor", ovs_bgp_neighbor->name, "soft-reconfiguration inbound");
+
     }
 }
 
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_ipprefix_callback
+| Responsibility : ip prefix-list command
+| Parameters :
+|     vtysh_ovsdb_cbmsg_ptr p_msg: struct vtysh_ovsdb_cbmsg_struct *
+| Return : void
+-----------------------------------------------------------------------------*/
+
+void vtysh_router_context_bgp_ipprefix_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
+{
+   struct ovsrec_prefix_list_entries *ovs_prefix_list_entries = NULL;
+   int i=0;
+
+   OVSREC_PREFIX_LIST_ENTRIES_FOR_EACH(ovs_prefix_list_entries, p_msg->idl)
+   {
+      if(ovs_prefix_list_entries->prefix_list->name)
+         vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s seq %d %s %s",ovs_prefix_list_entries->prefix_list->name,ovs_prefix_list_entries->sequence,
+                                                                      ovs_prefix_list_entries->action,ovs_prefix_list_entries->prefix);
+   }
+}
+
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_routemap_callback
+| Responsibility : Routemap commands
+| Parameters :
+|     vtysh_ovsdb_cbmsg_ptr p_msg: struct vtysh_ovsdb_cbmsg_struct *
+| Return : void
+-----------------------------------------------------------------------------*/
+
+void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
+{
+   struct ovsrec_route_map_entries *ovs_route_map_entries = NULL;
+   int i=0;
+
+   OVSREC_ROUTE_MAP_ENTRIES_FOR_EACH(ovs_route_map_entries, p_msg->idl)
+   {
+      if(ovs_route_map_entries->route_map->name)
+         vtysh_ovsdb_cli_print(p_msg, "route-map %s %s %d", ovs_route_map_entries->route_map->name, ovs_route_map_entries->action, ovs_route_map_entries->preference);
+
+      if(ovs_route_map_entries->description)
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "description", ovs_route_map_entries->description);
+
+      if(smap_get(&(ovs_route_map_entries->match), "prefix_list"))
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "match ip address prefix-list", smap_get(&(ovs_route_map_entries->match), "prefix_list"));
+
+      if(smap_get(&ovs_route_map_entries->set, "community"))
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community", smap_get(&ovs_route_map_entries->set, "community"));
+
+
+      if(smap_get(&ovs_route_map_entries->set,"metric"))
+         vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "", "set metric",smap_get(&ovs_route_map_entries->set, "metric"));
+
+   }
+}
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_clientcallback
@@ -109,25 +163,32 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
                            "vtysh_context_router_bgp_clientcallback entered");
 
 
-   OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_context,p_msg->idl)
+   OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_context, p_msg->idl)
    {
-      vtysh_ovsdb_cli_print(p_msg,"%s %d","router bgp ",bgp_router_context->asn);
+      vtysh_ovsdb_cli_print(p_msg, "%s %d", "router bgp ", bgp_router_context->asn);
 
       if(bgp_router_context->router_id)
-        vtysh_ovsdb_cli_print(p_msg,"%s %s","    bgp router-id ",bgp_router_context->router_id);
+        vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "bgp router-id ", bgp_router_context->router_id);
 
       while(i < bgp_router_context->n_networks)
       {
-        vtysh_ovsdb_cli_print(p_msg,"%s %s","    network ",bgp_router_context->networks[i]);
+        vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "network ", bgp_router_context->networks[i]);
         i++;
       }
 
       if(bgp_router_context->n_maximum_paths)
-        vtysh_ovsdb_cli_print(p_msg,"    maximum-paths %d",*(bgp_router_context->maximum_paths));
+        vtysh_ovsdb_cli_print(p_msg, "%4s %s %d", "", "maximum-paths", *(bgp_router_context->maximum_paths));
+
+      if(bgp_router_context->n_timers > 0)
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %d %d", "", "timers bgp ", bgp_router_context->value_timers[1], bgp_router_context->value_timers[0]);
+
    }
 
     vtysh_router_context_bgp_neighbor_callback(p_msg);
-
+    vtysh_ovsdb_cli_print(p_msg,"!");
+    vtysh_router_context_bgp_ipprefix_callback(p_msg);
+    vtysh_ovsdb_cli_print(p_msg,"!");
+    vtysh_router_context_bgp_routemap_callback(p_msg);
     vtysh_ovsdb_cli_print(p_msg,"!");
 
    return e_vtysh_ok;
