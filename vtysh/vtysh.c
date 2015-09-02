@@ -28,7 +28,9 @@
 #else
 #include <zebra.h>
 #endif
-
+#include <stdlib.h>
+#include <grp.h>
+#include <pwd.h>
 #include <sys/un.h>
 #include <setjmp.h>
 #include <sys/wait.h>
@@ -2722,19 +2724,73 @@ DEFUN (vtysh_start_bash,
   return CMD_SUCCESS;
 }
 
+static int check_ovsdb_users( const char *username)
+{
+       int j, ngroups,flag=0;
+       gid_t *groups;
+       struct passwd *pw;
+       struct group *gr;
+
+       ngroups = 10;
+
+       groups = malloc(ngroups * sizeof (gid_t));
+       if (groups == NULL) {
+           vty_out(vty, "Malloc error\n");
+          return CMD_OVSDB_FAILURE;
+       }
+
+       /* Fetch passwd structure (contains first group ID for user) */
+
+       pw = getpwnam(username);
+       if (pw == NULL) {
+           vty_out(vty, "Fetching Passwd structure failure\n");
+           return CMD_OVSDB_FAILURE;
+       }
+
+       /* Retrieve group list */
+
+       if (getgrouplist(username, pw->pw_gid, groups, &ngroups) == -1) {
+           vty_out(vty, "Retrieving group list failed\n");
+           return CMD_OVSDB_FAILURE;
+       }
+
+       /* Display list of retrieved groups, along with group names */
+       for (j = 0; j < ngroups; j++) {
+           gr = getgrgid(groups[j]);
+           if(gr != NULL)
+                   {
+                       if (!strcmp(gr->gr_name,"ovsdb_users")){
+                        return true;
+               }
+
+           }
+ }
+       return CMD_OVSDB_FAILURE;
+}
+
 DEFUN (vtysh_passwd,
        vtysh_passwd_cmd,
        "passwd WORD",
        "Change user password \n"
        "User whose password is to be changed\n")
 {
-
-  char *arg[2];
-  arg[0] = "passwd";
-  arg[1] = argv[0];
-  execute_command("sudo", 2,(const char **)arg);
-
-  return CMD_SUCCESS;
+    int ret;
+    char *arg[2];
+    arg[0] = "passwd";
+    arg[1] = argv[0];
+    char *buf;
+    buf=(char *)(10 *sizeof(char));
+    buf=getlogin();
+    ret=check_ovsdb_users(argv[0]);
+    if ((ret==1) && (strcmp(buf,argv[0])))
+        {
+         execute_command("sudo", 2,(const char **)arg);
+         return CMD_SUCCESS;
+      }
+      else{
+          vty_out(vty, "Cannot change the password.\n");
+          return CMD_OVSDB_FAILURE;
+        }
 }
 
 DEFUN (vtysh_start_zsh,
@@ -2921,11 +2977,22 @@ DEFUN(vtysh_user_del,
        "Delete a user account\n"
        "User name to be deleted\n")
 {
-       char *arg[2];
-       arg[0] = "/usr/sbin/deluser";
-       arg[1] = argv[0];
-       execute_command("sudo", 2,(const char **)arg);
-       return CMD_SUCCESS;
+     int ret;
+     char *arg[2];
+     char *buf;
+     buf=(char *)(10 *sizeof(char));
+     buf=getlogin();
+     arg[0] = "/usr/sbin/deluser";
+     arg[1] = argv[0];
+     ret=check_ovsdb_users(argv[0]);
+     if ((ret==1) && (strcmp(buf,argv[0])))
+        {
+          execute_command("sudo", 2,(const char **)arg);
+         return CMD_SUCCESS;
+      }
+      else{
+          vty_out(vty, "Cannot delete the user. \n");
+          return CMD_OVSDB_FAILURE;    }
 }
 
 DEFUN (vtysh_demo_cli1,
