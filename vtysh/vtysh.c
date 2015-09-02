@@ -28,7 +28,6 @@
 #else
 #include <zebra.h>
 #endif
-
 #include <sys/un.h>
 #include <setjmp.h>
 #include <sys/wait.h>
@@ -2722,19 +2721,102 @@ DEFUN (vtysh_start_bash,
   return CMD_SUCCESS;
 }
 
+static int vtysh_display_useradd_userlist()
+{
+  FILE *group, *passwd;
+        char groupLine[256];
+        char passwdLine[256];
+        char * pch;
+        int i = 0;
+        int count = 0;
+
+        group = fopen("/etc/group", "r");
+        passwd = fopen("/etc/passwd", "r");
+
+        while (fgets(groupLine, sizeof(groupLine), group) != NULL) {
+                if((strstr(groupLine, "ovsdb_users")) != NULL)
+                        break;
+        }
+
+        pch = strtok (groupLine,":");
+        while (pch != NULL) {
+                pch = strtok (NULL, ":");
+                if (i++ == 1)
+                        break;
+        }
+
+        while (fgets(passwdLine, sizeof(passwdLine), passwd) != NULL) {
+                if((strstr(passwdLine, pch)) != NULL)
+                        count ++;
+        }
+
+        fclose(group);
+        fclose(passwd);
+      return count;
+}
+
+static int check_ovsdb_users( const char *username)
+{
+       int j, ngroups;
+       gid_t *groups;
+       struct passwd *pw;
+       struct group *gr;
+
+       ngroups = 10;
+       groups = malloc(ngroups * sizeof (gid_t));
+       if (groups == NULL) {
+           VLOG_ERR("Malloc failed.Function=%s, Line=%d", __func__, __LINE__);
+           return false;
+       }
+
+       /* Fetch passwd structure (contains first group ID for user) */
+
+       pw = getpwnam(username);
+       if (pw == NULL) {
+           VLOG_ERR("Invalid User.Function=%s, Line=%d", __func__, __LINE__);
+           return false;
+       }
+
+       /* Retrieve group list */
+
+       if (getgrouplist(username, pw->pw_gid, groups, &ngroups) == -1) {
+           VLOG_ERR("Retrieving group list failed.Function=%s, Line=%d", __func__, __LINE__);
+           return false;
+       }
+
+       /* check user exist in ovsdb_users group*/
+       for (j = 0; j < ngroups; j++) {
+           gr = getgrgid(groups[j]);
+           if(gr != NULL)
+                   {
+                       if (!strcmp(gr->gr_name,"ovsdb_users")){
+                        return true;
+                        }
+                   }
+          }
+       return false;
+}
+
 DEFUN (vtysh_passwd,
        vtysh_passwd_cmd,
        "passwd WORD",
        "Change user password \n"
        "User whose password is to be changed\n")
 {
-
-  char *arg[2];
-  arg[0] = "passwd";
-  arg[1] = argv[0];
-  execute_command("sudo", 2,(const char **)arg);
-
-  return CMD_SUCCESS;
+    int ret;
+    char *arg[3];
+    arg[0] = "/bin/busybox.suid";
+    arg[1] = "passwd";
+    arg[2] = argv[0];
+    ret = check_ovsdb_users(argv[0]);
+    if (ret==1) {
+         execute_command("sudo", 3,(const char **)arg);
+         return CMD_SUCCESS;
+    }
+    else {
+         vty_out(vty, "Cannot change the password.\n");
+         return CMD_OVSDB_FAILURE;
+     }
 }
 
 DEFUN (vtysh_start_zsh,
@@ -2921,11 +3003,24 @@ DEFUN(vtysh_user_del,
        "Delete a user account\n"
        "User name to be deleted\n")
 {
-       char *arg[2];
-       arg[0] = "/usr/sbin/deluser";
-       arg[1] = argv[0];
-       execute_command("sudo", 2,(const char **)arg);
-       return CMD_SUCCESS;
+     int ret,n_users;
+     char *arg[2];
+     char *buf;
+     buf = (char *)malloc(10 *sizeof(char));
+     buf = getlogin();
+     n_users = 0;
+     arg[0] = "/usr/sbin/deluser";
+     arg[1] = argv[0];
+     n_users = vtysh_display_useradd_userlist();
+     ret = check_ovsdb_users(argv[0]);
+     if ((n_users >1) && (ret==1) && (strcmp(buf,argv[0])))
+        {
+          execute_command("sudo", 2,(const char **)arg);
+         return CMD_SUCCESS;
+      }
+      else{
+          vty_out(vty, "Cannot delete the user. \n");
+          return CMD_OVSDB_FAILURE;    }
 }
 
 DEFUN (vtysh_demo_cli1,
