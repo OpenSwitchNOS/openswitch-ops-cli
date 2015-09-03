@@ -987,7 +987,7 @@ int create_vlan_interface(const char *vlan_if)
 
     /* If both port and interface exists return success nothing to change here */
     if (intf_exist == true && port_exist == true) {
-        VLOG_ERR("%s Both interface and port exists for this Vlan interface name", __func__);
+        VLOG_DBG("%s Both interface and port exists for this Vlan interface name", __func__);
         cli_do_config_finish(status_txn);
         return CMD_SUCCESS;
     } else if (!(intf_exist == false && port_exist == false)) {
@@ -1144,8 +1144,8 @@ int delete_vlan_interface(const char *vlan_if)
 
     /* If port OR interface does not exist return failure */
     if (intf_exist == false || port_exist == false) {
-        VLOG_ERR(
-                "%s Vlan Interface does not exist. Cannot delete !!!", __func__);
+        vty_out(vty,
+                "Vlan interface does not exist. Cannot delete %s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }

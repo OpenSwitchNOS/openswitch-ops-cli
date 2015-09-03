@@ -15,29 +15,28 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 first_interface = "1"
 second_interface = "2"
 third_interface = "3"
-error_str = "Error: Invalid vlan ID. Enter valid Vlan ID in the range" \
-            " of <1 to 4094> AND NOT part of internal VLAN"
+error_str = "Error: Invalid vlan id. Enter valid vlan id in the range" \
+            " of <1 to 4094> and should not be part of internal vlan"
 max_vlan = "4095"
 min_vlan = "0"
 
 # Internal vlan test is performed in vlan CT #
 
-class intervlanCLITest( HalonTest ):
+class intervlanCLITest( OpsVsiTest ):
 
     def setupNet(self):
-        self.net = Mininet(topo=SingleSwitchTopo(k=0,
-                                                 hopts=self.getHostOpts(),
+        self.net = Mininet(topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
                                                  sopts=self.getSwitchOpts()),
-                                                 switch=HalonSwitch,
-                                                 host=HalonHost,
-                                                 link=HalonLink, controller=None,
-                                                 build=True)
+                           switch=VsiOpenSwitch,
+                           host=OpsVsiHost,
+                           link=OpsVsiLink, controller=None,
+                           build=True)
 
     def test_intervlan_input_test(self):
         '''
@@ -165,7 +164,7 @@ class intervlanCLITest( HalonTest ):
         # Deleting non existing vlan interface
         intf_cmd = "no interface vlan " + first_interface
         ret = s1.cmdCLI(intf_cmd)
-        assert 'Vlan Interface does not exist. Cannot delete' in ret, 'Able to delete non existing vlan interface'
+        assert 'Vlan interface does not exist. Cannot delete' in ret, 'Able to delete non existing vlan interface'
         info('### Deleting non existing vlan interface validation passed ###\n')
 
         # Deleting vlan interface from OVSDB with name same as Interface Name

@@ -1448,8 +1448,8 @@ DEFUN (vtysh_interface_vlan,
    if ((verify_ifname(vlan_if) == 0)) {
        vty->node = CONFIG_NODE;
        vty_out(vty,
-               "Error: Invalid vlan ID. Enter valid Vlan ID in the"
-               " range of <1 to 4094> and not part of internal VLAN%s",
+               "Error: Invalid vlan id. Enter valid vlan id in the"
+               " range of <1 to 4094> and should not be part of internal vlan%s",
                VTY_NEWLINE);
        return CMD_OVSDB_FAILURE;
    }
@@ -1512,8 +1512,8 @@ DEFUN (no_vtysh_interface_vlan,
    if ((verify_ifname(vlan_if) == 0)) {
        if (check_internal_vlan(vlanid) != 0) {
            vty_out(vty,
-                   "Error: Invalid vlan ID. Enter valid Vlan ID in the"
-                   " range of <1 to 4094> and not part of internal VLAN%s",
+                   "Error: Invalid vlan id. Enter valid vlan id in the"
+                   " range of <1 to 4094> and should not be part of internal vlan%s",
                    VTY_NEWLINE);
            return CMD_OVSDB_FAILURE;
        }
