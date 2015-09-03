@@ -40,10 +40,7 @@
 #include "openhalon-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-
-#ifdef ENABLE_OVSDB
 #include "intf_vty.h"
-#endif
 
 VLOG_DEFINE_THIS_MODULE(vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
