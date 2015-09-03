@@ -30,6 +30,8 @@
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_router_context.h"
 
+#define CLEANUP_SHOW_RUN
+
 char routercontextbgpclientname[] = "vtysh_router_context_bgp_clientcallback";
 char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
 
@@ -43,6 +45,7 @@ char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
 
 void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
+#ifndef CLEANUP_SHOW_RUN
    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor = NULL;
    int i=0;
 
@@ -95,6 +98,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                                             "soft-reconfiguration inbound");
 
     }
+#endif
 }
 
 
@@ -108,16 +112,18 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 
 void vtysh_router_context_bgp_ipprefix_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
-   struct ovsrec_prefix_list_entries *ovs_prefix_list_entries = NULL;
+#ifndef CLEANUP_SHOW_RUN
+   struct ovsrec_prefix_list_entry *ovs_prefix_list_entries = NULL;
    int i=0;
 
-   OVSREC_PREFIX_LIST_ENTRIES_FOR_EACH(ovs_prefix_list_entries, p_msg->idl)
+   OVSREC_PREFIX_LIST_ENTRY_FOR_EACH(ovs_prefix_list_entries, p_msg->idl)
    {
       if(ovs_prefix_list_entries->prefix_list->name)
          vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s seq %d %s %s",
             ovs_prefix_list_entries->prefix_list->name, ovs_prefix_list_entries->sequence,
                          ovs_prefix_list_entries->action,ovs_prefix_list_entries->prefix);
    }
+#endif
 }
 
 
@@ -128,13 +134,13 @@ void vtysh_router_context_bgp_ipprefix_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 |     vtysh_ovsdb_cbmsg_ptr p_msg: struct vtysh_ovsdb_cbmsg_struct *
 | Return : void
 -----------------------------------------------------------------------------*/
-
+#ifndef CLEANUP_SHOW_RUN
 void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
-   struct ovsrec_route_map_entries *ovs_route_map_entries = NULL;
+   struct ovsrec_route_map_entry *ovs_route_map_entries = NULL;
    int i=0;
 
-   OVSREC_ROUTE_MAP_ENTRIES_FOR_EACH(ovs_route_map_entries, p_msg->idl)
+   OVSREC_ROUTE_MAP_ENTRY_FOR_EACH(ovs_route_map_entries, p_msg->idl)
    {
       if(ovs_route_map_entries->route_map->name)
          vtysh_ovsdb_cli_print(p_msg, "route-map %s %s %d", ovs_route_map_entries->route_map->name,
@@ -159,7 +165,7 @@ void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 
    }
 }
-
+#endif
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_clientcallback
 | Responsibility : client callback routine
@@ -167,9 +173,11 @@ void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
      void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
+
 vtysh_ret_val
 vtysh_router_context_bgp_clientcallback(void *p_private)
 {
+#ifndef CLEANUP_SHOW_RUN
    struct ovsrec_bgp_router *bgp_router_context=NULL;
    int i=0;
 
@@ -203,7 +211,6 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
            bgp_router_context->value_timers[1], bgp_router_context->value_timers[0]);
 
    }
-
     vtysh_router_context_bgp_neighbor_callback(p_msg);
     vtysh_ovsdb_cli_print(p_msg,"!");
     vtysh_router_context_bgp_ipprefix_callback(p_msg);
@@ -211,6 +218,7 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
     vtysh_router_context_bgp_routemap_callback(p_msg);
     vtysh_ovsdb_cli_print(p_msg,"!");
 
+#endif
    return e_vtysh_ok;
 }
 
