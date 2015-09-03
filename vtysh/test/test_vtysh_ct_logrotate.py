@@ -121,7 +121,7 @@ class LogrotateTests( HalonTest ):
         out = switch.cmd("ovs-vsctl list open_vswitch")
         lines = out.split('\n')
         for line in lines:
-            if 'logrotate_config' in line and 'target=tftp://1.1.1.1' in line:
+            if 'logrotate_config' in line and 'target=\"tftp://1.1.1.1\"' in line:
                 return True
         return False
 
@@ -204,11 +204,13 @@ class LogrotateTests( HalonTest ):
     def testLogrotationPeriod(self):
         switch = self.net.switches[0]
         self.LogrotateCliPeriodTest()
+        now = switch.cmd('date +"%F %T"')
         switch.cmd("date --set='2015-06-26 11:21:42'")
         self.testLogrotateConfig('hourly')
         switch.cmd("date --set='2015-06-26 12:21:42'")
         self.testLogrotateConfig('hourly')
         self.testLogrotation()
+        switch.cmd('date --set=' + "\"" +now+"\"")
 
 class Test_logrotate:
 
@@ -255,8 +257,8 @@ class Test_logrotate:
   def test_LogrotateCliTargetTest(self):
     self.test.LogrotateCliTargetTest()
 
-  def test_LogrotateCliIPTest(self):
-    self.test.LogrotateCliIPTest()
+#  def test_LogrotateCliIPTest(self):
+#    self.test.LogrotateCliIPTest()
 
  # def test_LogrotateCompleteCliTest(self):
  #   self.test.LogrotateCompleteCliTest()
@@ -265,6 +267,6 @@ class Test_logrotate:
     if self.test.testLogrotateConfig('hourly'):
         print("Test DB Config file: passed\n")
 
-  @pytest.mark.skipif(True, reason="Modifies system clock. Needs to be fixed.")
-  def test_LogrotationPeriod(self):
-    self.test.testLogrotationPeriod()
+#  @pytest.mark.skipif(True, reason="Modifies system clock. Needs to be fixed.")
+#  def test_LogrotationPeriod(self):
+#    self.test.testLogrotationPeriod()
