@@ -32,6 +32,8 @@
 
 char routercontextbgpclientname[] = "vtysh_router_context_bgp_clientcallback";
 char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
+char routercontextbgpipprefixclientname[] = "vtysh_router_context_bgp_ipprefix_clientcallback";
+char routercontextbgproutemapclientname[] = "vtysh_router_context_bgp_routemap_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
@@ -95,21 +97,26 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                                             "soft-reconfiguration inbound");
 
     }
+
+    vtysh_ovsdb_cli_print(p_msg,"!");
 }
 
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_router_context_bgp_ipprefix_callback
+| Function : vtysh_router_context_bgp_ipprefix_clientcallback
 | Responsibility : ip prefix-list command
 | Parameters :
-|     vtysh_ovsdb_cbmsg_ptr p_msg: struct vtysh_ovsdb_cbmsg_struct *
+|     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
 
-void vtysh_router_context_bgp_ipprefix_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
+vtysh_ret_val
+vtysh_router_context_bgp_ipprefix_clientcallback(void *p_private)
 {
    struct ovsrec_prefix_list_entries *ovs_prefix_list_entries = NULL;
    int i=0;
+
+   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
    OVSREC_PREFIX_LIST_ENTRIES_FOR_EACH(ovs_prefix_list_entries, p_msg->idl)
    {
@@ -118,21 +125,28 @@ void vtysh_router_context_bgp_ipprefix_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
             ovs_prefix_list_entries->prefix_list->name, ovs_prefix_list_entries->sequence,
                          ovs_prefix_list_entries->action,ovs_prefix_list_entries->prefix);
    }
+
+   vtysh_ovsdb_cli_print(p_msg,"!");
+
+   return e_vtysh_ok;
 }
 
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_router_context_bgp_routemap_callback
+| Function : vtysh_router_context_bgp_routemap_clientcallback
 | Responsibility : Routemap commands
 | Parameters :
-|     vtysh_ovsdb_cbmsg_ptr p_msg: struct vtysh_ovsdb_cbmsg_struct *
+|     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
 
-void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
+vtysh_ret_val
+vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 {
    struct ovsrec_route_map_entries *ovs_route_map_entries = NULL;
    int i=0;
+
+   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
    OVSREC_ROUTE_MAP_ENTRIES_FOR_EACH(ovs_route_map_entries, p_msg->idl)
    {
@@ -158,6 +172,10 @@ void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                   smap_get(&ovs_route_map_entries->set, "metric"));
 
    }
+
+   vtysh_ovsdb_cli_print(p_msg,"!");
+
+   return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -205,11 +223,11 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
    }
 
     vtysh_router_context_bgp_neighbor_callback(p_msg);
-    vtysh_ovsdb_cli_print(p_msg,"!");
-    vtysh_router_context_bgp_ipprefix_callback(p_msg);
-    vtysh_ovsdb_cli_print(p_msg,"!");
-    vtysh_router_context_bgp_routemap_callback(p_msg);
-    vtysh_ovsdb_cli_print(p_msg,"!");
+    //vtysh_ovsdb_cli_print(p_msg,"!");
+    //vtysh_router_context_bgp_ipprefix_callback(p_msg);
+    //vtysh_ovsdb_cli_print(p_msg,"!");
+    //vtysh_router_context_bgp_routemap_callback(p_msg);
+    //vtysh_ovsdb_cli_print(p_msg,"!");
 
    return e_vtysh_ok;
 }
@@ -249,6 +267,32 @@ vtysh_init_router_context_clients()
   {
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                               "router context unable to add bgp callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  client.p_client_name = routercontextbgpipprefixclientname;
+  client.client_id = e_vtysh_router_context_bgp_ipprefix;
+  client.p_callback = &vtysh_router_context_bgp_ipprefix_clientcallback;
+  retval = vtysh_context_addclient(e_vtysh_router_context, e_vtysh_router_context_bgp_ipprefix, &client);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "router context unable to add bgp iprefix callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  client.p_client_name = routercontextbgproutemapclientname;
+  client.client_id = e_vtysh_router_context_bgp_routemap;
+  client.p_callback = &vtysh_router_context_bgp_routemap_clientcallback;
+  retval = vtysh_context_addclient(e_vtysh_router_context, e_vtysh_router_context_bgp_routemap, &client);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "router context unable to add bgp routemap callback");
     assert(0);
     return retval;
   }
