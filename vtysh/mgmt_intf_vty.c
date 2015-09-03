@@ -348,7 +348,15 @@ static int mgmt_intf_set_default_gw(bool set, const char *gw)
         return CMD_SUCCESS;
     }
 
+
     smap_clone(&smap, &row->mgmt_intf);
+
+    if(!smap_get(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_IP))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
 
     if(set)
     {
@@ -406,7 +414,7 @@ DEFUN (cli_no_mgmt_intf_set_default_gw,
 static int mgmt_intf_set_default_gw_ipv6(bool set, const char *gw_v6)
 {
     const struct ovsrec_open_vswitch *row = NULL;
-
+    struct smap smap = SMAP_INITIALIZER(&smap);
     const char *cfg_gw = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
@@ -441,13 +449,22 @@ static int mgmt_intf_set_default_gw_ipv6(bool set, const char *gw_v6)
         return CMD_SUCCESS;
     }
 
+    smap_clone(&smap, &row->mgmt_intf);
+
+    if(!smap_get(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
     if(set)
     {
-        smap_replace((struct smap *) &row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6, gw_v6);
+        smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6, gw_v6);
     }
     else
     {
-        cfg_gw = smap_get((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
+        cfg_gw = smap_get(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
         if (!cfg_gw || strcmp(gw_v6,cfg_gw) != 0)
         {
             vty_out(vty, "  %s %s",OVSDB_INVALID_VALUE_ERROR,VTY_NEWLINE);
@@ -455,11 +472,13 @@ static int mgmt_intf_set_default_gw_ipv6(bool set, const char *gw_v6)
             return CMD_SUCCESS;
         }
 
-        smap_replace((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6, MGMT_INTF_DEFAULT_IPV6);
+        smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6, MGMT_INTF_DEFAULT_IPV6);
 
     }
 
-    ovsrec_open_vswitch_set_mgmt_intf(row, &row->mgmt_intf);
+    ovsrec_open_vswitch_set_mgmt_intf(row, &smap);
+
+    smap_destroy(&smap);
 
     status = cli_do_config_finish(status_txn);
     if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -526,7 +545,6 @@ static int mgmt_intf_set_dns(bool set, const char *dns1, const char *dns2)
     }
 
     smap_clone(&smap, &row->mgmt_intf);
-
 
     /* Handle primary DNS server configuration */
     if(set)
@@ -596,9 +614,24 @@ DEFUN (cli_mgmt_intf_set_dns_1,
        MGMT_INTF_DNS_STR
        MGMT_INTF_DNS_1_STR)
 {
+    const struct ovsrec_open_vswitch *row = NULL;
+
     if (!is_valid_ip_address(argv[0]))
     {
         vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    row = ovsrec_open_vswitch_first(idl);
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if(!smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IP))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -612,9 +645,24 @@ DEFUN (cli_mgmt_intf_set_dns_2,
        MGMT_INTF_DNS_1_STR
        MGMT_INTF_DNS_2_STR)
 {
+    const struct ovsrec_open_vswitch *row = NULL;
+
     if (!is_valid_ip_address(argv[0]) || (!is_valid_ip_address(argv[1])))
     {
         vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    row = ovsrec_open_vswitch_first(idl);
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if(!smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IP))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -634,9 +682,24 @@ DEFUN (cli_mgmt_intf_set_dns_3,
        MGMT_INTF_DNS_STR
        MGMT_INTF_DNS_1_IPV6_STR)
 {
+    const struct ovsrec_open_vswitch *row = NULL;
+
     if (!is_valid_ip_address(argv[0]))
     {
         vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    row = ovsrec_open_vswitch_first(idl);
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if(!smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -650,9 +713,100 @@ DEFUN (cli_mgmt_intf_set_dns_4,
        MGMT_INTF_DNS_1_IPV6_STR
        MGMT_INTF_DNS_2_IPV6_STR)
 {
+    const struct ovsrec_open_vswitch *row = NULL;
+
     if (!is_valid_ip_address(argv[0]) || (!is_valid_ip_address(argv[1])))
     {
         vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    row = ovsrec_open_vswitch_first(idl);
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if(!smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    if (strcmp(argv[0], argv[1]) == 0)
+    {
+        vty_out(vty, "  %s %s",OVSDB_DUPLICATE_VALUE_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    return mgmt_intf_set_dns(true, argv[0], argv[1]);
+}
+
+DEFUN (cli_mgmt_intf_set_dns_5,
+       mgmt_intf_set_dns_ipv4_ipv6_cmd,
+       "nameserver A.B.C.D X:X::X:X",
+       MGMT_INTF_DNS_STR
+       MGMT_INTF_DNS_1_STR
+       MGMT_INTF_DNS_2_IPV6_STR)
+{
+    const struct ovsrec_open_vswitch *row = NULL;
+
+    if (!is_valid_ip_address(argv[0]) || (!is_valid_ip_address(argv[1])))
+    {
+        vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    row = ovsrec_open_vswitch_first(idl);
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if(!smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IP) || \
+       !smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    if (strcmp(argv[0], argv[1]) == 0)
+    {
+        vty_out(vty, "  %s %s",OVSDB_DUPLICATE_VALUE_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    return mgmt_intf_set_dns(true, argv[0], argv[1]);
+}
+
+DEFUN (cli_mgmt_intf_set_dns_6,
+       mgmt_intf_set_dns_ipv6_ipv4_cmd,
+       "nameserver X:X::X:X A.B.C.D",
+       MGMT_INTF_DNS_STR
+       MGMT_INTF_DNS_1_IPV6_STR
+       MGMT_INTF_DNS_2_STR)
+{
+    const struct ovsrec_open_vswitch *row = NULL;
+
+    if (!is_valid_ip_address(argv[0]) || (!is_valid_ip_address(argv[1])))
+    {
+        vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    row = ovsrec_open_vswitch_first(idl);
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if(!smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IP) || \
+       !smap_get(&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6))
+    {
+        vty_out(vty, "  %s %s",OVSDB_NO_IP_ERROR,VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -732,6 +886,39 @@ DEFUN (cli_no_mgmt_intf_set_dns_4,
     return mgmt_intf_set_dns(false, argv[0], argv[1]);
 }
 
+DEFUN (cli_no_mgmt_intf_set_dns_5,
+       mgmt_intf_no_set_dns_ipv4_ipv6_cmd,
+       "no nameserver A.B.C.D X:X::X:X",
+       NO_STR
+       MGMT_INTF_DNS_STR
+       MGMT_INTF_DNS_1_STR
+       MGMT_INTF_DNS_2_IPV6_STR)
+{
+    if (!is_valid_ip_address(argv[0]) || (!is_valid_ip_address(argv[1])))
+    {
+        vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    return mgmt_intf_set_dns(false, argv[0], argv[1]);
+}
+
+DEFUN (cli_no_mgmt_intf_set_dns_6,
+       mgmt_intf_no_set_dns_ipv6_ipv4_cmd,
+       "no nameserver X:X::X:X A.B.C.D",
+       NO_STR
+       MGMT_INTF_DNS_STR
+       MGMT_INTF_DNS_1_STR
+       MGMT_INTF_DNS_2_IPV6_STR)
+{
+    if (!is_valid_ip_address(argv[0]) || (!is_valid_ip_address(argv[1])))
+    {
+        vty_out(vty, "  %s %s",OVSDB_INVALID_IPV4_IPV6_ERROR,VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    return mgmt_intf_set_dns(false, argv[0], argv[1]);
+}
 
 void mgmt_intf_show(const struct ovsrec_open_vswitch *row)
 {
@@ -824,12 +1011,15 @@ void mgmt_intf_vty_init (void)
     install_element (MGMT_INTERFACE_NODE, &mgmt_intf_set_dns_2_cmd);
     install_element (MGMT_INTERFACE_NODE, &mgmt_intf_set_dns_1_ipv6_cmd);
     install_element (MGMT_INTERFACE_NODE, &mgmt_intf_set_dns_2_ipv6_cmd);
+    install_element (MGMT_INTERFACE_NODE, &mgmt_intf_set_dns_ipv4_ipv6_cmd);
+    install_element (MGMT_INTERFACE_NODE, &mgmt_intf_set_dns_ipv6_ipv4_cmd);
 
     install_element (MGMT_INTERFACE_NODE, &mgmt_intf_no_set_dns_1_cmd);
     install_element (MGMT_INTERFACE_NODE, &mgmt_intf_no_set_dns_2_cmd);
     install_element (MGMT_INTERFACE_NODE, &mgmt_intf_no_set_dns_1_ipv6_cmd);
     install_element (MGMT_INTERFACE_NODE, &mgmt_intf_no_set_dns_2_ipv6_cmd);
-
+    install_element (MGMT_INTERFACE_NODE, &mgmt_intf_no_set_dns_ipv4_ipv6_cmd);
+    install_element (MGMT_INTERFACE_NODE, &mgmt_intf_no_set_dns_ipv6_ipv4_cmd);
 
     install_element (ENABLE_NODE, &mgmt_intf_show_cmd);
 }
