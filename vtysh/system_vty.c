@@ -98,8 +98,8 @@ static void format_sys_output(struct vty* vty, struct ovsrec_subsystem* pSys,
             struct ovsrec_open_vswitch* pVswitch)
 {
     char* buf = NULL;
-    (pVswitch->switch_version) ? vty_out(vty,"%-20s%s%-30s%s","openHalon Version",": ",pVswitch->switch_version,VTY_NEWLINE):\
-    vty_out(vty,"%-20s%s%-30s%s","openHalon Version",": "," ",VTY_NEWLINE);
+    (pVswitch->switch_version) ? vty_out(vty,"%-20s%s%-30s%s","openwitchVersion",": ",pVswitch->switch_version,VTY_NEWLINE):\
+    vty_out(vty,"%-20s%s%-30s%s","openswitch Version",": "," ",VTY_NEWLINE);
 
     buf = smap_get(&pSys->other_info,"Product Name");
     (buf) ? vty_out(vty,"%-20s%s%-30s%s%s","Product Name",": ",buf,VTY_NEWLINE,VTY_NEWLINE):\
