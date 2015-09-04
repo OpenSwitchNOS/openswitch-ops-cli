@@ -53,6 +53,7 @@
 #include "openhalon-idl.h"
 
 #ifdef ENABLE_OVSDB
+#include "intf_vty.h"
 #include "vswitch-idl.h"
 #include "smap.h"
 #include "lacp_vty.h"
@@ -903,6 +904,14 @@ static struct cmd_node keychain_key_node =
       "%s(config-keychain-key)# "
    };
 
+#ifdef ENABLE_OVSDB
+static struct cmd_node vlan_interface_node =
+{
+  VLAN_INTERFACE_NODE,
+  "%s(config-if-vlan)# ",
+};
+
+#endif
 /* Defined in lib/vty.c */
 extern struct cmd_node vty_node;
 
@@ -1202,6 +1211,7 @@ vtysh_exit (struct vty *vty)
 #ifdef ENABLE_OVSDB
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
+    case VLAN_INTERFACE_NODE:
     case LINK_AGGREGATION_NODE:
 #endif
     case ZEBRA_NODE:
@@ -1391,6 +1401,7 @@ ALIAS (vtysh_exit_line_vty,
       "quit",
       "Exit current mode and down to previous mode\n")
 
+
 #ifdef ENABLE_OVSDB
 DEFUN (vtysh_interface,
       vtysh_interface_cmd,
@@ -1400,7 +1411,79 @@ DEFUN (vtysh_interface,
 {
   vty->node = INTERFACE_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
-  if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
+  uint16_t vlanid;
+
+  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
+  vty->node = VLAN_INTERFACE_NODE;
+      GET_VLANIF(ifnumber, argv[0]);
+      if (create_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+          return CMD_OVSDB_FAILURE;
+      }
+  }
+  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
+  {
+    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+  }
+  else
+  {
+    return CMD_ERR_NO_MATCH;
+  }
+  VLOG_DBG("%s ifnumber = %s\n", __func__, ifnumber);
+  vty->index = ifnumber;
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_interface_vlan,
+       vtysh_interface_vlan_cmd,
+       "interface vlan VLANID",
+       "Select an interface to configure\n"
+        VLAN_STR
+       "name of the VLAN\n")
+{
+   vty->node = VLAN_INTERFACE_NODE;
+   static char vlan_if[MAX_IFNAME_LENGTH];
+   uint16_t vlanid = atoi(argv[0]);
+
+   VLANIF_NAME(vlan_if, argv[0]);
+
+   if ((verify_ifname(vlan_if) == 0)) {
+       vty->node = CONFIG_NODE;
+       vty_out(vty,
+               "Error: Invalid vlan id. Enter valid vlan id in the"
+               " range of <1 to 4094> and should not be part of internal vlan%s",
+               VTY_NEWLINE);
+       return CMD_OVSDB_FAILURE;
+   }
+
+   VLOG_DBG("%s vlan interface = %s\n", __func__, vlan_if);
+
+   if (create_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
+       vty->node = CONFIG_NODE;
+       return CMD_OVSDB_FAILURE;
+   }
+   vty->index = vlan_if;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (no_vtysh_interface,
+      no_vtysh_interface_cmd,
+      "no interface IFNAME",
+      NO_STR
+      "Delete a pseudo interface's configuration\n"
+      "Interface's name\n")
+{
+  vty->node = CONFIG_NODE;
+  static char ifnumber[MAX_IFNAME_LENGTH];
+  uint16_t vlanid;
+
+  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
+      GET_VLANIF(ifnumber, argv[0]);
+      if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+          return CMD_OVSDB_FAILURE;
+      }
+  }
+  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
   {
     strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
   }
@@ -1410,6 +1493,41 @@ DEFUN (vtysh_interface,
   }
   vty->index = ifnumber;
   return CMD_SUCCESS;
+}
+
+DEFUN (no_vtysh_interface_vlan,
+       no_vtysh_interface_vlan_cmd,
+       "no interface vlan VLANID",
+       NO_STR
+       "Delete a pseudo interface's configuration\n"
+       "VLAN interface\n"
+       "Vlan id associated with interface\n")
+{
+   vty->node = CONFIG_NODE;
+   static char vlan_if[MAX_IFNAME_LENGTH];
+
+   uint16_t vlanid = atoi(argv[0]);
+
+   VLANIF_NAME(vlan_if, argv[0]);
+
+   if ((verify_ifname(vlan_if) == 0)) {
+       if (check_internal_vlan(vlanid) != 0) {
+           vty_out(vty,
+                   "Error: Invalid vlan id. Enter valid vlan id in the"
+                   " range of <1 to 4094> and should not be part of internal vlan%s",
+                   VTY_NEWLINE);
+           return CMD_OVSDB_FAILURE;
+       }
+   }
+
+   VLOG_DBG("s: vlan interface = %s\n", __func__, vlan_if);
+
+   if (delete_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
+       return CMD_OVSDB_FAILURE;
+   }
+   vty->index = vlan_if;
+
+   return CMD_SUCCESS;
 }
 
 DEFUN(vtysh_vlan,
@@ -1779,7 +1897,7 @@ DEFUNSH (VTYSH_INTERFACE,
   return CMD_SUCCESS;
 }
 #endif
-
+#ifndef ENABLE_OVSDB
 /* TODO Implement "no interface command in isisd. */
 DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D,
       vtysh_no_interface_cmd,
@@ -1787,7 +1905,7 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D,
       NO_STR
       "Delete a pseudo interface's configuration\n"
       "Interface's name\n")
-
+#endif
 /* TODO Implement interface description commands in ripngd, ospf6d
  * and isisd. */
 DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
@@ -3559,6 +3677,7 @@ vtysh_init_vty (void)
    install_node (&vlan_node, NULL);
    install_node (&mgmt_interface_node, NULL);
    install_node (&link_aggregation_node, NULL);
+   install_node (&vlan_interface_node, NULL);
 #endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
@@ -3590,6 +3709,7 @@ vtysh_init_vty (void)
    vtysh_install_default (VLAN_NODE);
    vtysh_install_default (MGMT_INTERFACE_NODE);
    vtysh_install_default (LINK_AGGREGATION_NODE);
+   vtysh_install_default (VLAN_INTERFACE_NODE);
 #endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
@@ -3728,8 +3848,20 @@ vtysh_init_vty (void)
    install_element (KEYCHAIN_NODE, &key_cmd);
    install_element (KEYCHAIN_NODE, &key_chain_cmd);
    install_element (KEYCHAIN_KEY_NODE, &key_chain_cmd);
-   install_element (CONFIG_NODE, &vtysh_interface_cmd);
+#ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_no_interface_cmd);
+#endif
+
+#ifdef ENABLE_OVSDB
+   install_element (CONFIG_NODE, &vtysh_interface_cmd);
+   install_element (CONFIG_NODE, &vtysh_interface_vlan_cmd);
+   install_element (CONFIG_NODE, &no_vtysh_interface_cmd);
+   install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
+   install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
+   install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
+   install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
+#endif
+
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_vlan_cmd);

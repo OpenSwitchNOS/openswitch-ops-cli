@@ -130,6 +130,7 @@ enum node_type
   VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
+  VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
 #endif
   VTY_NODE,			/* Vty node. */
 };

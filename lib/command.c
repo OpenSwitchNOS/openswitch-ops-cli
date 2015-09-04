@@ -3214,6 +3214,9 @@ DEFUN (config_exit,
     case INTERFACE_NODE:
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
+#ifdef ENABLE_OVSDB
+    case VLAN_INTERFACE_NODE:
+#endif
     case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
     case BGP_NODE:
@@ -3270,6 +3273,9 @@ DEFUN (config_end,
     case VLAN_NODE:
     case LINK_AGGREGATION_NODE:
     case MGMT_INTERFACE_NODE:
+#ifdef ENABLE_OVSDB
+    case VLAN_INTERFACE_NODE:
+#endif
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
