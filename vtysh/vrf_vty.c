@@ -47,7 +47,8 @@ extern struct ovsdb_idl *idl;
 /*
  * Check for presence of VRF and return VRF row.
  */
-const struct ovsrec_vrf* vrf_lookup(const char *vrf_name)
+const struct ovsrec_vrf*
+vrf_lookup(const char *vrf_name)
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     OVSREC_VRF_FOR_EACH (vrf_row, idl)
@@ -67,9 +68,9 @@ const struct ovsrec_vrf* vrf_lookup(const char *vrf_name)
  * create -> flag to create port if not found
  * attach_to_default_vrf -> attach newly created port to default VRF
  */
-const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
-                               bool attach_to_default_vrf,
-                               struct ovsdb_idl_txn *txn)
+const struct ovsrec_port*
+port_check_and_add(const char *port_name, bool create,
+                   bool attach_to_default_vrf, struct ovsdb_idl_txn *txn)
 {
     const struct ovsrec_port *port_row = NULL;
     OVSREC_PORT_FOR_EACH(port_row, idl)
@@ -119,7 +120,8 @@ const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
 /*
  * Check if port is part of any VRF and return the VRF row.
  */
-const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
+const struct ovsrec_vrf*
+port_vrf_lookup(const struct ovsrec_port *port_row)
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
@@ -135,10 +137,47 @@ const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row)
 }
 
 /*
+ * This function will check if a given IPv4/IPv6 address
+ * is already present as a primary or secondary IPv4/IPv6 address.
+ */
+bool
+check_ip_addr_duplicate(const char *ip_address,
+                        const struct ovsrec_port *port_row, bool ipv6,
+                        bool *secondary)
+{
+    size_t i;
+    if (ipv6) {
+        if (port_row->ip6_address && !strcmp(port_row->ip6_address, ip_address)) {
+            *secondary = false;
+            return true;
+        }
+        for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
+            if (!strcmp(port_row->ip6_address_secondary[i], ip_address)) {
+                *secondary = true;
+                return true;
+            }
+        }
+    } else {
+        if (port_row->ip4_address && !strcmp(port_row->ip4_address, ip_address)) {
+            *secondary = false;
+            return true;
+        }
+        for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+            if (!strcmp(port_row->ip4_address_secondary[i], ip_address)) {
+                *secondary = true;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/*
  * Adds a new VRF to the VRF table.
  * Takes VRF name as an argument.
  */
-static int vrf_add(const char *vrf_name)
+static int
+vrf_add(const char *vrf_name)
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -166,7 +205,7 @@ static int vrf_add(const char *vrf_name)
         return CMD_SUCCESS;
     }
 
-    /* HALON_TODO: In case multiple vrfs. */
+    /* OPS_TODO: In case multiple vrfs. */
 #if 0
     vrf_row = vrf_lookup(vrf_name);
     if (vrf_row) {
@@ -247,9 +286,10 @@ static int vrf_add(const char *vrf_name)
 /*
  * This function is used to delete a VRF and all ports linked to it.
  */
-static int vrf_delete(const char *vrf_name) {
+static int
+vrf_delete(const char *vrf_name) {
     /*
-     *  HALON_TODO: For now we will only move ports to default VRF.
+     *  OPS_TODO: For now we will only move ports to default VRF.
      */
 
     const struct ovsrec_vrf *vrf_row = NULL;
@@ -278,7 +318,7 @@ static int vrf_delete(const char *vrf_name) {
     }
 
     /*
-     * HALON_TODO: In case of multiple VRFs.
+     * OPS_TODO: In case of multiple VRFs.
      */
 #if 0
     vrf_row = vrf_lookup(vrf_name);
@@ -320,7 +360,7 @@ static int vrf_delete(const char *vrf_name) {
         return CMD_SUCCESS;
     }
 
-    /* HALON_TODO: In case multiple vrfs. */
+    /* OPS_TODO: In case multiple vrfs. */
 #if 0
     struct ovsrec_vrf **vrfs;
     vrfs = xmalloc(sizeof *ovs_row->vrfs * (ovs_row->n_vrfs - 1));
@@ -360,7 +400,8 @@ static int vrf_delete(const char *vrf_name) {
  * Adds an interface/port to a VRF.
  * Takes interface name and VRF name as arguments.
  */
-static int vrf_add_port(const char *if_name, const char *vrf_name)
+static int
+vrf_add_port(const char *if_name, const char *vrf_name)
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_vrf *unlink_vrf_row = NULL;
@@ -390,7 +431,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     }
 
     /*
-     * HALON_TODO: In case of multiple VRFs, change the error message below.
+     * OPS_TODO: In case of multiple VRFs, change the error message below.
      * Error message should be "To attach to default VRF, use the no
      * vrf attach command."
      */
@@ -402,7 +443,7 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
     }
 
     /*
-     * HALON_TODO: In case of multiple VRFs.
+     * OPS_TODO: In case of multiple VRFs.
      */
 #if 0
     vrf_row = vrf_lookup(vrf_name);
@@ -480,7 +521,8 @@ static int vrf_add_port(const char *if_name, const char *vrf_name)
 /*
  * This function is used to delete a port linked to a VRF.
  */
-static int vrf_del_port(const char *if_name, const char *vrf_name)
+static int
+vrf_del_port(const char *if_name, const char *vrf_name)
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_vrf *default_vrf_row = NULL;
@@ -508,7 +550,7 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
     }
 
     /*
-     * HALON_TODO: In case of multiple VRFs.
+     * OPS_TODO: In case of multiple VRFs.
      */
 #if 0
     vrf_row = vrf_lookup(vrf_name);
@@ -602,7 +644,8 @@ static int vrf_del_port(const char *if_name, const char *vrf_name)
  * This function is used to make an interface L3.
  * It attaches the port to the default VRF.
  */
-static int vrf_routing(const char *if_name)
+static int
+vrf_routing(const char *if_name)
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_bridge *default_bridge_row = NULL;
@@ -678,7 +721,8 @@ static int vrf_routing(const char *if_name)
  * It attaches the port to the default VRF.
  * It also removes all L3 related configuration like IP addresses.
  */
-static int vrf_no_routing(const char *if_name)
+static int
+vrf_no_routing(const char *if_name)
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_vrf *vrf_row = NULL;
@@ -758,13 +802,15 @@ static int vrf_no_routing(const char *if_name)
  * This function is used to configure an IP address for a port
  * which is attached to a VRF.
  */
-static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
+static int
+vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
 {
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ip4_addresses;
     size_t i;
+    bool is_secondary;
 
     status_txn = cli_do_config_start();
     if (status_txn == NULL) {
@@ -780,6 +826,16 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+    if (check_ip_addr_duplicate(ip4, port_row, false, &is_secondary)) {
+        vty_out(vty, "Error: IP Address is already assigned to interface %s"
+                " as %s.%s", if_name, is_secondary? "secondary": "primary",
+                VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" already has the IP address \"%s\""
+                " assigned to it as \"%s\".", __func__, if_name, ip4,
+                is_secondary? "secondary": "primary");
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -826,7 +882,8 @@ static int vrf_config_ip(const char *if_name, const char *ip4, bool secondary)
  * This function is used to delete an IP address assigned for a port
  * which is attached to a VRF.
  */
-static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
+static int
+vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
 {
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -871,6 +928,17 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
             cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
+
+        if (port_row->n_ip4_address_secondary) {
+            vty_out(vty, "Delete all secondary IP addresses before deleting"
+                    " primary.%s", VTY_NEWLINE);
+            VLOG_DBG("%s Interface \"%s\" has secondary IP addresses"
+                    " assigned to it. Delete them before deleting primary.",
+                    __func__, if_name);
+            cli_do_config_abort(status_txn);
+            return CMD_SUCCESS;
+        }
+
         if (strcmp(port_row->ip4_address, ip4) != 0) {
             vty_out(vty, "Error: IP Address %s not found.%s", ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface "
@@ -945,14 +1013,15 @@ static int vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
  * This function is used to configure an IPv6 address for a port
  * which is attached to a VRF.
  */
-static int vrf_config_ipv6(const char *if_name, const char *ipv6,
-                           bool secondary)
+static int
+vrf_config_ipv6(const char *if_name, const char *ipv6, bool secondary)
 {
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     char **secondary_ipv6_addresses;
     size_t i;
+    bool is_secondary;
 
     status_txn = cli_do_config_start();
 
@@ -970,6 +1039,17 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
         vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    if (check_ip_addr_duplicate(ipv6, port_row, true, &is_secondary)) {
+        vty_out(vty, "Error: IP Address is already assigned to interface %s"
+                " as %s.%s", if_name, is_secondary? "secondary": "primary",
+                VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" already has the IP address \"%s\""
+                " assigned to it as \"%s\".", __func__, if_name, ipv6,
+                is_secondary? "secondary": "primary");
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1018,8 +1098,8 @@ static int vrf_config_ipv6(const char *if_name, const char *ipv6,
  * This function is used to delete an IPv6 address assigned for a port
  * which is attached to a VRF.
  */
-static int vrf_del_ipv6(const char *if_name, const char *ipv6,
-                        bool secondary)
+static int
+vrf_del_ipv6(const char *if_name, const char *ipv6, bool secondary)
 {
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -1064,6 +1144,17 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
             cli_do_config_abort(status_txn);
             return CMD_SUCCESS;
         }
+
+        if (port_row->n_ip6_address_secondary) {
+            vty_out(vty, "Delete all secondary IP addresses before deleting"
+                    " primary.%s", VTY_NEWLINE);
+            VLOG_DBG("%s Interface \"%s\" has secondary IP addresses"
+                    " assigned to it. Delete them before deleting primary.",
+                    __func__, if_name);
+            cli_do_config_abort(status_txn);
+            return CMD_SUCCESS;
+        }
+
         if (strcmp(port_row->ip6_address, ipv6) != 0) {
             vty_out(vty, "Error: IPv6 Address %s not found.%s", ipv6,
                     VTY_NEWLINE);
@@ -1140,7 +1231,8 @@ static int vrf_del_ipv6(const char *if_name, const char *ipv6,
  * This function is used to show the VRF information.
  * Currently, it shows the interfaces attached to each VRF.
  */
-static int show_vrf_info()
+static int
+show_vrf_info()
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
@@ -1293,7 +1385,8 @@ DEFUN (cli_vrf_show,
 }
 
 /* Install VRF related vty commands. */
-void vrf_vty_init(void)
+void
+vrf_vty_init(void)
 {
     install_element(CONFIG_NODE, &cli_vrf_add_cmd);
     install_element(CONFIG_NODE, &cli_vrf_delete_cmd);
