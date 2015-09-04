@@ -575,7 +575,14 @@ struct cmd_token
 #define NEIGHBOR_CMD2      "neighbor (A.B.C.D|WORD) "
 #define NO_NEIGHBOR_CMD2   "no neighbor (A.B.C.D|WORD) "
 #define NEIGHBOR_ADDR_STR2 "Neighbor address\nNeighbor tag\n"
+
 #endif /* HAVE_IPV6 */
+
+/* ECMP CLI help strings */
+#define ECMP_CONFIG_DISABLE_STR      "Completely disable ECMP\n"
+#define ECMP_STR                     "Configure ECMP\n"
+#define LOAD_BAL_STR                 "Configure hashing parameters\n"
+
 
 /* Prototypes. */
 extern void install_node (struct cmd_node *, int (*) (struct vty *));
