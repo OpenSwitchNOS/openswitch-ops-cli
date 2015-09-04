@@ -22,6 +22,23 @@
 #ifndef VTY_UTILS_H
 #define VTY_UTILS_H 1
 
+extern struct latch ovsdb_latch;
+
+/* To serialize updates to OVSDB.
+ * interface threads calls to update OVSDB states. */
+extern pthread_mutex_t vtysh_ovsdb_mutex;
+
+/* Macros to lock and unlock mutexes in a verbose manner. */
+#define VTYSH_OVSDB_LOCK { \
+                VLOG_DBG("%s(%d): VTYSH_OVSDB_LOCK: taking lock...", __FUNCTION__, __LINE__); \
+                pthread_mutex_lock(&vtysh_ovsdb_mutex); \
+}
+
+#define VTYSH_OVSDB_UNLOCK { \
+                VLOG_DBG("%s(%d): VTYSH_OVSDB_UNLOCK: releasing lock...", __FUNCTION__, __LINE__); \
+                pthread_mutex_unlock(&vtysh_ovsdb_mutex); \
+}
+
 vector utils_cmd_parse_format(const char* string, const char* desc);
 
 void utils_format_parser_read_word(struct format_parser_state *state);
