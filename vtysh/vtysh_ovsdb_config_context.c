@@ -33,6 +33,7 @@
 #include "aaa_vty.h"
 #include "logrotate_vty.h"
 #include "openhalon-dflt.h"
+#include "ecmp_vty.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
 
@@ -41,6 +42,7 @@ char vrfconfigclientname[]= "vtysh_config_context_vrf_clientcallback";
 char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback";
 char ledconfigclientname[]= "vtysh_config_context_led_clientcallback";
 char staticrouteconfigclientname[]= "vtysh_config_context_staticroute_clientcallback";
+char ecmpconfigclientname[] = "vtysh_config_context_ecmp_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_parse_othercfg
@@ -664,6 +666,54 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_config_context_ecmp_clientcallback
+| Responsibility : ecmp config client callback routine
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_config_context_ecmp_clientcallback(void *p_private)
+{
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+    const struct ovsrec_open_vswitch *ovs_row;
+
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                              "vtysh_config_context_ecmp_clientcallback entered");
+
+    ovs_row = ovsrec_open_vswitch_first(p_msg->idl);
+    if(!ovs_row)
+    {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                            "vtysh_config_context_ecmp_clientcallback: error ovs_row");
+        return e_vtysh_error;
+    }
+
+    if(!GET_ECMP_CONFIG_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp disable");
+    }
+    if(!GET_ECMP_CONFIG_HASH_SRC_IP_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance src-ip disable");
+    }
+    if(!GET_ECMP_CONFIG_HASH_SRC_PORT_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance src-port disable");
+    }
+    if (!GET_ECMP_CONFIG_HASH_DST_IP_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance dst-ip disable");
+    }
+    if(!GET_ECMP_CONFIG_HASH_DST_PORT_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance dst-port disable");
+    }
+
+    return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_init_config_context_clients
 | Responsibility : registers the client callbacks for config context
 | Parameters :
@@ -741,6 +791,20 @@ vtysh_init_config_context_clients()
   {
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                               "dependent config unable to add static route client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  memset(&client, 0, sizeof(vtysh_context_client));
+  client.p_client_name = ecmpconfigclientname;
+  client.client_id = e_vtysh_config_context_ecmp;
+  client.p_callback = &vtysh_config_context_ecmp_clientcallback;
+  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_ecmp, &client);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "config context unable to add ecmp client callback");
     assert(0);
     return retval;
   }
