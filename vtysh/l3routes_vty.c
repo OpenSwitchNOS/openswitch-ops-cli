@@ -140,7 +140,7 @@ DEFUN (vtysh_ip_route,
     struct ovsrec_vrf *row_vrf = NULL;
 
     struct in_addr mask;
-    struct prefix_ipv4 p;
+    struct prefix p;
     int ret, i;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -157,7 +157,7 @@ DEFUN (vtysh_ip_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv4 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -166,12 +166,26 @@ DEFUN (vtysh_ip_route,
     /*
     * Convert to the final/optimized format before storing to DB
     */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
+
+    if(strcmp(prefix_str, argv[0])) {
+        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
 
     OVSREC_ROUTE_FOR_EACH(row, idl) {
         if (row->prefix != NULL) {
             if (!strcmp(row->prefix, argv[0]) && !strcmp(row->from, OVSREC_ROUTE_FROM_STATIC)) {
+                if (row->n_nexthops != NULL) {
+                    if (row->n_nexthops > 31) {
+                        VLOG_ERR("Maximum supported nexthops for a route are 32");
+                        cli_do_config_abort(status_txn);
+                        return CMD_OVSDB_FAILURE;
+                    }
+                }
                 prefix_match = true;
                 static_match = true;
                 break;
@@ -370,7 +384,7 @@ DEFUN (vtysh_no_ip_route,
     int ret;
     const struct ovsrec_route *row_route = NULL;
     int flag = 0;
-    struct prefix_ipv4 p;
+    struct prefix p;
     char prefix_str[256];
     int found_flag = 0;
     int len = 0;
@@ -389,7 +403,7 @@ DEFUN (vtysh_no_ip_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv4 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -398,8 +412,15 @@ DEFUN (vtysh_no_ip_route,
     /*
      * Convert to the final/optimized format before storing to DB
      */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
+
+    if(strcmp(prefix_str, argv[0])) {
+        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -507,7 +528,7 @@ DEFUN (vtysh_ipv6_route,
     const struct ovsrec_vrf *row_vrf = NULL;
 
     struct in6_addr mask;
-    struct prefix_ipv6 p;
+    struct prefix p;
     int ret, i;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -524,7 +545,7 @@ DEFUN (vtysh_ipv6_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv6 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -533,12 +554,27 @@ DEFUN (vtysh_ipv6_route,
     /*
      * Convert to the final/optimized format before storing to DB
      */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
 
+    if(strcmp(prefix_str, argv[0])) {
+        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
     OVSREC_ROUTE_FOR_EACH(row, idl) {
+
         if (row->prefix != NULL) {
             if (!strcmp(row->prefix, argv[0]) && !strcmp(row->from, OVSREC_ROUTE_FROM_STATIC)) {
+                if (row->n_nexthops != NULL) {
+                    if (row->n_nexthops > 31) {
+                        VLOG_ERR("Maximum supported nexthops for a route are 32");
+                        cli_do_config_abort(status_txn);
+                        return CMD_OVSDB_FAILURE;
+                    }
+                }
                 prefix_match = true;
                 static_match = true;
                 break;
@@ -651,7 +687,7 @@ DEFUN (vtysh_no_ipv6_route,
     int ret;
     const struct ovsrec_route *row_route = NULL;
     int flag = 0;
-    struct prefix_ipv6 p;
+    struct prefix p;
     char prefix_str[256];
     int found_flag = 0;
     int len = 0;
@@ -670,7 +706,7 @@ DEFUN (vtysh_no_ipv6_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv6 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -679,8 +715,15 @@ DEFUN (vtysh_no_ipv6_route,
     /*
      * Convert to the final/optimized format before storing to DB
      */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
+
+    if(strcmp(prefix_str, argv[0])) {
+        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -783,7 +826,7 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->protocol_private != NULL ) {
-            if (row_route->protocol_private[0] == false) {
+            if (row_route->protocol_private[0] == true) {
                 continue;
             }
         }
