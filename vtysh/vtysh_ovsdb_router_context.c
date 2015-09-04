@@ -163,11 +163,11 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                             smap_get(&(ovs_route_map_entries->match), "prefix_list"));
 
       if(smap_get(&ovs_route_map_entries->set, "community"))
-         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "set community",
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community",
                       smap_get(&ovs_route_map_entries->set, "community"));
 
       if(smap_get(&ovs_route_map_entries->set, "metric"))
-         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "set metric",
+         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set metric",
                       smap_get(&ovs_route_map_entries->set, "metric"));
    }
 
