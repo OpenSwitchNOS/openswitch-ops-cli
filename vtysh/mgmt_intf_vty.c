@@ -177,12 +177,17 @@ DEFUN (cli_mgmt_intf_set_mode_dhcp,
     return mgmt_intf_set_dhcp();
 }
 
-static int mgmt_intf_set_static(const char *ip, const char *subnet)
+static int mgmt_intf_set_static(const char *ip, enum ip_type type)
 {
     const struct ovsrec_open_vswitch *row = NULL;
     struct smap smap = SMAP_INITIALIZER(&smap);
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
+    const char *subnet = NULL;
+    const char *ip_addr = NULL;
+    unsigned short subnet_in = 0;
+    char buf[MAX_IPV4_OR_IPV6_SUBNET_CIDR_STR_LEN];
+
 
     if (!is_valid_ip_address(ip))
     {
@@ -190,11 +195,27 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
         return CMD_SUCCESS;
     }
 
-    if (!is_valid_ip_subnet_mask(subnet))
+    memset(buf, 0, MAX_IPV4_OR_IPV6_SUBNET_CIDR_STR_LEN);
+    strncpy(buf, ip, MAX_IPV4_OR_IPV6_SUBNET_CIDR_STR_LEN);
+    ip_addr   = strtok(buf,"/");
+    subnet    = strtok(NULL,"\0");
+    subnet_in = atoi(subnet);
+
+    if(IPV4 == type)
     {
-        vty_out(vty, "  %s %s",OVSDB_INVALID_SUBNET_ERROR,VTY_NEWLINE);
-        return CMD_SUCCESS;
+        if (IS_INVALID_IPV4_SUBNET(subnet_in))
+        {
+            vty_out(vty, "  %s %s",OVSDB_INVALID_SUBNET_ERROR,VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+    }else if(IPV6 == type) {
+        if (IS_INVALID_IPV6_SUBNET(subnet_in))
+        {
+            vty_out(vty, "  %s %s",OVSDB_INVALID_SUBNET_ERROR,VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
     }
+
 
     status_txn = cli_do_config_start();
     if(status_txn == NULL)
@@ -216,8 +237,14 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
     smap_clone(&smap, &row->mgmt_intf);
 
     smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_MODE, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_STATIC);
-    smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_IP, ip);
-    smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK, subnet);
+
+    if(IPV4 == type) {
+        smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_IP, ip_addr);
+        smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK, subnet);
+    }else if(IPV6 == type) {
+        smap_replace(&smap, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6, ip);
+    }
+
 
     ovsrec_open_vswitch_set_mgmt_intf(row, &smap);
 
@@ -237,13 +264,12 @@ static int mgmt_intf_set_static(const char *ip, const char *subnet)
 
 DEFUN (cli_mgmt_intf_set_mode_static,
           mgmt_intf_set_mode_static_cmd,
-          "ip static A.B.C.D X.X.X.X",
+          "ip static A.B.C.D/M",
           MGMT_INTF_MODE_IP_STR
           MGMT_INTF_STATIC_STR
-          MGMT_INTF_IPV4_STR
-          MGMT_INTF_SUBNET_STR)
+          MGMT_INTF_IPV4_STR)
 {
-    return mgmt_intf_set_static(argv[0], argv[1]);
+    return mgmt_intf_set_static(argv[0],IPV4);
 }
 
 static int mgmt_intf_set_static_ipv6(const char *ipv6)
@@ -306,7 +332,7 @@ DEFUN (cli_mgmt_intf_set_mode_static_ipv6,
           MGMT_INTF_STATIC_STR
           MGMT_INTF_IPV6_STR)
 {
-    return mgmt_intf_set_static_ipv6(argv[0]);
+    return mgmt_intf_set_static(argv[0],IPV6);
 }
 
 
