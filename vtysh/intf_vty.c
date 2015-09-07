@@ -530,7 +530,7 @@ DEFUN_NO_FORM (cli_intf_autoneg,
 #define PRINT_INT_HEADER_IN_SHOW_RUN if(!bPrinted) \
 { \
    bPrinted = true;\
-   vty_out (vty, "Interface %s %s", row->name, VTY_NEWLINE);\
+   vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
 }
 
 
@@ -780,7 +780,8 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          vty_out (vty, "%-6s ", ifrow->link_state);
 
-         if(strcmp(ifrow->admin_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
+         if((NULL != ifrow->admin_state) &&
+               (strcmp(ifrow->admin_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0))
          {
             vty_out (vty, "Administratively down    ");
          }
@@ -828,7 +829,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          vty_out(vty, " MTU %d %s", intVal, VTY_NEWLINE);
 
-         if(strcmp(ifrow->duplex, "half") == 0)
+         if((NULL != ifrow->duplex) && (strcmp(ifrow->duplex, "half") == 0))
          {
             vty_out(vty, " Half-duplex %s", VTY_NEWLINE);
          }

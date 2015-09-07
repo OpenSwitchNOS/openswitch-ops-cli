@@ -417,7 +417,7 @@ struct cmd_token
 
 #define DEFUN_NO_FORM(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_CMD_FUNC_DECL(no_##funcname) \
-  DEFUN_CMD_ELEMENT(no_##funcname, no_##cmdname, "no " cmdstr, "NO_STR" helpstr, 0, 0) \
+  DEFUN_CMD_ELEMENT(no_##funcname, no_##cmdname, "no " cmdstr, NO_STR helpstr, 0, 0) \
   DEFUN_CMD_FUNC_TEXT(no_##funcname) \
 { \
    return funcname(self, vty, CMD_FLAG_NO_CMD, argc, argv); \
