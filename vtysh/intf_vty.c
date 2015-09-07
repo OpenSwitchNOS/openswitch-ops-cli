@@ -1060,54 +1060,54 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          atom.string = interface_statistics_keys[0];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input packets  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input packets  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[1];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[8];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[4];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[5];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d short frame    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld short frame    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[6];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d overrun  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld overrun  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[7];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d CRC/FCS  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld CRC/FCS  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          vty_out(vty, " TX%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[2];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d output packets ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld output packets ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[3];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[11];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[9];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[10];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d collision  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld collision  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          vty_out(vty, "%s", VTY_NEWLINE);
