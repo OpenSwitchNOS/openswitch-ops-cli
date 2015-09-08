@@ -847,7 +847,7 @@ int cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
        ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
        subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
        if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
-           vty_out(vty, "%4sip static %s %s%s","",ip,subnet, VTY_NEWLINE);
+           vty_out(vty, "%4sip static %s/%s%s","",ip,subnet, VTY_NEWLINE);
 
        ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
        if (ip && (strcmp(ip,MGMT_INTF_DEFAULT_IPV6) != 0))

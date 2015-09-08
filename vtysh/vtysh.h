@@ -83,15 +83,20 @@ struct vtysh_alias_data {
 #define  IS_MULTICAST_IPV4(i)      (((long)(i) & 0xf0000000) == 0xe0000000)
 #define  IS_EXPERIMENTAL_IPV4(i)   (((long)(i) & 0xf0000000) == 0xf0000000)
 #define  IS_INVALID_IPV4(i)         ((long)(i) == 0)
+#define  IS_INVALID_IPV4_SUBNET(i) ((i <= 0) || (i >= 32))
+#define  IS_INVALID_IPV6_SUBNET(i) ((i <= 0) || (i >= 128))
 
 #define IS_VALID_IPV4(i) !(IS_BROADCAST_IPV4(i) | IS_LOOPBACK_IPV4(i) | \
                           IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
                                                     IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
                                                                               IS_NETWORK_ADDRESS(i))
 
-int is_valid_ip_address(const char *ip_value);
+enum ip_type {
+    IPV4=0,
+    IPV6
+};
 
-int is_valid_ip_subnet_mask(const char *subnet_value);
+int is_valid_ip_address(const char *ip_value);
 
 extern int vtysh_alias_callback(struct cmd_element *self, struct vty *vty, int vty_flags, int argc, const char *argv[]);
 
