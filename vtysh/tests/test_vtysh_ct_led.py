@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 #
 # Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
 # All Rights Reserved.
@@ -20,114 +22,141 @@ from time import sleep
 from halonvsi.docker import *
 from halonvsi.halon import *
 
-class PlatformLedTests( HalonTest ):
-    uuid = ""
+
+class PlatformLedTests(HalonTest):
+
+    uuid = ''
 
     def setupNet(self):
+
         # if you override this function, make sure to
         # either pass getNodeOpts() into hopts/sopts of the topology that
         # you build or into addHost/addSwitch calls
-        self.net = Mininet(topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                                 sopts=self.getSwitchOpts()),
-                           switch=HalonSwitch, host=HalonHost,
-                           link=HalonLink, controller=None,
-                           build=True)
+
+        self.net = Mininet(
+            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
+                                  sopts=self.getSwitchOpts()),
+            switch=HalonSwitch,
+            host=HalonHost,
+            link=HalonLink,
+            controller=None,
+            build=True,
+            )
 
     def initLedTable(self):
+
         # Add dummy data for LED in subsystem and led table for simulation.
         # Assume there would be only one entry in subsystem table
-        s1 = self.net.switches[ 0 ]
-        out = s1.cmd("ovs-vsctl list subsystem")
+
+        s1 = self.net.switches[0]
+        out = s1.cmd('ovs-vsctl list subsystem')
         lines = out.split('\n')
         for line in lines:
-            if "_uuid" in line:
+            if '_uuid' in line:
                 _id = line.split(':')
                 PlatformLedTests.uuid = _id[1].strip()
-                s1.cmd("ovs-vsctl -- set Subsystem "+PlatformLedTests.uuid+" leds=@led1 -- --id=@led1 create led "
-                "id=base1 state=flashing status=ok")
-
+                s1.cmd('ovs-vsctl -- set Subsystem '
+                       + PlatformLedTests.uuid
+                       + ' leds=@led1 -- --id=@led1 create led id=base1 state=flashing status=ok'
+                       )
 
     def deinitLedTable(self):
-        s1 = self.net.switches[ 0 ]
-        # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
-        s1.cmd("ovs-vsctl clear subsystem "+PlatformLedTests.uuid+" leds")
+        s1 = self.net.switches[0]
 
+        # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
+
+        s1.cmd('ovs-vsctl clear subsystem ' + PlatformLedTests.uuid
+               + ' leds')
 
     def setLedTest(self):
-        print('\n########## Test to verify \'led\' command ##########\n')
-        s1 = self.net.switches[ 0 ]
+        print '''
+########## Test to verify \'led\' command ##########
+'''
+        s1 = self.net.switches[0]
         is_led_set = False
-        out = s1.cmdCLI("configure terminal")
-        out = s1.cmdCLI("led base1 on")
-        s1.cmdCLI("exit")
-        out = s1.cmd("ovs-vsctl list led base1")
+        out = s1.cmdCLI('configure terminal')
+        out = s1.cmdCLI('led base1 on')
+        s1.cmdCLI('exit')
+        out = s1.cmd('ovs-vsctl list led base1')
         lines = out.split('\n')
         for line in lines:
-            if "state" in line:
-                if "on" in line:
+            if 'state' in line:
+                if 'on' in line:
                     is_led_set = True
                     break
-        assert is_led_set == True,'Test to verify \'led\' command - FAILED!'
+        assert is_led_set == True, \
+            'Test to verify \'led\' command - FAILED!'
         return True
 
     def showLedTest(self):
-        print('\n########## Test to verify \'show system led\' command ##########\n')
-        s1 = self.net.switches[ 0 ]
+        print '''
+########## Test to verify \'show system led\' command ##########
+'''
+        s1 = self.net.switches[0]
         led_config_present = False
-        out = s1.cmdCLI("show system led")
+        out = s1.cmdCLI('show system led')
         lines = out.split('\n')
         for line in lines:
-            if "base1" in line:
-                if "on" in line:
+            if 'base1' in line:
+                if 'on' in line:
                     led_config_present = True
                     break
-                elif "off" in line:
+                elif 'off' in line:
                     led_config_present = True
                     break
-                elif "flashing" in line:
+                elif 'flashing' in line:
                     led_config_present = True
                     break
                 else:
                     led_config_present = False
 
-        assert led_config_present == True,'Test to verify \'show system led\' command - FAILED!'
+        assert led_config_present == True, \
+            'Test to verify \'show system led\' command - FAILED!'
         return True
 
     def noLedTest(self):
-        print('\n########## Test to verify \'no led\' command  ##########\n')
-        s1 = self.net.switches[ 0 ]
+        print '''
+########## Test to verify \'no led\' command  ##########
+'''
+        s1 = self.net.switches[0]
         led_state_off = False
-        out = s1.cmdCLI("configure terminal")
-        out = s1.cmdCLI("no led base1")
-        s1.cmdCLI("exit")
-        out = s1.cmd("ovs-vsctl list led base1")
+        out = s1.cmdCLI('configure terminal')
+        out = s1.cmdCLI('no led base1')
+        s1.cmdCLI('exit')
+        out = s1.cmd('ovs-vsctl list led base1')
         lines = out.split('\n')
         for line in lines:
-            if "state" in line:
-                if "off" in line:
+            if 'state' in line:
+                if 'off' in line:
                     led_state_off = True
                     break
-        assert led_state_off == True,'Test to verify \'no led\' command - FAILED!'
+        assert led_state_off == True, \
+            'Test to verify \'no led\' command - FAILED!'
         return True
 
     def showRunningLedTest(self):
-        print('\n########## Test to verify show running-config command ##########\n')
-        s1 = self.net.switches[ 0 ]
+        print '''
+########## Test to verify show running-config command ##########
+'''
+        s1 = self.net.switches[0]
         led_config_present = False
-        out = s1.cmdCLI("configure terminal")
-        out = s1.cmdCLI("led base1 on")
-        s1.cmdCLI("exit")
-        out = s1.cmdCLI("show running-config")
+        out = s1.cmdCLI('configure terminal')
+        out = s1.cmdCLI('led base1 on')
+        s1.cmdCLI('exit')
+        out = s1.cmdCLI('show running-config')
         lines = out.split('\n')
         for line in lines:
-            if "led base1 on" in line:
-                 led_config_present = True
-        assert led_config_present == True, 'Test to verify show running-config command - FAILED!'
+            if 'led base1 on' in line:
+                led_config_present = True
+        assert led_config_present == True, \
+            'Test to verify show running-config command - FAILED!'
         return True
+
 
 class Test_led:
 
     # Init test tables??
+
     def setup(self):
         pass
 
@@ -135,35 +164,53 @@ class Test_led:
         pass
 
     def setup_class(cls):
+
         # Initialize the led table with dummy value
+
         Test_led.test = PlatformLedTests()
         Test_led.test.initLedTable()
 
     # led <led name> on|off|flashing test.
+
     def test_led_command(self):
-       if self.test.setLedTest():
-           print '\n########## Test to verify \'led\' command - SUCCESS! ##########\n'
+        if self.test.setLedTest():
+            print '''
+########## Test to verify \'led\' command - SUCCESS! ##########
+'''
 
     # show system led test.
+
     def test_show_system_led_command(self):
         if self.test.showLedTest():
-            print '\n########## Test to verify \'show system led\' command - SUCCESS! ##########\n'
+            print '''
+########## Test to verify \'show system led\' command - SUCCESS! ##########
+'''
 
-    #no led <led name> test
+    # no led <led name> test
+
     def test_no_led_command(self):
         if self.test.noLedTest():
-            print '\n########## Test to verify \'no led\' command - SUCCESS! ##########\n'
+            print '''
+########## Test to verify \'no led\' command - SUCCESS! ##########
+'''
 
-    #no led show running-config test
+    # no led show running-config test
+
     def test_show_running_led_command(self):
         if self.test.showRunningLedTest():
-            print '\n########## Test to verify show running-config command - SUCCESS! ##########\n'
+            print '''
+########## Test to verify show running-config command - SUCCESS! ##########
+'''
 
     def teardown_class(cls):
+
         # Delete Dummy data to avoid clash with other test scripts
+
         Test_led.test.deinitLedTable()
+
         # Stop the Docker containers, and
         # mininet topology
+
         Test_led.test.net.stop()
 
     def setup_method(self, method):
