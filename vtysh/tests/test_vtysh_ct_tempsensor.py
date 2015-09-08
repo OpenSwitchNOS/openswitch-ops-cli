@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 #
 # Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
 # All Rights Reserved.
@@ -20,48 +22,70 @@ from time import sleep
 from halonvsi.docker import *
 from halonvsi.halon import *
 
-class TemperatureSystemTests( HalonTest ):
-    uuid = ""
+
+class TemperatureSystemTests(HalonTest):
+
+    uuid = ''
 
     def setupNet(self):
+
         # if you override this function, make sure to
         # either pass getNodeOpts() into hopts/sopts of the topology that
         # you build or into addHost/addSwitch calls
-        self.net = Mininet(topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                                 sopts=self.getSwitchOpts()),
-                           switch=HalonSwitch, host=HalonHost,
-                           link=HalonLink, controller=None,
-                           build=True)
+
+        self.net = Mininet(
+            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
+                                  sopts=self.getSwitchOpts()),
+            switch=HalonSwitch,
+            host=HalonHost,
+            link=HalonLink,
+            controller=None,
+            build=True,
+            )
+
     def initTemp_sensorTable(self):
+
         # Add dummy data for fans in subsystem and fan table for simulation.
         # Assume there would be only one entry in subsystem table
-        s1 = self.net.switches[ 0 ]
-        print("\n")
-        out = s1.cmd("ovs-vsctl list subsystem")
+
+        s1 = self.net.switches[0]
+        print '\n'
+        out = s1.cmd('ovs-vsctl list subsystem')
         lines = out.split('\n')
         for line in lines:
-            if "_uuid" in line:
+            if '_uuid' in line:
                 _id = line.split(':')
                 TemperatureSystemTests.uuid = _id[1].strip()
-                out=s1.cmd("/usr/bin/ovs-vsctl -- set Subsystem "+TemperatureSystemTests.uuid+" temp_sensors=@fan1 -- --id=@fan1 create Temp_sensor "
-                           "name=base-1 location=Faceplate_side_of_switch_chip_U16 status=normal fan-state=normal min=0 max=21000 temperature=20500")
+                out = s1.cmd('/usr/bin/ovs-vsctl -- set Subsystem '
+                             + TemperatureSystemTests.uuid
+                             + ' temp_sensors=@fan1 -- --id=@fan1 create Temp_sensor name=base-1 location=Faceplate_side_of_switch_chip_U16 status=normal fan-state=normal min=0 max=21000 temperature=20500'
+                             )
 
     def deinitTemp_sensorTable(self):
-        s1 = self.net.switches[ 0 ]
+        s1 = self.net.switches[0]
+
         # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
-        s1.cmd("ovs-vsctl clear subsystem "+TemperatureSystemTests.uuid+" temp_sensors")
+
+        s1.cmd('ovs-vsctl clear subsystem '
+               + TemperatureSystemTests.uuid + ' temp_sensors')
 
     def showSystemTemperatureTest(self):
+
         # Test to verify show system command
-        s1 = self.net.switches[ 0 ]
+
+        s1 = self.net.switches[0]
         temperature_config_present = False
-        print('\n##########  Test to verify \'show system temperature\' command ##########\n')
-        out = s1.cmdCLI("show system temperature")
+        print '''
+##########  Test to verify \'show system temperature\' command ##########
+'''
+        out = s1.cmdCLI('show system temperature')
         lines = out.split('\n')
         for line in lines:
-            if 'base-1' and 'Faceplate_side_of_switch_chip_U16' and 'normal' and 'normal' in line:
+            if 'base-1' and 'Faceplate_side_of_switch_chip_U16' \
+                and 'normal' and 'normal' in line:
                 temperature_config_present = True
-        assert temperature_config_present == True,'Test to verify \'show system temperature\' command - FAILED!'
+        assert temperature_config_present == True, \
+            'Test to verify \'show system temperature\' command - FAILED!'
         return True
 
 
@@ -74,15 +98,21 @@ class Test_sys:
         pass
 
     def setup_class(cls):
+
         # Initialize the led table with dummy value
+
         Test_sys.test = TemperatureSystemTests()
         Test_sys.test.initTemp_sensorTable()
 
     def teardown_class(cls):
+
         # Delete Dummy data to avoid clash with other test scripts
+
         Test_sys.test.deinitTemp_sensorTable()
+
         # Stop the Docker containers, and
         # mininet topology
+
         Test_sys.test.net.stop()
 
     def setup_method(self, method):
@@ -95,6 +125,9 @@ class Test_sys:
         del self.test
 
     # show system fan test.
+
     def test_show_system_temperature_command(self):
-       if self.test.showSystemTemperatureTest():
-           print('\n##########  Test to verify \'show system temperature\' command - SUCCESS! ##########\n')
+        if self.test.showSystemTemperatureTest():
+            print '''
+##########  Test to verify \'show system temperature\' command - SUCCESS! ##########
+'''
