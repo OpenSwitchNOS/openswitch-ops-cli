@@ -48,5 +48,7 @@ void vty_mgmt_int_init (void);
 #define OVSDB_MODE_ERROR                      "Configurations not allowed in dhcp mode"
 #define OVSDB_DNS_DEPENDENCY_ERROR            "Deletion not allowed. Secondary Nameserver present"
 #define OVSDB_NO_IP_ERROR                     "IP should be configured first."
+#define OVSDB_REMOVE_IPV4_STATIC_CONF         "Remove all IPv4 static configurations"
+#define OVSDB_REMOVE_IPV6_STATIC_CONF         "Remove all IPv6 static configurations"
 
 #endif /* _VTY_MGMT_INTF_H */
