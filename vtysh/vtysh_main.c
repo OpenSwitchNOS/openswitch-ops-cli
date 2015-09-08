@@ -250,6 +250,9 @@ main (int argc, char **argv, char **env)
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
 
+  vlog_set_verbosity("CONSOLE:OFF");
+  vlog_set_verbosity("SYSLOG:DBG");
+
   /* if logging open now */
   if ((p = getenv("VTYSH_LOG")) != NULL)
       logfile = fopen(p, "a");
