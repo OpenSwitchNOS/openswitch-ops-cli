@@ -148,9 +148,8 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
 
 vtysh_ret_val
 vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
-#ifndef CLEANUP_SHOW_RUN
-void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
+#ifndef CLEANUP_SHOW_RUN
    struct ovsrec_route_map_entry *ovs_route_map_entries = NULL;
    int i=0;
 
@@ -182,10 +181,10 @@ void vtysh_router_context_bgp_routemap_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
    }
 
    vtysh_ovsdb_cli_print(p_msg,"!");
+#endif
 
    return e_vtysh_ok;
 }
-#endif
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_clientcallback
 | Responsibility : client callback routine

@@ -200,4 +200,20 @@ extern struct route_map_index *
                      int pref);
 extern struct route_map * route_map_get (const char *name);
 
+#ifdef ENABLE_OVSDB
+/* Making route map list. */
+struct route_map_list
+{
+  struct route_map *head;
+  struct route_map *tail;
+
+  void (*add_hook) (const char *);
+  void (*delete_hook) (const char *);
+  void (*event_hook) (route_map_event_t, const char *);
+};
+
+static struct route_map_list route_map_master = { NULL, NULL, NULL, NULL };
+extern void route_map_index_delete (struct route_map_index *index, int notify);
+#endif
+
 #endif /* _ZEBRA_ROUTEMAP_H */
