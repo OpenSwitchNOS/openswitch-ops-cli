@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 #
 # Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
 # All Rights Reserved.
@@ -21,74 +23,94 @@ from time import sleep
 from halonvsi.docker import *
 from halonvsi.halon import *
 
-class InterfaceCommandsTests( HalonTest ):
 
-  def setupNet(self):
+class InterfaceCommandsTests(HalonTest):
+
+    def setupNet(self):
+
     # if you override this function, make sure to
     # either pass getNodeOpts() into hopts/sopts of the topology that
     # you build or into addHost/addSwitch calls
-    self.net = Mininet(topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                             sopts=self.getSwitchOpts()),
-                       switch=HalonSwitch, host=HalonHost,
-                       link=HalonLink, controller=None,
-                       build=True)
 
-  def interfaceConfigCliTest(self):
-        print('\n########## Test to verify interface congfiguration clis  ##########\n')
-        s1 = self.net.switches[ 0 ]
-        out = s1.cmdCLI("configure terminal")
-        s1.cmdCLI("interface 2")
-        out = s1.cmdCLI("mtu 2500")
-        out = s1.cmdCLI("do show running-conf interface 2")
-        assert 'mtu 2500' in out,'Test to verify interface congfiguration clis - FAILED!'
+        self.net = Mininet(
+            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
+                                  sopts=self.getSwitchOpts()),
+            switch=HalonSwitch,
+            host=HalonHost,
+            link=HalonLink,
+            controller=None,
+            build=True,
+            )
 
-        s1.cmdCLI("speed 4000")
-        out = s1.cmdCLI("do show running-conf interface 2")
-        assert 'speed 4000' in out,'Test to verify interface congfiguration clis - FAILED!'
+    def interfaceConfigCliTest(self):
+        print '''
+########## Test to verify interface congfiguration clis  ##########
+'''
+        s1 = self.net.switches[0]
+        out = s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 2')
+        out = s1.cmdCLI('mtu 2500')
+        out = s1.cmdCLI('do show running-conf interface 2')
+        assert 'mtu 2500' in out, \
+            'Test to verify interface congfiguration clis - FAILED!'
 
-        s1.cmdCLI("duplex half")
-        out = s1.cmdCLI("do show running-conf interface 2")
-        assert 'duplex half' in out,'Test to verify interface congfiguration clis - FAILED!'
+        s1.cmdCLI('speed 4000')
+        out = s1.cmdCLI('do show running-conf interface 2')
+        assert 'speed 4000' in out, \
+            'Test to verify interface congfiguration clis - FAILED!'
 
-        s1.cmdCLI("autonegotiation off")
-        out = s1.cmdCLI("do show running-conf interface 2")
-        assert 'autonegotiation off' in out,'Test to verify interface congfiguration clis - FAILED!'
+        s1.cmdCLI('duplex half')
+        out = s1.cmdCLI('do show running-conf interface 2')
+        assert 'duplex half' in out, \
+            'Test to verify interface congfiguration clis - FAILED!'
 
-        s1.cmdCLI("flowcontrol send on")
-        out = s1.cmdCLI("do show running-conf interface 2")
-        assert 'flowcontrol send on' in out,'Test to verify interface congfiguration clis - FAILED!'
+        s1.cmdCLI('autonegotiation off')
+        out = s1.cmdCLI('do show running-conf interface 2')
+        assert 'autonegotiation off' in out, \
+            'Test to verify interface congfiguration clis - FAILED!'
 
-        s1.cmdCLI("flowcontrol receive on")
-        out = s1.cmdCLI("do show running-conf interface 2")
-        assert 'flowcontrol receive on' in out,'Test to verify interface congfiguration clis - FAILED!'
-        out = s1.cmdCLI("end")
+        s1.cmdCLI('flowcontrol send on')
+        out = s1.cmdCLI('do show running-conf interface 2')
+        assert 'flowcontrol send on' in out, \
+            'Test to verify interface congfiguration clis - FAILED!'
+
+        s1.cmdCLI('flowcontrol receive on')
+        out = s1.cmdCLI('do show running-conf interface 2')
+        assert 'flowcontrol receive on' in out, \
+            'Test to verify interface congfiguration clis - FAILED!'
+        out = s1.cmdCLI('end')
         return True
+
 
 class Test_interfaceCommands:
 
-  def setup(self):
-    pass
+    def setup(self):
+        pass
 
-  def teardown(self):
-    pass
+    def teardown(self):
+        pass
 
-  def setup_class(cls):
-    Test_interfaceCommands.test = InterfaceCommandsTests()
+    def setup_class(cls):
+        Test_interfaceCommands.test = InterfaceCommandsTests()
 
-  def test_interfaceConfigCli(self):
-    if self.test.interfaceConfigCliTest():
-        print('\n########## Test to verify interface congfiguration clis - SUCCESS! ##########\n')
+    def test_interfaceConfigCli(self):
+        if self.test.interfaceConfigCliTest():
+            print '''
+########## Test to verify interface congfiguration clis - SUCCESS! ##########
+'''
 
-  def teardown_class(cls):
+    def teardown_class(cls):
+
     # Stop the Docker containers, and
     # mininet topology
-    Test_interfaceCommands.test.net.stop()
 
-  def setup_method(self, method):
-    pass
+        Test_interfaceCommands.test.net.stop()
 
-  def teardown_method(self, method):
-    pass
+    def setup_method(self, method):
+        pass
 
-  def __del__(self):
-    del self.test
+    def teardown_method(self, method):
+        pass
+
+    def __del__(self):
+        del self.test
