@@ -3016,11 +3016,12 @@ DEFUN(vtysh_user_add,
 static int delete_user(const char *user)
 {
      int ret,n_users;
-     char *arg[2];
+     const char *arg[3];
      char *buf;
      n_users = 0;
-     arg[0] = "/usr/sbin/deluser";
-     arg[1] = user;
+     arg[0] = "/usr/sbin/userdel";
+     arg[1] = "-r";
+     arg[2] = user;
      buf = getlogin();
 
      n_users = get_group_user_count("ovsdb_users");
@@ -3033,14 +3034,22 @@ static int delete_user(const char *user)
      }
 
      // cannot delete user by himself, root and last user
-     if((n_users<=1) || ((!strcmp(user,"root"))) || !(strcmp(buf,user))){
-          vty_out(vty, "Permission denied. \n");
+     if(!strcmp(user,"root")) {
+          vty_out(vty, "Permission denied. Cannot delete the root user.\n");
+          return CMD_SUCCESS;
+     }
+     if(n_users<=1) {
+          vty_out(vty, "Cannot delete the last vtysh user %s.\n",user);
+          return CMD_SUCCESS;
+     }
+     if ( !(strcmp(buf,user))){
+          vty_out(vty, "Permission denied. You are logged in as %s.\n",user);
           return CMD_SUCCESS;
      }
 
      //delete the user
      if ((n_users >1) && (ret==1) ){
-          execute_command("sudo", 2,(const char **)arg);
+          execute_command("sudo", 3,(const char **)arg);
           return CMD_SUCCESS;
      }
 }
