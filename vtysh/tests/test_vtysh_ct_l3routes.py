@@ -20,7 +20,6 @@ from halonvsi.docker import *
 from halonvsi.halon import *
 from halonutils.halonutil import *
 import time
-import pytest
 
 
 class myTopo(Topo):
@@ -148,7 +147,7 @@ class staticRouteConfigTest(HalonTest):
 ### Verify ip route configuration with nexthop interface ###
 ''')
         s1.cmdCLI('ip route 192.168.3.0/24 2 2')
-        time.sleep(1)
+        time.sleep(2)
         ret = s1.cmdCLI('do show ip route')
 
         assert '192.168.3.0/24' in ret and '2,' in ret and 'static' \
@@ -169,7 +168,7 @@ class staticRouteConfigTest(HalonTest):
 ### Verify setting of default distance ###
 ''')
         s1.cmdCLI('ip route 192.168.3.0/24 192.168.1.2')
-        time.sleep(1)
+        time.sleep(2)
         ret = s1.cmdCLI('do show ip route')
 
         assert '192.168.3.0/24' in ret and '192.168.1.2' in ret \
@@ -181,7 +180,9 @@ class staticRouteConfigTest(HalonTest):
 ### Verify setting of multiple nexthops for a given prefix ###
 ''')
         s1.cmdCLI('ip route 192.168.3.0/24 1')
+        time.sleep(2)
         s1.cmdCLI('ip route 192.168.3.0/24 2')
+        time.sleep(2)
         ret = s1.cmdCLI('do show ip route')
 
         assert '192.168.3.0/24' in ret and '3 unicast next-hops' in ret \
@@ -234,7 +235,7 @@ class staticRouteConfigTest(HalonTest):
 ### Verify ipv6 route configuration with nexthop interface ###
 ''')
         s1.cmdCLI('ipv6 route 2002::/120 2 2')
-        time.sleep(1)
+        time.sleep(2)
         ret = s1.cmdCLI('do show ipv6 route')
 
         assert '2002::/120' in ret and '2,' in ret and 'static' in ret \
@@ -255,10 +256,10 @@ class staticRouteConfigTest(HalonTest):
 ### Verify setting of default distance ###
 ''')
         s1.cmdCLI('ipv6 route 2002::/120 2000::2')
-        time.sleep(1)
+        time.sleep(2)
         ret = s1.cmdCLI('do show ipv6 route')
 
-        assert '2002::/120' in ret and 'static' in ret and '[1/0]' \
+        assert '2002::/120' in ret and 'static' in ret and '[1/0],' \
             in ret, 'Default distance verification failed'
         info('### Default distance verification successful ###\n')
 
@@ -266,7 +267,9 @@ class staticRouteConfigTest(HalonTest):
 ### Verify setting of multiple nexthops for a given prefix ###
 ''')
         s1.cmdCLI('ipv6 route 2002::/120 1')
+        time.sleep(2)
         s1.cmdCLI('ipv6 route 2002::/120 2')
+        time.sleep(2)
         ret = s1.cmdCLI('do show ipv6 route')
 
         assert '2002::/120' in ret and '3 unicast next-hops' in ret \
@@ -322,14 +325,14 @@ class staticRouteConfigTest(HalonTest):
         time.sleep(1)
 
         info('### Adding Ipv4 Routes ###\n')
-        s1.cmdCLI('ip route 10.0.0.1/8 10.0.0.2')
-        clilist.append('ip route 10.0.0.1/8 10.0.0.2')
-        s1.cmdCLI('ip route 10.0.0.3/8 10.0.0.4 4')
-        clilist.append('ip route 10.0.0.3/8 10.0.0.4 4')
-        s1.cmdCLI('ip route 10.0.0.6/8 3')
-        clilist.append('ip route 10.0.0.6/8 3')
-        s1.cmdCLI('ip route 10.0.0.8/8 4 4')
-        clilist.append('ip route 10.0.0.8/8 4 4')
+        s1.cmdCLI('ip route 10.0.0.1/32 10.0.0.2')
+        clilist.append('ip route 10.0.0.1/32 10.0.0.2')
+        s1.cmdCLI('ip route 10.0.0.3/32 10.0.0.4 4')
+        clilist.append('ip route 10.0.0.3/32 10.0.0.4 4')
+        s1.cmdCLI('ip route 10.0.0.6/32 3')
+        clilist.append('ip route 10.0.0.6/32 3')
+        s1.cmdCLI('ip route 10.0.0.8/32 4 4')
+        clilist.append('ip route 10.0.0.8/32 4 4')
 
         info('### Adding Ipv6 Routes ###\n')
         s1.cmdCLI('ipv6 route 2001::/120 2001::2')
@@ -357,7 +360,6 @@ class staticRouteConfigTest(HalonTest):
 
 ''')
 
-@pytest.mark.skipif(True, reason="Many test cases are failing")
 class Test_vtysh_static_routes_ct:
 
     def setup_class(cls):

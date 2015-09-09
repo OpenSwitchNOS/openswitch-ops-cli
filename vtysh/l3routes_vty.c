@@ -33,6 +33,7 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vswitch-idl.h"
+#include "openhalon-dflt.h"
 #include "ovsdb-idl.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
@@ -47,11 +48,30 @@ extern struct ovsdb_idl *idl;
 #define DEFAULT_DISTANCE 1
 
 
+/*
+ * Check if port is part of any VRF and return the VRF row.
+ */
+const struct ovsrec_vrf* port_find_vrf(const struct ovsrec_port *port_row)
+{
+    const struct ovsrec_vrf *vrf_row = NULL;
+    size_t i;
+    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+        for (i = 0; i<vrf_row->n_ports; i++) {
+            if (vrf_row->ports[i] == port_row) {
+                return vrf_row;
+            }
+        }
+    }
+    return NULL;
+}
+
 struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char * nh_entry,
                                           bool prefix_match, bool static_match, char * dist_entry,
                                           struct ovsrec_route * row, char * ip_addr_family) {
     struct ovsrec_nexthop *row_nh = NULL;
     struct ovsrec_port *row_port = NULL;
+    const struct ovsrec_vrf *row_vrf = NULL;
     struct in_addr nexthop;
     struct in6_addr nexthop_ipv6;
     int ret, i;
@@ -70,12 +90,18 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
     } else {
         OVSREC_PORT_FOR_EACH(row_port, idl) {
             if (!strcmp(row_port->name, nh_entry)) {
+                row_vrf = port_find_vrf(row_port);
                 break;
             }
         }
 
         if(row_port == NULL) {
             vty_out(vty, "\nInterface %s not configured%s", nh_entry, VTY_NEWLINE);
+            return NULL;
+        }
+
+        if(row_vrf == NULL) {
+            vty_out(vty, "\nInterface %s is not L3%s", nh_entry, VTY_NEWLINE);
             return NULL;
         }
         ovsrec_nexthop_set_ports(row_nh, &row_port,row_nh->n_ports + 1);
@@ -171,7 +197,7 @@ DEFUN (vtysh_ip_route,
     prefix2str(&p, prefix_str, sizeof(prefix_str));
 
     if(strcmp(prefix_str, argv[0])) {
-        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        vty_out(vty, "Invalid prefix. Valid prefix: %s", prefix_str);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -179,12 +205,10 @@ DEFUN (vtysh_ip_route,
     OVSREC_ROUTE_FOR_EACH(row, idl) {
         if (row->prefix != NULL) {
             if (!strcmp(row->prefix, argv[0]) && !strcmp(row->from, OVSREC_ROUTE_FROM_STATIC)) {
-                if (row->n_nexthops != NULL) {
-                    if (row->n_nexthops > 31) {
-                        VLOG_ERR("Maximum supported nexthops for a route are 32");
-                        cli_do_config_abort(status_txn);
-                        return CMD_OVSDB_FAILURE;
-                    }
+                if (row->n_nexthops > MAX_NEXTHOPS_PER_ROUTE - 1) {
+                    vty_out(vty, "Maximum supported nexthops for a route are %d", MAX_NEXTHOPS_PER_ROUTE);
+                    cli_do_config_abort(status_txn);
+                    return CMD_OVSDB_FAILURE;
                 }
                 prefix_match = true;
                 static_match = true;
