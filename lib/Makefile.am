@@ -6,10 +6,10 @@ AM_CPPFLAGS += -I $(LOCAL_SYSROOT_DIR)/usr/local/include/ovs
 endif
 DEFS = @DEFS@ -DSYSCONFDIR=\"$(sysconfdir)/\"
 
-lib_LTLIBRARIES = libzebra.la
-libzebra_la_LDFLAGS = -version-info 0:0:0
+lib_LTLIBRARIES = libzebra_cli.la
+libzebra_cli_la_LDFLAGS = -version-info 0:0:0
 
-libzebra_la_SOURCES = \
+libzebra_cli_la_SOURCES = \
 	network.c pid_output.c getopt.c getopt1.c daemon.c \
 	checksum.c vector.c linklist.c vty.c command.c \
 	sockunion.c prefix.c thread.c if.c memory.c buffer.c table.c hash.c \
@@ -17,16 +17,16 @@ libzebra_la_SOURCES = \
 	zclient.c sockopt.c smux.c agentx.c snmp.c md5.c if_rmap.c keychain.c privs.c \
 	sigevent.c pqueue.c jhash.c memtypes.c workqueue.c
 if ENABLE_OVSDB
-libzebra_la_SOURCES += lib_vtysh_ovsdb_if.c vty_utils.c
+libzebra_cli_la_SOURCES += lib_vtysh_ovsdb_if.c vty_utils.c
 endif
 
 BUILT_SOURCES = memtypes.h route_types.h gitversion.h
 
-libzebra_la_DEPENDENCIES = @LIB_REGEX@
+libzebra_cli_la_DEPENDENCIES = @LIB_REGEX@
 
-libzebra_la_LIBADD = @LIB_REGEX@ @LIBCAP@
+libzebra_cli_la_LIBADD = @LIB_REGEX@ @LIBCAP@
 if ENABLE_OVSDB
-libzebra_la_LIBADD += -lovscommon -lovsdb -lpthread
+libzebra_cli_la_LIBADD += -lovscommon -lovsdb -lpthread
 endif
 
 pkginclude_HEADERS = \

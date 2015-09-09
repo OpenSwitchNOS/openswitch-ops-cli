@@ -44,7 +44,7 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   lacp_vty.h vtysh_utils.h
 endif
 
-vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@
+vtysh_LDADD = ../lib/libzebra_cli.la @LIBCAP@ @LIBREADLINE@
 if ENABLE_OVSDB
 vtysh_LDADD += -lovscommon -lovsdb -lpthread
 endif
