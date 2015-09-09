@@ -1438,7 +1438,7 @@ DEFUN (vtysh_interface_vlan,
        "interface vlan VLANID",
        "Select an interface to configure\n"
         VLAN_STR
-       "name of the VLAN\n")
+       "Vlan id within <1-4094> and should not be an internal vlan\n")
 {
    vty->node = VLAN_INTERFACE_NODE;
    static char vlan_if[MAX_IFNAME_LENGTH];
@@ -1448,18 +1448,14 @@ DEFUN (vtysh_interface_vlan,
 
    if ((verify_ifname(vlan_if) == 0)) {
        vty->node = CONFIG_NODE;
-       vty_out(vty,
-               "Error: Invalid vlan id. Enter valid vlan id in the"
-               " range of <1 to 4094> and should not be part of internal vlan%s",
-               VTY_NEWLINE);
-       return CMD_OVSDB_FAILURE;
+       return CMD_ERR_NO_MATCH;
    }
 
    VLOG_DBG("%s vlan interface = %s\n", __func__, vlan_if);
 
    if (create_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
        vty->node = CONFIG_NODE;
-       return CMD_OVSDB_FAILURE;
+       return CMD_ERR_NO_MATCH;
    }
    vty->index = vlan_if;
 
@@ -1501,7 +1497,7 @@ DEFUN (no_vtysh_interface_vlan,
        NO_STR
        "Delete a pseudo interface's configuration\n"
        "VLAN interface\n"
-       "Vlan id associated with interface\n")
+       "Vlan id within <1-4094> and should not be an internal vlan\n")
 {
    vty->node = CONFIG_NODE;
    static char vlan_if[MAX_IFNAME_LENGTH];
@@ -1511,13 +1507,7 @@ DEFUN (no_vtysh_interface_vlan,
    VLANIF_NAME(vlan_if, argv[0]);
 
    if ((verify_ifname(vlan_if) == 0)) {
-       if (check_internal_vlan(vlanid) != 0) {
-           vty_out(vty,
-                   "Error: Invalid vlan id. Enter valid vlan id in the"
-                   " range of <1 to 4094> and should not be part of internal vlan%s",
-                   VTY_NEWLINE);
-           return CMD_OVSDB_FAILURE;
-       }
+       return CMD_OVSDB_FAILURE;
    }
 
    VLOG_DBG("s: vlan interface = %s\n", __func__, vlan_if);
@@ -3994,5 +3984,8 @@ vtysh_init_vty (void)
   /* Initialise power supply cli */
   powersupply_vty_init();
   lacp_vty_init();
+
+  /* Initialize ECMP CLI */
+  ecmp_vty_init();
 #endif
 }
