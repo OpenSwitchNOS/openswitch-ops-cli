@@ -1477,18 +1477,30 @@ verify_ifname(char *str)
         if (isdigit(*str)) {
             vlanid = strtol(str, &endptr, 10);
             VLOG_DBG("%s vlanid = %d, str = %s\n", __func__, vlanid, str);
-            if ((*endptr != '\0')  || /* There are characters after <vlan id> */
-                    (vlanid <= 0 || vlanid >= 4095) ||
-                    (check_internal_vlan(vlanid) == 0)) {
-                VLOG_DBG("Invalid input!! Enter valid VLAN id in the range of <1 to 4094>\n");
-                return 0;
-            }
             break;
         } else {
             str++;
             if(*str == '\0')
                 return 0;
         }
+    }
+
+    /* For handling characters after/before <vlan id> */
+    if (*endptr != '\0') {
+        vty_out(vty, "Error : Invalid vlan input\n");
+        return 0;
+    }
+
+    /* The VLANID is outside valid vlan range */
+    if (vlanid <= 0 || vlanid >= 4095) {
+        vty_out(vty, "Error : Vlanid outside valid vlan range <1-4094>\n");
+        return 0;
+    }
+
+    /* The VLANID is internal vlan */
+    if (check_internal_vlan(vlanid) == 0) {
+        vty_out(vty, "Error : Vlanid is an internal vlan\n");
+        return 0;
     }
 
     return 1;
