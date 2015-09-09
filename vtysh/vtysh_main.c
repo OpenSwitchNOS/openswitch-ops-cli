@@ -1,5 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
  *
  * This file is part of GNU Zebra.
  *
@@ -452,7 +453,7 @@ main (int argc, char **argv, char **env)
 
   vtysh_readline_init ();
 
-  vty_hello (vty);
+  //vty_hello (vty);
 
   /* Enter into enable node. */
   vtysh_execute ("enable");

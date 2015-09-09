@@ -1,5 +1,6 @@
 /* Configuration generator.
    Copyright (C) 2000 Kunihiro Ishiguro
+   Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
 
 This file is part of GNU Zebra.
 

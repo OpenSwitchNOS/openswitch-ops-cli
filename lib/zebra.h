@@ -1,5 +1,6 @@
 /* Zebra common header.
    Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
+   Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
 
 This file is part of GNU Zebra.
 
