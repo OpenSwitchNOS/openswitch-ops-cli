@@ -241,6 +241,7 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_type);
 }
 
 /***********************************************************
