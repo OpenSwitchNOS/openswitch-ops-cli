@@ -419,6 +419,9 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_system_mac);
 
+    /* Add columns for ECMP configuration */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_ecmp_config);
+
     /* Interface tables */
     intf_ovsdb_init(idl);
 
