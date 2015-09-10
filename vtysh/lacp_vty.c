@@ -734,6 +734,7 @@ DEFUN (cli_lacp_intf_set_port_priority,
   return lacp_intf_set_port_priority((char*)vty->index, argv[0]);
 }
 
+#if 0
 static int
 lacp_intf_set_aggregation_key(const char *if_name, const char *agg_key)
 {
@@ -782,7 +783,10 @@ lacp_intf_set_aggregation_key(const char *if_name, const char *agg_key)
       return CMD_OVSDB_FAILURE;
    }
 }
+#endif
 
+#if 0
+/* HALON_TODO: Enable this command once LACP deamon supports aggregation-key */
 DEFUN (cli_lacp_intf_set_aggregation_key,
       cli_lacp_intf_set_aggregation_key_cmd,
       "lacp aggregation-key <1-65535>",
@@ -792,6 +796,7 @@ DEFUN (cli_lacp_intf_set_aggregation_key,
 {
   return lacp_intf_set_aggregation_key((char*)vty->index, argv[0]);
 }
+#endif
 
 static int
 lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
@@ -1596,7 +1601,9 @@ lacp_vty_init (void)
   install_element (CONFIG_NODE, &vtysh_remove_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_id_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_priority_cmd);
+#if 0
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_aggregation_key_cmd);
+#endif
   install_element (INTERFACE_NODE, &cli_lacp_add_intf_to_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_remove_intf_from_lag_cmd);
   install_element (ENABLE_NODE, &cli_lacp_show_configuration_cmd);
