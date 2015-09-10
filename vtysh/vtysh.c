@@ -2888,7 +2888,7 @@ static int set_user_passwd(const char *user)
     }
 
 }
-
+#ifdef ENABLE_OVSDB
 DEFUN (vtysh_passwd,
        vtysh_passwd_cmd,
        "passwd WORD",
@@ -2897,6 +2897,7 @@ DEFUN (vtysh_passwd,
 {
     return set_user_passwd(argv[0]);
 }
+#endif
 
 DEFUN (vtysh_start_zsh,
       vtysh_start_zsh_cmd,
@@ -3959,16 +3960,15 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_log_record_priority_cmd);
   install_element (CONFIG_NODE, &vtysh_log_timestamp_precision_cmd);
   install_element (CONFIG_NODE, &no_vtysh_log_timestamp_precision_cmd);
+  install_element (CONFIG_NODE, &vtysh_passwd_cmd);
 #endif
   install_element (CONFIG_NODE, &vtysh_service_password_encrypt_cmd);
   install_element (CONFIG_NODE, &no_vtysh_service_password_encrypt_cmd);
-
   install_element (CONFIG_NODE, &vtysh_password_cmd);
   install_element (CONFIG_NODE, &vtysh_password_text_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
-  install_element (CONFIG_NODE, &vtysh_passwd_cmd);
   install_element (CONFIG_NODE, &vtysh_user_add_cmd);
   install_element (CONFIG_NODE, &vtysh_user_del_cmd);
 
