@@ -2889,15 +2889,6 @@ static int set_user_passwd(const char *user)
 
 }
 
-DEFUN (vtysh_passwd,
-       vtysh_passwd_cmd,
-       "passwd WORD",
-       "Change user password \n"
-       "User whose password is to be changed\n")
-{
-    return set_user_passwd(argv[0]);
-}
-
 DEFUN (vtysh_start_zsh,
       vtysh_start_zsh_cmd,
       "start-shell zsh",
@@ -3968,7 +3959,6 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
-  install_element (CONFIG_NODE, &vtysh_passwd_cmd);
   install_element (CONFIG_NODE, &vtysh_user_add_cmd);
   install_element (CONFIG_NODE, &vtysh_user_del_cmd);
 

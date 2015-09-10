@@ -102,7 +102,6 @@ struct vtysh_user
 };
 
 struct list *userlist;
-
 struct vtysh_user *
 user_new ()
 {
@@ -157,19 +156,6 @@ user_get (const char *name)
   return user;
 }
 
-DEFUN (username_nopassword,
-       username_nopassword_cmd,
-       "username WORD nopassword",
-       "\n"
-       "\n"
-       "\n")
-{
-  struct vtysh_user *user;
-  user = user_get (argv[0]);
-  user->nopassword = 1;
-  return CMD_SUCCESS;
-}
-
 int
 vtysh_auth ()
 {
@@ -195,5 +181,4 @@ void
 vtysh_user_init ()
 {
   userlist = list_new ();
-  install_element (CONFIG_NODE, &username_nopassword_cmd);
 }
