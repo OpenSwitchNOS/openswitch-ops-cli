@@ -249,14 +249,8 @@ class LACPCliTest(HalonTest):
         for line in lines:
             if 'lacp-port-priority="111"' in line:
                 success += 1
-        s1.cmdCLI('lacp aggregation-key 333')
-        out = s1.cmd('ovs-vsctl list interface 1')
-        lines = out.split('\n')
-        for line in lines:
-            if 'lacp-aggregation-key="333"' in line:
-                success += 1
 
-        if success != 3:
+        if success != 2:
             interface_context_cmds_found = False
         assert interface_context_cmds_found == True, \
             'Test interface context commands - FAILED!'
