@@ -1,5 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -457,9 +458,10 @@ main (int argc, char **argv, char **env)
   vtysh_pager_init ();
 
   vtysh_readline_init ();
-
+/* Welcome Banner of vtysh */
+#ifndef ENABLE_OVSDB
   vty_hello (vty);
-
+#endif
   /* Enter into enable node. */
   vtysh_execute ("enable");
 
