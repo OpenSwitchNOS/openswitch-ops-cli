@@ -1098,8 +1098,8 @@ DEFUN (cli_no_mgmt_intf_set_dns_6,
        "no nameserver X:X::X:X A.B.C.D",
        NO_STR
        MGMT_INTF_DNS_STR
-       MGMT_INTF_DNS_1_STR
-       MGMT_INTF_DNS_2_IPV6_STR)
+       MGMT_INTF_DNS_1_IPV6_STR
+       MGMT_INTF_DNS_2_STR)
 {
     if (!is_valid_ip_address(argv[0]) || (!is_valid_ip_address(argv[1])))
     {
