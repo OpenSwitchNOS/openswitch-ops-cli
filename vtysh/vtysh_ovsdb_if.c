@@ -669,8 +669,6 @@ int vtysh_ovsdb_interface_match(const char *str)
   {
       if( strcmp(str,row->name) == 0) {
           return 0;
-      } else if (verify_ifname(str)) {
-          return 0;
       }
   }
 

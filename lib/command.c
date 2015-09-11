@@ -1138,6 +1138,11 @@ cmd_ifname_match (const char *str)
   if(NULL == lib_vtysh_ovsdb_interface_match)
     return 1;
 
+  /* check for vlan interfaces */
+  if(verify_ifname(str)) {
+    return 0;
+  }
+
   if(((*lib_vtysh_ovsdb_interface_match)(str)) == 0)
     return 0;
 
