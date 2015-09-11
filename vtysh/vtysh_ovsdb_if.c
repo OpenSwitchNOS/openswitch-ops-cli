@@ -242,6 +242,9 @@ intf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_type);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pm_info);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
 }
 
 /***********************************************************
