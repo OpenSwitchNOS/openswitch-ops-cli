@@ -1675,6 +1675,8 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
           if (keyword_args)
             {
               word_token = vector_slot(keyword_vector, 0);
+              arg = word_token->cmd;
+#if 0
               if (match_type = cmd_word_match(word_token,FILTER_RELAXED,
                                (const char *)matcher->vline->index[(matcher->word_index) - 1]))
               {
@@ -1683,10 +1685,11 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
                     else
                           arg = (const char *)matcher->vline->index[(matcher->word_index) - 1];
               }
-              else
-              {
-                    rv = MATCHER_INCOMPLETE;
-              }
+#endif
+            }
+          else
+            {
+              arg = NULL;
             }
 
             if (push_argument(argc, argv, arg))
