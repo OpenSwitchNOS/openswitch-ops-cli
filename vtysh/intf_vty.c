@@ -55,7 +55,7 @@ extern struct ovsdb_idl *idl;
 
 /*
  * CLI "shutdown"
- * defatult : enabled
+ * default : enabled
  */
 DEFUN (cli_intf_shutdown,
       cli_intf_shutdown_cmd,
@@ -67,7 +67,7 @@ DEFUN (cli_intf_shutdown,
    enum ovsdb_idl_txn_status status;
    struct smap smap_user_config;
 
-   if(status_txn == NULL)
+   if (status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
       cli_do_config_abort(status_txn);
@@ -75,7 +75,7 @@ DEFUN (cli_intf_shutdown,
    }
 
    row = ovsrec_interface_first(idl);
-   if(!row)
+   if (!row)
    {
       cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
@@ -83,10 +83,11 @@ DEFUN (cli_intf_shutdown,
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
-      if(strcmp(row->name, (char*)vty->index) == 0)
+      if (strcmp(row->name, (char*)vty->index) == 0)
       {
          smap_clone(&smap_user_config, &row->user_config);
-         if(vty_flags & CMD_FLAG_NO_CMD)
+
+         if (vty_flags & CMD_FLAG_NO_CMD)
          {
             smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
                   OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
@@ -101,8 +102,10 @@ DEFUN (cli_intf_shutdown,
    }
 
    status = cli_do_config_finish(status_txn);
+
    smap_destroy(&smap_user_config);
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -122,7 +125,7 @@ DEFUN_NO_FORM (cli_intf_shutdown,
 
 /*
  * CLI "speed"
- * defatult : auto
+ * default : auto
  */
 DEFUN (cli_intf_speed,
       cli_intf_speed_cmd,
@@ -135,7 +138,7 @@ DEFUN (cli_intf_speed,
    enum ovsdb_idl_txn_status status;
    struct smap smap_user_config;
 
-   if(status_txn == NULL)
+   if (status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
       cli_do_config_abort(status_txn);
@@ -143,7 +146,7 @@ DEFUN (cli_intf_speed,
    }
 
    row = ovsrec_interface_first(idl);
-   if(!row)
+   if (!row)
    {
       cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
@@ -151,16 +154,17 @@ DEFUN (cli_intf_speed,
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
-      if(strcmp(row->name, (char*)vty->index) == 0)
+      if (strcmp(row->name, (char*)vty->index) == 0)
       {
          smap_clone(&smap_user_config,&row->user_config);
-         if(vty_flags & CMD_FLAG_NO_CMD)
+
+         if (vty_flags & CMD_FLAG_NO_CMD)
          {
             smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
          }
          else
          {
-            if(strcmp(INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT, argv[0]) == 0)
+            if (strcmp(INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT, argv[0]) == 0)
             {
                smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
             }
@@ -176,8 +180,10 @@ DEFUN (cli_intf_speed,
    }
 
    status = cli_do_config_finish(status_txn);
+
    smap_destroy(&smap_user_config);
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -197,7 +203,7 @@ DEFUN_NO_FORM (cli_intf_speed,
 
 /*
  * CLI "mtu"
- * defatult : auto
+ * default : auto
  */
 DEFUN (cli_intf_mtu,
       cli_intf_mtu_cmd,
@@ -209,7 +215,7 @@ DEFUN (cli_intf_mtu,
    enum ovsdb_idl_txn_status status;
    struct smap smap_user_config;
 
-   if(status_txn == NULL)
+   if (status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
       cli_do_config_abort(status_txn);
@@ -217,7 +223,7 @@ DEFUN (cli_intf_mtu,
    }
 
    row = ovsrec_interface_first(idl);
-   if(!row)
+   if (!row)
    {
       cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
@@ -225,16 +231,17 @@ DEFUN (cli_intf_mtu,
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
-      if(strcmp(row->name, (char*)vty->index) == 0)
+      if (strcmp(row->name, (char*)vty->index) == 0)
       {
          smap_clone(&smap_user_config, &row->user_config);
-         if(vty_flags & CMD_FLAG_NO_CMD)
+
+         if (vty_flags & CMD_FLAG_NO_CMD)
          {
             smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU);
          }
          else
          {
-            if(strcmp(INTERFACE_USER_CONFIG_MAP_MTU_DEFAULT, argv[0]) == 0)
+            if (strcmp(INTERFACE_USER_CONFIG_MAP_MTU_DEFAULT, argv[0]) == 0)
             {
                smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_MTU);
             }
@@ -250,8 +257,12 @@ DEFUN (cli_intf_mtu,
    }
 
    status = cli_do_config_finish(status_txn);
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+
    smap_destroy(&smap_user_config);
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -271,7 +282,7 @@ DEFUN_NO_FORM (cli_intf_mtu,
 
 /*
  * CLI "duplex"
- * defatult : full
+ * default : full
  */
 DEFUN (cli_intf_duplex,
       cli_intf_duplex_cmd,
@@ -283,7 +294,7 @@ DEFUN (cli_intf_duplex,
    enum ovsdb_idl_txn_status status;
    struct smap smap_user_config;
 
-   if(status_txn == NULL)
+   if (status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
       cli_do_config_abort(status_txn);
@@ -291,7 +302,7 @@ DEFUN (cli_intf_duplex,
    }
 
    row = ovsrec_interface_first(idl);
-   if(!row)
+   if (!row)
    {
       cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
@@ -299,10 +310,11 @@ DEFUN (cli_intf_duplex,
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
-      if(strcmp(row->name, (char*)vty->index) == 0)
+      if (strcmp(row->name, (char*)vty->index) == 0)
       {
          smap_clone(&smap_user_config, &row->user_config);
-         if((vty_flags & CMD_FLAG_NO_CMD)
+
+         if ((vty_flags & CMD_FLAG_NO_CMD)
                || (strcmp(argv[0], "full") == 0))
          {
             smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX);
@@ -318,8 +330,10 @@ DEFUN (cli_intf_duplex,
    }
 
    status = cli_do_config_finish(status_txn);
+
    smap_destroy(&smap_user_config);
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -339,7 +353,7 @@ DEFUN_NO_FORM (cli_intf_duplex,
 
 /*
  * CLI "flowcontrol"
- * defatult : off
+ * default : off
  */
 DEFUN (cli_intf_flowcontrol,
       cli_intf_flowcontrol_cmd,
@@ -353,7 +367,7 @@ DEFUN (cli_intf_flowcontrol,
    enum ovsdb_idl_txn_status status;
    struct smap smap_user_config;
 
-   if(status_txn == NULL)
+   if (status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
       cli_do_config_abort(status_txn);
@@ -361,7 +375,7 @@ DEFUN (cli_intf_flowcontrol,
    }
 
    row = ovsrec_interface_first(idl);
-   if(!row)
+   if (!row)
    {
       cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
@@ -369,14 +383,14 @@ DEFUN (cli_intf_flowcontrol,
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
-      if(strcmp(row->name, (char*)vty->index) == 0)
+      if (strcmp(row->name, (char*)vty->index) == 0)
       {
          const char *state_value = smap_get(&row->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
          char new_value[INTF_NAME_SIZE] = {0};
          smap_clone(&smap_user_config, &row->user_config);
          if (strcmp(argv[0], "send") == 0)
          {
-            if(strcmp(argv[1], "on") == 0)
+            if (strcmp(argv[1], "on") == 0)
             {
                if ((NULL == state_value)
                      || (strcmp(state_value, INTERFACE_USER_CONFIG_MAP_PAUSE_TX) == 0))
@@ -390,7 +404,7 @@ DEFUN (cli_intf_flowcontrol,
             }
             else /* both "flowcontrol send off" and "no flowcontrol send "*/
             {
-               if((NULL == state_value) ||
+               if ((NULL == state_value) ||
                      (strcmp(state_value, INTERFACE_USER_CONFIG_MAP_PAUSE_TX) == 0))
                {
                   strcpy(new_value, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE);
@@ -403,7 +417,7 @@ DEFUN (cli_intf_flowcontrol,
          }
          else /* flowcontrol receive */
          {
-            if(strcmp(argv[1], "on") == 0)
+            if (strcmp(argv[1], "on") == 0)
             {
 
                if ((NULL == state_value)
@@ -418,7 +432,7 @@ DEFUN (cli_intf_flowcontrol,
             }
             else /* both "flowcontrol receive off" and "no flowcontrol receive" */
             {
-               if((NULL == state_value) ||
+               if ((NULL == state_value) ||
                      (strcmp(state_value, INTERFACE_USER_CONFIG_MAP_PAUSE_RX) == 0))
                {
                   strcpy(new_value, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE);
@@ -430,7 +444,7 @@ DEFUN (cli_intf_flowcontrol,
             }
          }
 
-         if(strcmp(new_value, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) == 0)
+         if (strcmp(new_value, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) == 0)
          {
             smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
          }
@@ -445,8 +459,10 @@ DEFUN (cli_intf_flowcontrol,
    }
 
    status = cli_do_config_finish(status_txn);
+
    smap_destroy(&smap_user_config);
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -468,7 +484,7 @@ DEFUN_NO_FORM (cli_intf_flowcontrol,
 
 /*
  * CLI "autonegotiation"
- * defatult : default
+ * default : default
  */
 DEFUN (cli_intf_autoneg,
       cli_intf_autoneg_cmd,
@@ -481,7 +497,7 @@ DEFUN (cli_intf_autoneg,
    enum ovsdb_idl_txn_status status;
    struct smap smap_user_config;
 
-   if(status_txn == NULL)
+   if (status_txn == NULL)
    {
       VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
       cli_do_config_abort(status_txn);
@@ -489,7 +505,7 @@ DEFUN (cli_intf_autoneg,
    }
 
    row = ovsrec_interface_first(idl);
-   if(!row)
+   if (!row)
    {
       cli_do_config_abort(status_txn);
       return CMD_OVSDB_FAILURE;
@@ -497,16 +513,17 @@ DEFUN (cli_intf_autoneg,
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
-      if(strcmp(row->name, (char*)vty->index) == 0)
+      if (strcmp(row->name, (char*)vty->index) == 0)
       {
          smap_clone(&smap_user_config, &row->user_config);
-         if(vty_flags & CMD_FLAG_NO_CMD)
+
+         if (vty_flags & CMD_FLAG_NO_CMD)
          {
             smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
          }
          else
          {
-            if(strcmp(INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT, argv[0]) == 0)
+            if (strcmp(INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT, argv[0]) == 0)
             {
                smap_remove(&smap_user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
             }
@@ -522,8 +539,10 @@ DEFUN (cli_intf_autoneg,
    }
 
    status = cli_do_config_finish(status_txn);
+
    smap_destroy(&smap_user_config);
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
    {
       return CMD_SUCCESS;
    }
@@ -540,7 +559,92 @@ DEFUN_NO_FORM (cli_intf_autoneg,
       "autonegotiation",
       "Configure autonegotiation process\n");
 
-#define PRINT_INT_HEADER_IN_SHOW_RUN if(!bPrinted) \
+/*
+ * CLI "split"
+ * default : no split
+ */
+DEFUN (cli_intf_split,
+      cli_intf_split_cmd,
+      "split",
+      "Configure QSFP interface for 4x 10Gb operation or 1x 40Gb operation.\n")
+{
+   const struct ovsrec_interface * row = NULL;
+   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+   enum ovsdb_idl_txn_status status;
+
+   if (status_txn == NULL)
+   {
+      VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+   }
+
+   row = ovsrec_interface_first(idl);
+   if (!row)
+   {
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+   }
+
+   OVSREC_INTERFACE_FOR_EACH(row, idl)
+   {
+      if (strcmp(row->name, (char*)vty->index) == 0)
+      {
+         /* if not splittable, warn */
+         const char *split_value = NULL;
+         struct smap smap_user_config;
+
+         smap_clone(&smap_user_config,&row->user_config);
+
+         split_value = smap_get(&row->hw_intf_info,
+                 INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
+         if ((split_value == NULL) ||
+                 (strcmp(split_value,
+                         INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) != 0))
+         {
+            if ((vty_flags & CMD_FLAG_NO_CMD) == 0)
+            {
+               vty_out(vty, "Warning: split operation only applies to QSFP interfaces with split capability%s", VTY_NEWLINE);
+            }
+         }
+         if (vty_flags & CMD_FLAG_NO_CMD)
+         {
+            smap_remove(&smap_user_config,
+                    INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+         }
+         else
+         {
+            smap_replace(&smap_user_config,
+                    INTERFACE_USER_CONFIG_MAP_LANE_SPLIT,
+                    INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT);
+         }
+         ovsrec_interface_set_user_config(row, &smap_user_config);
+
+         smap_destroy(&smap_user_config);
+         break;
+      }
+   }
+
+   status = cli_do_config_finish(status_txn);
+
+   if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+   {
+      return CMD_SUCCESS;
+   }
+   else
+   {
+      VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+   }
+
+   return CMD_OVSDB_FAILURE;
+}
+
+DEFUN_NO_FORM (cli_intf_split,
+      cli_intf_split_cmd,
+      "split",
+      "Configure QSFP interface for 4x 10Gb operation or 1x 40Gb operation\n");
+
+#define PRINT_INT_HEADER_IN_SHOW_RUN if (!bPrinted) \
 { \
    bPrinted = true;\
    vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
@@ -718,9 +822,9 @@ cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
 
    OVSREC_INTERFACE_FOR_EACH(row, idl)
    {
-      if(0 != argc)
+      if (0 != argc)
       {
-         if((NULL != argv[0]) && (0 != strcmp(argv[0], row->name)))
+         if ((NULL != argv[0]) && (0 != strcmp(argv[0], row->name)))
          {
             continue;
          }
@@ -763,11 +867,11 @@ cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
             && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) != 0))
       {
          PRINT_INT_HEADER_IN_SHOW_RUN;
-         if(strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_RX) == 0)
+         if (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_RX) == 0)
          {
             vty_out(vty, "   flowcontrol receive on %s", VTY_NEWLINE);
          }
-         else if(strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_TX) == 0)
+         else if (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_TX) == 0)
          {
             vty_out(vty, "   flowcontrol send on %s", VTY_NEWLINE);
          }
@@ -777,7 +881,7 @@ cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
             vty_out(vty, "   flowcontrol send on %s", VTY_NEWLINE);
          }
 
-         if(0 != argc)  /* filter applied, break - as data printed */
+         if (0 != argc)  /* filter applied, break - as data printed */
          {
             break;
          }
@@ -787,17 +891,26 @@ cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
       if ((NULL != cur_state)
             && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT) != 0))
       {
-         PRINT_INT_HEADER_IN_SHOW_RUN
+         PRINT_INT_HEADER_IN_SHOW_RUN;
          vty_out(vty, "   autonegotiation %s %s", cur_state, VTY_NEWLINE);
       }
 
-      if (port_find(row->name)) {
-          PRINT_INT_HEADER_IN_SHOW_RUN
+      cur_state = smap_get(&row->user_config, INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+      if ((NULL != cur_state)
+            && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT) == 0))
+      {
+          PRINT_INT_HEADER_IN_SHOW_RUN;
+          vty_out(vty, "   split %s", VTY_NEWLINE);
+      }
+
+      if (port_find(row->name))
+      {
+          PRINT_INT_HEADER_IN_SHOW_RUN;
       }
 
       parse_l3config(row->name, vty);
 
-      if(bPrinted)
+      if (bPrinted)
       {
          vty_out(vty, "   exit%s", VTY_NEWLINE);
       }
@@ -837,7 +950,7 @@ int cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
     const char *dns_2 = NULL;
 
    vswrow = ovsrec_system_first(idl);
-   if(!vswrow)
+   if (!vswrow)
    {
        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
        return CMD_OVSDB_FAILURE;
@@ -887,7 +1000,8 @@ int cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
                                               (strcmp(dns_2,MGMT_INTF_DEFAULT_IP) != 0))
    {
           vty_out(vty, "%4snameserver %s %s%s","", dns_1,dns_2, VTY_NEWLINE);
-   }else if(dns_1 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0)) {
+   }else if (dns_1 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0))
+   {
           vty_out(vty, "%4snameserver %s %s","", dns_1, VTY_NEWLINE);
    }
 
@@ -906,10 +1020,225 @@ DEFUN (cli_intf_show_run_intf_mgmt,
    return cli_show_run_interface_mgmt_exec (self, vty);
 }
 
+int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
+      int flags, int argc, const char *argv[], bool brief)
+{
+   const struct ovsrec_interface *ifrow = NULL;
+   const char *cur_state =NULL;
+   struct shash sorted_interfaces;
+   const struct shash_node **nodes;
+   int idx, count;
+
+   struct string_pairs
+   {
+      char *key;
+      char *string;
+   };
+
+   static struct string_pairs pluggable_keys [] = {
+      { "connector_status", "Connector status" },
+      { "vendor_name", "Vendor name" },
+      { "vendor_part_number", "Part number" },
+      { "vendor_revision", "Part revision" },
+      { "vendor_serial_number", "Serial number" },
+      { "supported_speeds", "Supported speeds" },
+      { NULL, NULL }
+   };
+
+   if (brief)
+   {
+      vty_out(vty, "%s", VTY_NEWLINE);
+      vty_out(vty, "-----------------------------------------------%s", VTY_NEWLINE);
+      vty_out(vty, "Ethernet      Connector    Module     Module   %s", VTY_NEWLINE);
+      vty_out(vty, "Interface                  Type       Status   %s", VTY_NEWLINE);
+      vty_out(vty, "-----------------------------------------------%s", VTY_NEWLINE);
+   }
+   else
+   {
+      vty_out (vty, "%s", VTY_NEWLINE);
+   }
+
+   shash_init(&sorted_interfaces);
+
+   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
+   {
+      shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
+   }
+
+   nodes = shash_sort(&sorted_interfaces);
+
+   count = shash_count(&sorted_interfaces);
+
+   for (idx = 0; idx < count; idx++)
+   {
+      ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+
+      if ((NULL != argv[0]) && (0 != strcmp(argv[0],ifrow->name)))
+      {
+         continue;
+      }
+
+      if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_INTERNAL) == 0)
+      {
+         /* Skipping internal interfaces */
+         continue;
+      }
+
+      if (brief)
+      {
+         /* Display the brief information */
+         vty_out (vty, " %-12s ", ifrow->name);
+         bool present = false;
+         cur_state = smap_get(&ifrow->hw_intf_info, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR);
+         if (cur_state != NULL)
+         {
+            if (strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR_RJ45) ==0)
+            {
+               vty_out(vty, "  RJ45       ");
+            }
+            else if (strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR_SFP_PLUS) ==0)
+            {
+               vty_out(vty, "  SFP+       ");
+            }
+            else if (strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR_QSFP_PLUS) ==0)
+            {
+               vty_out(vty, "  QSFP       ");
+            }
+            else
+            {
+               vty_out(vty, "             ");
+            }
+         }
+
+         cur_state = smap_get(&ifrow->hw_intf_info, INTERFACE_HW_INTF_INFO_MAP_PLUGGABLE);
+
+         if (cur_state != NULL && strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_PLUGGABLE_TRUE) == 0)
+         {
+            cur_state = smap_get(&ifrow->pm_info, INTERFACE_PM_INFO_MAP_CONNECTOR);
+            if (cur_state != NULL)
+            {
+               if (strcmp(cur_state, OVSREC_INTERFACE_PM_INFO_CONNECTOR_ABSENT) == 0)
+               {
+                  vty_out(vty, "%-11s", "--");
+                  present = false;
+               }
+               else
+               {
+                  vty_out(vty, "%-11s", cur_state);
+                  present = true;
+               }
+            }
+            else
+            {
+               vty_out(vty, "%-11s", "--");
+            }
+
+            cur_state = smap_get(&ifrow->pm_info, INTERFACE_PM_INFO_MAP_CONNECTOR_STATUS);
+            if (present && cur_state != NULL)
+            {
+               vty_out(vty, "%-11s", cur_state);
+            }
+            else
+            {
+               vty_out(vty, "%-11s", "--");
+            }
+         }
+         else
+         {
+            vty_out(vty, "%-11s", "--");
+            vty_out(vty, "%-11s", "--");
+         }
+         vty_out(vty, "%s", VTY_NEWLINE);
+      }
+      else
+      {
+         int i;
+
+         /* Display transceiver information */
+         vty_out (vty, "Interface %s:%s", ifrow->name, VTY_NEWLINE);
+
+         cur_state = smap_get(&ifrow->hw_intf_info, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR);
+         if (NULL != cur_state)
+         {
+             if (strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR_RJ45) ==0)
+             {
+                 vty_out(vty, " Connector: RJ45%s", VTY_NEWLINE);
+             }
+             else if (strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR_SFP_PLUS) ==0)
+             {
+                 vty_out(vty, " Connector: SFP+%s", VTY_NEWLINE);
+             }
+             else if (strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_CONNECTOR_QSFP_PLUS) ==0)
+             {
+                 cur_state = smap_get(&ifrow->hw_intf_info, INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
+                 if (cur_state != NULL &&
+                        strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) == 0)
+                 {
+                     vty_out(vty, " Connector: QSFP (splittable)%s", VTY_NEWLINE);
+                 }
+                 else
+                 {
+                     vty_out(vty, " Connector: QSFP %s", VTY_NEWLINE);
+                 }
+             }
+             else
+             {
+                 vty_out(vty, " Connector: %s%s", cur_state, VTY_NEWLINE);
+             }
+         }
+
+         cur_state = smap_get(&ifrow->hw_intf_info, INTERFACE_HW_INTF_INFO_MAP_PLUGGABLE);
+
+         if (cur_state != NULL && strcmp(cur_state, INTERFACE_HW_INTF_INFO_MAP_PLUGGABLE_TRUE) == 0)
+         {
+            cur_state = smap_get(&ifrow->pm_info, INTERFACE_PM_INFO_MAP_CONNECTOR);
+            if (cur_state != NULL)
+            {
+               if (strcmp(cur_state, OVSREC_INTERFACE_PM_INFO_CONNECTOR_ABSENT) == 0)
+               {
+                  vty_out(vty, " Transceiver module: not present%s", VTY_NEWLINE);
+               }
+               else
+               {
+                  vty_out(vty, " Transceiver module: %s%s", cur_state, VTY_NEWLINE);
+                  for (i = 0; pluggable_keys[i].key != NULL; i++)
+                  {
+                     vty_out(vty, " %s: ", pluggable_keys[i].string);
+                     cur_state = smap_get(&ifrow->pm_info, pluggable_keys[i].key);
+                     if (cur_state != NULL)
+                     {
+                        vty_out(vty, "%s%s", cur_state, VTY_NEWLINE);
+                     }
+                     else
+                     {
+                        vty_out(vty, "%s", VTY_NEWLINE);
+                     }
+                  }
+               }
+            }
+            else
+            {
+               vty_out(vty, " Transceiver module: no information available%s", VTY_NEWLINE);
+            }
+         }
+         vty_out (vty, "%s", VTY_NEWLINE);
+      }
+   }
+
+   shash_destroy(&sorted_interfaces);
+   free(nodes);
+
+   return CMD_SUCCESS;
+}
+
 int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[], bool brief)
 {
    const struct ovsrec_interface *ifrow = NULL;
+   const char *cur_state =NULL;
+   struct shash sorted_interfaces;
+   const struct shash_node **nodes;
+   int idx, count;
 
    const struct ovsdb_datum *datum;
    static char *interface_statistics_keys [] = {
@@ -930,7 +1259,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
    unsigned int index;
    int64_t intVal = 0;
 
-   if(brief)
+   if (brief)
    {
       /* Display the brief information */
       vty_out(vty, "%s", VTY_NEWLINE);
@@ -944,21 +1273,35 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
       vty_out (vty, "%s", VTY_NEWLINE);
    }
 
+   shash_init(&sorted_interfaces);
+
    OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
    {
+      shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
+   }
+
+   nodes = shash_sort(&sorted_interfaces);
+
+   count = shash_count(&sorted_interfaces);
+
+   for (idx = 0; idx < count; idx++)
+   {
       union ovsdb_atom atom;
-      if((NULL != argv[0]) && (0 != strcmp(argv[0],ifrow->name)))
+
+      ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+
+      if ((NULL != argv[0]) && (0 != strcmp(argv[0],ifrow->name)))
       {
          continue;
       }
 
-      if(strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_INTERNAL) == 0)
+      if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_INTERNAL) == 0)
       {
          /* Skipping internal interfaces */
          continue;
       }
 
-      if(brief)
+      if (brief)
       {
          /* Display the brief information */
          vty_out (vty, " %-12s ", ifrow->name);
@@ -968,7 +1311,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          vty_out (vty, "%-6s ", ifrow->link_state);
 
-         if((NULL != ifrow->admin_state) &&
+         if ((NULL != ifrow->admin_state) &&
                (strcmp(ifrow->admin_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0))
          {
             vty_out (vty, "Administratively down    ");
@@ -979,8 +1322,8 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          }
          intVal = 0;
          datum = ovsrec_interface_get_link_speed(ifrow, OVSDB_TYPE_INTEGER);
-         if(NULL!=datum) intVal = datum->keys[0].integer;
-         if(intVal == 0)
+         if (NULL!=datum) intVal = datum->keys[0].integer;
+         if (intVal == 0)
          {
             vty_out(vty, " %-6s", "auto");
          }
@@ -993,11 +1336,10 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
       }
       else
       {
-         const char *cur_state =NULL;
          intVal = 0;
 
          vty_out (vty, "Interface %s is %s ", ifrow->name, ifrow->link_state);
-         if((NULL != ifrow->admin_state)
+         if ((NULL != ifrow->admin_state)
                && strcmp(ifrow->admin_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
          {
             vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
@@ -1010,14 +1352,19 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
             vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
          }
 
+         if (ifrow->error != NULL)
+         {
+            vty_out (vty, " State information: %s%s", ifrow->error, VTY_NEWLINE);
+         }
+
          vty_out (vty, " Hardware: Ethernet, MAC Address: %s %s", ifrow->mac_in_use, VTY_NEWLINE);
 
          datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
-         if(NULL!=datum) intVal = datum->keys[0].integer;
+         if (NULL!=datum) intVal = datum->keys[0].integer;
 
          vty_out(vty, " MTU %ld %s", intVal, VTY_NEWLINE);
 
-         if((NULL != ifrow->duplex) && (strcmp(ifrow->duplex, "half") == 0))
+         if ((NULL != ifrow->duplex) && (strcmp(ifrow->duplex, "half") == 0))
          {
             vty_out(vty, " Half-duplex %s", VTY_NEWLINE);
          }
@@ -1028,11 +1375,11 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          intVal = 0;
          datum = ovsrec_interface_get_link_speed(ifrow, OVSDB_TYPE_INTEGER);
-         if(NULL!=datum) intVal = datum->keys[0].integer;
+         if (NULL!=datum) intVal = datum->keys[0].integer;
          vty_out(vty, " Speed %ld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
 
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
-         if((NULL == cur_state) ||
+         if ((NULL == cur_state) ||
                strcmp(cur_state, "off") !=0)
          {
             vty_out(vty, " Auto-Negotiation is turned on %s", VTY_NEWLINE);
@@ -1043,18 +1390,18 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          }
 
          cur_state = ifrow->pause;
-         if(NULL != cur_state)
+         if (NULL != cur_state)
          {
-            if(strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) ==0)
+            if (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) ==0)
 
             {
                vty_out(vty, " Input flow-control is off, output flow-control is off%s",VTY_NEWLINE);
             }
-            else if(strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_RX) ==0)
+            else if (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_RX) ==0)
             {
                vty_out(vty, " Input flow-control is on, output flow-control is off%s",VTY_NEWLINE);
             }
-            else if(strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_TX) ==0)
+            else if (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_TX) ==0)
             {
                vty_out(vty, " Input flow-control is off, output flow-control is on%s",VTY_NEWLINE);
             }
@@ -1070,7 +1417,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          datum = ovsrec_interface_get_statistics(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
 
-         if(NULL==datum) continue;
+         if (NULL==datum) continue;
 
          vty_out(vty, " RX%s", VTY_NEWLINE);
 
@@ -1128,12 +1475,15 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          vty_out(vty, "%s", VTY_NEWLINE);
 
-         if(NULL != argv[0])
+         if (NULL != argv[0])
          {
             break;
          }
       }
    }
+
+   shash_destroy(&sorted_interfaces);
+   free(nodes);
 
    return CMD_SUCCESS;
 }
@@ -1141,35 +1491,68 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
 DEFUN (cli_intf_show_intferface_ifname,
       cli_intf_show_intferface_ifname_cmd,
-      "show interface IFNAME {brief}",
+      "show interface IFNAME {brief|transceiver}",
       SHOW_STR
       INTERFACE_STR
       IFNAME_STR
-      "Show brief info of interface\n")
+      "Show brief info of interface\n"
+      "Show transceiver info for interface\n")
 {
    bool brief = false;
-   if((NULL != argv[1]) && strcmp(argv[1], "brief") == 0)
+   bool transceiver = false;
+   int rc = CMD_SUCCESS;
+
+   if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
    {
       brief = true;
    }
-   return cli_show_interface_exec (self, vty, vty_flags, argc, argv, brief);
+   if ((NULL != argv[2]) && (strcmp(argv[2], "transceiver") == 0))
+   {
+      transceiver = true;
+   }
+   if (transceiver)
+   {
+      rc = cli_show_xvr_exec (self, vty, vty_flags, argc, argv, brief);
+   }
+   else
+   {
+      rc = cli_show_interface_exec (self, vty, vty_flags, argc, argv, brief);
+   }
+
+   return rc;
 }
 
 DEFUN (cli_intf_show_intferface_ifname_br,
       cli_intf_show_intferface_ifname_br_cmd,
-      "show interface {brief}",
+      "show interface {brief|transceiver}",
       SHOW_STR
       INTERFACE_STR
-      "Show brief info of interface\n")
+      "Show brief info of interfaces\n"
+      "Show transceiver info for interfaces\n")
 {
    bool brief = false;
-   if((NULL != argv[0]) && strcmp(argv[0], "brief") == 0)
+   bool transceiver = false;
+   int rc = CMD_SUCCESS;
+
+   if ((NULL != argv[0]) && (strcmp(argv[0], "brief") == 0))
    {
       brief = true;
    }
-   argv[0]= NULL;
+   if ((NULL != argv[1]) && (strcmp(argv[1], "transceiver") == 0))
+   {
+      transceiver = true;
+   }
+   argv[0] = NULL;
 
-   return cli_show_interface_exec (self, vty, vty_flags, argc, argv, brief);
+   if (transceiver)
+   {
+       rc =  cli_show_xvr_exec (self, vty, vty_flags, argc, argv, brief);
+   }
+   else
+   {
+       rc =  cli_show_interface_exec (self, vty, vty_flags, argc, argv, brief);
+   }
+   return rc;
 }
 
 #ifdef ENABLE_OVSDB
@@ -1184,7 +1567,7 @@ int check_internal_vlan(uint16_t vlanid)
 
     OVSREC_VLAN_FOR_EACH(vlan_row, idl)
     {
-        if(smap_get(&vlan_row->internal_usage,
+        if (smap_get(&vlan_row->internal_usage,
                     VLAN_INTERNAL_USAGE_L3PORT))
         {
             VLOG_DBG("%s Used internally for l3 interface", __func__);
@@ -1499,7 +1882,7 @@ verify_ifname(char *str)
             break;
         } else {
             str++;
-            if(*str == '\0')
+            if (*str == '\0')
                 return 0;
         }
     }
@@ -1532,6 +1915,8 @@ intf_vty_init (void)
    /* Config commands */
    install_element (INTERFACE_NODE, &cli_intf_shutdown_cmd);
    install_element (INTERFACE_NODE, &no_cli_intf_shutdown_cmd);
+   install_element (INTERFACE_NODE, &cli_intf_split_cmd);
+   install_element (INTERFACE_NODE, &no_cli_intf_split_cmd);
    install_element (INTERFACE_NODE, &cli_intf_speed_cmd);
    install_element (INTERFACE_NODE, &no_cli_intf_speed_cmd);
    install_element (INTERFACE_NODE, &cli_intf_mtu_cmd);
