@@ -1,6 +1,7 @@
 /*
  * Virtual terminal [aka TeletYpe] interface routine.
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -1698,8 +1699,8 @@ vty_create (int vty_sock, union sockunion *su)
 	}
     }
 
-  /* Say hello to the world. */
-  vty_hello (vty);
+  /* Say hello to the world.
+  vty_hello (vty); */
   if (! no_password_check)
     vty_out (vty, "%sUser Access Verification%s%s", VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 
