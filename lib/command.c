@@ -1681,18 +1681,11 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
           if (keyword_args)
             {
               word_token = vector_slot(keyword_vector, 0);
-              if (match_type = cmd_word_match(word_token,FILTER_RELAXED,
-                               (const char *)matcher->vline->index[(matcher->word_index) - 1]))
-              {
-                    if(partly_match == match_type)
-                          arg = word_token->cmd;
-                    else
-                          arg = (const char *)matcher->vline->index[(matcher->word_index) - 1];
-              }
-              else
-              {
-                    rv = MATCHER_INCOMPLETE;
-              }
+              arg = word_token->cmd;
+            }
+          else
+            {
+              arg = NULL;
             }
 
             if (push_argument(argc, argv, arg))
