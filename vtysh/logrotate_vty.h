@@ -1,4 +1,4 @@
-/* Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+/* (C) Copyright 2015 Hewlett-Packard Enterprise Development LP.
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,39 +33,39 @@
 # define LOGROTATE_CMD_STR_TARGET        "logrotate target WORD"
 # define LOGROTATE_NO_CMD_STR_TARGET     "no logrotate target {WORD}"
 
-# define LOGROTATE_HELP_STR_PERIOD      "Rotates, compresses, and transfers system logs.\n" \
-                                        "Logrotation period.\n" \
-                                        "Rotates log files every hour.\n" \
-                                        "Rotates log files every week.\n" \
-                                        "Rotates log files every month.\n"
+# define LOGROTATE_HELP_STR_PERIOD      "Rotates, compresses, and transfers system logs \n" \
+                                        "Logrotation period \n" \
+                                        "Rotates log files every hour \n" \
+                                        "Rotates log files every week \n" \
+                                        "Rotates log files every month \n"
 
 # define LOGROTATE_NO_HELP_STR_PERIOD      NO_STR \
-                                           "Rotates, compresses, and transfers system logs.\n" \
-                                           "Logrotation period.\n" \
-                                           "Rotates log files every hour.\n" \
-                                           "Rotates log files every week.\n" \
-                                           "Rotates log files every month.\n"
+                                           "Rotates, compresses, and transfers system logs \n" \
+                                           "Logrotation period \n" \
+                                           "Rotates log files every hour \n" \
+                                           "Rotates log files every week \n" \
+                                           "Rotates log files every month \n"
 
 
 
-# define LOGROTATE_HELP_STR_MAXSIZE     "Rotates, compresses, and transfers system logs.\n" \
-                                        "Maximum file size for rotation.\n" \
-                                        "File size in Mega Bytes (MB).Default value is 10MB\n"
+# define LOGROTATE_HELP_STR_MAXSIZE     "Rotates, compresses, and transfers system logs \n" \
+                                        "Maximum file size for rotation \n" \
+                                        "File size in Mega Bytes (MB).Default value is 10MB \n"
 
 # define LOGROTATE_NO_HELP_STR_MAXSIZE     NO_STR \
-                                           "Rotates, compresses, and transfers system logs.\n" \
-                                           "Maximum file size for rotation.\n" \
-                                           "File size in Mega Bytes (MB).Default value is 10MB\n"
+                                           "Rotates, compresses, and transfers system logs \n" \
+                                           "Maximum file size for rotation \n" \
+                                           "File size in Mega Bytes (MB).Default value is 10MB \n"
 
 
-# define LOGROTATE_HELP_STR_TARGET     "Rotates, compresses, and transfers system logs.\n" \
-                                       "Transfers logs to remote host.\n"\
-                                       "URI of the remote host. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X'\n"
+# define LOGROTATE_HELP_STR_TARGET     "Rotates, compresses, and transfers system logs \n" \
+                                       "Transfers logs to remote host \n"\
+                                       "URI of the remote host. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X' \n"
 
 # define LOGROTATE_NO_HELP_STR_TARGET     NO_STR \
-                                          "Rotates, compresses, and transfers system logs.\n" \
-                                          "Transfers logs to remote host.\n" \
-                                          "URI of the remote host. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X'\n"
+                                          "Rotates, compresses, and transfers system logs \n" \
+                                          "Transfers logs to remote host \n" \
+                                          "URI of the remote host. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X' \n"
 
 #define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD "period"
 #define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE "maxsize"
