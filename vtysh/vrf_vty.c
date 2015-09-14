@@ -1,21 +1,17 @@
 /*
- * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ *Copyright (C) 2015 Hewlett Packard Enterprise Development LP.
  *
- * GNU Zebra is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2, or (at your option) any
- * later version.
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
  *
- * GNU Zebra is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with GNU Zebra; see the file COPYING.  If not, write to the Free
- * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  */
 /****************************************************************************
  * @ingroup cli/vtysh
@@ -201,7 +197,7 @@ vrf_add(const char *vrf_name)
     }
 
     if (!strcmp(vrf_name, DEFAULT_VRF_NAME)) {
-        vty_out(vty, "Default VRF already exists.%s", VTY_NEWLINE);
+        vty_out(vty, "Default VRF already exists%s", VTY_NEWLINE);
         VLOG_DBG(
                 "%s The default VRF is"
                 " created as part of system bootup.", __func__);
@@ -223,7 +219,7 @@ vrf_add(const char *vrf_name)
     vrf_row = ovsrec_vrf_first(idl);
     if (vrf_row) {
         vty_out(vty,
-                "Non-default VRFs not supported.%s",
+                "Non-default VRFs not supported%s",
                 VTY_NEWLINE);
         VLOG_DBG(
                 "%s Only default VRF is allowed right now. This default VRF is"
@@ -234,7 +230,7 @@ vrf_add(const char *vrf_name)
 #endif
 
     if (strlen(vrf_name) > VRF_NAME_MAX_LENGTH) {
-        vty_out(vty, "Error: VRF name cannot be more than 32 characters.%s",
+        vty_out(vty, "Error: VRF name can only be 32 characters long.%s",
         VTY_NEWLINE);
         VLOG_DBG(
                 "%s VRF Name can only be 32 characters. Check the VRF name"
@@ -335,7 +331,7 @@ vrf_delete(const char *vrf_name) {
     vrf_row = ovsrec_vrf_first(idl);
     if (vrf_row) {
         vty_out(vty,
-                "Non-default VRFs not supported.%s",
+                "Non-default VRFs not supported%s",
                 VTY_NEWLINE);
         VLOG_DBG(
                 "%s All L3 ports are part of default VRF."
@@ -460,7 +456,7 @@ vrf_add_port(const char *if_name, const char *vrf_name)
     vrf_row = ovsrec_vrf_first(idl);
     if (vrf_row) {
         vty_out(vty,
-                "Non-default VRFs not supported.%s",
+                "Non-default VRFs not supported%s",
                 VTY_NEWLINE);
         VLOG_DBG(
                 "%s All L3 ports are part of default VRF."
@@ -472,9 +468,9 @@ vrf_add_port(const char *if_name, const char *vrf_name)
 
     unlink_vrf_row = port_vrf_lookup(port_row);
     if (unlink_vrf_row == vrf_row) {
-        vty_out(vty, "Interface %s is already part of VRF %s.%s",
+        vty_out(vty, "Interface %s is already part of VRF. %s.%s",
                 if_name, vrf_name, VTY_NEWLINE);
-        VLOG_DBG("%s Interface \"%s\" is already attached to VRF \"%s\"",
+        VLOG_DBG("%s Interface \"%s\" is already attached to VRF. \"%s\"",
                 __func__, if_name, vrf_name);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
@@ -566,7 +562,7 @@ vrf_del_port(const char *if_name, const char *vrf_name)
     vrf_row = ovsrec_vrf_first(idl);
     if (vrf_row) {
         vty_out(vty,
-                "Non-default VRFs not supported.%s",
+                "Non-default VRFs not supported%s",
                 VTY_NEWLINE);
         VLOG_DBG(
                 "%s All L3 ports are part of default VRF."
@@ -924,7 +920,7 @@ vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
 
     if (!secondary) {
         if (!port_row->ip4_address) {
-            vty_out(vty, "Error: No IP Address configured on interface %s.%s",
+            vty_out(vty, "Error: No IP address configured on interface %s.%s",
                     if_name, VTY_NEWLINE);
             VLOG_DBG("%s No IP address configured on interface \"%s\".",
                     __func__, if_name);
@@ -943,7 +939,7 @@ vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
         }
 
         if (strcmp(port_row->ip4_address, ip4) != 0) {
-            vty_out(vty, "Error: IP Address %s not found.%s", ip4, VTY_NEWLINE);
+            vty_out(vty, "Error: IP address %s not found.%s", ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface "
                     "\"%s\".", __func__, ip4, if_name);
             cli_do_config_abort(status_txn);
@@ -953,7 +949,7 @@ vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
     } else {
         if (!port_row->n_ip4_address_secondary) {
             vty_out(vty,
-                    "Error: No secondary IP Address configured on"
+                    "Error: No secondary IP address configured on"
                     " interface %s.%s", if_name, VTY_NEWLINE);
             VLOG_DBG(
                     "%s No secondary IP address configured on interface"
@@ -970,7 +966,7 @@ vrf_del_ip(const char *if_name, const char *ip4, bool secondary)
         }
 
         if (!ip4_address_match) {
-            vty_out(vty, "Error: IP Address %s not found.%s",
+            vty_out(vty, "Error: IP address %s not found.%s",
                     ip4, VTY_NEWLINE);
             VLOG_DBG("%s IP address \"%s\" not configured on interface"
                     " \"%s\".", __func__, ip4, if_name);
@@ -1039,7 +1035,7 @@ vrf_config_ipv6(const char *if_name, const char *ipv6, bool secondary)
     port_row = port_check_and_add(if_name, true, true, status_txn);
 
     if (check_iface_in_bridge(if_name) && (VERIFY_VLAN_IFNAME(if_name) != 0)) {
-        vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
+        vty_out(vty, "Error: Interface %s is not l3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
         cli_do_config_abort(status_txn);
@@ -1047,7 +1043,7 @@ vrf_config_ipv6(const char *if_name, const char *ipv6, bool secondary)
     }
 
     if (check_ip_addr_duplicate(ipv6, port_row, true, &is_secondary)) {
-        vty_out(vty, "Error: IP Address is already assigned to interface %s"
+        vty_out(vty, "Error: IP address is already assigned to interface %s"
                 " as %s.%s", if_name, is_secondary? "secondary": "primary",
                 VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" already has the IP address \"%s\""
@@ -1131,7 +1127,7 @@ vrf_del_ipv6(const char *if_name, const char *ipv6, bool secondary)
     }
 
     if (check_iface_in_bridge(if_name) && (VERIFY_VLAN_IFNAME(if_name) != 0)) {
-        vty_out(vty, "Error: Interface %s is not L3.%s", if_name, VTY_NEWLINE);
+        vty_out(vty, "Error: Interface %s is not l3.%s", if_name, VTY_NEWLINE);
         VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge", __func__, if_name);
         cli_do_config_abort(status_txn);
@@ -1140,7 +1136,7 @@ vrf_del_ipv6(const char *if_name, const char *ipv6, bool secondary)
 
     if (!secondary) {
         if (!port_row->ip6_address) {
-            vty_out(vty, "Error: No IPv6 Address configured on interface"
+            vty_out(vty, "Error: No IPv6 address configured on interface"
                     " %s.%s", if_name, VTY_NEWLINE);
             VLOG_DBG("%s No IPv6 address configured on interface"
                     " \"%s\".", __func__, if_name);
@@ -1159,7 +1155,7 @@ vrf_del_ipv6(const char *if_name, const char *ipv6, bool secondary)
         }
 
         if (strcmp(port_row->ip6_address, ipv6) != 0) {
-            vty_out(vty, "Error: IPv6 Address %s not found.%s", ipv6,
+            vty_out(vty, "Error: IPv6 address %s not found.%s", ipv6,
                     VTY_NEWLINE);
             VLOG_DBG(
                     "%s IPv6 address \"%s\" not configured on interface"
@@ -1171,7 +1167,7 @@ vrf_del_ipv6(const char *if_name, const char *ipv6, bool secondary)
     } else {
         if (!port_row->n_ip6_address_secondary) {
             vty_out(vty,
-                    "Error: No secondary IPv6 Address configured on interface"
+                    "Error: No secondary IPv6 address configured on interface"
                     " %s.%s", if_name, VTY_NEWLINE);
             VLOG_DBG(
                     "%s No secondary IPv6 address configured on interface"
@@ -1188,7 +1184,7 @@ vrf_del_ipv6(const char *if_name, const char *ipv6, bool secondary)
         }
 
         if (!ipv6_address_match) {
-            vty_out(vty, "Error: IPv6 Address %s not found.%s", ipv6,
+            vty_out(vty, "Error: IPv6 address %s not found.%s", ipv6,
                     VTY_NEWLINE);
             VLOG_DBG(
                     "%s IPv6 address \"%s\" not configured on interface"
@@ -1276,7 +1272,7 @@ DEFUN (cli_vrf_add,
         cli_vrf_add_cmd,
         "vrf VRF_NAME",
         VRF_STR
-        "Name of the vrf.\n") {
+        "VRF name\n") {
     return vrf_add(argv[0]);
 }
 
@@ -1285,7 +1281,7 @@ DEFUN (cli_vrf_delete,
         "no vrf VRF_NAME",
         NO_STR
         VRF_STR
-        "Name of the vrf.\n")
+        "VRF name.\n")
 {
     return vrf_delete(argv[0]);
 }
@@ -1294,8 +1290,8 @@ DEFUN (cli_vrf_add_port,
         cli_vrf_add_port_cmd,
         "vrf attach VRF_NAME",
         VRF_STR
-        "Attach an interface to a VRF.\n"
-        "Name of the vrf.\n")
+        "Attach interface to VRF\n"
+        "vrf name\n")
 {
     return vrf_add_port((char*) vty->index, argv[0]);
 }
@@ -1305,8 +1301,8 @@ DEFUN (cli_vrf_del_port,
         "no vrf attach VRF_NAME",
         NO_STR
         VRF_STR
-        "Detach an interface from a VRF.\n"
-        "Name of the vrf.\n")
+        "Detach interface from VRF\n"
+        "vrf name\n")
 {
     return vrf_del_port((char*) vty->index, argv[0]);
 }
@@ -1314,7 +1310,7 @@ DEFUN (cli_vrf_del_port,
 DEFUN (cli_vrf_routing,
         cli_vrf_routing_cmd,
         "routing",
-        "Configure interface as L3.\n")
+        "Configure interface as L3\n")
 {
     return vrf_routing((char*) vty->index);
 }
@@ -1323,7 +1319,7 @@ DEFUN (cli_vrf_no_routing,
         cli_vrf_no_routing_cmd,
         "no routing",
         NO_STR
-        "Configure interface as L3.\n")
+        "Configure interface as L3\n")
 {
     return vrf_no_routing((char*) vty->index);
 }
@@ -1332,9 +1328,9 @@ DEFUN (cli_vrf_config_ip,
         cli_vrf_config_ip_cmd,
         "ip address A.B.C.D/M [secondary]",
         IP_STR
-        "Set the IP Address\n"
-        "IP address of port.\n"
-        "IP address is secondary.\n")
+        "Set IP address\n"
+        "Interface IP address\n"
+        "Set as secomdary IP address\n")
 {
     return vrf_config_ip((char*) vty->index, argv[0],
             (argc > 1) ? true : false);
@@ -1345,9 +1341,9 @@ DEFUN (cli_vrf_del_ip,
         "no ip address A.B.C.D/M [secondary]",
         NO_STR
         IP_STR
-        "Set the IP Address\n"
-        "IP address of port.\n"
-        "IP address is secondary.\n")
+        "Set IP address\n"
+        "Interface IP address\n"
+        "Set as secondary IP address\n")
 {
     return vrf_del_ip((char*) vty->index, argv[0],
             (argc > 1) ? true : false);
@@ -1357,9 +1353,9 @@ DEFUN (cli_vrf_config_ipv6,
         cli_vrf_config_ipv6_cmd,
         "ipv6 address X:X::X:X/M [secondary]",
         IPV6_STR
-        "Set the IP Address\n"
-        "IPv6 address of port.\n"
-        "IP address is secondary.\n")
+        "Set IP address\n"
+        "Interface IPv6 address\n"
+        "Set as secondary IPv6 address\n")
 {
     return vrf_config_ipv6((char*) vty->index, argv[0],
             (argc > 1) ? true : false);
@@ -1370,9 +1366,9 @@ DEFUN (cli_vrf_del_ipv6,
         "no ipv6 address X:X::X:X/M [secondary]",
         NO_STR
         IPV6_STR
-        "Set the IP Address\n"
-        "IPv6 address of port.\n"
-        "IP address is secondary.\n")
+        "Set IP Address\n"
+        "Interface IPv6 address\n"
+        "Set as secondary IPv6  address\n")
 {
     return vrf_del_ipv6((char*) vty->index, argv[0],
             (argc > 1) ? true : false);
