@@ -1,21 +1,17 @@
 /*
- * Copyright (C) 1997, 98 Kunihiro Ishiguro
  * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
- * GNU Zebra is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2, or (at your option) any
- * later version.
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
  *
- * GNU Zebra is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with GNU Zebra; see the file COPYING.  If not, write to the Free
- * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  */
 /****************************************************************************
  * @ingroup cli/vtysh
@@ -26,7 +22,6 @@
  * show vlan internal
  ***************************************************************************/
 
-#include <zebra.h>
 #include "vty.h"
 #include <vector.h>
 #include "vswitch-idl.h"
@@ -66,7 +61,7 @@ static int vlan_int_range_add(const char *min_vlan,
 
     if (status_txn == NULL) {
         /* HALON_TODO: Generic comment. "Macro'ize" it in lib and use*/
-        VLOG_ERR("[%s:%d]: Failed to create OVSDB transaction\n", __FUNCTION__, __LINE__);
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(NULL);
         return CMD_OVSDB_FAILURE;
     }
@@ -77,8 +72,6 @@ static int vlan_int_range_add(const char *min_vlan,
     if (!const_row) {
         /* HALON_TODO: Generic comment. "Macro'ize" it in lib and use */
         VLOG_ERR("[%s:%d]: Failed to retrieve a row from System table\n",
-                    __FUNCTION__, __LINE__);
-
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -166,7 +159,7 @@ static int vlan_int_range_del()
     status_txn = cli_do_config_start();
 
     if (status_txn == NULL) {
-        VLOG_ERR("[%s:%d]: Failed to create OVSDB transaction\n", __FUNCTION__, __LINE__);
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(NULL);
         return CMD_OVSDB_FAILURE;
     }
@@ -175,7 +168,6 @@ static int vlan_int_range_del()
 
     if (!const_row) {
         VLOG_ERR("[%s:%d]: Failed to retrieve a row from System table\n",
-                    __FUNCTION__, __LINE__);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -248,7 +240,7 @@ static int show_vlan_int_range()
     status_txn = cli_do_config_start();
 
     if (status_txn == NULL) {
-        VLOG_ERR("[%s:%d]: Failed to create OVSDB transaction\n", __FUNCTION__, __LINE__);
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(NULL);
         return CMD_OVSDB_FAILURE;
     }
@@ -257,7 +249,6 @@ static int show_vlan_int_range()
 
     if (!const_row) {
         VLOG_ERR("[%s:%d]: Failed to retrieve a row from System table\n",
-                    __FUNCTION__, __LINE__);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -690,7 +681,7 @@ DEFUN(cli_intf_no_vlan_access,
     if (vlan_port_row->vlan_mode != NULL &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) != 0)
     {
-        vty_out(vty, "The interface is not in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "Interface not in access mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -722,7 +713,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     "vlan trunk allowed <1-4094>",
     VLAN_STR
     TRUNK_STR
-    "Allowed VLANs on the trunk port\n"
+    "Allowed VLANs on trunk port\n"
     "The VLAN identifier\n")
 {
     const struct ovsrec_port *port_row = NULL;
@@ -822,7 +813,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vty_out(vty, "The interface is in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "Interface in access mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -897,7 +888,7 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     {
         VLOG_DBG("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
-        vty_out(vty, "Failed to remove trunk VLAN%s", VTY_NEWLINE);
+        vty_out(vty, "Failed to remove trunk VLAN.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -956,7 +947,7 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
-        vty_out(vty, "The interface is not in trunk mode%s", VTY_NEWLINE);
+        vty_out(vty, "Interface not in trunk mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1108,7 +1099,7 @@ DEFUN(cli_intf_vlan_trunk_native,
     }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vty_out(vty, "The interface is in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "Interface in access mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1216,7 +1207,7 @@ DEFUN(cli_intf_no_vlan_trunk_native,
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
-        vty_out(vty, "The interface is not in native mode. Please verify the mode.%s", VTY_NEWLINE);
+        vty_out(vty, "Interface is not in native mode. Please verify the mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1316,7 +1307,7 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
     if (vlan_port_row->vlan_mode != NULL &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vty_out(vty, "The interface is in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "Interface in access mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1414,7 +1405,7 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
     if (vlan_port_row->vlan_mode != NULL &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0)
     {
-        vty_out(vty, "The interface is not in native-tagged mode%s", VTY_NEWLINE);
+        vty_out(vty, "Interface not in native-tagged mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1438,7 +1429,7 @@ DEFUN(cli_lag_vlan_access,
     cli_lag_vlan_access_cmd,
     "vlan access <1-4094>",
     VLAN_STR
-    "Access Configuration\n"
+    "Access configuration\n"
     "The VLAN identifier")
 {
     const struct ovsrec_port *port_row = NULL;
@@ -1528,7 +1519,7 @@ DEFUN(cli_lag_no_vlan_access,
     "no vlan access",
     NO_STR
     VLAN_STR
-    "Access Configuration\n")
+    "Access configuration\n")
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
@@ -1563,7 +1554,7 @@ DEFUN(cli_lag_no_vlan_access,
     if (vlan_port_row->vlan_mode != NULL &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) != 0)
     {
-        vty_out(vty, "The LAG is not in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "LAG is not in access mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1661,7 +1652,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vty_out(vty, "The LAG is in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "LAG is in access mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1676,7 +1667,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     {
         if (vlan_id == vlan_port_row->trunks[i])
         {
-            vty_out(vty, "The VLAN is already allowed on the LAG%s", VTY_NEWLINE);
+            vty_out(vty, "VLAN is already allowed on the LAG.%s", VTY_NEWLINE);
             status = cli_do_config_finish(status_txn);
             if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
             {
@@ -1761,7 +1752,7 @@ DEFUN(cli_lag_no_vlan_trunk_allowed,
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
-        vty_out(vty, "The LAG is not in trunk mode%s", VTY_NEWLINE);
+        vty_out(vty, "LAG is not in trunk mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1879,7 +1870,7 @@ DEFUN(cli_lag_vlan_trunk_native,
     }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vty_out(vty, "The LAG is in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "LAG is in access mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1952,7 +1943,7 @@ DEFUN(cli_lag_no_vlan_trunk_native,
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
-        vty_out(vty, "The LAG is not in native mode%s", VTY_NEWLINE);
+        vty_out(vty, "LAG is not in native mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -2017,7 +2008,7 @@ DEFUN(cli_lag_vlan_trunk_native_tag,
     if (vlan_port_row->vlan_mode != NULL &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vty_out(vty, "The LAG is in access mode%s", VTY_NEWLINE);
+        vty_out(vty, "LAG is in access mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -2080,7 +2071,7 @@ DEFUN(cli_lag_no_vlan_trunk_native_tag,
     if (vlan_port_row->vlan_mode != NULL &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0)
     {
-        vty_out(vty, "The LAG is not in native-tagged mode%s", VTY_NEWLINE);
+        vty_out(vty, "LAG is not in native-tagged mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -2139,7 +2130,7 @@ DEFUN(cli_show_vlan,
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row == NULL)
     {
-        vty_out(vty, "No vlan is configured%s", VTY_NEWLINE);
+        vty_out(vty, "No vlan configured%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -2212,7 +2203,7 @@ DEFUN(cli_show_vlan_id,
     "show vlan <1-4094>",
     SHOW_STR
     SHOW_VLAN_STR
-    "The VLAN ID")
+    "VLAN ID")
 {
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_vlan *temp_vlan_row = NULL;
@@ -2223,7 +2214,7 @@ DEFUN(cli_show_vlan_id,
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row == NULL)
     {
-        vty_out(vty, "No vlan is configured%s", VTY_NEWLINE);
+        vty_out(vty, "No vlan configured%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -2301,15 +2292,6 @@ DEFUN(cli_show_vlan_id,
     return CMD_SUCCESS;
 }
 
-/*-----------------------------------------------------------------------------
-| Function: show_vlan_int_range
-| Responsibility: Handles following commands
-|      vlan internal range <start> <end> {descending}
-|      show vlan internal
-| Parameters:
-| Return:
-------------------------------------------------------------------------------
-*/
 void vlan_vty_init(void)
 {
     install_element(CONFIG_NODE, &cli_vlan_int_range_add_cmd);
