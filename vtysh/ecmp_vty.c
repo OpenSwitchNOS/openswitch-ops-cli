@@ -1,26 +1,30 @@
 /*
- * Copyright (C) 1997, 98 Kunihiro Ishiguro
  * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
- * GNU Zebra is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2, or (at your option) any
- * later version.
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
  *
- * GNU Zebra is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with GNU Zebra; see the file COPYING.  If not, write to the Free
- * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  * File: ecmp_vty.c
  *
  * Purpose:  To add ECMP CLI configuration and display commands.
  */
+/****************************************************************************
+ * @ingroup cli/vtysh
+ *
+ * @file ecmp_vty.c
+ * Allow enabling/disable ECMP and hash function based on
+ *  [dst-ip|dst-port|src-ip|src-port]
+ *
+ ***************************************************************************/
 
 #include <sys/un.h>
 #include <setjmp.h>
@@ -48,16 +52,14 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_ecmp_cli);
 extern struct ovsdb_idl *idl;
 
-static int ecmp_config_set_status(bool status, const char * field)
-{
+static int ecmp_config_set_status(bool status, const char * field) {
     const struct ovsrec_system *ovs_row = NULL;
     enum ovsdb_idl_txn_status txn_status;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     bool rc = false;
     struct smap smap_ecmp_config;
 
-    if(status_txn == NULL)
-    {
+    if(status_txn == NULL) {
         VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
@@ -66,8 +68,7 @@ static int ecmp_config_set_status(bool status, const char * field)
     /* Need to set ecmp_config status */
     ovs_row = ovsrec_system_first(idl);
 
-    if(!ovs_row)
-    {
+    if(!ovs_row) {
         VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
@@ -88,12 +89,9 @@ static int ecmp_config_set_status(bool status, const char * field)
 
     txn_status = cli_do_config_finish(status_txn);
 
-    if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
-    {
+    if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
         return CMD_SUCCESS;
-    }
-    else
-    {
+    } else {
         VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
         return CMD_OVSDB_FAILURE;
     }
@@ -242,8 +240,7 @@ DEFUN (show_ip_ecmp,
     const struct ovsrec_system *ovs_row = NULL;
     ovs_row = ovsrec_system_first(idl);
 
-    if(!ovs_row)
-    {
+    if(!ovs_row) {
         VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
         return CMD_OVSDB_FAILURE;
     }
@@ -269,10 +266,11 @@ DEFUN (show_ip_ecmp,
             VTY_NEWLINE);
     return CMD_SUCCESS;
 }
+
+
 /* Install ECMP related vty commands. */
 void
-ecmp_vty_init (void)
-{
+ecmp_vty_init (void) {
 
   install_element (CONFIG_NODE, &ip_ecmp_status_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_src_ip_cmd);

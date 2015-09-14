@@ -80,10 +80,12 @@ class staticRouteConfigTest(HalonTest):
         s1.cmdCLI('interface 1')
         s1.cmdCLI('ip address 192.168.1.1/24')
         s1.cmdCLI('ipv6 address 2000::1/120')
+        s1.cmdCLI('no shutdown')
         s1.cmdCLI('exit')
         s1.cmdCLI('interface 2')
         s1.cmdCLI('ip address 192.168.2.1/24')
         s1.cmdCLI('ipv6 address 2001::1/120')
+        s1.cmdCLI('no shutdown')
         s1.cmdCLI('exit')
         time.sleep(1)
 
@@ -93,18 +95,14 @@ class staticRouteConfigTest(HalonTest):
         s2.cmdCLI('interface 1')
         s2.cmdCLI('ip address 192.168.1.2/24')
         s1.cmdCLI('ipv6 address 2000::2/120')
+        s1.cmdCLI('no shutdown')
         s2.cmdCLI('exit')
         s2.cmdCLI('interface 2')
         s2.cmdCLI('ip address 192.168.3.1/24')
         s1.cmdCLI('ipv6 address 2002::1/120')
+        s1.cmdCLI('no shutdown')
         s2.cmdCLI('exit')
         time.sleep(1)
-
-        s1.ovscmd('/usr/bin/ovs-vsctl set interface 1 user_config:admin=up')
-        s1.ovscmd('/usr/bin/ovs-vsctl set interface 2 user_config:admin=up')
-
-        s2.ovscmd('/usr/bin/ovs-vsctl set interface 1 user_config:admin=up')
-        s2.ovscmd('/usr/bin/ovs-vsctl set interface 2 user_config:admin=up')
 
         info('### Verify ip route configuration with nexthop address ###\n')
         s1.cmdCLI('ip route 192.168.3.0/24 192.168.1.2 2')

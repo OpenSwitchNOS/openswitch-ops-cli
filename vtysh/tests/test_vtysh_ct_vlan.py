@@ -171,7 +171,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI('no routing')
         s1.cmdCLI('vlan access 1')
         out = s1.cmdCLI('vlan trunk allowed 1')
-        assert 'The interface is in access mode' in out, \
+        assert 'Interface in access mode' in out, \
             'Test to add VLAN to interface - FAILED!'
 
         s1.cmdCLI('no vlan access')
@@ -232,7 +232,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI('no routing')
         s1.cmdCLI('vlan access 1')
         out = s1.cmdCLI('vlan trunk native 1')
-        assert 'The interface is in access mode' in out, \
+        assert 'Interface in access mode' in out, \
             'Test to add trunk native to interface - FAILED!'
 
         s1.cmdCLI('no vlan access')
@@ -299,7 +299,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI('no routing')
         s1.cmdCLI('vlan access 1789')
         out = s1.cmdCLI('vlan trunk native tag')
-        assert 'The interface is in access mode' in out, \
+        assert 'Interface in access mode' in out, \
             'Test add trunk native tag vlan to interface - FAILED!'
 
         s1.cmdCLI('no vlan access')
@@ -410,7 +410,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI('no routing')
         s1.cmdCLI('vlan access 2345')
         out = s1.cmdCLI('vlan trunk allowed 55')
-        assert 'The LAG is in access mode' in out, \
+        assert 'LAG in access mode' in out, \
             'Test to add trunk vlan to LAG - FAILED!'
 
         s1.cmdCLI('no vlan access')
@@ -457,7 +457,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI('no routing')
         s1.cmdCLI('vlan access 1234')
         out = s1.cmdCLI('vlan trunk native 1234')
-        assert 'The LAG is in access mode' in out, \
+        assert 'LAG in access mode' in out, \
             'Test to add trunk native vlan to LAG - FAILED!'
 
         s1.cmdCLI('no vlan access')
@@ -505,7 +505,7 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI('no routing')
         s1.cmdCLI('vlan access 1')
         out = s1.cmdCLI('vlan trunk native tag')
-        assert 'The LAG is in access mode' in out, \
+        assert 'LAG in access mode' in out, \
             'Test to add trunk native tag vlan to LAG - FAILED!'
 
         s1.cmdCLI('no vlan access')
@@ -556,7 +556,7 @@ class VLANCliTest(HalonTest):
         success = 0
         for line in lines:
             if 'no shutdown' in line:
-                success += 1
+                success = 1
 
         s1.cmdCLI('description asdf')
         out = s1.cmdCLI('do show running-config')
