@@ -18,7 +18,7 @@
  * 02111-1307, USA.
  */
 /****************************************************************************
- * @ingroup quagga
+ * @ingroup cli/vtysh
  *
  * @file l3routes_vty.c
  * Source to configure l3 static routes into ovsdb tables.
@@ -158,11 +158,11 @@ DEFUN (vtysh_ip_route,
        vtysh_ip_route_cmd,
        "ip route A.B.C.D/M (A.B.C.D|INTERFACE) {<1-255>}",
        IP_STR
-       "Establish static routes\n"
+       "Configure static route\n"
        "IP destination prefix (e.g. 10.0.0.0/8)\n"
        "Nexthop IP (eg. 10.0.0.1)\n"
        "Outgoing interface\n"
-       "Distance for this route. Default is 1 for static routes\n")
+       "Distance (Default: 1)\n")
 {
     const struct ovsrec_route *row = NULL;
     struct ovsrec_nexthop *row_nh = NULL;
@@ -292,7 +292,7 @@ DEFUN (vtysh_ip_route,
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
         && (status != TXN_UNCHANGED))){
-        VLOG_ERR("Commiting transaction to DB failed!");
+        VLOG_ERR("Commiting transaction to DB failed.");
         return CMD_OVSDB_FAILURE;
     } else {
         return CMD_SUCCESS;
@@ -403,7 +403,7 @@ DEFUN (vtysh_no_ip_route,
        "no ip route A.B.C.D/M (A.B.C.D|INTERFACE) {<1-255>}",
        NO_STR
        IP_STR
-       "Established static route\n"
+       "Configure static route\n"
        "IP destination prefix (e.g. 10.0.0.0)\n"
        "Nexthop IP (eg. 10.0.0.1)\n"
        "Outgoing interface\n")
@@ -443,7 +443,7 @@ DEFUN (vtysh_no_ip_route,
     prefix2str((const struct prefix*)&p, prefix_str, sizeof(prefix_str));
 
     if(strcmp(prefix_str, argv[0])) {
-        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        vty_out(vty, "Invalid prefix. Valid prefix: %s", prefix_str);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -529,7 +529,7 @@ DEFUN (vtysh_no_ip_route,
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
                     && (status != TXN_UNCHANGED))) {
-        VLOG_ERR("Commiting transaction to DB failed!");
+        VLOG_ERR("Commiting transaction to DB failed.");
         return CMD_OVSDB_FAILURE;
     } else {
         return CMD_SUCCESS;
@@ -542,11 +542,11 @@ DEFUN (vtysh_ipv6_route,
        vtysh_ipv6_route_cmd,
        "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) {<1-255>}",
        IP_STR
-       "Establish static routes\n"
+       "Configure static route\n"
        "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
        "Nexthop IPv6 (eg. 2010:bda::)\n"
        "Outgoing interface\n"
-       "Distance for this route. Default is 1 for static routes\n")
+       "Distance (Default: 1)\n")
 {
     const struct ovsrec_route *row = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
@@ -583,7 +583,7 @@ DEFUN (vtysh_ipv6_route,
     prefix2str((const struct prefix*)&p, prefix_str, sizeof(prefix_str));
 
     if(strcmp(prefix_str, argv[0])) {
-        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        vty_out(vty, "Invalid prefix. Valid prefix: %s", prefix_str);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -593,8 +593,9 @@ DEFUN (vtysh_ipv6_route,
         if (row->prefix != NULL) {
             if (!strcmp(row->prefix, argv[0]) && !strcmp(row->from, OVSREC_ROUTE_FROM_STATIC)) {
                 if (row->n_nexthops != 0) {
-                    if (row->n_nexthops > 31) {
-                        VLOG_ERR("Maximum supported nexthops for a route are 32");
+                    if (row->n_nexthops > MAX_NEXTHOPS_PER_ROUTE - 1) {
+                        vty_out(vty, "Maximum supported nexthops for a route are %d",
+                                MAX_NEXTHOPS_PER_ROUTE);
                         cli_do_config_abort(status_txn);
                         return CMD_OVSDB_FAILURE;
                     }
@@ -674,7 +675,7 @@ DEFUN (vtysh_ipv6_route,
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
         && (status != TXN_UNCHANGED))) {
-        VLOG_ERR("Commiting transaction to DB failed!");
+        VLOG_ERR("Commiting transaction to DB failed.");
         return CMD_OVSDB_FAILURE;
     } else {
         return CMD_SUCCESS;
@@ -703,7 +704,7 @@ DEFUN (vtysh_no_ipv6_route,
        "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) {<1-255>}",
        NO_STR
        IP_STR
-       "Established static route\n"
+       "Configure static route\n"
        "IP destination prefix (e.g. 2010:bd9::)\n"
        "Nexthop IP (eg. 2010:bda::)\n"
        "Outgoing interface\n")
@@ -743,7 +744,7 @@ DEFUN (vtysh_no_ipv6_route,
     prefix2str((const struct prefix*)&p, prefix_str, sizeof(prefix_str));
 
     if(strcmp(prefix_str, argv[0])) {
-        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        vty_out(vty, "Invalid prefix. Valid prefix: %s", prefix_str);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -829,7 +830,7 @@ DEFUN (vtysh_no_ipv6_route,
 
     if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
                     && (status != TXN_UNCHANGED))) {
-        VLOG_ERR("Commiting transaction to DB failed!");
+        VLOG_ERR("Commiting transaction to DB failed.");
         return CMD_OVSDB_FAILURE;
     } else {
         return CMD_SUCCESS;
