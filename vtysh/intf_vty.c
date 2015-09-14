@@ -943,7 +943,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          continue;
       }
 
-      if(strcmp(ifrow->type, "") != 0)
+      if(strcmp(ifrow->type, "system") != 0)
       {
          /* Skipping internal interfaces */
          continue;
