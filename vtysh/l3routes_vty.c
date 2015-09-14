@@ -15,7 +15,7 @@
  under the License.
 */
 /****************************************************************************
- * @ingroup quagga
+ * @ingroup cli
  *
  * @file l3routes_vty.c
  * Source to configure l3 static routes into ovsdb tables.
@@ -159,7 +159,7 @@ DEFUN (vtysh_ip_route,
        "IP destination prefix (e.g. 10.0.0.0/8)\n"
        "Nexthop IP (eg. 10.0.0.1)\n"
        "Outgoing interface\n"
-       "Distance for this route. Default is 1 for static routes\n")
+       "Distance for this static route (Default: 1)\n")
 {
     struct ovsrec_route *row = NULL;
     struct ovsrec_nexthop *row_nh = NULL;
@@ -178,7 +178,7 @@ DEFUN (vtysh_ip_route,
     status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
-        VLOG_ERR("Couldn't create the OVSDB transaction.");
+        VLOG_ERR("Couldn't create the OVSDB transaction");
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -221,7 +221,7 @@ DEFUN (vtysh_ip_route,
     if (row == NULL) {
         row_vrf = ovsrec_vrf_first(idl);
         if(!row_vrf) {
-            VLOG_ERR("No vrf information yet.");
+            VLOG_ERR("No vrf information yet");
             cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
         }
@@ -427,7 +427,7 @@ DEFUN (vtysh_no_ip_route,
     status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
-        VLOG_ERR("Couldn't create the OVSDB transaction.");
+        VLOG_ERR("Couldn't create the OVSDB transaction");
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -550,7 +550,7 @@ DEFUN (vtysh_ipv6_route,
        "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
        "Nexthop IPv6 (eg. 2010:bda::)\n"
        "Outgoing interface\n"
-       "Distance for this route. Default is 1 for static routes\n")
+       "Distance for this static route (Default: 1)\n")
 {
     const struct ovsrec_route *row = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
@@ -569,7 +569,7 @@ DEFUN (vtysh_ipv6_route,
     status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
-        VLOG_ERR("Couldn't create the OVSDB transaction.");
+        VLOG_ERR("Couldn't create the OVSDB transaction");
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -614,7 +614,7 @@ DEFUN (vtysh_ipv6_route,
     if (row == NULL) {
     row_vrf = ovsrec_vrf_first(idl);
     if(!row_vrf) {
-        VLOG_ERR("No vrf information yet.");
+        VLOG_ERR("No vrf information yet");
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -730,7 +730,7 @@ DEFUN (vtysh_no_ipv6_route,
     status_txn = cli_do_config_start();
 
     if(status_txn == NULL) {
-        VLOG_ERR("Couldn't create the OVSDB transaction.");
+        VLOG_ERR("Couldn't create the OVSDB transaction");
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
