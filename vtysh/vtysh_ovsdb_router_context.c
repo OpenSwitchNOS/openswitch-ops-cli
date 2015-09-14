@@ -105,7 +105,6 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 #endif
 }
 
-
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_ip_prefix_clientcallback
 | Responsibility : ip prefix-list command

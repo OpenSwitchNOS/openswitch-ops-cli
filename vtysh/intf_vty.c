@@ -44,12 +44,12 @@
 #include "openhalon-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
+#include "vtysh/mgmt_intf_vty.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_interface_cli);
 extern struct ovsdb_idl *idl;
 
 #define INTF_NAME_SIZE 50
-
 
 /*
  * CLI "shutdown"
@@ -530,14 +530,180 @@ DEFUN_NO_FORM (cli_intf_autoneg,
 #define PRINT_INT_HEADER_IN_SHOW_RUN if(!bPrinted) \
 { \
    bPrinted = true;\
-   vty_out (vty, "Interface %s %s", row->name, VTY_NEWLINE);\
+   vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
 }
 
 
-int cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
+
+/*-----------------------------------------------------------------------------
+| Function : port_match_in_vrf
+| Responsibility : Lookup VRF to which interface is connected
+| Parameters :
+|    const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
+| Return : pointer to VRF row
+-----------------------------------------------------------------------------*/
+struct ovsrec_vrf* port_match_in_vrf(const struct ovsrec_port *port_row)
+{
+    struct ovsrec_vrf *vrf_row = NULL;
+    size_t i;
+    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+      for (i = 0; i < vrf_row->n_ports; i++) {
+        if (vrf_row->ports[i] == port_row) {
+          return vrf_row;
+        }
+      }
+    }
+    return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : port_find
+| Responsibility : Lookup port table entry for interface name
+| Parameters :
+|   const char *if_name : Interface name
+| Return : bool : returns true/false
+-----------------------------------------------------------------------------*/
+struct ovsrec_port* port_find(const char *if_name)
+{
+    struct ovsrec_port *port_row = NULL;
+    size_t i;
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+      if (strcmp(port_row->name, if_name) == 0) {
+        return port_row;
+      }
+    }
+    return NULL;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : parse_vlan
+| Responsibility : Used for VLAN related config
+| Parameters :
+|     const char *if_name           : Name of interface
+|     struct vty* vty               : Used for ouput
+-----------------------------------------------------------------------------*/
+static int
+parse_vlan(const char *if_name, struct vty* vty)
+{
+    struct ovsrec_port *port_row;
+    bool displayL3Info = false;
+    int i;
+
+    port_row = port_find(if_name);
+    if (port_row == NULL)
+    {
+        return 0;
+    }
+
+    if (port_row->vlan_mode == NULL)
+    {
+        return 0;
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vty_out(vty, "%3s%s%d%s", "", "vlan access ",
+            *port_row->tag, VTY_NEWLINE);
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
+    {
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+                port_row->trunks[i], VTY_NEWLINE);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk native ",
+                *port_row->tag, VTY_NEWLINE);
+        }
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+                port_row->trunks[i], VTY_NEWLINE);
+        }
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) == 0)
+    {
+        if (port_row->n_tag == 1)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk native ",
+                *port_row->tag, VTY_NEWLINE);
+        }
+        vty_out(vty, "%3s%s%s", "", "vlan trunk native tag");
+        for (i = 0; i < port_row->n_trunks; i++, VTY_NEWLINE)
+        {
+            vty_out(vty, "%3s%s%d%s", "", "vlan trunk allowed ",
+                port_row->trunks[i], VTY_NEWLINE);
+        }
+    }
+
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : parse_l3config
+| Responsibility : Used for L3 related config
+| Parameters :
+|     const char *if_name           : Name of interface
+|     struct vty* vty               : Used for ouput
+-----------------------------------------------------------------------------*/
+static int
+parse_l3config(const char *if_name, struct vty *vty)
+{
+  struct ovsrec_port *port_row;
+  struct ovsrec_vrf *vrf_row;
+  bool displayL3Info = false;
+  size_t i;
+
+  port_row = port_find(if_name);
+  if (!port_row) {
+    return 0;
+  }
+  if (check_iface_in_bridge(if_name)) {
+    vty_out(vty, "%3s%s%s", "", "no routing", VTY_NEWLINE);
+    parse_vlan(if_name, vty);
+  }
+  if (check_iface_in_vrf(if_name)) {
+    vrf_row = port_match_in_vrf(port_row);
+    if (display_l3_info(port_row, vrf_row)) {
+      if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0) {
+        vty_out(vty, "%3s%s%s", "", "vrf attach %s", vrf_row->name,
+                VTY_NEWLINE);
+      }
+      if (port_row->ip4_address) {
+        vty_out(vty, "%3s%s%s%s", "", "ip address ", port_row->ip4_address,
+                VTY_NEWLINE);
+      }
+      for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+        vty_out(vty, "%3s%s%s%s%s", "", "ip address ",
+                port_row->ip4_address_secondary[i], " secondary",
+                VTY_NEWLINE);
+      }
+      if (port_row->ip6_address) {
+        vty_out(vty, "%3s%s%s%s", "", "ipv6 address ", port_row->ip6_address,
+                VTY_NEWLINE);
+      }
+      for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
+        vty_out(vty, "%3s%s%s%s%s", "", "ipv6 address ",
+                port_row->ip6_address_secondary[i], " secondary",
+                VTY_NEWLINE);
+      }
+    }
+  }
+  return 0;
+}
+
+static int
+cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[])
 {
    struct ovsrec_interface *row = NULL;
+   struct ovsrec_port *port_row;
    const char *cur_state =NULL;
    bool bPrinted = false;
 
@@ -615,6 +781,13 @@ int cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
          PRINT_INT_HEADER_IN_SHOW_RUN
          vty_out(vty, "   autonegotiation %s %s", cur_state, VTY_NEWLINE);
       }
+
+      if (port_find(row->name)) {
+          PRINT_INT_HEADER_IN_SHOW_RUN
+      }
+
+      parse_l3config(row->name, vty);
+
       if(bPrinted)
       {
          vty_out(vty, "   exit%s", VTY_NEWLINE);
@@ -645,6 +818,84 @@ DEFUN (cli_intf_show_run_intf_if,
    return cli_show_run_interface_exec (self, vty, vty_flags, 1, argv);
 }
 
+int cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
+{
+    const struct ovsrec_open_vswitch *vswrow;
+    const char *data = NULL;
+    const char *ip = NULL;
+    const char *subnet = NULL;
+    const char *dns_1 = NULL;
+    const char *dns_2 = NULL;
+
+   vswrow = ovsrec_open_vswitch_first(idl);
+   if(!vswrow)
+   {
+       VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+       return CMD_OVSDB_FAILURE;
+   }
+
+   data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_MODE);
+   if (!data)
+   {
+       /* If not present then mode is dhcp. So nothing to display since dhcp is the default. */
+       return e_vtysh_ok;
+   }
+
+   if (VTYSH_STR_EQ(data, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_STATIC))
+   {
+       vty_out(vty, "%s%s", "interface mgmt", VTY_NEWLINE);
+       ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
+       subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
+       if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
+           vty_out(vty, "%4sip static %s/%s%s","",ip,subnet, VTY_NEWLINE);
+
+       ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
+       if (ip && (strcmp(ip,MGMT_INTF_DEFAULT_IPV6) != 0))
+       {
+           vty_out(vty, "%4sip static %s %s%s","",ip,subnet, VTY_NEWLINE);
+       }
+   }
+   else
+       return CMD_SUCCESS;
+
+   data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
+   if (data && (strcmp(data,MGMT_INTF_DEFAULT_IP) != 0))
+   {
+       vty_out(vty, "%4sdefault-gateway %s%s","",data, VTY_NEWLINE);
+   }
+
+   /* Ipv6 show running commands */
+
+   data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
+   if (data && (strcmp(data,MGMT_INTF_DEFAULT_IPV6) != 0))
+   {
+       vty_out(vty, "%4sdefault-gateway %s%s","",data, VTY_NEWLINE);
+   }
+
+   dns_1 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
+   dns_2 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
+   if (dns_1 && dns_2 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0) &&
+                                              (strcmp(dns_2,MGMT_INTF_DEFAULT_IP) != 0))
+   {
+          vty_out(vty, "%4snameserver %s %s%s","", dns_1,dns_2, VTY_NEWLINE);
+   }else if(dns_1 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0)) {
+          vty_out(vty, "%4snameserver %s %s","", dns_1, VTY_NEWLINE);
+   }
+
+   return CMD_SUCCESS;
+
+}
+
+DEFUN (cli_intf_show_run_intf_mgmt,
+      cli_intf_show_run_intf_mgmt_cmd,
+      "show running-config interface mgmt",
+      SHOW_STR
+      "Current running configuration\n"
+      INTERFACE_STR
+      "management interface\n")
+{
+   return cli_show_run_interface_mgmt_exec (self, vty);
+}
 
 int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[], bool brief)
@@ -692,6 +943,12 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          continue;
       }
 
+      if(strcmp(ifrow->type, "") != 0)
+      {
+         /* Skipping internal interfaces */
+         continue;
+      }
+
       if(brief)
       {
          /* Display the brief information */
@@ -702,7 +959,8 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          vty_out (vty, "%-6s ", ifrow->link_state);
 
-         if(strcmp(ifrow->admin_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
+         if((NULL != ifrow->admin_state) &&
+               (strcmp(ifrow->admin_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0))
          {
             vty_out (vty, "Administratively down    ");
          }
@@ -750,7 +1008,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          vty_out(vty, " MTU %d %s", intVal, VTY_NEWLINE);
 
-         if(strcmp(ifrow->duplex, "half") == 0)
+         if((NULL != ifrow->duplex) && (strcmp(ifrow->duplex, "half") == 0))
          {
             vty_out(vty, " Half-duplex %s", VTY_NEWLINE);
          }
@@ -809,54 +1067,54 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          atom.string = interface_statistics_keys[0];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input packets  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input packets  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[1];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[8];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[4];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[5];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d short frame    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld short frame    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[6];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d overrun  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld overrun  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[7];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d CRC/FCS  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld CRC/FCS  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          vty_out(vty, " TX%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[2];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d output packets ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld output packets ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[3];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld bytes  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[11];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld input error    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          atom.string = interface_statistics_keys[9];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          atom.string = interface_statistics_keys[10];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-         vty_out(vty, "   %10d collision  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
+         vty_out(vty, "   %10ld collision  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          vty_out(vty, "%s", VTY_NEWLINE);
@@ -905,10 +1163,355 @@ DEFUN (cli_intf_show_intferface_ifname_br,
    return cli_show_interface_exec (self, vty, vty_flags, argc, argv, brief);
 }
 
+#ifdef ENABLE_OVSDB
+/* Function : check_internal_vlan
+ * Description : Checks if interface vlan is being created for
+                 an already used internal VLAN.
+ * param in : vlanid - to check if it is already in use
+ */
+int check_internal_vlan(uint16_t vlanid)
+{
+    const struct ovsrec_vlan *vlan_row = NULL;
 
+    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+    {
+        if(smap_get(&vlan_row->internal_usage,
+                    VLAN_INTERNAL_USAGE_L3PORT))
+        {
+            VLOG_DBG("%s Used internally for l3 interface", __func__);
+            /* now check if this vlan is used for creating vlan interface */
+            if (vlanid == vlan_row->id) {
+                VLOG_DBG("%s This is a internal vlan = %d", __func__, vlanid);
+                return 0;
+            }
+        }
+    }
 
+    return 1;
+}
 
+/* Function : create_vlan_interface
+ * Description : Creates a vlan interface. Will create an
+                 interface and port with name same as for VLAN interface.
+                 and then associate it with the VRF and Bridge row.
+ * param in : vlan_if - Vlan interface name
+ */
+int create_vlan_interface(const char *vlan_if)
+{
+    const struct ovsrec_interface *if_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_bridge *bridge_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
 
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+
+    struct ovsrec_port **vrf_port_list;
+    struct ovsrec_port **bridge_port_list;
+    struct ovsrec_interface **iface_list;
+
+    bool intf_exist = false, port_exist = false;
+
+    int i;
+    int64_t tag = atoi(vlan_if + 4);
+
+    ovsdb_idl_run(idl);
+
+    status_txn = cli_do_config_start();
+
+    if (!status_txn) {
+        VLOG_ERR(
+                 "%s Got an error when trying to create a transaction"
+                 " using ovsdb_idl_txn_create()", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /*verify if interface exists */
+    OVSREC_INTERFACE_FOR_EACH(if_row, idl)
+    {
+        if (strcmp(if_row->name, vlan_if) == 0) {
+            intf_exist = true;
+        }
+    }
+
+    /*verify if port exists */
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if (strcmp(port_row->name, vlan_if) == 0) {
+            port_exist = true;
+        }
+    }
+
+    /* If both port and interface exists return success nothing to change here */
+    if (intf_exist == true && port_exist == true) {
+        VLOG_DBG("%s Both interface and port exists for this Vlan interface name", __func__);
+        cli_do_config_finish(status_txn);
+        return CMD_SUCCESS;
+    } else if (!(intf_exist == false && port_exist == false)) {
+        /* Only if both do not exist then go ahead else return ERROR */
+        VLOG_ERR(
+                "%s Interface OR Port row already exists for this Vlan"
+                " interface. Ideally we should either have BOTH already"
+                " existing or BOTH non existing.", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /* Get vrf row so that we can add the port to it */
+    OVSREC_VRF_FOR_EACH (vrf_row, idl)
+    {
+        if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
+            break;
+        }
+    }
+
+    if (!vrf_row) {
+        VLOG_ERR("%s Error: Could not fetch VRF data.", __func__);
+        VLOG_DBG(
+                "%s VRF table did not have any rows. Ideally it"
+                " should have just one entry.", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /* Get Bridge row so that we can add the port to it */
+    OVSREC_BRIDGE_FOR_EACH (bridge_row, idl)
+    {
+        if (strcmp(bridge_row->name, DEFAULT_BRIDGE_NAME) == 0) {
+            break;
+        }
+    }
+
+    if (!bridge_row) {
+        VLOG_ERR("%s Error: Could not fetch Bridge data.", __func__);
+        VLOG_DBG(
+                "%s Bridge table did not have any rows.", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /* adding an interface */
+    if_row = ovsrec_interface_insert(status_txn);
+    ovsrec_interface_set_name(if_row, vlan_if);
+    ovsrec_interface_set_type(if_row, "internal");
+
+    /* Set the admin state */
+    smap_replace(&if_row->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
+                          OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
+
+    ovsrec_interface_set_user_config(if_row, &if_row->user_config);
+
+    iface_list = xmalloc(sizeof(struct ovsrec_interface));
+    iface_list[0] = (struct ovsrec_interface *)if_row;
+
+    /* Adding a port to the corresponding interface*/
+    port_row = ovsrec_port_insert(status_txn);
+    ovsrec_port_set_name(port_row, vlan_if);
+    ovsrec_port_set_interfaces(port_row, iface_list, 1);
+    ovsrec_port_set_tag(port_row, &tag, 1);
+    ovsrec_port_set_vlan_mode(port_row, 0 /*PORT_VLAN_ACCESS*/);
+
+    /* Add the port to vrf port list */
+    vrf_port_list = xmalloc(sizeof(struct ovsrec_port) * (vrf_row->n_ports + 1));
+    for (i = 0; i < vrf_row->n_ports; i++) {
+        vrf_port_list[i] = vrf_row->ports[i];
+    }
+    vrf_port_list[vrf_row->n_ports] = (struct ovsrec_port *)port_row;
+    ovsrec_vrf_set_ports(vrf_row, vrf_port_list, vrf_row->n_ports + 1);
+    free(vrf_port_list);
+
+    /* Add the port to bridge */
+    bridge_port_list = xmalloc(sizeof(struct ovsrec_port) * (bridge_row->n_ports + 1));
+    for (i = 0; i < bridge_row->n_ports; i++) {
+        bridge_port_list[i] = bridge_row->ports[i];
+    }
+    bridge_port_list[bridge_row->n_ports] = (struct ovsrec_port *)port_row;
+    ovsrec_bridge_set_ports(bridge_row, bridge_port_list, bridge_row->n_ports + 1);
+    free(bridge_port_list);
+
+    status = cli_do_config_finish(status_txn);
+
+    if (status == TXN_SUCCESS) {
+        VLOG_DBG(
+                "%s The command succeeded and interface \"%s\" was create",
+                __func__, vlan_if);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change Check if interface \"%s\" was create",
+                __func__, vlan_if);
+        return CMD_SUCCESS;
+    } else {
+        VLOG_ERR(
+                "%s While trying to commit transaction to DB, got a status"
+                " response : %s", __func__,
+                ovsdb_idl_txn_status_to_string(status));
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+/* Function : delete_vlan_interface
+ * Description : Deletes a vlan interface. Will delete the
+                 interface and port with name same as for VLAN interface.
+                 and then remove port associated in VRF and Bridge row.
+ * param in : vlan_if - Vlan interface name
+ */
+int delete_vlan_interface(const char *vlan_if)
+{
+    const struct ovsrec_interface *if_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_bridge *bridge_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+
+    struct ovsrec_port **vrf_port_list;
+    struct ovsrec_port **bridge_port_list;
+
+    bool intf_exist = false, port_exist = false;
+
+    int i, j;
+
+    status_txn = cli_do_config_start();
+
+    if (!status_txn) {
+        VLOG_ERR(
+                "%s Got an error when trying to create a transaction"
+                " using ovsdb_idl_txn_create()", __func__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /*verify if interface exists */
+    OVSREC_INTERFACE_FOR_EACH(if_row, idl)
+    {
+        if (strcmp(if_row->name, vlan_if) == 0) {
+            intf_exist = true;
+        }
+    }
+
+    /*verify if port exists */
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if (strcmp(port_row->name, vlan_if) == 0) {
+            port_exist = true;
+        }
+    }
+
+    /* If port OR interface does not exist return failure */
+    if (intf_exist == false || port_exist == false) {
+        vty_out(vty,
+                "Vlan interface does not exist. Cannot delete %s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /* Remove the port row from vrf */
+    /* Iterate through each VRF */
+    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+        vrf_port_list = xmalloc(sizeof(struct ovsrec_port) * (vrf_row->n_ports - 1));
+        for (i = 0, j = 0; i < vrf_row->n_ports; i++) {
+            if (strcmp(vrf_row->ports[i]->name, vlan_if) != 0) {
+                vrf_port_list[j] = vrf_row->ports[i];
+                j++;
+            }
+        }
+        /* If we find the interface then update the vrf port list */
+        if (i > j) {
+            ovsrec_vrf_set_ports(vrf_row, vrf_port_list, vrf_row->n_ports - 1);
+        }
+        free(vrf_port_list);
+    }
+
+    /* Remove the port row from bridge */
+    OVSREC_BRIDGE_FOR_EACH(bridge_row, idl)
+    {
+        bridge_port_list = xmalloc(sizeof(struct ovsrec_port) * (bridge_row->n_ports - 1));
+        for (i = 0, j = 0; i < bridge_row->n_ports; i++) {
+            if (strcmp(bridge_row->ports[i]->name, vlan_if) != 0) {
+                bridge_port_list[j] = bridge_row->ports[i];
+                j++;
+            }
+        }
+        if (i > j) {
+            ovsrec_bridge_set_ports(bridge_row, bridge_port_list, bridge_row->n_ports - 1);
+        }
+        free(bridge_port_list);
+    }
+
+    status = cli_do_config_finish(status_txn);
+
+    if (status == TXN_SUCCESS) {
+        VLOG_DBG(
+                "%s The command succeeded and interface \"%s\" was create",
+                __func__, vlan_if);
+        return CMD_SUCCESS;
+    } else if (status == TXN_UNCHANGED) {
+        VLOG_DBG(
+                "%s The command resulted in no change Check if interface \"%s\" was create",
+                __func__, vlan_if);
+        return CMD_SUCCESS;
+    } else {
+        VLOG_ERR(
+                "%s While trying to commit transaction to DB, got a status"
+                " response : %s", __func__,
+                ovsdb_idl_txn_status_to_string(status));
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+/* Function : verify_ifname. The function handles case sensitive commands
+ *            Like VLAN10 or Vlan10. Also checks for invalid inputs like
+ *            vlan 10aa or vlan 5000.
+ * Description : verifies if the user input is valid.
+ * param in : str - User passed Vlan interface name
+ */
+bool
+verify_ifname(char *str)
+{
+    uint16_t vlanid;
+    char *endptr;
+
+    if (VERIFY_VLAN_IFNAME(str) != 0) {
+        return 0;
+    }
+
+    while(*str) {
+        if (isdigit(*str)) {
+            vlanid = strtol(str, &endptr, 10);
+            VLOG_DBG("%s vlanid = %d, str = %s\n", __func__, vlanid, str);
+            break;
+        } else {
+            str++;
+            if(*str == '\0')
+                return 0;
+        }
+    }
+
+    /* For handling characters after/before <vlan id> */
+    if (*endptr != '\0') {
+        vty_out(vty, "Error : Invalid vlan input\n");
+        return 0;
+    }
+
+    /* The VLANID is outside valid vlan range */
+    if (vlanid <= 0 || vlanid >= 4095) {
+        vty_out(vty, "Error : Vlanid outside valid vlan range <1-4094>\n");
+        return 0;
+    }
+
+    /* The VLANID is internal vlan */
+    if (check_internal_vlan(vlanid) == 0) {
+        vty_out(vty, "Error : Vlanid is an internal vlan\n");
+        return 0;
+    }
+
+    return 1;
+}
+#endif
 /* Install Interface related vty commands. */
 void
 intf_vty_init (void)
@@ -932,5 +1535,11 @@ intf_vty_init (void)
    install_element (ENABLE_NODE, &cli_intf_show_intferface_ifname_br_cmd);
    install_element (ENABLE_NODE, &cli_intf_show_run_intf_cmd);
    install_element (ENABLE_NODE, &cli_intf_show_run_intf_if_cmd);
+   install_element (ENABLE_NODE, &cli_intf_show_run_intf_mgmt_cmd);
+
+#ifdef ENABLE_OVSDB
+   install_element (VLAN_INTERFACE_NODE, &cli_intf_shutdown_cmd);
+   install_element (VLAN_INTERFACE_NODE, &no_cli_intf_shutdown_cmd);
+#endif
    return;
 }

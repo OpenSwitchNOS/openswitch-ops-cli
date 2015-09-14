@@ -3579,7 +3579,6 @@ DEFUN (no_neighbor_description,
 #ifndef CLEANUP_SCHEMA
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)(&vty->index));
-
     if (bgp_router_context) {
         VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
     }else {
@@ -3826,7 +3825,6 @@ cli_neighbor_timers_execute (char *vrf_name, int argc, char *argv[])
 
 #ifndef CLEANUP_SCHEMA
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)(&vty->index));
-
     if (bgp_router_context) {
         VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
     } else {
@@ -4574,7 +4572,6 @@ DEFUN (no_neighbor_allowas_in,
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)(&vty->index));
 
 #ifndef CLEANUP_SCHEMA
-
     if (bgp_router_context) {
         VLOG_DBG("in router asn %d\n", bgp_router_context->asn);
     }else {

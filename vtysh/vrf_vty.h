@@ -33,8 +33,8 @@ void
 vrf_vty_init(void);
 
 const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
-                               bool attach_to_default_vrf,
-                               struct ovsdb_idl_txn *txn);
+                                             bool attach_to_default_vrf,
+                                             struct ovsdb_idl_txn *txn);
 
 const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 

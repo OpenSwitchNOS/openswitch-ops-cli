@@ -29,6 +29,7 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
+#include "intf_vty.h"
 #include "lacp_vty.h"
 #include "vrf_vty.h"
 
@@ -138,13 +139,6 @@ vtysh_ovsdb_intftable_parse_lacp_othercfg(const struct smap *ifrow_config,
     PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
     vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-priority", atoi(data));
   }
-  data = NULL;
-  data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
-  if (data)
-  {
-    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
-    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp aggregation-key", atoi(data));
-  }
 
   return e_vtysh_ok;
 }
@@ -210,17 +204,14 @@ vtysh_ovsdb_intftable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsd
     if (VTYSH_STR_EQ(data, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX))
     {
       p_msg->lldptxrx_state = e_lldp_dir_tx;
-      p_msg->disp_intf_cfg = true;
     }
     else if (VTYSH_STR_EQ(data, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX))
     {
       p_msg->lldptxrx_state = e_lldp_dir_rx;
-      p_msg->disp_intf_cfg = true;
     }
     else if (VTYSH_STR_EQ(data, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF))
     {
       p_msg->lldptxrx_state = e_lldp_dir_off;
-      p_msg->disp_intf_cfg = true;
     }
     else
     {
@@ -272,73 +263,128 @@ display_l3_info(const struct ovsrec_port *port_row,
    return false;
 }
 
+
+#define PRINT_INT_HEADER_IN_SHOW_RUN if(!intfcfg.disp_intf_cfg) \
+{ \
+   intfcfg.disp_intf_cfg = true;\
+   vtysh_ovsdb_cli_print(p_msg, "interface %s ", ifrow->name);\
+}
+
 /*-----------------------------------------------------------------------------
-| Function : vtysh_intf_context_clientcallback
-| Responsibility : client callback routine
-| Parameters :
-|     void *p_private1, *p_private2: void type object typecast to required
-| Return : void
------------------------------------------------------------------------------*/
+  | Function : vtysh_intf_context_clientcallback
+  | Responsibility : client callback routine
+  | Parameters :
+  |     void *p_private1, *p_private2: void type object typecast to required
+  | Return : void
+  -----------------------------------------------------------------------------*/
 vtysh_ret_val
 vtysh_intf_context_clientcallback(void *p_private)
 {
-  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-  const struct ovsrec_interface *ifrow;
-  bool adminstate = false;
+   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+   const struct ovsrec_interface *ifrow;
+   bool adminstate = false;
+   const char *cur_state =NULL;
 
+   OVSREC_INTERFACE_FOR_EACH(ifrow, p_msg->idl)
+   {
+      vtysh_ovsdb_intf_cfg intfcfg;
 
-  OVSREC_INTERFACE_FOR_EACH(ifrow, p_msg->idl)
-  {
-    vtysh_ovsdb_intf_cfg intfcfg;
-
-    /* set to default values */
-    intfcfg.admin_state = false;
-    intfcfg.disp_intf_cfg = false;
-    intfcfg.lldptxrx_state = e_lldp_dir_tx_rx;
-    if (ifrow)
-    {
-      adminstate = false;
-      intfd_get_user_cfg_adminstate(&ifrow->user_config, &adminstate);
-      if (true == adminstate)
+      /* set to default values */
+      intfcfg.admin_state = false;
+      intfcfg.disp_intf_cfg = false;
+      intfcfg.lldptxrx_state = e_lldp_dir_tx_rx;
+      if (ifrow)
       {
-        intfcfg.admin_state = true;
-        intfcfg.disp_intf_cfg = true;
-      }
+         cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
+         if ((NULL != cur_state)
+               && (strcmp(cur_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0))
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
+         }
 
-      /* parse interface other config */
-      vtysh_ovsdb_intftable_parse_othercfg(& ifrow->other_config, &intfcfg);
+         cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);
+         if ((NULL != cur_state)
+               && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT) != 0))
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "", "speed", cur_state);
+         }
 
-      /* display interface config */
-      if (true == intfcfg.disp_intf_cfg)
-      {
-        vtysh_ovsdb_cli_print(p_msg, "interface %s", ifrow->name);
-        if (e_lldp_dir_tx == intfcfg.lldptxrx_state)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp reception");
-        }
-        else if (e_lldp_dir_rx == intfcfg.lldptxrx_state)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp transmission");
-        }
-        else if (e_lldp_dir_off == intfcfg.lldptxrx_state)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp transmission");
-          vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp reception");
-        }
+         cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_MTU);
+         if ((NULL != cur_state)
+               && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_MTU_DEFAULT) != 0))
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "", "mtu", cur_state);
+         }
 
-        if (true == intfcfg.admin_state)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
-        }
+         cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_DUPLEX);
+         if ((NULL != cur_state)
+               && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_DUPLEX_FULL) != 0))
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "", "duplex", cur_state);
+         }
+
+
+         cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_PAUSE);
+         if ((NULL != cur_state)
+               && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_NONE) != 0))
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            if(strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_RX) == 0)
+            {
+               vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "flowcontrol receive on");
+            }
+            else if(strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_PAUSE_TX) == 0)
+            {
+               vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "flowcontrol send on");
+            }
+            else
+            {
+               vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "flowcontrol receive on");
+               vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "flowcontrol send on");
+            }
+         }
+
+         cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
+         if ((NULL != cur_state)
+               && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT) != 0))
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "", "autonegotiation", cur_state);
+         }
+
+         /* parse interface other config */
+         vtysh_ovsdb_intftable_parse_othercfg(&ifrow->other_config, &intfcfg);
+
+         /* display interface config */
+
+         if (e_lldp_dir_tx == intfcfg.lldptxrx_state)
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp reception");
+         }
+         else if (e_lldp_dir_rx == intfcfg.lldptxrx_state)
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp transmission");
+         }
+         else if (e_lldp_dir_off == intfcfg.lldptxrx_state)
+         {
+            PRINT_INT_HEADER_IN_SHOW_RUN;
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp transmission");
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no lldp reception");
+         }
       }
       vtysh_ovsdb_intftable_parse_lacp_othercfg(&ifrow->other_config, p_msg,
-                                                &intfcfg, ifrow->name);
+            &intfcfg, ifrow->name);
       vtysh_ovsdb_intftable_print_lag(p_msg, &intfcfg, ifrow->name);
       vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg, intfcfg.disp_intf_cfg);
-    }
-  }
+   }
 
-  return e_vtysh_ok;
+   return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -438,7 +484,7 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
   if (!port_row) {
     return e_vtysh_ok;
   }
-  if (check_iface_in_bridge(if_name)) {
+  if (!check_iface_in_vrf(if_name)) {
     if (!interfaceNameWritten) {
       vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
     }

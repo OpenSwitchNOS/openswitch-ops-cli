@@ -244,6 +244,7 @@ main (int argc, char **argv, char **env)
   int echo_command = 0;
   int no_error = 0;
   int ret = 0;
+  int counter=0;
   pthread_t vtysh_ovsdb_if_thread;
 
   /* Preserve name of myself. */
@@ -372,6 +373,17 @@ main (int argc, char **argv, char **env)
   /* If eval mode. */
   if (cmd)
     {
+      /* Wait for idl sequence number */
+      do
+      {
+	 if(vtysh_ovsdb_is_loaded())
+         {
+            break;
+         }
+         sleep(1);
+         counter++;
+      }while(counter < MAX_TIMEOUT_FOR_IDL_CHANGE);
+
       /* Enter into enable node. */
       vtysh_execute ("enable");
 

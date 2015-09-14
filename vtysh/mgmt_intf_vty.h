@@ -27,7 +27,6 @@
 
 void vty_mgmt_int_init (void);
 
-
 #define MGMT_INTF_MODE_IP_STR         "Set the mode for management interface (static/dhcp)\n"
 #define MGMT_INTF_DHCP_STR            "Set the mode as dhcp\n"
 #define MGMT_INTF_STATIC_STR          "Set the mode as static\n"
@@ -44,11 +43,12 @@ void vty_mgmt_int_init (void);
 #define MGMT_INTF_MGMT_STR            "Management interface details\n"
 
 #define MGMT_INTF_DEFAULT_IP          "0.0.0.0"
-#define MGMT_INTF_DEFAULT_IPV6         "::"
+#define MGMT_INTF_DEFAULT_IPV6        "::"
 
 #define OVSDB_MODE_ERROR                      "Configurations not allowed in dhcp mode"
 #define OVSDB_DNS_DEPENDENCY_ERROR            "Deletion not allowed. Secondary Nameserver present"
-
-void mgmt_intf_vty_init (void);
+#define OVSDB_NO_IP_ERROR                     "IP should be configured first."
+#define OVSDB_REMOVE_IPV4_STATIC_CONF         "Remove all IPv4 static configurations"
+#define OVSDB_REMOVE_IPV6_STATIC_CONF         "Remove all IPv6 static configurations"
 
 #endif /* _VTY_MGMT_INTF_H */

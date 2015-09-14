@@ -33,6 +33,7 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vswitch-idl.h"
+#include "openhalon-dflt.h"
 #include "ovsdb-idl.h"
 #include "openvswitch/vlog.h"
 #include "openhalon-idl.h"
@@ -47,11 +48,30 @@ extern struct ovsdb_idl *idl;
 #define DEFAULT_DISTANCE 1
 
 
+/*
+ * Check if port is part of any VRF and return the VRF row.
+ */
+const struct ovsrec_vrf* port_find_vrf(const struct ovsrec_port *port_row)
+{
+    const struct ovsrec_vrf *vrf_row = NULL;
+    size_t i;
+    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+        for (i = 0; i<vrf_row->n_ports; i++) {
+            if (vrf_row->ports[i] == port_row) {
+                return vrf_row;
+            }
+        }
+    }
+    return NULL;
+}
+
 struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char * nh_entry,
-                                          bool prefix_match, int argc, char * dist_entry,
+                                          bool prefix_match, bool static_match, char * dist_entry,
                                           struct ovsrec_route * row, char * ip_addr_family) {
     struct ovsrec_nexthop *row_nh = NULL;
     struct ovsrec_port *row_port = NULL;
+    const struct ovsrec_vrf *row_vrf = NULL;
     struct in_addr nexthop;
     struct in6_addr nexthop_ipv6;
     int ret, i;
@@ -70,6 +90,7 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
     } else {
         OVSREC_PORT_FOR_EACH(row_port, idl) {
             if (!strcmp(row_port->name, nh_entry)) {
+                row_vrf = port_find_vrf(row_port);
                 break;
             }
         }
@@ -78,11 +99,16 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
             vty_out(vty, "\nInterface %s not configured%s", nh_entry, VTY_NEWLINE);
             return NULL;
         }
+
+        if(row_vrf == NULL) {
+            vty_out(vty, "\nInterface %s is not L3%s", nh_entry, VTY_NEWLINE);
+            return NULL;
+        }
         ovsrec_nexthop_set_ports(row_nh, &row_port,row_nh->n_ports + 1);
     }
 
     if (!prefix_match) {
-        if(argc < 3) {
+        if(dist_entry == NULL) {
             /*
             * Hardcode the n_distance param to 1 for static routes
             */
@@ -93,21 +119,31 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
             ovsrec_route_set_distance(row, &distance, 1);
         }
     } else {
-        if(argc < 3) {
-            /*
-            * Hardcode the n_distance param to 1 for static routes
-            */
-            if (*row->distance != 1) {
-                vty_out(vty, "\nCannot configure default distance for this nexthop%s", VTY_NEWLINE);
-                vty_out(vty, "Distance for this route is set to %d, ", *row->distance);
+        if (static_match) {
+            if(dist_entry == NULL) {
+                /*
+                * Hardcode the n_distance param to 1 for static routes
+                */
+                if (*row->distance != DEFAULT_DISTANCE) {
+                    vty_out(vty, "\nCannot configure default distance for this nexthop%s",
+                            VTY_NEWLINE);
+                    vty_out(vty, "Distance for this route is set to %d, ", *row->distance);
+                    vty_out(vty, "decided by the distance entered for the first nexthop\n%s",
+                            VTY_NEWLINE);
+                    vty_out(vty, "Please enter the new route with distance %d%s",
+                            *row->distance, VTY_NEWLINE);
+                    return NULL;
+                }
+            } else if (*row->distance != atoi(dist_entry)) {
+                vty_out(vty, "\nCannot configure new distance for this nexthop%s", VTY_NEWLINE);
+                vty_out(vty, "Distance for this route is already set to %d, ", *row->distance);
                 vty_out(vty, "decided by the distance entered for the first nexthop\n%s",
                         VTY_NEWLINE);
+                vty_out(vty, "Please enter the new route with distance %d%s",
+                        *row->distance, VTY_NEWLINE);
                 return NULL;
             }
-        } else if (*row->distance != atoi(dist_entry)) {
-            vty_out(vty, "\nCannot configure new distance for this nexthop%s", VTY_NEWLINE);
-            vty_out(vty, "Distance for this route is already set to %d, ", *row->distance);
-            vty_out(vty, "decided by the distance entered for the first nexthop\n%s", VTY_NEWLINE);
+        } else {
             return NULL;
         }
     }
@@ -117,7 +153,7 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
 
 DEFUN (vtysh_ip_route,
        vtysh_ip_route_cmd,
-       "ip route A.B.C.D/M (A.B.C.D|INTERFACE) [<1-255>]",
+       "ip route A.B.C.D/M (A.B.C.D|INTERFACE) {<1-255>}",
        IP_STR
        "Establish static routes\n"
        "IP destination prefix (e.g. 10.0.0.0/8)\n"
@@ -130,13 +166,14 @@ DEFUN (vtysh_ip_route,
     struct ovsrec_vrf *row_vrf = NULL;
 
     struct in_addr mask;
-    struct prefix_ipv4 p;
+    struct prefix p;
     int ret, i;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
     char prefix_str[256];
     bool prefix_match = false;
     bool nh_match = false;
+    bool static_match = false;
 
     status_txn = cli_do_config_start();
 
@@ -146,7 +183,7 @@ DEFUN (vtysh_ip_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv4 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -155,13 +192,27 @@ DEFUN (vtysh_ip_route,
     /*
     * Convert to the final/optimized format before storing to DB
     */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
 
+    if(strcmp(prefix_str, argv[0])) {
+        vty_out(vty, "Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
     OVSREC_ROUTE_FOR_EACH(row, idl) {
         if (row->prefix != NULL) {
-            if (!strcmp(row->prefix, argv[0])) {
+            if (!strcmp(row->prefix, argv[0]) && !strcmp(row->from, OVSREC_ROUTE_FROM_STATIC)) {
+                if (row->n_nexthops > MAX_NEXTHOPS_PER_ROUTE - 1) {
+                    vty_out(vty, "Maximum supported nexthops for a route are %d",
+                            MAX_NEXTHOPS_PER_ROUTE);
+                    cli_do_config_abort(status_txn);
+                    return CMD_OVSDB_FAILURE;
+                }
                 prefix_match = true;
+                static_match = true;
                 break;
             }
         }
@@ -187,7 +238,8 @@ DEFUN (vtysh_ip_route,
 
         ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
-        row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, argc, argv[2], row, "ipv4");
+        row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
+                                   argv[2], row, "ipv4");
         if (row_nh == NULL) {
             cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
@@ -196,7 +248,7 @@ DEFUN (vtysh_ip_route,
 
     } else {
         for (i = 0; i < row->n_nexthops; i++) {
-            if (row->nexthops[i] != NULL) {
+            if (row->nexthops[i] != NULL && static_match) {
                 if (row->nexthops[i]->ip_address != NULL) {
                     if (!strcmp(row->nexthops[i]->ip_address, argv[1])) {
                         nh_match = true;
@@ -212,7 +264,7 @@ DEFUN (vtysh_ip_route,
         }
 
         if (!nh_match) {
-            row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, argc,
+            row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
                                        argv[2], row, "ipv4");
             if (row_nh == NULL) {
                 cli_do_config_abort(status_txn);
@@ -261,7 +313,7 @@ static int show_routes(struct vty *vty, char * ip_addr_family)
             continue;
         }
 
-        if (row_route->selected != NULL && row_route->selected[0] == false) {
+        if (row_route->selected == NULL || row_route->selected[0] == false) {
             continue;
         }
 
@@ -307,7 +359,11 @@ static int show_routes(struct vty *vty, char * ip_addr_family)
 
                     vty_out(vty, ",  [%d", *row_route->distance);
 
-                    vty_out(vty, "/%d]", row_route->metric);
+                    if (row_route->metric) {
+                        vty_out(vty, "/%d]", *row_route->metric);
+                    } else {
+                        vty_out(vty, "/0]");
+                    }
 
                     vty_out(vty, ",  %s", row_route->from);
 
@@ -346,7 +402,7 @@ DEFUN (vtysh_show_ip_route,
 
 DEFUN (vtysh_no_ip_route,
        vtysh_no_ip_route_cmd,
-       "no ip route A.B.C.D/M (A.B.C.D|INTERFACE) [<1-255>]",
+       "no ip route A.B.C.D/M (A.B.C.D|INTERFACE) {<1-255>}",
        NO_STR
        IP_STR
        "Established static route\n"
@@ -357,7 +413,7 @@ DEFUN (vtysh_no_ip_route,
     int ret;
     const struct ovsrec_route *row_route = NULL;
     int flag = 0;
-    struct prefix_ipv4 p;
+    struct prefix p;
     char prefix_str[256];
     int found_flag = 0;
     int len = 0;
@@ -376,7 +432,7 @@ DEFUN (vtysh_no_ip_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv4 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -385,8 +441,15 @@ DEFUN (vtysh_no_ip_route,
     /*
      * Convert to the final/optimized format before storing to DB
      */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
+
+    if(strcmp(prefix_str, argv[0])) {
+        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -409,7 +472,7 @@ DEFUN (vtysh_no_ip_route,
                     len = 0;
                     distance_match = 0;
 
-                    if (atoi(argv[2])) {
+                    if (argv[2] != NULL) {
                         (atoi(argv[2]) == *row_route->distance) ? (distance_match = 1)
                             : (distance_match = 0);
                     } else {
@@ -481,7 +544,7 @@ DEFUN (vtysh_no_ip_route,
 
 DEFUN (vtysh_ipv6_route,
        vtysh_ipv6_route_cmd,
-       "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) [<1-255>]",
+       "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) {<1-255>}",
        IP_STR
        "Establish static routes\n"
        "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
@@ -494,13 +557,14 @@ DEFUN (vtysh_ipv6_route,
     const struct ovsrec_vrf *row_vrf = NULL;
 
     struct in6_addr mask;
-    struct prefix_ipv6 p;
+    struct prefix p;
     int ret, i;
     enum ovsdb_idl_txn_status status;
     struct ovsdb_idl_txn *status_txn = NULL;
     char prefix_str[256];
     bool prefix_match = false;
     bool nh_match = false;
+    bool static_match = false;
 
     status_txn = cli_do_config_start();
 
@@ -510,7 +574,7 @@ DEFUN (vtysh_ipv6_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv6 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -519,13 +583,29 @@ DEFUN (vtysh_ipv6_route,
     /*
      * Convert to the final/optimized format before storing to DB
      */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
 
+    if(strcmp(prefix_str, argv[0])) {
+        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
     OVSREC_ROUTE_FOR_EACH(row, idl) {
+
         if (row->prefix != NULL) {
-            if (!strcmp(row->prefix, argv[0])) {
+            if (!strcmp(row->prefix, argv[0]) && !strcmp(row->from, OVSREC_ROUTE_FROM_STATIC)) {
+                if (row->n_nexthops != NULL) {
+                    if (row->n_nexthops > 31) {
+                        VLOG_ERR("Maximum supported nexthops for a route are 32");
+                        cli_do_config_abort(status_txn);
+                        return CMD_OVSDB_FAILURE;
+                    }
+                }
                 prefix_match = true;
+                static_match = true;
                 break;
             }
         }
@@ -551,11 +631,12 @@ DEFUN (vtysh_ipv6_route,
 
     ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
-    row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, argc, argv[2], row, "ipv6");
+    row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
+                               argv[2], row, "ipv6");
     ovsrec_route_set_nexthops(row, &row_nh, row->n_nexthops + 1);
     } else {
         for (i = 0; i < row->n_nexthops; i++) {
-            if (row->nexthops[i] != NULL) {
+            if (row->nexthops[i] != NULL && static_match) {
                 if (row->nexthops[i]->ip_address != NULL) {
                     if (!strcmp(row->nexthops[i]->ip_address, argv[1])) {
                         nh_match = true;
@@ -571,7 +652,7 @@ DEFUN (vtysh_ipv6_route,
         }
 
         if (!nh_match) {
-            row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, argc,
+            row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
                                        argv[2], row, "ipv6");
 
             if (row_nh == NULL) {
@@ -624,7 +705,7 @@ DEFUN (vtysh_show_ipv6_route,
 
 DEFUN (vtysh_no_ipv6_route,
        vtysh_no_ipv6_route_cmd,
-       "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) [<1-255>]",
+       "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) {<1-255>}",
        NO_STR
        IP_STR
        "Established static route\n"
@@ -635,7 +716,7 @@ DEFUN (vtysh_no_ipv6_route,
     int ret;
     const struct ovsrec_route *row_route = NULL;
     int flag = 0;
-    struct prefix_ipv6 p;
+    struct prefix p;
     char prefix_str[256];
     int found_flag = 0;
     int len = 0;
@@ -654,7 +735,7 @@ DEFUN (vtysh_no_ipv6_route,
         return CMD_OVSDB_FAILURE;
     }
 
-    ret = str2prefix_ipv6 (argv[0], &p);
+    ret = str2prefix (argv[0], &p);
     if (ret <= 0) {
         vty_out (vty, "%% Malformed address format%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
@@ -663,8 +744,15 @@ DEFUN (vtysh_no_ipv6_route,
     /*
      * Convert to the final/optimized format before storing to DB
      */
+    apply_mask(&p);
     memset(prefix_str, 0 ,sizeof(prefix_str));
     prefix2str(&p, prefix_str, sizeof(prefix_str));
+
+    if(strcmp(prefix_str, argv[0])) {
+        VLOG_ERR("Invalid prefix. Valid prefix: %s", prefix_str);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->address_family != NULL) {
@@ -687,7 +775,7 @@ DEFUN (vtysh_no_ipv6_route,
                     len = 0;
                     distance_match = 0;
 
-                    if (atoi(argv[2])) {
+                    if (argv[2] != NULL) {
                         (atoi(argv[2]) == *row_route->distance) ? (distance_match = 1)
                             : (distance_match = 0);
                     } else {
@@ -767,7 +855,7 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
 
     OVSREC_ROUTE_FOR_EACH(row_route, idl) {
         if (row_route->protocol_private != NULL ) {
-            if (row_route->protocol_private[0] == false) {
+            if (row_route->protocol_private[0] == true) {
                 continue;
             }
         }
@@ -794,7 +882,7 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
             memset(str, 0, sizeof(str));
             len = 0;
             len = snprintf(str, sizeof(str), "%s", row_route->prefix);
-            if (row_route->selected == NULL || row_route->selected[0] == true) {
+            if (row_route->selected != NULL && row_route->selected[0] == true) {
                 vty_out(vty, "*%s", str);
             } else {
                 vty_out(vty, "%s", str);
@@ -821,16 +909,22 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
                             row_route->nexthops[i]->ports[0]->name);
                     }
 
-                    if (row_route->nexthops[i]->selected == NULL ||
-                        row_route->nexthops[i]->selected[0] == true) {
-                        vty_out(vty, "\t*via %s", str);
+                    if (row_route->selected != NULL && row_route->selected[0] == true) {
+                        if (row_route->nexthops[i]->selected == NULL ||
+                            row_route->nexthops[i]->selected[0] == true) {
+                            vty_out(vty, "\t*via %s", str);
+                        }
                     } else {
                         vty_out(vty, "\tvia %s", str);
                     }
 
                     vty_out(vty, ",  [%d", *row_route->distance);
 
-                    vty_out(vty, "/%d]", row_route->metric);
+                    if (row_route->metric) {
+                        vty_out(vty, "/%d]", *row_route->metric);
+                    } else {
+                        vty_out(vty, "/0]");
+                    }
 
                     vty_out(vty, ",  %s", row_route->from);
 

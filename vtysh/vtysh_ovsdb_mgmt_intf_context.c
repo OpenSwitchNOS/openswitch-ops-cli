@@ -67,7 +67,7 @@ vtysh_mgmt_intf_context_clientcallback(void *p_private)
         ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
         subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
         if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
-            vtysh_ovsdb_cli_print(p_msg, "%4sip static %s %s","",ip,subnet);
+            vtysh_ovsdb_cli_print(p_msg, "%4sip static %s/%s","",ip,subnet);
 
         ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
         if (ip && (strcmp(ip,MGMT_INTF_DEFAULT_IPV6) != 0))

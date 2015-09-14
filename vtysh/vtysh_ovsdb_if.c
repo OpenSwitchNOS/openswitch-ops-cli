@@ -52,6 +52,9 @@
 #include "lib/regex-gnu.h"
 #endif /* HAVE_GNU_REGEX */
 #include "lib/vty.h"
+#include "latch.h"
+#include "lib/vty_utils.h"
+#include "intf_vty.h"
 
 typedef unsigned char boolean;
 
@@ -62,24 +65,10 @@ static unsigned int idl_seqno;
 static char *appctl_path = NULL;
 static struct unixctl_server *appctl;
 static struct ovsdb_idl_txn *txn;
+static int cur_cfg_no = 0;
 
 boolean exiting = false;
 volatile boolean vtysh_exit = false;
-/* To serialize updates to OVSDB.
- * interface threads calls to update OVSDB states. */
-pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/* Macros to lock and unlock mutexes in a verbose manner. */
-#define VTYSH_OVSDB_LOCK { \
-                VLOG_DBG("%s(%d): VTYSH_OVSDB_LOCK: taking lock...", __FUNCTION__, __LINE__); \
-                pthread_mutex_lock(&vtysh_ovsdb_mutex); \
-}
-
-#define VTYSH_OVSDB_UNLOCK { \
-                VLOG_DBG("%s(%d): VTYSH_OVSDB_UNLOCK: releasing lock...", __FUNCTION__, __LINE__); \
-                pthread_mutex_unlock(&vtysh_ovsdb_mutex); \
-}
-
 extern struct vty *vty;
 
 /*
@@ -95,6 +84,7 @@ static void
 vtysh_wait(void)
 {
     ovsdb_idl_wait(idl);
+    latch_wait(&ovsdb_latch);
 }
 
 static void
@@ -252,6 +242,7 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_type);
 }
 
 /***********************************************************
@@ -271,7 +262,7 @@ alias_ovsdb_init(struct ovsdb_idl *idl)
 }
 
 static void
-radius_server_ovsdb_init(struct ovsd_idl *idl)
+radius_server_ovsdb_init()
 {
 
     /* Add radius-server columns */
@@ -410,6 +401,7 @@ ovsdb_init(const char *db_path)
     free(idl_lock);
     idl_seqno = ovsdb_idl_get_seqno(idl);
     ovsdb_idl_enable_reconnect(idl);
+    latch_init(&ovsdb_latch);
 
     /* Add hostname columns */
     ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
@@ -427,6 +419,10 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_other_config);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lldp_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_system_mac);
+
+    /* Add columns for ECMP configuration */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_ecmp_config);
 
     /* Interface tables */
     intf_ovsdb_init(idl);
@@ -444,7 +440,7 @@ ovsdb_init(const char *db_path)
     vrf_ovsdb_init(idl);
 
     /* Radius server table */
-    radius_server_ovsdb_init(idl);
+    radius_server_ovsdb_init();
 
     /* Policy tables */
     policy_ovsdb_init(idl);
@@ -470,6 +466,7 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
+
 }
 
 static void
@@ -567,6 +564,13 @@ char* vtysh_ovsdb_hostname_get()
     return NULL;
 }
 
+/* Wait for database sysnchronization in case *
+ * of command execution outside of vtysh */
+bool vtysh_ovsdb_is_loaded()
+{
+   return (ovsdb_idl_has_ever_connected(idl));
+}
+
 /*
  * When exiting vtysh destroy the idl cache
  */
@@ -575,22 +579,40 @@ void vtysh_ovsdb_exit(void)
     ovsdb_idl_destroy(idl);
 }
 
+/*
+ * Check whether config is initialized by subsystem
+ */
+bool ovsdb_cfg_initialized()
+{
+  if(cur_cfg_no < 1)
+  {
+    const struct ovsrec_open_vswitch* ovs = ovsrec_open_vswitch_first(idl);
+    if(ovs != NULL)
+    {
+      cur_cfg_no = ovs->cur_cfg;
+      if(cur_cfg_no < 1)
+      {
+        return false;
+      }
+    }
+    else
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* Take the lock and create a transaction if
    DB connection is available and return the
    transaction pointer */
 struct ovsdb_idl_txn* cli_do_config_start()
 {
-  idl_seqno = ovsdb_idl_get_seqno(idl);
-  /* Checking if the connection is alive and if
-     we have received atleast one update from DB */
-  if(idl_seqno < 1 || !ovsdb_idl_is_alive(idl))
+  if(!ovsdb_cfg_initialized())
   {
     return NULL;
   }
 
-  /* TO-DO: Move the locking into the infra itself so
-     that developers need not worry about the locking */
-  VTYSH_OVSDB_LOCK;
   struct ovsdb_idl_txn *status_txn = ovsdb_idl_txn_create(idl);
 
   if(status_txn  == NULL)
@@ -607,7 +629,6 @@ enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* status_txn)
   if(status_txn == NULL)
   {
     assert(0);
-    VTYSH_OVSDB_UNLOCK;
     return TXN_ERROR;
   }
 
@@ -617,7 +638,6 @@ enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* status_txn)
   ovsdb_idl_txn_destroy(status_txn);
   status_txn = NULL;
 
-  VTYSH_OVSDB_UNLOCK;
   return status;
 }
 
@@ -626,12 +646,10 @@ void cli_do_config_abort(struct ovsdb_idl_txn* status_txn)
 {
   if(status_txn == NULL)
   {
-    VTYSH_OVSDB_UNLOCK;
     return;
   }
   ovsdb_idl_txn_destroy(status_txn);
   status_txn = NULL;
-  VTYSH_OVSDB_UNLOCK;
 }
 
 /*
@@ -650,8 +668,9 @@ int vtysh_ovsdb_interface_match(const char *str)
 
   OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
   {
-    if( strcmp(str,row->name) == 0)
-      return 0;
+      if( strcmp(str,row->name) == 0) {
+          return 0;
+      }
   }
 
   return 1;
@@ -728,6 +747,8 @@ int vtysh_ovsdb_mac_match(const char *str)
      }
      i++;
   }
+  if('\0' != str[MAX_MACADDR_LEN])
+     return 1;
 
   return 0;
 }
@@ -795,17 +816,18 @@ vtysh_ovsdb_main_thread(void *arg)
         if (vtysh_exit) {
             poll_immediate_wake();
         } else {
-            /* TO-DO: There is a race condition with the FD's
-               used for poll here. Currently since the fd is
-               already registered and the events being registered
-               in both the threads is same, it shouldn't affect
-               functionality. Need to resolve this as soon possible */
+            /* The poll function polls on the OVSDB socket
+               and the latch fd set in vtysh_wait. The latch
+               is set in command.c whenever user calls a
+               function so that this thread releases the lock
+               and vtysh thread holds the lock to avoid race
+               conditions while commiting the transaction */
             poll_block();
         }
+        /* Resets the latch */
+        latch_poll(&ovsdb_latch);
     }
-
     return NULL;
-
 }
 
 /*

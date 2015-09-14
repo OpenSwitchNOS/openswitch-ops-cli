@@ -49,7 +49,7 @@
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lacp_cli);
 extern struct ovsdb_idl *idl;
-
+int maximum_lag_interfaces = 0;
 
 static int
 delete_lag(const char *lag_name)
@@ -190,13 +190,14 @@ DEFUN (vtysh_remove_lag,
 
 
 static int
-lacp_set_mode(const char *lag_name, const char *lacp_mode)
+lacp_set_mode(const char *lag_name, const char *mode_to_set, const char *present_mode)
 {
   const struct ovsrec_port *port_row = NULL;
   bool port_found = false;
   struct smap smap = SMAP_INITIALIZER(&smap);
   struct ovsdb_idl_txn* txn = NULL;
   enum ovsdb_idl_txn_status status;
+  const char *mode_in_db = NULL;
 
   txn = cli_do_config_start();
   if(txn == NULL)
@@ -226,13 +227,23 @@ lacp_set_mode(const char *lag_name, const char *lacp_mode)
 
   smap_clone(&smap, &port_row->other_config);
 
-  if(strcmp("off", lacp_mode) == 0)
+  if(strcmp("off", mode_to_set) == 0)
   {
-    smap_remove(&smap, "lacp");
+    mode_in_db = smap_get(&smap, "lacp");
+    if(strcmp(present_mode, mode_in_db) == 0)
+    {
+       smap_remove(&smap, "lacp");
+    }
+    else
+    {
+       vty_out(vty, "Enter the configured LACP mode.\n");
+       cli_do_config_abort(txn);
+       return CMD_SUCCESS;
+    }
   }
   else
   {
-    smap_replace(&smap, "lacp", lacp_mode);
+    smap_replace(&smap, "lacp", mode_to_set);
   }
 
   ovsrec_port_set_other_config(port_row, &smap);
@@ -257,19 +268,19 @@ DEFUN (cli_lacp_set_mode,
        "Sets an interface as LACP active.\n"
        "Sets an interface as LACP passive.\n")
 {
-  return lacp_set_mode((char*) vty->index, argv[0]);
+  return lacp_set_mode((char*) vty->index, argv[0], "");
 }
 
 DEFUN (cli_lacp_set_no_mode,
        lacp_set_mode_no_cmd,
-       "no lacp mode {active | passive}",
+       "no lacp mode (active | passive)",
        NO_STR
        LACP_STR
        "Configure LACP mode.\n"
        "Sets an interface as LACP active.\n"
        "Sets an interface as LACP passive.\n")
 {
-  return lacp_set_mode((char*) vty->index, "off");
+  return lacp_set_mode((char*) vty->index, "off", argv[0]);
 }
 
 static int
@@ -337,10 +348,19 @@ DEFUN (cli_lacp_set_hash,
 
 DEFUN (cli_lacp_set_no_hash,
        lacp_set_no_hash_cmd,
-       "no hash {l2-src-dst}",
+       "no hash l2-src-dst",
        NO_STR
        "The type of hash algorithm used for aggregated port.\n"
        "Base the hash on l2-src-dst. The default is l3-src-dst.\n")
+{
+  return lacp_set_hash((char*) vty->index, "l3-src-dst");
+}
+
+DEFUN (cli_lacp_set_no_hash_shortform,
+       lacp_set_no_hash_shortform_cmd,
+       "no hash",
+       NO_STR
+       "The type of hash algorithm used for aggregated port.\n")
 {
   return lacp_set_hash((char*) vty->index, "l3-src-dst");
 }
@@ -493,10 +513,19 @@ DEFUN (cli_lacp_set_heartbeat_rate,
 {
   return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_FAST);
 }
-
 DEFUN (cli_lacp_set_no_heartbeat_rate,
        lacp_set_no_heartbeat_rate_cmd,
-       "no lacp rate {fast}",
+       "no lacp rate",
+       NO_STR
+       LACP_STR
+       "Set LACP heartbeat request time. Default is slow which is once every 30seconds.\n")
+{
+  return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_SLOW);
+}
+
+DEFUN (cli_lacp_set_no_heartbeat_rate_fast,
+       lacp_set_no_heartbeat_rate_fast_cmd,
+       "no lacp rate fast",
        NO_STR
        LACP_STR
        "Set LACP heartbeat request time. Default is slow which is once every 30seconds.\n"
@@ -564,11 +593,23 @@ DEFUN (cli_lacp_set_global_sys_priority,
 
 DEFUN (cli_lacp_set_no_global_sys_priority,
        lacp_set_no_global_sys_priority_cmd,
-       "no lacp system-priority {<0-65535>}",
+       "no lacp system-priority <0-65535>",
        NO_STR
        LACP_STR
        "Set LACP system priority.\n"
        "The range is 0 to 65535; the default is 65534.\n")
+{
+  char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
+  snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY);
+  return lacp_set_global_sys_priority(def_sys_priority);
+}
+
+DEFUN (cli_lacp_set_no_global_sys_priority_shortform,
+       lacp_set_no_global_sys_priority_shortform_cmd,
+       "no lacp system-priority",
+       NO_STR
+       LACP_STR
+       "Set LACP system priority.\n")
 {
   char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
   snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY);
@@ -693,6 +734,7 @@ DEFUN (cli_lacp_intf_set_port_priority,
   return lacp_intf_set_port_priority((char*)vty->index, argv[0]);
 }
 
+#if 0
 static int
 lacp_intf_set_aggregation_key(const char *if_name, const char *agg_key)
 {
@@ -741,7 +783,10 @@ lacp_intf_set_aggregation_key(const char *if_name, const char *agg_key)
       return CMD_OVSDB_FAILURE;
    }
 }
+#endif
 
+#if 0
+/* HALON_TODO: Enable this command once LACP deamon supports aggregation-key */
 DEFUN (cli_lacp_intf_set_aggregation_key,
       cli_lacp_intf_set_aggregation_key_cmd,
       "lacp aggregation-key <1-65535>",
@@ -751,6 +796,7 @@ DEFUN (cli_lacp_intf_set_aggregation_key,
 {
   return lacp_intf_set_aggregation_key((char*)vty->index, argv[0]);
 }
+#endif
 
 static int
 lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
@@ -776,6 +822,11 @@ lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
      if (strcmp(lag_port->name, lag_name) == 0)
      {
        port_found = true;
+       if(lag_port->n_interfaces == MAX_INTF_TO_LAG)
+       {
+         vty_out(vty, "Cannot add more interfaces to LAG. Maximum interface count is reached.\n");
+         return CMD_SUCCESS;
+       }
        break;
      }
    }
@@ -831,7 +882,7 @@ lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
            {
               if (strcmp(port_row->name, lag_name) == 0)
               {
-                 vty_out(vty, "Interface %s is already part of lag %s\n", if_name, port_row->name);
+                 vty_out(vty, "Interface %s is already part of %s\n", if_name, port_row->name);
                  cli_do_config_abort(status_txn);
                  return CMD_SUCCESS;
               }
@@ -1041,6 +1092,7 @@ lacp_show_aggregates(const char *lag_name)
    const char *heartbeat_rate = NULL;
    bool fallback = false;
    const char *aggregate_mode = NULL;
+   const char *hash = NULL;
    bool show_all = false;
    bool port_found = false;
    int k = 0;
@@ -1073,11 +1125,17 @@ lacp_show_aggregates(const char *lag_name)
          fallback = smap_get_bool(&lag_port->other_config, "lacp-fallback-ab", false);
          vty_out(vty, "%s%s%s", "Fallback              : ",(fallback)?"true":"false", VTY_NEWLINE);
 
-         aggregate_mode = smap_get(&lag_port->other_config, "bond_mode");
+         hash = smap_get(&lag_port->other_config, "bond_mode");
+         if(hash)
+            vty_out(vty, "%s%s%s", "Hash                  : ",hash, VTY_NEWLINE);
+         else
+            vty_out(vty, "%s%s%s", "Hash                  : ","l3-src-dst", VTY_NEWLINE);
+
+         aggregate_mode = smap_get(&lag_port->other_config, "lacp");
          if(aggregate_mode)
             vty_out(vty, "%s%s%s", "Aggregate mode        : ",aggregate_mode, VTY_NEWLINE);
          else
-            vty_out(vty, "%s%s%s", "Aggregate mode        : ","l3-src-dst", VTY_NEWLINE);
+            vty_out(vty, "%s%s%s", "Aggregate mode        : ","off", VTY_NEWLINE);
          vty_out(vty, "%s", VTY_NEWLINE);
 
          if(!show_all)
@@ -1118,14 +1176,12 @@ DEFUN (cli_lacp_show_aggregates,
 static char *
 get_lacp_state(const char *state)
 {
-   //ret_state = (char *)calloc(8, sizeof(char));
    static char ret_state[8]={0};
    int n = 0;
 
    memset(ret_state, 0, 8);
    if(state == NULL)
    {
-     strncpy(ret_state, "PSIOEX", 6);
      return ret_state;
    }
    if(state[0])
@@ -1207,7 +1263,7 @@ lacp_show_interfaces_all()
                        if_row->name,
                        key ? key: " ",
                        port_priority ? port_priority : " ",
-                       lacp_state);
+                       lacp_state?lacp_state:" ");
             vty_out(vty,"%s", VTY_NEWLINE);
          }
          if(k == 0)
@@ -1244,7 +1300,7 @@ lacp_show_interfaces_all()
                        port_id ? port_id : " ",
                        key ? key : "",
                        port_priority ? port_priority : " ",
-                       lacp_state);
+                       lacp_state?lacp_state:"");
             vty_out(vty,"%s", VTY_NEWLINE);
          }
          if(k == 0)
@@ -1274,6 +1330,7 @@ lacp_show_interfaces(const char *if_name)
    const char *a_lacp_state = NULL, *p_lacp_state = NULL;
    const char *a_key = NULL, *a_system_id = NULL, *a_port_id = NULL;
    const char *p_key = NULL, *p_system_id = NULL, *p_port_id = NULL;
+   bool port_row_round = false;
 
    vty_out(vty,"%s", VTY_NEWLINE);
    vty_out(vty, "State abbreviations :%s", VTY_NEWLINE);
@@ -1304,6 +1361,7 @@ lacp_show_interfaces(const char *if_name)
              p_key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_KEY);
              p_port_id = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_PORT_ID);
              p_system_id = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_SYSTEM_ID);
+             port_row_round = true;
              goto Exit;
            }
         }
@@ -1311,7 +1369,7 @@ lacp_show_interfaces(const char *if_name)
    }
 Exit:
    vty_out(vty,"%s",VTY_NEWLINE);
-   vty_out(vty, "Aggregate-name : %s%s", port_row->name, VTY_NEWLINE);
+   vty_out(vty, "Aggregate-name : %s%s", port_row_round?port_row->name:" ", VTY_NEWLINE);
    vty_out(vty, "-------------------------------------------------");
    vty_out(vty,"%s",VTY_NEWLINE);
    vty_out(vty, "                   Actor             Partner");
@@ -1325,7 +1383,7 @@ Exit:
    vty_out(vty,"%-10s | %-18s | %-18s %s",
                "Key", a_key?a_key:" ", p_key?p_key:" ", VTY_NEWLINE);
    vty_out(vty,"%-10s | %-18s | %-18s %s",
-               "State", a_lacp_state, p_lacp_state, VTY_NEWLINE);
+               "State", a_lacp_state?a_lacp_state:" ", p_lacp_state?p_lacp_state:" ", VTY_NEWLINE);
    vty_out(vty,"%s",VTY_NEWLINE);
 
    return CMD_SUCCESS;
@@ -1527,20 +1585,25 @@ lacp_vty_init (void)
 {
   install_element (LINK_AGGREGATION_NODE, &lacp_set_mode_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_mode_no_cmd);
-  install_element(LINK_AGGREGATION_NODE, &cli_lag_routing_cmd);
-  install_element(LINK_AGGREGATION_NODE, &cli_lag_no_routing_cmd);
+  install_element (LINK_AGGREGATION_NODE, &cli_lag_routing_cmd);
+  install_element (LINK_AGGREGATION_NODE, &cli_lag_no_routing_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_hash_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_no_hash_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_no_hash_shortform_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_fallback_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_no_fallback_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_heartbeat_rate_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_no_heartbeat_rate_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_no_heartbeat_rate_fast_cmd);
   install_element (CONFIG_NODE, &lacp_set_global_sys_priority_cmd);
   install_element (CONFIG_NODE, &lacp_set_no_global_sys_priority_cmd);
+  install_element (CONFIG_NODE, &lacp_set_no_global_sys_priority_shortform_cmd);
   install_element (CONFIG_NODE, &vtysh_remove_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_id_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_priority_cmd);
+#if 0
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_aggregation_key_cmd);
+#endif
   install_element (INTERFACE_NODE, &cli_lacp_add_intf_to_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_remove_intf_from_lag_cmd);
   install_element (ENABLE_NODE, &cli_lacp_show_configuration_cmd);
