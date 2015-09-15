@@ -943,7 +943,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          continue;
       }
 
-      if(strcmp(ifrow->type, "") != 0)
+      if(strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_INTERNAL) == 0)
       {
          /* Skipping internal interfaces */
          continue;
@@ -1294,7 +1294,7 @@ int create_vlan_interface(const char *vlan_if)
     /* adding an interface */
     if_row = ovsrec_interface_insert(status_txn);
     ovsrec_interface_set_name(if_row, vlan_if);
-    ovsrec_interface_set_type(if_row, "internal");
+    ovsrec_interface_set_type(if_row, OVSREC_INTERFACE_TYPE_INTERNAL);
 
     /* Set the admin state */
     smap_replace(&if_row->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
