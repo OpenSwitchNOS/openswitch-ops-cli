@@ -44,7 +44,7 @@ class InterfaceCommandsTests(HalonTest):
 
     def interfaceConfigCliTest(self):
         print '''
-########## Test to verify interface congfiguration clis  ##########
+########## Test to verify interface configuration clis  ##########
 '''
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -52,32 +52,43 @@ class InterfaceCommandsTests(HalonTest):
         out = s1.cmdCLI('mtu 2500')
         out = s1.cmdCLI('do show running-conf interface 2')
         assert 'mtu 2500' in out, \
-            'Test to verify interface congfiguration clis - FAILED!'
+            'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('speed 4000')
         out = s1.cmdCLI('do show running-conf interface 2')
         assert 'speed 4000' in out, \
-            'Test to verify interface congfiguration clis - FAILED!'
+            'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('duplex half')
         out = s1.cmdCLI('do show running-conf interface 2')
         assert 'duplex half' in out, \
-            'Test to verify interface congfiguration clis - FAILED!'
+            'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('autonegotiation off')
         out = s1.cmdCLI('do show running-conf interface 2')
         assert 'autonegotiation off' in out, \
-            'Test to verify interface congfiguration clis - FAILED!'
+            'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('flowcontrol send on')
         out = s1.cmdCLI('do show running-conf interface 2')
         assert 'flowcontrol send on' in out, \
-            'Test to verify interface congfiguration clis - FAILED!'
+            'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('flowcontrol receive on')
         out = s1.cmdCLI('do show running-conf interface 2')
         assert 'flowcontrol receive on' in out, \
-            'Test to verify interface congfiguration clis - FAILED!'
+            'Test to verify interface configuration clis - FAILED!'
+
+        s1.cmdCLI('split')
+        out = s1.cmdCLI('do show running-conf interface 2')
+        assert 'split' not in out, \
+            'Test to verify interface configuration clis - FAILED!'
+
+        s1.cmdCLI('interface 49')
+        s1.cmdCLI('split')
+        out = s1.cmdCLI('do show running-config interface 49')
+        assert 'split' in out, \
+            'Test to verify interface configuration clis - FAILED!'
         out = s1.cmdCLI('end')
         return True
 
@@ -96,7 +107,7 @@ class Test_interfaceCommands:
     def test_interfaceConfigCli(self):
         if self.test.interfaceConfigCliTest():
             print '''
-########## Test to verify interface congfiguration clis - SUCCESS! ##########
+########## Test to verify interface configuration clis - SUCCESS! ##########
 '''
 
     def teardown_class(cls):
