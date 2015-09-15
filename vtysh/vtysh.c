@@ -3103,6 +3103,16 @@ DEFUN(vtysh_user_del,
     return delete_user(argv[0]);
 }
 
+DEFUN(vtysh_reboot,
+      vtysh_reboot_cmd,
+      "reboot",
+      "Reload the switch\n")
+{
+   char *arg[1];
+   arg[0] = "/sbin/reboot";
+   execute_command("sudo", 1 ,(const char **)arg);
+   return CMD_SUCCESS;
+}
 
 DEFUN (vtysh_demo_mac_tok,
        vtysh_demo_mac_tok_cmd,
@@ -3961,6 +3971,8 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_user_add_cmd);
   install_element (CONFIG_NODE, &vtysh_user_del_cmd);
+
+  install_element (ENABLE_NODE, &vtysh_reboot_cmd);
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
