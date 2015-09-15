@@ -724,6 +724,8 @@ vty_end_config (struct vty *vty)
     case MASC_NODE:
     case PIM_NODE:
     case VTY_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
       vty_config_unlock (vty);
       vty->node = ENABLE_NODE;
       break;
@@ -1135,6 +1137,8 @@ vty_stop_input (struct vty *vty)
     case MASC_NODE:
     case PIM_NODE:
     case VTY_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
       vty_config_unlock (vty);
       vty->node = ENABLE_NODE;
       break;

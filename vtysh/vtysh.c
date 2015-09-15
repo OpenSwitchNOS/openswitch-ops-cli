@@ -903,6 +903,18 @@ static struct cmd_node keychain_key_node =
       "%s(config-keychain-key)# "
    };
 
+static struct cmd_node dhcp_server_node =
+{
+  DHCP_SERVER_NODE,
+  "%s(config-dhcp-server)# ",
+};
+
+static struct cmd_node tftp_server_node =
+{
+  TFTP_SERVER_NODE,
+  "%s(config-tftp-server)# ",
+};
+
 #ifdef ENABLE_OVSDB
 static struct cmd_node vlan_interface_node =
 {
@@ -1226,6 +1238,8 @@ vtysh_exit (struct vty *vty)
     case RMAP_NODE:
     case VTY_NODE:
     case KEYCHAIN_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
       vtysh_execute("end");
       vtysh_execute("configure terminal");
       vty->node = CONFIG_NODE;
@@ -1401,6 +1415,54 @@ ALIAS (vtysh_exit_line_vty,
       "quit",
       "Exit current mode and down to previous mode\n")
 
+
+DEFUN (vtysh_dhcp_server,
+      vtysh_dhcp_server_cmd,
+      "dhcp-server",
+      "DHCP Server Configuration\n")
+{
+
+   vty->node = DHCP_SERVER_NODE;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_exit_dhcp_server,
+      vtysh_exit_dhcp_server_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_dhcp_server,
+      vtysh_quit_dhcp_server_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
+DEFUN (vtysh_tftp_server,
+      vtysh_tftp_server_cmd,
+      "tftp-server",
+      "TFTP Server Configuration\n")
+{
+
+   vty->node = TFTP_SERVER_NODE;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_exit_tftp_server,
+      vtysh_exit_tftp_server_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_tftp_server,
+      vtysh_quit_tftp_server_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
 
 #ifdef ENABLE_OVSDB
 DEFUN (vtysh_interface,
@@ -3700,6 +3762,8 @@ vtysh_init_vty (void)
    install_node (&keychain_key_node, NULL);
    install_node (&isis_node, NULL);
    install_node (&vty_node, NULL);
+   install_node (&dhcp_server_node, NULL);
+   install_node (&tftp_server_node, NULL);
 
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
@@ -3728,12 +3792,26 @@ vtysh_init_vty (void)
    vtysh_install_default (KEYCHAIN_NODE);
    vtysh_install_default (KEYCHAIN_KEY_NODE);
    vtysh_install_default (VTY_NODE);
+   vtysh_install_default (DHCP_SERVER_NODE);
+   vtysh_install_default (TFTP_SERVER_NODE);
 
 #ifdef ENABLE_OVSDB
   install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
   install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 #endif /* ENABLE_OVSDB */
+
+   install_element (CONFIG_NODE, &vtysh_dhcp_server_cmd);
+   // install_element (DHCP_SERVER_NODE, &vtysh_exit_dhcp_server_cmd);
+   // install_element (DHCP_SERVERNODE, &vtysh_quit_dhcp_server_cmd);
+   install_element (DHCP_SERVER_NODE, &config_exit_cmd);
+   install_element (DHCP_SERVER_NODE, &config_end_cmd);
+
+   install_element (CONFIG_NODE, &vtysh_tftp_server_cmd);
+   // install_element (TFTP_SERVER_NODE, &vtysh_exit_dhcp_server_cmd);
+   // install_element (TFTP_SERVER_NODE, &vtysh_quit_dhcp_server_cmd);
+   install_element (TFTP_SERVER_NODE, &config_exit_cmd);
+   install_element (TFTP_SERVER_NODE, &config_end_cmd);
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
    install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
@@ -3970,7 +4048,7 @@ vtysh_init_vty (void)
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();
-
+   dhcp_tftp_vty_init();
   /* Initialise System LED cli */
   led_vty_init();
   mgmt_intf_vty_init();

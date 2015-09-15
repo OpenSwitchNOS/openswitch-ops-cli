@@ -3236,6 +3236,8 @@ DEFUN (config_exit,
     case RMAP_NODE:
     case PIM_NODE:
     case VTY_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
       vty->node = CONFIG_NODE;
       break;
     case BGP_VPNV4_NODE:
@@ -3300,6 +3302,8 @@ DEFUN (config_end,
     case MASC_NODE:
     case PIM_NODE:
     case VTY_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
       vty_config_unlock (vty);
       vty->node = ENABLE_NODE;
       break;
