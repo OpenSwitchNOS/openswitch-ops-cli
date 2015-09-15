@@ -23,6 +23,9 @@
 #ifdef ENABLE_OVSDB
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <termios.h>
 #include <arpa/inet.h>
 #include <vty_utils.h>
 #include "vtysh/vtysh_ovsdb_if.h"
@@ -51,6 +54,7 @@
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 #include "openhalon-idl.h"
+#include <crypt.h>
 
 #ifdef ENABLE_OVSDB
 #include "intf_vty.h"
@@ -71,6 +75,8 @@
 
 #include "aaa_vty.h"
 #include "vtysh_utils.h"
+#include <termios.h>
+
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -2833,6 +2839,7 @@ static int check_user_group( const char *user, const char *group_name)
        pw = getpwnam(user);
        if (pw == NULL) {
            VLOG_DBG("Invalid User. Function = %s, Line = %d", __func__,__LINE__);
+           free(groups);
            return false;
        }
 
@@ -2840,15 +2847,17 @@ static int check_user_group( const char *user, const char *group_name)
 
        if (getgrouplist(user, pw->pw_gid, groups, &ngroups) == -1) {
            VLOG_DBG("Retrieving group list failed. Function = %s, Line = %d", __func__, __LINE__);
+           free(groups);
            return false;
        }
 
        /* check user exist in ovsdb_users group*/
        for (j = 0; j < ngroups; j++) {
            gr = getgrgid(groups[j]);
-           if(gr != NULL) {
+           if (gr != NULL) {
                if (!strcmp(gr->gr_name,group_name)) {
-               return true;
+                   free(groups);
+                   return true;
                }
            }
        }
@@ -2856,37 +2865,121 @@ static int check_user_group( const char *user, const char *group_name)
        return false;
 }
 
+/* Prompt for user to enter password */
+static char*
+get_password(const char *prompt)
+{
+    struct termios oflags, nflags;
+    enum { sizeof_passwd = 128 };
+    char *ret;
+    int i;
+    /* disabling echo */
+    tcflush(fileno(stdin),TCIFLUSH);
+    tcgetattr(fileno(stdin), &oflags);
+    nflags = oflags;
+    nflags.c_iflag &= ~(IUCLC|IXON|IXOFF|IXANY);
+    nflags.c_lflag &= ~(ECHO|ECHOE|ECHOK|ECHONL);
+    if(tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0) {
+        VLOG_DBG("setattr error");
+        get_password(prompt);
+    }
+    write(STDIN_FILENO,prompt,strlen(prompt));
+
+    ret = malloc(sizeof_passwd);
+    i = 0;
+    while (1) {
+        int r = read(STDIN_FILENO, &ret[i], 1);
+        if ((i == 0 && r == 0) || r < 0 ) {                     /* EOF (^D) with no password */
+            ret  = NULL;
+            break;
+        }
+        if (r == 0 || ret[i] == '\r' || ret[i] == '\n' || ++i == sizeof_passwd-1 ) {   /* EOF EOL */ /* EOL *//* line limit */
+            ret[i] = '\0';
+            break;
+        }
+    }
+    if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
+        vty_out(vty,"tcsetattr");
+        return CMD_SUCCESS;
+    }
+    return ret;
+}
+
 /*Function to set the user passsword */
-static int set_user_passwd(const char *user)
+static int
+set_user_passwd(const char *user)
 {
     int ret;
-    const char *arg[3];
-    arg[0] = "/bin/busybox.suid";
-    arg[1] = "passwd";
-    arg[2] = user;
+    struct crypt_data data;
+    data.initialized = 0;
 
-    //cannot change the password for the user root
-    if(!strcmp(user,"root")) {
-         vty_out(vty, "Permission denied.\n");
-         return CMD_SUCCESS;
-    }
-    ret = check_user_group(user,"ovsdb_users");
+    char *password = NULL;
+    char *passwd = NULL;
+    char *cp = NULL;
+    const char *arg[4];
+    arg[0] = USERMOD;
+    arg[1] = "-p";
+    arg[3] = CONST_CAST(char*, user);
 
-    //change the passwd if user is in ovsdb_user list
-    if (ret==1) {
-         execute_command("sudo", 3,(const char **)arg);
-         return CMD_SUCCESS;
+    /* Cannot change the password for the user root */
+    if (!strcmp(user,"root"))
+    {
+        vty_out(vty, "Permission denied\n");
+        return CMD_SUCCESS;
     }
-    else {
-         vty_out(vty, "Unknown User: %s.\n", user);
-         return CMD_SUCCESS;
+    ret = check_user_group(user, OVSDB_GROUP);
+
+    /* Change the passwd if user is in ovsdb_user list */
+    if (ret==1)
+    {
+        vty_out(vty,"Changing password for user %s %s", user, VTY_NEWLINE);
+        passwd = get_password("Enter new password: ");
+        if (!passwd)
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty, "Entered empty password.");
+        }
+
+        vty_out(vty, "%s", VTY_NEWLINE);
+        cp = get_password("Confirm new password: ");
+        if (!cp)
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty,"Entered empty password.");
+        }
+        if (strcmp(passwd,cp) != 0)
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty,"passwords do not match. password unchanged.%s", VTY_NEWLINE);
+            free(passwd);
+            free(cp);
+            return CMD_SUCCESS;
+        }
+        else
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty, "password updated successfully%s", VTY_NEWLINE);
+        }
+        /* Encrypt the password. String 'ab' is used to perturb the */
+        /* algorithm in  one of 4096 different ways. */
+        password = crypt_r(passwd,"ab",&data);
+        arg[2]=password;
+        execute_command("sudo", 4, (const char **)arg);
+        free(passwd);
+        free(cp);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+        vty_out(vty, "Unknown User: %s.\n", user);
+        return CMD_SUCCESS;
     }
 
 }
 #ifdef ENABLE_OVSDB
 DEFUN (vtysh_passwd,
        vtysh_passwd_cmd,
-       "passwd WORD",
+       "password WORD",
        "Change user password \n"
        "User whose password is to be changed\n")
 {
@@ -3050,59 +3143,127 @@ vtysh_prompt (void)
 
 #ifdef ENABLE_OVSDB
 
-DEFUN(vtysh_user_add,
-       vtysh_user_add_cmd,
-       "useradd WORD",
-       "Adding a new user\n"
-       "User name to be added\n")
+/* Function to create new user with password and add it to the ovsdb_users group*/
+static int
+create_new_vtysh_user(const char *user)
 {
-       char *arg[6];
-       arg[0] = "/usr/sbin/adduser";
-       arg[1] = "-G";
-       arg[2] = "ovsdb_users";
-       arg[3] = "-s";
-       arg[4] = "/usr/bin/vtysh";
-       arg[5] = CONST_CAST(char*,argv[0]);
-       execute_command("sudo", 6,(const char **)arg);
-       return CMD_SUCCESS;
+    struct crypt_data data;
+    data.initialized = 0;
+    int ret = 0;
+    char *password = NULL;
+    char *passwd = NULL;
+    char *cp = NULL;
+    /* If user already exist then don't create new user */
+    ret = check_user_group(user, OVSDB_GROUP);
+    if ((ret ==1) || (!strcmp("root", user)))
+    {
+        vty_out(vty, "user %s already exists.%s", user, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    vty_out(vty,"Adding user %s%s", user, VTY_NEWLINE);
+    passwd = get_password("Enter password: ");
+    if (!passwd)
+    {
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, "Entered empty password");
+    }
+    vty_out(vty, "%s", VTY_NEWLINE);
+    cp = get_password("Confirm password: ");
+    if (!cp)
+    {
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty,"Entered empty password");
+    }
+    if (strcmp(passwd,cp) != 0) {
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty,"passwords do not match.");
+        vty_out(vty,"user %s not added%s", user, VTY_NEWLINE);
+        free(cp);
+        free(passwd);
+        return CMD_SUCCESS;
+    }
+    /* Encrypt the password. String 'ab' is used to perturb the */
+    /* algorithm in  one of 4096 different ways. */
+    password = crypt_r(passwd,"ab",&data);
+    const char *arg[8];
+    arg[0] = USERADD;
+    arg[1] = "-p";
+    arg[2]= password;
+    arg[3] = "-g";
+    arg[4] = OVSDB_GROUP;
+    arg[5] = "-s";
+    arg[6] = VTYSH_PROMPT;
+    arg[7] = CONST_CAST(char*, user);
+    execute_command("sudo", 8,(const char **)arg);
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty, "User added successfully%s", VTY_NEWLINE);
+    free(cp);
+    free(passwd);
+    return CMD_SUCCESS;
 }
 
-static int delete_user(const char *user)
+DEFUN(vtysh_user_add,
+       vtysh_user_add_cmd,
+       "user add WORD",
+       "User account\n"
+       "Adding a new user account\n"
+       "User name to be added\n")
 {
-     int ret,n_users;
-     char *arg[2];
-     char *buf;
-     n_users = 0;
-     arg[0] = "/usr/sbin/deluser";
-     arg[1] = CONST_CAST(char*,user);
-     buf = getlogin();
+    return create_new_vtysh_user(argv[0]);
 
-     n_users = get_group_user_count("ovsdb_users");
-     ret = check_user_group(user,"ovsdb_users");
+}
 
-     // if user is not in ovsdb_users list and if not root then it is unknown user
-     if((ret == 0) && (strcmp(user,"root"))){
-          vty_out(vty, "Unknown user: %s.\n",user);
-          return CMD_SUCCESS;
-     }
+/* Delete the user account */
+static int
+delete_user(const char *user)
+{
+    int ret,n_users;
+    const char *arg[3];
+    char *buf;
+    n_users = 0;
+    arg[0] = USERDEL;
+    arg[1] = "-r";
+    arg[2] = CONST_CAST(char*, user);
+    buf = getlogin();
 
-     // cannot delete user by himself, root and last user
-     if((n_users<=1) || ((!strcmp(user,"root"))) || !(strcmp(buf,user))){
-          vty_out(vty, "Permission denied. \n");
-          return CMD_SUCCESS;
-     }
+    n_users = get_group_user_count(OVSDB_GROUP);
+    ret = check_user_group(user, OVSDB_GROUP);
 
-     //delete the user
-     if ((n_users >1) && (ret==1) ){
-          execute_command("sudo", 2,(const char **)arg);
-          return CMD_SUCCESS;
-     }
-     return CMD_SUCCESS;
+    /* If user is not in ovsdb_users list and if not root then it is unknown user*/
+    if ((ret == 0) && (strcmp(user, "root")))
+    {
+        vty_out(vty, "Unknown user: %s\n", user);
+        return CMD_SUCCESS;
+    }
+
+    /* Cannot delete user by himself, root and last user */
+    if (!strcmp(user, "root"))
+    {
+        vty_out(vty, "Permission denied. Cannot remove the root user.\n");
+        return CMD_SUCCESS;
+    }
+    if (n_users<=1)
+    {
+        vty_out(vty, "Cannot delete the last user %s.\n",user);
+        return CMD_SUCCESS;
+    }
+    if (!(strcmp(buf,user)))
+    {
+        vty_out(vty, "Permission denied. You are logged in as %s.\n",user);
+        return CMD_SUCCESS;
+    }
+
+    /* Delete the user*/
+    execute_command("sudo", 3, (const char **)arg);
+    return CMD_SUCCESS;
+
 }
 
 DEFUN(vtysh_user_del,
        vtysh_user_del_cmd,
-       "deluser WORD",
+       "user remove WORD",
+       "User account\n"
        "Delete a user account\n"
        "User name to be deleted\n")
 {
@@ -3963,8 +4124,9 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
-  install_element (CONFIG_NODE, &vtysh_user_add_cmd);
-  install_element (CONFIG_NODE, &vtysh_user_del_cmd);
+  install_element (ENABLE_NODE, &vtysh_passwd_cmd);
+  install_element (ENABLE_NODE, &vtysh_user_add_cmd);
+  install_element (ENABLE_NODE, &vtysh_user_del_cmd);
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();

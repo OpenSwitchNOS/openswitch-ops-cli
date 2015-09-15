@@ -91,6 +91,11 @@ struct vtysh_alias_data {
                           IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
                                                     IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
                                                                               IS_NETWORK_ADDRESS(i))
+#define USERADD "/usr/sbin/useradd"
+#define USERMOD "/usr/sbin/usermod"
+#define OVSDB_GROUP "ovsdb_users"
+#define VTYSH_PROMPT "/usr/bin/vtysh"
+#define USERDEL "/usr/sbin/userdel"
 
 enum ip_type {
     IPV4=0,
