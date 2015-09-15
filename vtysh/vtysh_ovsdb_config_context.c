@@ -406,7 +406,7 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
   data = smap_get(ifrow_aaa, SYSTEM_AAA_RADIUS);
   if (data)
   {
-    if (!VTYSH_STR_EQ(data, HALON_FALSE_STR))
+    if (!VTYSH_STR_EQ(data, OPS_FALSE_STR))
     {
       vtysh_ovsdb_cli_print(p_msg, "aaa authentication login radius");
     }
@@ -415,7 +415,7 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
   data = smap_get(ifrow_aaa, SYSTEM_AAA_FALLBACK);
   if (data)
   {
-    if (!VTYSH_STR_EQ(data, HALON_TRUE_STR))
+    if (!VTYSH_STR_EQ(data, OPS_TRUE_STR))
     {
       vtysh_ovsdb_cli_print(p_msg, "no aaa authentication login fallback error local");
     }
