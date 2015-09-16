@@ -18,7 +18,6 @@
 #    under the License.
 #
 
-from time import sleep
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -54,7 +53,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'vlan 1' in line:
                 vlan_created = True
-        assert vlan_created == True, 'Test to create VLAN - FAILED!'
+        assert (vlan_created is True), 'Test to create VLAN - FAILED!'
         return True
 
     def showVlanSummary(self):
@@ -77,7 +76,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'Number of existing VLANs: 4' in line:
                 vlan_summary_present = True
-        assert vlan_summary_present == True, \
+        assert (vlan_summary_present is True), \
             'Test "show vlan summary" command - FAILED!'
         return True
 
@@ -96,7 +95,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'vlan99' in line:
                 vlan_deleted = False
-        assert vlan_deleted == True, 'Test to delete VLAN - FAILED!'
+        assert (vlan_deleted is True), 'Test to delete VLAN - FAILED!'
         return True
 
     def addAccessVlanToInterface(self):
@@ -136,7 +135,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'vlan access 1' in line:
                 vlan_access_cmd_found = True
-        assert vlan_access_cmd_found == False, \
+        assert (vlan_access_cmd_found is False), \
             'Test "vlan access" command - FAILED!'
 
         s1.cmdCLI('exit')
@@ -197,7 +196,7 @@ class VLANCliTest(HalonTest):
             if 'vlan trunk allowed 1' in line:
                 vlan_trunk_allowed_cmd_found = False
 
-        assert vlan_trunk_allowed_cmd_found == True, \
+        assert (vlan_trunk_allowed_cmd_found is True), \
             'Test to add VLAN to interface - FAILED!'
 
         s1.cmdCLI('exit')
@@ -264,7 +263,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'vlan trunk native' in line:
                 vlan_trunk_native_cmd_found = True
-        assert vlan_trunk_native_cmd_found == False, \
+        assert (vlan_trunk_native_cmd_found is False), \
             'Test to add trunk native to interface - FAILED!'
 
         s1.cmdCLI('exit')
@@ -334,7 +333,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'vlan trunk native tag' in line:
                 return True
-        assert vlan_trunk_native_tag_present == False, \
+        assert (vlan_trunk_native_tag_present is False), \
             'Test add trunk native tag vlan to interface - FAILED!'
 
         s1.cmdCLI('exit')
@@ -387,7 +386,7 @@ class VLANCliTest(HalonTest):
             if 'vlan access 1' in line:
                 vlan_access_cmd_present = True
 
-        assert vlan_access_cmd_present == False, \
+        assert (vlan_access_cmd_present is False), \
             'Test to add access vlan to LAG - FAILED!'
         return True
 
@@ -434,7 +433,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'vlan trunk allowed 55' in line:
                 vlan_trunk_allowed_cmd_present = True
-        assert vlan_trunk_allowed_cmd_present == False, \
+        assert (vlan_trunk_allowed_cmd_present is False), \
             'Test to add trunk vlan to LAG - FAILED!'
         return True
 
@@ -539,7 +538,7 @@ class VLANCliTest(HalonTest):
         for line in lines:
             if 'vlan trunk native tag' in line:
                 vlan_trunk_native_tag_present = True
-        assert vlan_trunk_native_tag_present == False, \
+        assert (vlan_trunk_native_tag_present is False), \
             'Test to add trunk native tag vlan to LAG - FAILED!'
         return True
 
@@ -551,12 +550,13 @@ class VLANCliTest(HalonTest):
         s1.cmdCLI('conf t')
         s1.cmdCLI('vlan 1')
         s1.cmdCLI('no shutdown')
-        out = s1.cmdCLI('do show running-config')
+        out = s1.cmd('ovs-vsctl list vlan vlan1')
         lines = out.split('\n')
         success = 0
         for line in lines:
-            if 'no shutdown' in line:
-                success += 1
+            if 'admin' in line:
+                if 'up' in line:
+                    success += 1
 
         s1.cmdCLI('description asdf')
         out = s1.cmdCLI('do show running-config')
