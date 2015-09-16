@@ -1557,7 +1557,8 @@ DEFUN(cli_lag_no_vlan_access,
         }
     }
 
-    if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) != 0)
+    if (vlan_port_row->vlan_mode != NULL &&
+        strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) != 0)
     {
         vty_out(vty, "The LAG is not in access mode%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
