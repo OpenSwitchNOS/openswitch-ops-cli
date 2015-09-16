@@ -103,8 +103,8 @@ struct rt_map_context rmp_context;
 
 VLOG_DEFINE_THIS_MODULE(bgp_vty);
 
-/* Structure definition for protocol specific column in the
- * OVSDB Route table. These fields are owned by bgpd and shared
+/* Structure definition for path attributes column in the
+ * OVSDB BGP_Route table. These fields are owned by bgpd and shared
  * with CLI daemon.
  */
 typedef struct route_psd_bgp_s {
@@ -112,7 +112,6 @@ typedef struct route_psd_bgp_s {
     const char *aspath;
     const char *origin;
     int local_pref;
-    const char *peer_id;
     bool internal;
     bool ibgp;
     const char *uptime;
@@ -352,38 +351,40 @@ print_route_status(struct vty *vty, route_psd_bgp_t *ppsd)
         vty_out (vty, " ");
 }
 
+
+
 static void
-get_rib_protocol_specific_data(const struct ovsrec_route *rib_row, route_psd_bgp_t *data)
+bgp_get_rib_path_attributes(const struct ovsrec_bgp_route *rib_row,
+                            route_psd_bgp_t *data)
 {
     assert(data);
     memset(data, 0, sizeof(*data));
-    data->flags = smap_get_int(&rib_row->protocol_specific,
-                               OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_FLAGS, 0);
-    data->aspath = smap_get(&rib_row->protocol_specific,
-                            OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_AS_PATH);
-    data->origin = smap_get(&rib_row->protocol_specific,
-                            OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_ORIGIN);
-    data->local_pref = smap_get_int(&rib_row->protocol_specific,
-                                    OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_LOC_PREF, 0);
-    data->peer_id = smap_get(&rib_row->protocol_specific,
-                             OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_PEER_ID);
+
+    data->flags = smap_get_int(&rib_row->path_attributes,
+                               OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_FLAGS, 0);
+    data->aspath = smap_get(&rib_row->path_attributes,
+                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_AS_PATH);
+    data->origin = smap_get(&rib_row->path_attributes,
+                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ORIGIN);
+    data->local_pref = smap_get_int(&rib_row->path_attributes,
+                                    OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_LOC_PREF, 0);
     const char *value;
-    value = smap_get(&rib_row->protocol_specific,
-                     OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_INTERNAL);
+    value = smap_get(&rib_row->path_attributes,
+                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_INTERNAL);
     if (!strcmp(value, "true")) {
         data->internal = 1;
     } else {
         data->internal = 0;
     }
-    value = smap_get(&rib_row->protocol_specific,
-                     OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_IBGP);
+    value = smap_get(&rib_row->path_attributes,
+                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_IBGP);
     if (!strcmp(value, "true")) {
         data->ibgp = 1;
     } else {
         data->ibgp = 0;
     }
-    data->uptime = smap_get(&rib_row->protocol_specific,
-                            OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_UPTIME);
+    data->uptime = smap_get(&rib_row->path_attributes,
+                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_UPTIME);
     return;
 }
 
@@ -439,19 +440,78 @@ bgp_get_peer_weight(const struct ovsrec_bgp_router *bgp_row,
     const struct ovsrec_bgp_neighbor *bgp_peer = NULL;
     assert(rib_row);
     assert(peer);
+
+    if (strncmp(peer, "Static", 6) == 0) {
+        return BGP_ATTR_DEFAULT_WEIGHT;
+    }
     bgp_peer = bgp_peer_lookup(bgp_row, peer);
     if (!bgp_peer) {
-        VLOG_INFO("No BGP peer info for route %s\n",
-                  rib_row->prefix);
+        VLOG_ERR("BGP peer info not found for route %s\n",
+                 rib_row->prefix);
         return BGP_ATTR_DEFAULT_WEIGHT;
     } else {
         if (bgp_peer->n_weight) {
             return *bgp_peer->weight;
         } else {
-            VLOG_INFO("BGP peer %s weight not configured\n",
+            VLOG_DBG("BGP peer %s weight not configured\n",
                       get_bgp_neighbor_name_from_bgp_router(bgp_row, peer));
             return 0;
         }
+    }
+}
+
+static int
+bgp_get_rib_count(void)
+{
+    int count = 0;
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    OVSREC_BGP_ROUTE_FOR_EACH(rib_row, idl) {
+        count++;
+    }
+    return count;
+}
+
+static int
+bgp_rib_cmp(void *a, void *b)
+{
+    int res;
+    struct ovsrec_bgp_route *rt1 = (struct ovsrec_bgp_route *)a;
+    struct ovsrec_bgp_route *rt2 = (struct ovsrec_bgp_route *)b;
+    res = strcmp(rt1->prefix, rt2->prefix);
+    if (res == 0) {
+        // compare nexthops
+        if (rt1->bgp_nexthops[0] && rt2->bgp_nexthops[0])
+            return (strcmp(rt1->bgp_nexthops[0]->ip_address,
+                           rt2->bgp_nexthops[0]->ip_address));
+    } else {
+        return res;
+    }
+}
+
+static void
+bgp_rib_sort_init(struct ovsrec_bgp_route **rib_sorted, int count)
+{
+    int kk = 0;
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    assert(*rib_sorted == NULL);
+    *rib_sorted = (struct ovsrec_bgp_route *)calloc(count,
+                                                    sizeof(struct ovsrec_bgp_route));
+    OVSREC_BGP_ROUTE_FOR_EACH(rib_row, idl) {
+        memcpy((*rib_sorted)+kk, rib_row, sizeof(struct ovsrec_bgp_route));
+        kk++;
+    }
+    qsort((void *)*rib_sorted,
+          count,
+          sizeof(struct ovsrec_bgp_route),
+          bgp_rib_cmp);
+}
+
+static void
+bgp_rib_sort_fin(struct ovsrec_bgp_route **rib_sorted)
+{
+    if (*rib_sorted) {
+        free(*rib_sorted);
+        *rib_sorted = NULL;
     }
 }
 
@@ -459,19 +519,21 @@ bgp_get_peer_weight(const struct ovsrec_bgp_router *bgp_row,
 static void show_routes (struct vty *vty,
                          const struct ovsrec_bgp_router *bgp_row)
 {
-    const struct ovsrec_route *rib_row = NULL;
-    int ii, def_metric = 0;
-    const struct ovsrec_nexthop *nexthop_row = NULL;
-
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    int ii = 0, def_metric = 0, kk = 0;
+    const struct ovsrec_bgp_nexthop *nexthop_row = NULL;
     const struct ovsrec_bgp_neighbor *bgp_peer = NULL;
     route_psd_bgp_t psd, *ppsd = NULL;
+    struct ovsrec_bgp_route *rib_sorted = NULL;
+    int count = bgp_get_rib_count();
 
     ppsd = &psd;
-    // Read BGP routes from Route table
-    OVSREC_ROUTE_FOR_EACH(rib_row, idl) {
-        if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
-            continue;
-        get_rib_protocol_specific_data(rib_row, ppsd);
+    bgp_rib_sort_init(&rib_sorted, count);
+
+    // Read BGP routes from BGP local RIB
+    for (kk = 0; kk < count; kk++) {
+        rib_row = &rib_sorted[kk];
+        bgp_get_rib_path_attributes(rib_row, ppsd);
         print_route_status(vty, ppsd);
         if (rib_row->prefix) {
             int len = 0;
@@ -482,15 +544,16 @@ static void show_routes (struct vty *vty,
             // nexthop
             if (!strcmp(rib_row->address_family, OVSREC_ROUTE_ADDRESS_FAMILY_IPV4)) {
                 // Get the nexthop list
-                VLOG_DBG("No. of next hops : %d", rib_row->n_nexthops);
-                for (ii = 0; ii < rib_row->n_nexthops; ii++) {
-                    if (ii != 0)
+                VLOG_DBG("No. of next hops : %d", rib_row->n_bgp_nexthops);
+                for (ii = 0; ii < rib_row->n_bgp_nexthops; ii++) {
+                    if (ii != 0) {
                         vty_out (vty, VTY_NEWLINE);
-                    vty_out (vty, "%*s", NET_BUFSZ, " ");
-                    nexthop_row = rib_row->nexthops[ii];
+                        vty_out (vty, "%*s", NET_BUFSZ, " ");
+                    }
+                    nexthop_row = rib_row->bgp_nexthops[ii];
                     vty_out (vty, "%-19s", nexthop_row->ip_address);
                 }
-                if (!rib_row->n_nexthops)
+                if (!rib_row->n_bgp_nexthops)
                     vty_out (vty, "%-19s", "0.0.0.0");
                 if (rib_row->n_metric)
                     vty_out (vty, "%7d", *rib_row->metric);
@@ -498,22 +561,10 @@ static void show_routes (struct vty *vty,
                     vty_out (vty, "%7d", def_metric);
                 // Print local preference
                 vty_out (vty, "%7d", ppsd->local_pref);
-                // Print weight
-                bgp_peer = bgp_peer_lookup(bgp_row, ppsd->peer_id);
-                if (!bgp_peer) {
-                    VLOG_DBG("Failed to get BGP peer for route %s\n",
-                             rib_row->prefix);
-                    vty_out (vty, "%7d ", BGP_ATTR_DEFAULT_WEIGHT);
-                } else {
-                    if (bgp_peer->n_weight) {
-                        vty_out (vty, "%7d ", *bgp_peer->weight);
-                    } else {
-                        VLOG_INFO("BGP peer %s weight not configured\n",
-                                 get_bgp_neighbor_name_from_bgp_router(bgp_row,
-                                                                ppsd->peer_id));
-                        vty_out (vty, "%7d ", 0);
-                    }
-                }
+                // Print weight for non-static routes
+                vty_out (vty, "%7d ", bgp_get_peer_weight(bgp_row,
+                                                          rib_row,
+                                                          rib_row->peer));
                 // Print AS path
                 if (ppsd->aspath) {
                     vty_out(vty, "%s", ppsd->aspath);
@@ -529,6 +580,8 @@ static void show_routes (struct vty *vty,
             vty_out (vty, VTY_NEWLINE);
         }
     }
+    vty_out(vty, "Total number of entries %d\n", count);
+    bgp_rib_sort_fin(&rib_sorted);
 }
 
 DEFUN(vtysh_show_ip_bgp,
@@ -545,36 +598,28 @@ DEFUN(vtysh_show_ip_bgp,
 
     vty_out (vty, BGP_SHOW_SCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
     vty_out (vty, BGP_SHOW_OCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
-
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
-    if (vrf_row == NULL) {
-        VLOG_DBG("no vrf found");
+    bgp_row = ovsrec_bgp_router_first(idl);
+    if (!bgp_row) {
+        vty_out(vty, "%% No bgp router configured\n");
+        return CMD_SUCCESS;
     }
 
-    for (i = 0; i < vrf_row->n_bgp_routers; i++) {
-        if (vrf_row->n_bgp_routers <= 0) {
-            vty_out(vty, "No bgp router configured\n");
-            return CMD_SUCCESS;
-        }
-
-        // HALON_TODO: Need to update this when multiple BGP routers are supported.
-        char *id = vrf_row->value_bgp_routers[i]->router_id;
-        if (id) {
-            vty_out (vty, "Local router-id %s\n", id);
-        } else {
-            vty_out (vty, "Router-id not configured\n");
-        }
-        vty_out (vty, BGP_SHOW_HEADER, VTY_NEWLINE);
-
-        show_routes(vty, vrf_row->value_bgp_routers[i]);
+    // OPS_TODO: Need to update this when multiple BGP routers are supported.
+    char *id = bgp_row->router_id;
+    if (id) {
+        vty_out (vty, "Local router-id %s\n", id);
+    } else {
+        vty_out (vty, "Router-id not configured\n");
     }
+    vty_out (vty, BGP_SHOW_HEADER, VTY_NEWLINE);
+    show_routes(vty, bgp_row);
     return CMD_SUCCESS;
 }
 
 static void
 bgp_get_paths_count_for_prefix(const char *ip, int *count, int *best)
 {
-    const struct ovsrec_route *rib_row;
+    const struct ovsrec_bgp_route *rib_row;
     route_psd_bgp_t psd, *ppsd = NULL;
 
     assert(ip);
@@ -583,10 +628,8 @@ bgp_get_paths_count_for_prefix(const char *ip, int *count, int *best)
     ppsd = &psd;
     *count = *best = 0;
     // Get all routes matching this prefix
-    OVSREC_ROUTE_FOR_EACH(rib_row, idl) {
-        if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
-            continue;
-        get_rib_protocol_specific_data(rib_row, ppsd);
+    OVSREC_BGP_ROUTE_FOR_EACH(rib_row, idl) {
+        bgp_get_rib_path_attributes(rib_row, ppsd);
         if (rib_row->prefix
             && strcmp(rib_row->prefix, ip) == 0) {
             (*count)++;
@@ -599,7 +642,7 @@ bgp_get_paths_count_for_prefix(const char *ip, int *count, int *best)
 static int
 show_route_detail(struct vty *vty,
                   const struct ovsrec_bgp_router *bgp_row,
-                  const struct ovsrec_route *rib_row,
+                  const struct ovsrec_bgp_route *rib_row,
                   boolean print_header)
 {
     int ret;
@@ -616,7 +659,7 @@ show_route_detail(struct vty *vty,
         vty_out (vty, "address is malformed%s", VTY_NEWLINE);
         return CMD_WARNING;
     }
-    get_rib_protocol_specific_data(rib_row, ppsd);
+    bgp_get_rib_path_attributes(rib_row, ppsd);
 
     if (print_header) {
         vty_out (vty, "BGP routing table entry for %s%s",
@@ -625,7 +668,6 @@ show_route_detail(struct vty *vty,
         vty_out (vty, "Paths: (%d available", count);
         if (best) {
             vty_out (vty, ", best #%d", best);
-            //vty_out (vty, ", table Routing Table)");
         }
         else {
             vty_out (vty, ", no best path");
@@ -647,20 +689,20 @@ show_route_detail(struct vty *vty,
     vty_out (vty, "%s", VTY_NEWLINE);
 
     /* Line2 display Next-hop, Neighbor, Router-id */
-    if (!rib_row->n_nexthops)
+    if (!rib_row->n_bgp_nexthops)
         vty_out (vty, "    %s", "0.0.0.0");
     else
-        vty_out (vty, "    %s", rib_row->nexthops[0]->ip_address);
-    if (strncmp(ppsd->peer_id, "Static", 6) == 0) {
+        vty_out (vty, "    %s", rib_row->bgp_nexthops[0]->ip_address);
+    if (strncmp(rib_row->peer, "Static", 6) == 0) {
         vty_out (vty, " from %s ",
                  p.family == AF_INET ? "0.0.0.0" : "::");
         vty_out (vty, "(%s)", bgp_row->router_id);
         static_route = 1;
     } else {
-        if (!ppsd->flags & BGP_INFO_VALID)
+        if (!(ppsd->flags & BGP_INFO_VALID))
             vty_out (vty, " (inaccessible)");
-        vty_out (vty, " from %s", ppsd->peer_id);
-        // HALON_TODO: display peer router_id when it is saved in table.
+        vty_out (vty, " from %s", rib_row->peer);
+        // OPS_TODO: display peer router_id when it is saved in table.
     }
     vty_out (vty, "%s", VTY_NEWLINE);
     /* Line 3 display Origin, Med, Locpref, Weight, valid,
@@ -669,7 +711,9 @@ show_route_detail(struct vty *vty,
     int metric = (rib_row->n_metric) ? *rib_row->metric : 0;
     vty_out (vty, ", metric %d", metric);
     vty_out (vty, ", localpref %d", ppsd->local_pref);
-    vty_out (vty, ", weight %d", bgp_get_peer_weight(bgp_row, rib_row, ppsd->peer_id));
+    vty_out (vty, ", weight %d", bgp_get_peer_weight(bgp_row,
+                                                     rib_row,
+                                                     rib_row->peer));
     if (! (ppsd->flags & BGP_INFO_HISTORY))
         vty_out (vty, ", valid");
     if (!static_route) {
@@ -696,49 +740,44 @@ bgp_show_route(char *vrf_name, struct vty *vty, const char *view_name, const cha
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_bgp_router *bgp_row = NULL;
-    const struct ovsrec_route *rib_row = NULL;
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    struct ovsrec_bgp_route *rib_sorted = NULL;
     struct prefix match;
-    int cmpLen = 0, found = 0, ret;
+    int cmpLen = 0, found = 0, ret, ii = 0;
     boolean print_header = 0;
-    int i = 0;
+    int count = bgp_get_rib_count();
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
-    if (vrf_row == NULL) {
-        VLOG_ERR("no vrf found");
+    bgp_row = ovsrec_bgp_router_first(idl);
+    if (!bgp_row) {
+        vty_out(vty, "%% No bgp router configured\n");
+        return CMD_SUCCESS;
+    }
+    if (!ip_str)
+        return CMD_WARNING;
+    cmpLen = strlen(ip_str);
+    ret = str2prefix (ip_str, &match);
+    if (!ret) {
+        vty_out (vty, "%% Address is malformed%s", VTY_NEWLINE);
+        return CMD_WARNING;
     }
 
-    for (i = 0; i < vrf_row->n_bgp_routers; i++) {
-        if (vrf_row->n_bgp_routers <= 0) {
-            vty_out(vty, "No bgp router configured\n");
-            return CMD_SUCCESS;
-        }
-
-        if (!ip_str)
-            return CMD_WARNING;
-        cmpLen = strlen(ip_str);
-        ret = str2prefix (ip_str, &match);
-        if (!ret) {
-            vty_out (vty, "address is malformed%s", VTY_NEWLINE);
-            return CMD_WARNING;
-        }
-        OVSREC_ROUTE_FOR_EACH(rib_row, idl) {
-            if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
-                continue;
-            if (rib_row->prefix
-                 && strncmp(rib_row->prefix, ip_str, cmpLen) == 0) {
-                if (!found) {
-                    found = 1;
-                    print_header = 1;
-                }
-                show_route_detail(vty, vrf_row->value_bgp_routers[i],
-                                  rib_row, print_header);
-                print_header = 0;
+    bgp_rib_sort_init(&rib_sorted, count);
+    for (ii = 0; ii < count; ii++) {
+        rib_row = &rib_sorted[ii];
+        if (rib_row->prefix
+            && strncmp(rib_row->prefix, ip_str, cmpLen) == 0) {
+            if (!found) {
+                found = 1;
+                print_header = 1;
             }
+            show_route_detail(vty, bgp_row, rib_row, print_header);
+            print_header = 0;
         }
-        if(!found) {
-            vty_out (vty, "%% Network not in table%s", VTY_NEWLINE);
-            return CMD_WARNING;
-        }
+    }
+    bgp_rib_sort_fin(&rib_sorted);
+    if(!found) {
+        vty_out (vty, "%% Network not in table%s", VTY_NEWLINE);
+        return CMD_WARNING;
     }
     return CMD_SUCCESS;
 }
