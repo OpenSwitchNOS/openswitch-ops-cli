@@ -1013,7 +1013,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          vty_out (vty, " Hardware: Ethernet, MAC Address: %s %s", ifrow->mac_in_use, VTY_NEWLINE);
 
          datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
-         if(NULL!=datum) intVal = datum->keys[0].integer;
+         if ((NULL!=datum) && (datum->n >0)) intVal = datum->keys[0].integer;
 
          vty_out(vty, " MTU %ld %s", intVal, VTY_NEWLINE);
 
@@ -1028,7 +1028,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          intVal = 0;
          datum = ovsrec_interface_get_link_speed(ifrow, OVSDB_TYPE_INTEGER);
-         if(NULL!=datum) intVal = datum->keys[0].integer;
+         if ((NULL!=datum) && (datum->n >0)) intVal = datum->keys[0].integer;
          vty_out(vty, " Speed %ld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
 
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
@@ -1089,7 +1089,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
          vty_out(vty, "   %10ld dropped  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
-
+#ifdef NOT_YET /* These fields are not supported by vswitchd now */
          atom.string = interface_statistics_keys[5];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
          vty_out(vty, "   %10ld short frame    ", (index == UINT_MAX)? 0 : datum->values[index].integer);
@@ -1097,7 +1097,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
          vty_out(vty, "   %10ld overrun  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
          vty_out(vty, "%s", VTY_NEWLINE);
-
+#endif
          atom.string = interface_statistics_keys[7];
          index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
          vty_out(vty, "   %10ld CRC/FCS  ", (index == UINT_MAX)? 0 : datum->values[index].integer);
