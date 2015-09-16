@@ -48,7 +48,7 @@ extern struct ovsdb_idl *idl;
 
 static int ecmp_config_set_status(bool status, const char * field)
 {
-    const struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_system *ovs_row = NULL;
     enum ovsdb_idl_txn_status txn_status;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     bool rc = false;
@@ -62,7 +62,7 @@ static int ecmp_config_set_status(bool status, const char * field)
     }
 
     /* Need to set ecmp_config status */
-    ovs_row = ovsrec_open_vswitch_first(idl);
+    ovs_row = ovsrec_system_first(idl);
 
     if(!ovs_row)
     {
@@ -71,7 +71,7 @@ static int ecmp_config_set_status(bool status, const char * field)
         return CMD_OVSDB_FAILURE;
     }
 
-    rc = smap_get_bool(&ovs_row->ecmp_config, field, OPEN_VSWITCH_ECMP_CONFIG_ENABLE_DEFAULT);
+    rc = smap_get_bool(&ovs_row->ecmp_config, field, SYSTEM_ECMP_CONFIG_ENABLE_DEFAULT);
 
     if (rc != status) {
         smap_clone(&smap_ecmp_config, &ovs_row->ecmp_config);
@@ -80,7 +80,7 @@ static int ecmp_config_set_status(bool status, const char * field)
         VLOG_DBG("%s Set the ecmp config to status = %s old state = %s",
                  __func__, status?"enabled":"disabled",
                  rc?"enabled":"disabled");
-        ovsrec_open_vswitch_set_ecmp_config(ovs_row, &smap_ecmp_config);
+        ovsrec_system_set_ecmp_config(ovs_row, &smap_ecmp_config);
         smap_destroy(&smap_ecmp_config);
     }
 
@@ -105,7 +105,7 @@ DEFUN (ip_ecmp_status,
        ECMP_CONFIG_DISABLE_STR)
 {
     VLOG_DBG("We are seting status of the ecmp");
-    return ecmp_config_set_status(false, OPEN_VSWITCH_ECMP_CONFIG_STATUS);
+    return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_STATUS);
 }
 
 DEFUN (ip_ecmp_load_balance_src_ip,
@@ -118,7 +118,7 @@ DEFUN (ip_ecmp_load_balance_src_ip,
        "Disable load balancing by source IP\n")
 {
     VLOG_DBG("Add hash option Source IP");
-    return ecmp_config_set_status(false, OPEN_VSWITCH_ECMP_CONFIG_HASH_SRC_IP);
+    return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_SRC_IP);
 }
 
 
@@ -132,7 +132,7 @@ DEFUN (ip_ecmp_load_balance_dst_ip,
        "Disable load balancing by destination IP\n")
 {
     VLOG_DBG("Add hash option Destination IP");
-    return ecmp_config_set_status(false, OPEN_VSWITCH_ECMP_CONFIG_HASH_DST_IP);
+    return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_DST_IP);
 }
 
 DEFUN (ip_ecmp_load_balance_dst_port,
@@ -145,7 +145,7 @@ DEFUN (ip_ecmp_load_balance_dst_port,
        "Disable load balancing by destination port\n")
 {
     VLOG_DBG("Add hash option Destination Port");
-    return ecmp_config_set_status(false, OPEN_VSWITCH_ECMP_CONFIG_HASH_DST_PORT);
+    return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_DST_PORT);
 }
 
 DEFUN (ip_ecmp_load_balance_src_port,
@@ -158,7 +158,7 @@ DEFUN (ip_ecmp_load_balance_src_port,
        "Disable load balancing by source port\n")
 {
     VLOG_DBG("Add hash option Source Port");
-    return ecmp_config_set_status(false, OPEN_VSWITCH_ECMP_CONFIG_HASH_SRC_PORT);
+    return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_SRC_PORT);
 }
 
 DEFUN (no_ip_ecmp_status,
@@ -170,7 +170,7 @@ DEFUN (no_ip_ecmp_status,
        ECMP_CONFIG_DISABLE_STR)
 {
     VLOG_DBG("We are setting the ecmp state");
-    return ecmp_config_set_status(true, OPEN_VSWITCH_ECMP_CONFIG_STATUS);
+    return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_STATUS);
 }
 
 DEFUN (no_ip_ecmp_load_balance_src_ip,
@@ -184,7 +184,7 @@ DEFUN (no_ip_ecmp_load_balance_src_ip,
        "Disable load balancing by source IP\n")
 {
     VLOG_DBG("Delete hash option Source IP");
-    return ecmp_config_set_status(true, OPEN_VSWITCH_ECMP_CONFIG_HASH_SRC_IP);
+    return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_SRC_IP);
 }
 
 
@@ -199,7 +199,7 @@ DEFUN (no_ip_ecmp_load_balance_dst_ip,
        "Disable load balancing by destination IP\n")
 {
     VLOG_DBG("Add hash option Destination IP");
-    return ecmp_config_set_status(true, OPEN_VSWITCH_ECMP_CONFIG_HASH_DST_IP);
+    return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_DST_IP);
 }
 
 DEFUN (no_ip_ecmp_load_balance_dst_port,
@@ -213,7 +213,7 @@ DEFUN (no_ip_ecmp_load_balance_dst_port,
        "Disable load balancing by destination port\n")
 {
     VLOG_DBG("Add hash option Destination Port");
-    return ecmp_config_set_status(true, OPEN_VSWITCH_ECMP_CONFIG_HASH_DST_PORT);
+    return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_DST_PORT);
 }
 
 DEFUN (no_ip_ecmp_load_balance_src_port,
@@ -227,7 +227,7 @@ DEFUN (no_ip_ecmp_load_balance_src_port,
        "Disable load balancing by source port\n")
 {
     VLOG_DBG("Add hash option Source Port");
-    return ecmp_config_set_status(true, OPEN_VSWITCH_ECMP_CONFIG_HASH_SRC_PORT);
+    return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_SRC_PORT);
 }
 
 DEFUN (show_ip_ecmp,
@@ -237,8 +237,8 @@ DEFUN (show_ip_ecmp,
        IP_STR
        "ECMP Configuration\n")
 {
-    const struct ovsrec_open_vswitch *ovs_row = NULL;
-    ovs_row = ovsrec_open_vswitch_first(idl);
+    const struct ovsrec_system *ovs_row = NULL;
+    ovs_row = ovsrec_system_first(idl);
 
     if(!ovs_row)
     {

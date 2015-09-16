@@ -67,13 +67,13 @@
                                           "Transfers logs to remote host \n" \
                                           "URI of the remote host. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X' \n"
 
-#define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD "period"
-#define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE "maxsize"
-#define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET "target"
+#define SYSTEM_LOGROTATE_CONFIG_MAP_PERIOD "period"
+#define SYSTEM_LOGROTATE_CONFIG_MAP_MAXSIZE "maxsize"
+#define SYSTEM_LOGROTATE_CONFIG_MAP_TARGET "target"
 
-#define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT "daily"
-#define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT "10"
-#define OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT "local"
+#define SYSTEM_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT "daily"
+#define SYSTEM_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT "10"
+#define SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT "local"
 
 void logrotate_vty_init();
 

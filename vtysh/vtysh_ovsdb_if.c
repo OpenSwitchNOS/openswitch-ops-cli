@@ -186,8 +186,8 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_vrfs);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_bridges);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_vrfs);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_bridges);
 }
 
 static void
@@ -264,7 +264,7 @@ radius_server_ovsdb_init()
 {
 
     /* Add radius-server columns */
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_radius_servers);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_radius_servers);
     ovsdb_idl_add_table(idl, &ovsrec_table_radius_server);
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_retries);
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_ip_address);
@@ -348,7 +348,7 @@ system_ovsdb_init()
 static void
 logrotate_ovsdb_init()
 {
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_logrotate_config);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_logrotate_config);
 }
 
 static void
@@ -370,14 +370,14 @@ vlan_ovsdb_init()
 static void
 mgmt_intf_ovsdb_init()
 {
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_mgmt_intf_status);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_mgmt_intf);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_mgmt_intf_status);
 }
 
 static void
 lacp_ovsdb_init()
 {
-   ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lacp_config);
+   ovsdb_idl_add_column(idl, &ovsrec_system_col_lacp_config);
    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
 }
@@ -402,25 +402,25 @@ ovsdb_init(const char *db_path)
     latch_init(&ovsdb_latch);
 
     /* Add hostname columns */
-    ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_hostname);
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
     /* Add AAA columns */
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_aaa);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_aaa);
 
     /* Add Auto Provision Column */
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_auto_provisioning_status);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_auto_provisioning_status);
 
     /* Add tables and columns for LLDP configuration */
-    ovsdb_idl_add_table(idl, &ovsrec_table_open_vswitch);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_cur_cfg);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_system_mac);
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_cur_cfg);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_lldp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_system_mac);
 
     /* Add columns for ECMP configuration */
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_ecmp_config);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
 
     /* Interface tables */
     intf_ovsdb_init();
@@ -510,15 +510,15 @@ void vtysh_ovsdb_init(int argc, char *argv[])
 
 /*
  * The set command to set the hostname column in the
- * open_vswitch table from the set-hotname command
+ * system table from the set-hotname command
  */
 void vtysh_ovsdb_hostname_set(const char* in)
 {
-    const struct ovsrec_open_vswitch *ovs= NULL;
+    const struct ovsrec_system *ovs= NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status = TXN_ERROR;
 
-    ovs = ovsrec_open_vswitch_first(idl);
+    ovs = ovsrec_system_first(idl);
     if(ovs)
     {
         status_txn = cli_do_config_start();
@@ -529,7 +529,7 @@ void vtysh_ovsdb_hostname_set(const char* in)
         }
         else
         {
-          ovsrec_open_vswitch_set_hostname(ovs, in);
+          ovsrec_system_set_hostname(ovs, in);
           status = cli_do_config_finish(status_txn);
         }
         if(!(status == TXN_SUCCESS || status == TXN_UNCHANGED))
@@ -537,18 +537,18 @@ void vtysh_ovsdb_hostname_set(const char* in)
     }
     else
     {
-        VLOG_ERR("unable to retrieve any open_vswitch table rows");
+        VLOG_ERR("unable to retrieve any system table rows");
     }
 }
 
 /*
- * The get command to read from the ovsdb open_vswitch table
+ * The get command to read from the ovsdb system table
  * hostname column from the vtysh get-hostname command
  */
 char* vtysh_ovsdb_hostname_get()
 {
-    const struct ovsrec_open_vswitch *ovs;
-    ovs = ovsrec_open_vswitch_first(idl);
+    const struct ovsrec_system *ovs;
+    ovs = ovsrec_system_first(idl);
 
     if(ovs)
     {
@@ -556,7 +556,7 @@ char* vtysh_ovsdb_hostname_get()
     }
     else
     {
-        VLOG_ERR("unable to  retrieve any open_vswitch table rows");
+        VLOG_ERR("unable to  retrieve any system table rows");
     }
 
     return NULL;
@@ -584,7 +584,7 @@ bool ovsdb_cfg_initialized()
 {
   if(cur_cfg_no < 1)
   {
-    const struct ovsrec_open_vswitch* ovs = ovsrec_open_vswitch_first(idl);
+    const struct ovsrec_system* ovs = ovsrec_system_first(idl);
     if(ovs != NULL)
     {
       cur_cfg_no = ovs->cur_cfg;
@@ -833,12 +833,12 @@ vtysh_ovsdb_main_thread(void *arg)
  */
 bool check_iface_in_bridge(const char *if_name)
 {
-  const struct ovsrec_open_vswitch *ovs_row = NULL;
+  const struct ovsrec_system *ovs_row = NULL;
   struct ovsrec_bridge *br_cfg = NULL;
   struct ovsrec_port *port_cfg = NULL;
   struct ovsrec_interface *iface_cfg = NULL;
   size_t i, j, k;
-  ovs_row = ovsrec_open_vswitch_first(idl);
+  ovs_row = ovsrec_system_first(idl);
   for (i = 0; i < ovs_row->n_bridges; i++) {
     br_cfg = ovs_row->bridges[i];
     for (j = 0; j < br_cfg->n_ports; j++) {
@@ -862,11 +862,11 @@ bool check_iface_in_bridge(const char *if_name)
 */
 bool check_port_in_bridge(const char *port_name)
 {
-    const struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_system *ovs_row = NULL;
     struct ovsrec_bridge *br_cfg = NULL;
     struct ovsrec_port *port_cfg = NULL;
     size_t i, j;
-    ovs_row = ovsrec_open_vswitch_first(idl);
+    ovs_row = ovsrec_system_first(idl);
     if (ovs_row == NULL)
     {
         return false;
@@ -888,12 +888,12 @@ bool check_port_in_bridge(const char *port_name)
  */
 bool check_iface_in_vrf(const char *if_name)
 {
-  const struct ovsrec_open_vswitch *ovs_row = NULL;
+  const struct ovsrec_system *ovs_row = NULL;
   struct ovsrec_vrf *vrf_cfg = NULL;
   struct ovsrec_port *port_cfg = NULL;
   struct ovsrec_interface *iface_cfg = NULL;
   size_t i, j, k;
-  ovs_row = ovsrec_open_vswitch_first(idl);
+  ovs_row = ovsrec_system_first(idl);
   for (i = 0; i < ovs_row->n_vrfs; i++) {
     vrf_cfg = ovs_row->vrfs[i];
     for (j = 0; j < vrf_cfg->n_ports; j++) {
@@ -917,11 +917,12 @@ bool check_iface_in_vrf(const char *if_name)
 */
 bool check_port_in_vrf(const char *port_name)
 {
-    const struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_system *ovs_row = NULL;
     struct ovsrec_vrf *vrf_cfg = NULL;
     struct ovsrec_port *port_cfg = NULL;
     size_t i, j;
-    ovs_row = ovsrec_open_vswitch_first(idl);
+    ovs_row = ovsrec_system_first(idl);
+
     if (ovs_row == NULL)
     {
         return false;

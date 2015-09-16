@@ -182,7 +182,7 @@ vrf_add(const char *vrf_name)
 {
     const struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
-    const struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_system *ovs_row = NULL;
     struct ovsrec_vrf **vrfs;
     size_t i;
     enum ovsdb_idl_txn_status status;
@@ -240,7 +240,7 @@ vrf_add(const char *vrf_name)
         return CMD_SUCCESS;
     }
 
-    ovs_row = ovsrec_open_vswitch_first(idl);
+    ovs_row = ovsrec_system_first(idl);
     if (!ovs_row) {
         vty_out(vty, "Error: Could not fetch Open VSwitch data.%s",
         VTY_NEWLINE);
@@ -260,7 +260,7 @@ vrf_add(const char *vrf_name)
     }
     struct ovsrec_vrf *temp_vrf_row = CONST_CAST(struct ovsrec_vrf*, vrf_row);
     vrfs[ovs_row->n_vrfs] = temp_vrf_row;
-    ovsrec_open_vswitch_set_vrfs(ovs_row, vrfs, ovs_row->n_vrfs + 1);
+    ovsrec_system_set_vrfs(ovs_row, vrfs, ovs_row->n_vrfs + 1);
     free(vrfs);
 
     status = cli_do_config_finish(status_txn);
@@ -295,7 +295,7 @@ vrf_delete(const char *vrf_name) {
 
     const struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
-    const struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_system *ovs_row = NULL;
     enum ovsdb_idl_txn_status status;
     size_t i;
     char *port_name;
@@ -349,7 +349,7 @@ vrf_delete(const char *vrf_name) {
         free(port_name);
     }
 
-    ovs_row = ovsrec_open_vswitch_first(idl);
+    ovs_row = ovsrec_system_first(idl);
     if (!ovs_row) {
         vty_out(vty, "Error: Could not fetch Open VSwitch data.%s",
                 VTY_NEWLINE);
@@ -369,10 +369,10 @@ vrf_delete(const char *vrf_name) {
             vrfs[n++] = ovs_row->vrfs[i];
         }
     }
-    ovsrec_open_vswitch_set_vrfs(ovs_row, vrfs, n);
+    ovsrec_system_set_vrfs(ovs_row, vrfs, n);
     free(vrfs);
 #else
-    ovsrec_open_vswitch_set_vrfs(ovs_row, NULL, 0);
+    ovsrec_system_set_vrfs(ovs_row, NULL, 0);
 #endif
 
     ovsrec_vrf_delete(vrf_row);

@@ -139,7 +139,7 @@ class LACPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lacp system-priority 999')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lacp-system-priority="999"' in line:

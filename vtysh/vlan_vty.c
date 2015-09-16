@@ -55,7 +55,7 @@ static int vlan_int_range_add(const char *min_vlan,
                               const char *max_vlan,
                               const char *policy)
 {
-    const struct ovsrec_open_vswitch *const_row = NULL;
+    const struct ovsrec_system *const_row = NULL;
     struct smap other_config;
     struct ovsdb_idl_txn *status_txn = NULL;
 
@@ -68,12 +68,12 @@ static int vlan_int_range_add(const char *min_vlan,
         return CMD_OVSDB_FAILURE;
     }
 
-    /* There will be only one row in Open_vSwitch table */
-    const_row = ovsrec_open_vswitch_first(idl);
+    /* There will be only one row in System table */
+    const_row = ovsrec_system_first(idl);
 
     if (!const_row) {
         /* HALON_TODO: Generic comment. "Macro'ize" it in lib and use */
-        VLOG_ERR("[%s:%d]: Failed to retrieve a row from Open_vSwitch table\n",
+        VLOG_ERR("[%s:%d]: Failed to retrieve a row from System table\n",
                     __FUNCTION__, __LINE__);
 
         cli_do_config_abort(status_txn);
@@ -84,11 +84,11 @@ static int vlan_int_range_add(const char *min_vlan,
      * warnings */
     smap_clone(&other_config, &const_row->other_config);
 
-    smap_replace(&other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN, min_vlan);
-    smap_replace(&other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN, max_vlan);
-    smap_replace(&other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY, policy);
+    smap_replace(&other_config, SYSTEM_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN, min_vlan);
+    smap_replace(&other_config, SYSTEM_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN, max_vlan);
+    smap_replace(&other_config, SYSTEM_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY, policy);
 
-    ovsrec_open_vswitch_set_other_config(const_row, &other_config);
+    ovsrec_system_set_other_config(const_row, &other_config);
 
     smap_destroy(&other_config);
 
@@ -125,11 +125,11 @@ DEFUN  (cli_vlan_int_range_add,
      * it to full policy name */
     if (*argv[2] == 'a') {
         strncpy(vlan_policy_str,
-                OPEN_VSWITCH_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_ASCENDING_DEFAULT,
+                SYSTEM_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_ASCENDING_DEFAULT,
                 VLAN_POLICY_STR_LEN);
     } else {
         strncpy(vlan_policy_str,
-                OPEN_VSWITCH_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_DESCENDING,
+                SYSTEM_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_DESCENDING,
                 VLAN_POLICY_STR_LEN);
     }
 
@@ -155,7 +155,7 @@ DEFUN  (cli_vlan_int_range_add,
  */
 static int vlan_int_range_del()
 {
-    const struct ovsrec_open_vswitch *const_row = NULL;
+    const struct ovsrec_system *const_row = NULL;
     struct smap other_config;
     char min_vlan[VLAN_ID_LEN], max_vlan[VLAN_ID_LEN];
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -168,10 +168,10 @@ static int vlan_int_range_del()
         return CMD_OVSDB_FAILURE;
     }
 
-    const_row = ovsrec_open_vswitch_first(idl);
+    const_row = ovsrec_system_first(idl);
 
     if (!const_row) {
-        VLOG_ERR("[%s:%d]: Failed to retrieve a row from Open_vSwitch table\n",
+        VLOG_ERR("[%s:%d]: Failed to retrieve a row from System table\n",
                     __FUNCTION__, __LINE__);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
@@ -182,24 +182,24 @@ static int vlan_int_range_del()
     smap_clone(&other_config, &const_row->other_config);
 
     snprintf(min_vlan, VLAN_ID_LEN, "%d",
-                DFLT_OPEN_VSWITCH_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN_ID);
+                DFLT_SYSTEM_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN_ID);
 
     smap_replace(&other_config,
-                    OPEN_VSWITCH_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN,
+                    SYSTEM_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN,
                     min_vlan);
 
     snprintf(max_vlan, VLAN_ID_LEN, "%d",
-                DFLT_OPEN_VSWITCH_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN_ID);
+                DFLT_SYSTEM_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN_ID);
 
     smap_replace(&other_config,
-                    OPEN_VSWITCH_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN,
+                    SYSTEM_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN,
                     max_vlan);
 
     smap_replace(&other_config,
-                    OPEN_VSWITCH_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY,
-                    OPEN_VSWITCH_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_ASCENDING_DEFAULT);
+                    SYSTEM_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY,
+                    SYSTEM_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_ASCENDING_DEFAULT);
 
-    ovsrec_open_vswitch_set_other_config(const_row, &other_config);
+    ovsrec_system_set_other_config(const_row, &other_config);
 
     smap_destroy(&other_config);
 
@@ -233,7 +233,7 @@ DEFUN  (cli_vlan_int_range_del,
  */
 static int show_vlan_int_range()
 {
-    const struct ovsrec_open_vswitch *const_row = NULL;
+    const struct ovsrec_system *const_row = NULL;
     const char *policy;
     uint16_t   min_vlan, max_vlan;
     struct ovsdb_idl_txn *status_txn = NULL;
@@ -250,10 +250,10 @@ static int show_vlan_int_range()
         return CMD_OVSDB_FAILURE;
     }
 
-    const_row = ovsrec_open_vswitch_first(idl);
+    const_row = ovsrec_system_first(idl);
 
     if (!const_row) {
-        VLOG_ERR("[%s:%d]: Failed to retrieve a row from Open_vSwitch table\n",
+        VLOG_ERR("[%s:%d]: Failed to retrieve a row from System table\n",
                     __FUNCTION__, __LINE__);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
@@ -261,24 +261,24 @@ static int show_vlan_int_range()
 
     /* Get values associated with internal vlan. */
     min_vlan  = smap_get_int(&const_row->other_config,
-                            OPEN_VSWITCH_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN,
+                            SYSTEM_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN,
                             INTERNAL_VLAN_ID_INVALID);
 
     max_vlan  = smap_get_int(&const_row->other_config,
-                            OPEN_VSWITCH_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN,
+                            SYSTEM_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN,
                             INTERNAL_VLAN_ID_INVALID);
 
     policy    = smap_get(&const_row->other_config,
-                         OPEN_VSWITCH_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY);
+                         SYSTEM_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY);
 
     if ((min_vlan == INTERNAL_VLAN_ID_INVALID) ||
         (max_vlan == INTERNAL_VLAN_ID_INVALID) ||
         (policy   == NULL)) {
         /* Internal VLAN range is not explicitly configured. Use default
          * values */
-        min_vlan = DFLT_OPEN_VSWITCH_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN_ID;
-        max_vlan = DFLT_OPEN_VSWITCH_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN_ID;
-        policy   = OPEN_VSWITCH_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_ASCENDING_DEFAULT;
+        min_vlan = DFLT_SYSTEM_OTHER_CONFIG_MAP_MIN_INTERNAL_VLAN_ID;
+        max_vlan = DFLT_SYSTEM_OTHER_CONFIG_MAP_MAX_INTERNAL_VLAN_ID;
+        policy   = SYSTEM_OTHER_CONFIG_MAP_INTERNAL_VLAN_POLICY_ASCENDING_DEFAULT;
     }
 
     vty_out(vty, "\nInternal VLAN range  : %d-%d\n", min_vlan, max_vlan);

@@ -828,36 +828,36 @@ DEFUN (cli_intf_show_run_intf_if,
 
 int cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
 {
-    const struct ovsrec_open_vswitch *vswrow;
+    const struct ovsrec_system *vswrow;
     const char *data = NULL;
     const char *ip = NULL;
     const char *subnet = NULL;
     const char *dns_1 = NULL;
     const char *dns_2 = NULL;
 
-   vswrow = ovsrec_open_vswitch_first(idl);
+   vswrow = ovsrec_system_first(idl);
    if(!vswrow)
    {
        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
        return CMD_OVSDB_FAILURE;
    }
 
-   data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_MODE);
+   data = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_MODE);
    if (!data)
    {
        /* If not present then mode is dhcp. So nothing to display since dhcp is the default. */
        return e_vtysh_ok;
    }
 
-   if (VTYSH_STR_EQ(data, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_STATIC))
+   if (VTYSH_STR_EQ(data, SYSTEM_MGMT_INTF_MAP_MODE_STATIC))
    {
        vty_out(vty, "%s%s", "interface mgmt", VTY_NEWLINE);
-       ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
-       subnet = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_SUBNET_MASK);
+       ip = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_IP);
+       subnet = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_SUBNET_MASK);
        if (ip && subnet && (strcmp(ip,MGMT_INTF_DEFAULT_IP) != 0) )
            vty_out(vty, "%4sip static %s/%s%s","",ip,subnet, VTY_NEWLINE);
 
-       ip = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
+       ip = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_IPV6);
        if (ip && (strcmp(ip,MGMT_INTF_DEFAULT_IPV6) != 0))
        {
            vty_out(vty, "%4sip static %s %s%s","",ip,subnet, VTY_NEWLINE);
@@ -866,7 +866,7 @@ int cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
    else
        return CMD_SUCCESS;
 
-   data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
+   data = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY);
    if (data && (strcmp(data,MGMT_INTF_DEFAULT_IP) != 0))
    {
        vty_out(vty, "%4sdefault-gateway %s%s","",data, VTY_NEWLINE);
@@ -874,14 +874,14 @@ int cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
 
    /* Ipv6 show running commands */
 
-   data = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
+   data = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
    if (data && (strcmp(data,MGMT_INTF_DEFAULT_IPV6) != 0))
    {
        vty_out(vty, "%4sdefault-gateway %s%s","",data, VTY_NEWLINE);
    }
 
-   dns_1 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
-   dns_2 = smap_get(&vswrow->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
+   dns_1 = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_DNS_SERVER_1);
+   dns_2 = smap_get(&vswrow->mgmt_intf,SYSTEM_MGMT_INTF_MAP_DNS_SERVER_2);
    if (dns_1 && dns_2 && (strcmp(dns_1,MGMT_INTF_DEFAULT_IP) != 0) &&
                                               (strcmp(dns_2,MGMT_INTF_DEFAULT_IP) != 0))
    {
