@@ -26,7 +26,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
                  logrotate_vty.c neighbor_vty.c \
                  powersupply_vty.c vtysh_ovsdb_intf_lag_context.c \
-                 lacp_vty.c ecmp_vty.c
+                 lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -42,7 +42,7 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   vtysh_ovsdb_router_context.h aaa_vty.h \
                   logrotate_vty.h neighbor_vty.h \
                   powersupply_vty.h vtysh_ovsdb_intf_lag_context.h\
-                  lacp_vty.h vtysh_utils.h ecmp_vty.h
+                  lacp_vty.h vtysh_utils.h ecmp_vty.h dhcp_tftp_vty.h
 endif
 
 vtysh_LDADD = ../lib/libzebra.la @LIBCAP@ @LIBREADLINE@
