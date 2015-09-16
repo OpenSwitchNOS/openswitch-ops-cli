@@ -3635,56 +3635,9 @@ DEFUN (config_hostname,
         return CMD_SUCCESS;
      }
 
-     ret = sethostname(argv[0],MAX_HOSTNAME_LEN);
-     if(CMD_SUCCESS != ret)
-     {
-       if (EPERM == ret)
-       {
-          vty_out(vty,"Operation not permitted%s",VTY_NEWLINE);
-          return CMD_SUCCESS;
-       }
-       else
-       {
-          vty_out(vty,"Set hostname failed%s",VTY_NEWLINE);
-          return CMD_SUCCESS;
-       }
-     }
-
-     if (host.name)
-        XFREE (MTYPE_HOST, host.name);
-
-     host.name = XSTRDUP (MTYPE_HOST, argv[0]);
-
-     if(host.name)
-          vtysh_ovsdb_hostname_set(host.name);
+     vtysh_ovsdb_hostname_set(argv[0]);
  }
- else
- {
-    hostname = vtysh_ovsdb_hostname_get();
-    if (hostname && hostname[0])
-    {
-        vty_out (vty,"%s%s",hostname,VTY_NEWLINE);
-        /* If there is a mismatch between DB and system hostname
-           then set the system hostname to that present in DB
-           usually happens when set outside CLI say rest */
-        if(host.name && ( 0 != strcmp(host.name,hostname)))
-        {
-          /* May not need to check for error as no need
-             to show set error for a get command */
-             sethostname(hostname,MAX_HOSTNAME_LEN);
-             XFREE (MTYPE_HOST, host.name);
-             host.name = XSTRDUP (MTYPE_HOST, hostname);
-        }
-        else if (NULL == host.name)
-             host.name = XSTRDUP (MTYPE_HOST,hostname);
-    }
-    else if (host.name)
-        vty_out (vty,"%s%s",host.name,VTY_NEWLINE);
-    else
-        vty_out (vty,"%s%s"," ",VTY_NEWLINE);
-  }
-
-  return CMD_SUCCESS;
+ return CMD_SUCCESS;
 }
 
 DEFUN (config_no_hostname,
@@ -3694,33 +3647,8 @@ DEFUN (config_no_hostname,
        HOSTNAME_STR
        "Configure hostname as alphanumeric string. First letter must be alphabet(Max Length 32)\n")
 {
-  struct utsname name;
-  int ret = 0;
-  memset(&name,0,sizeof(name));
-
-   ret = sethostname(DEFAULT_HOSTNAME,MAX_HOSTNAME_LEN);
-   if (ret != CMD_SUCCESS)
-   {
-     if (EPERM == ret)
-     {
-        vty_out(vty,"Operation not permitted%s",VTY_NEWLINE);
-        return CMD_SUCCESS;
-     }
-     else
-     {
-        vty_out(vty,"Failed to set default hostname%s",VTY_NEWLINE);
-        return CMD_SUCCESS;
-     }
-   }
-
-  if (host.name)
-    XFREE (MTYPE_HOST, host.name);
-
-  host.name = XSTRDUP (MTYPE_HOST, DEFAULT_HOSTNAME);
-
-  vtysh_ovsdb_hostname_set(host.name);
-
-  return CMD_SUCCESS;
+    vtysh_ovsdb_hostname_set("");
+    return CMD_SUCCESS;
 }
 
 #endif //ENABLE_OVSDB
