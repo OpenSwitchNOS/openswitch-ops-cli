@@ -18,7 +18,6 @@
 #    under the License.
 #
 
-from time import sleep
 from halonvsi.docker import *
 from halonvsi.halon import *
 
@@ -54,7 +53,7 @@ class LACPCliTest(HalonTest):
         for line in lines:
             if '"lag1"' in line:
                 lag_port_found = True
-        assert lag_port_found == True, \
+        assert (lag_port_found is True), \
             'Test to create LAG Port - FAILED!!'
         return True
 
@@ -71,7 +70,7 @@ class LACPCliTest(HalonTest):
         for line in lines:
             if 'lag2' in line:
                 lag_port_found_in_cmd = True
-        assert lag_port_found_in_cmd == True, \
+        assert (lag_port_found_in_cmd is True), \
             'Test Show lacp aggregates command - FAILED!!'
         return True
 
@@ -93,7 +92,7 @@ class LACPCliTest(HalonTest):
         for line in lines:
             if '"lag3"' in line:
                 lag_port_found = False
-        assert lag_port_found == True, \
+        assert (lag_port_found is True), \
             'Test to delete LAG port - FAILED!'
         out = s1.cmd('do show running')
         lag_port_found = True
@@ -101,7 +100,7 @@ class LACPCliTest(HalonTest):
         for line in lines:
             if '"lag3"' in line:
                 lag_port_found = False
-        assert lag_port_found == True, \
+        assert (lag_port_found is True), \
             'Test to delete LAG port - FAILED!'
         return True
 
@@ -123,11 +122,10 @@ class LACPCliTest(HalonTest):
         out = s1.cmdCLI('do show lacp aggregates')
         lines = out.split('\n')
         for line in lines:
-            if 'Aggregated-interfaces' in line and '3' in line and '4' \
-                in line:
+            if 'Aggregated-interfaces' in line and '3' in line and '4' in line:
                 interface_found_in_lag = True
 
-        assert interface_found_in_lag == True, \
+        assert (interface_found_in_lag is True), \
             'Test to add interfaces to LAG ports - FAILED!'
         return True
 
@@ -144,7 +142,7 @@ class LACPCliTest(HalonTest):
         for line in lines:
             if 'lacp-system-priority="999"' in line:
                 global_lacp_cmd_found = True
-        assert global_lacp_cmd_found == True, \
+        assert (global_lacp_cmd_found is True), \
             'Test global LACP commands - FAILED!'
         return True
 
@@ -187,7 +185,7 @@ class LACPCliTest(HalonTest):
                 break
         if success != 4:
             lag_context_cmds_found = False
-        assert lag_context_cmds_found == True, \
+        assert (lag_context_cmds_found is True), \
             'Test LAG context commands - FAILED!'
 
         success = 0
@@ -224,7 +222,7 @@ class LACPCliTest(HalonTest):
                 break
         if success != 0:
             lag_context_cmds_found = False
-        assert lag_context_cmds_found == True, \
+        assert (lag_context_cmds_found is True), \
             'Test LAG context commands - FAILED!'
         return True
 
@@ -252,7 +250,7 @@ class LACPCliTest(HalonTest):
 
         if success != 2:
             interface_context_cmds_found = False
-        assert interface_context_cmds_found == True, \
+        assert (interface_context_cmds_found is True), \
             'Test interface context commands - FAILED!'
         return True
 

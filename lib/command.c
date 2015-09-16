@@ -1162,6 +1162,7 @@ cmd_port_match (const char *str)
   return 1;
 }
 
+/* Wrapper function to call mac validation func */
 static int
 cmd_mac_match (const char *str)
 {
@@ -1443,8 +1444,9 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
     memcpy(&temptoken,token,sizeof(struct cmd_token));
     temptoken.cmd = XSTRDUP(MTYPE_CMD_TOKENS,szToken);
 
+    /* Validate and complete the tokens present inside []*/
     word_match = cmd_word_match(&temptoken, matcher->filter, word);
-    /* .LINE cannot be an optional type toke ([]) */
+    /* .LINE cannot be an optional type token ([]) */
     if ((no_match == word_match) ||
         (vararg_match == word_match))
     {
@@ -1462,12 +1464,15 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
     }
     else
     {
+       /* if not a fixed string then push value input by user */
        if (push_argument(argc, argv, word))
        {
          XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
          return MATCHER_EXCEED_ARGC_MAX;
        }
     }
+    /* Word match should be extend_match as it is used
+       to check for matched count */
     word_match = extend_match;
     XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
   }
@@ -1523,6 +1528,8 @@ cmd_matcher_match_multiple(struct cmd_matcher *matcher,
       if (word_match > multiple_match)
         {
           multiple_match = word_match;
+          /* Push complete token instead of user input value
+             if it's a partly match */
           if(partly_match == word_match)
                 arg = word_token->cmd;
           else
@@ -1692,7 +1699,7 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
                  rv = MATCHER_EXCEED_ARGC_MAX;
         }
       else
-        {
+      {
           /* this is a keyword with arguments */
           if (keyword_args)
             {
@@ -3607,7 +3614,6 @@ DEFUN (config_no_hostname,
 }
 #else
 #define MAX_HOSTNAME_LEN 32
-#define DEFAULT_HOSTNAME "openswitch"
 #define HOSTNAME_STR "Set or get hostname\n"
 extern void  vtysh_ovsdb_hostname_set(const char * in);
 extern const char* vtysh_ovsdb_hostname_get();
@@ -3616,7 +3622,7 @@ DEFUN (config_hostname,
        hostname_cmd,
        "hostname [HOSTNAME]",
        HOSTNAME_STR
-       "Configure hostname as alphanumeric string. First letter must be alphabet(Max Length 32)\n")
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
  char* hostname = NULL;
  int   ret = 0;
@@ -3655,7 +3661,7 @@ DEFUN (config_no_hostname,
        "no hostname [HOSTNAME]",
        NO_STR
        HOSTNAME_STR
-       "Configure hostname as alphanumeric string. First letter must be alphabet(Max Length 32)\n")
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
     vtysh_ovsdb_hostname_set("");
     return CMD_SUCCESS;

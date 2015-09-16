@@ -1606,7 +1606,7 @@ DEFUN(vtysh_vlan,
     vtysh_vlan_cmd,
     "vlan <1-4094>",
     VLAN_STR
-    "The VLAN identifier\n")
+    "VLAN identifier\n")
 {
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_bridge *bridge_row = NULL;
@@ -1713,7 +1713,7 @@ DEFUN(vtysh_no_vlan,
     "no vlan <1-4094>",
     NO_STR
     VLAN_STR
-    "The VLAN Identifier\n")
+    "VLAN Identifier\n")
 {
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_port *port_row = NULL;
@@ -3333,6 +3333,7 @@ vtysh_prompt (void)
    {
      uname (&names);
      hostname = names.nodename;
+     /* do XSTRDUP to avoid crash as it will be free'd later */
      host.name = XSTRDUP (MTYPE_HOST,hostname);
    }
 

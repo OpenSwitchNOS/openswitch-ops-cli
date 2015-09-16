@@ -787,7 +787,7 @@ lacp_intf_set_aggregation_key(const char *if_name, const char *agg_key)
 #endif
 
 #if 0
-/* TODO: Enable this command once LACP deamon supports aggregation-key */
+/* OPS_TODO: Enable this command once LACP deamon supports aggregation-key */
 DEFUN (cli_lacp_intf_set_aggregation_key,
       cli_lacp_intf_set_aggregation_key_cmd,
       "lacp aggregation-key <1-65535>",
