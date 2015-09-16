@@ -251,6 +251,8 @@ main (int argc, char **argv, char **env)
   int ret = 0;
   int counter=0;
   pthread_t vtysh_ovsdb_if_thread;
+  vlog_set_verbosity("CONSOLE:OFF");
+  vlog_set_verbosity("SYSLOG:DBG");
 
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);

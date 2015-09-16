@@ -65,8 +65,11 @@ vtysh_ovsdb_porttable_parse_vlan(const char *if_name,
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
-            *port_row->tag);
+        if(port_row->n_tag == 1)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
+                *port_row->tag);
+        }
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
     {
