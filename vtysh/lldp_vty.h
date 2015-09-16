@@ -24,13 +24,17 @@
 #ifndef _LLDP_VTY_H
 #define _LLDP_VTY_H
 
-#define CONFIG_LLDP_STR "Configure LLDP parameters.\n"
-#define SHOW_LLDP_STR "Show various LLDP settings.\n"
+#define CONFIG_LLDP_STR "Configure LLDP parameters\n"
+#define SHOW_LLDP_STR "Show various LLDP settings\n"
+#define OVSDB_LLDP_INTF_ROW_FETCH_ERROR "No interface found"
 /* As of now same helpstring for both CONFIG and INTERFACE context
  * subjected to change when more commands are added
  */
 #define INTF_LLDP_STR CONFIG_LLDP_STR
 #define LLDP_TIMER_MAX_STRING_LENGTH 10
+#define LLDP_STR_CHASSIS_TLV_LENGTH 10
+#define LLDP_MAX_BUF_SIZE 256
+#define INTF_NAME_SIZE 20
 void
 lldp_vty_init (void);
 
