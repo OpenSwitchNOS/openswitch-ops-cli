@@ -906,6 +906,53 @@ DEFUN (cli_intf_show_run_intf_mgmt,
    return cli_show_run_interface_mgmt_exec (self, vty);
 }
 
+
+/*-----------------------------------------------------------------------------
+| Function : show_ip_addresses
+| Responsibility : Used to show ip addresses for L3 interfaces
+| Parameters :
+|     const char *if_name           : Name of interface
+|     struct vty* vty               : Used for ouput
+-----------------------------------------------------------------------------*/
+static int
+show_ip_addresses(const char *if_name, struct vty *vty)
+{
+  const struct ovsrec_port *port_row;
+  const struct ovsrec_vrf *vrf_row;
+  size_t i;
+
+  port_row = port_find(if_name);
+  if (!port_row) {
+    return 0;
+  }
+
+  if (check_iface_in_vrf(if_name)) {
+    vrf_row = port_match_in_vrf(port_row);
+    if (display_l3_info(port_row, vrf_row)) {
+      if (port_row->ip4_address) {
+        vty_out(vty, " IPv4 address %s%s", port_row->ip4_address,
+                VTY_NEWLINE);
+      }
+      for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+        vty_out(vty, " IPv4 address %s secondary%s",
+                port_row->ip4_address_secondary[i],
+                VTY_NEWLINE);
+      }
+      if (port_row->ip6_address) {
+        vty_out(vty, " IPv6 address %s%s", port_row->ip6_address,
+                VTY_NEWLINE);
+      }
+      for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
+        vty_out(vty, " IPv6 address %s secondary%s",
+                port_row->ip6_address_secondary[i],
+                VTY_NEWLINE);
+      }
+    }
+  }
+  return 0;
+}
+
+
 int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
       int flags, int argc, const char *argv[], bool brief)
 {
@@ -1011,6 +1058,9 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          }
 
          vty_out (vty, " Hardware: Ethernet, MAC Address: %s %s", ifrow->mac_in_use, VTY_NEWLINE);
+
+         /* Displaying ipv4 and ipv6 primary and secondary addresses*/
+         show_ip_addresses(ifrow->name, vty);
 
          datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
          if ((NULL!=datum) && (datum->n >0)) intVal = datum->keys[0].integer;
