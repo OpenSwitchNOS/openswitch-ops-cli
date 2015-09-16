@@ -545,14 +545,14 @@ void vtysh_ovsdb_hostname_set(const char* in)
  * The get command to read from the ovsdb open_vswitch table
  * hostname column from the vtysh get-hostname command
  */
-char* vtysh_ovsdb_hostname_get()
+const char* vtysh_ovsdb_hostname_get()
 {
     const struct ovsrec_open_vswitch *ovs;
     ovs = ovsrec_open_vswitch_first(idl);
 
     if(ovs)
     {
-        return ovs->hostname;
+        return smap_get(&ovs->mgmt_intf_status, OPEN_VSWITCH_MGMT_INTF_MAP_HOSTNAME);
     }
     else
     {

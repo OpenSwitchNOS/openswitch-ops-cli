@@ -50,6 +50,7 @@
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 #include "openhalon-idl.h"
+#include "vswitch-idl.h"
 
 #ifdef ENABLE_OVSDB
 #include "intf_vty.h"
@@ -3020,6 +3021,24 @@ vtysh_prompt (void)
    static char buf[100];
    const char*hostname;
    extern struct host host;
+
+#ifdef ENABLE_OVSDB
+   const struct ovsrec_open_vswitch *ovs = NULL;
+   const char *val;
+   ovs = ovsrec_open_vswitch_first(idl);
+
+   if(ovs)
+   {
+      val = smap_get(&ovs->mgmt_intf_status, OPEN_VSWITCH_MGMT_INTF_MAP_HOSTNAME);
+      if (val != NULL)
+      {
+         if (host.name)
+            XFREE (MTYPE_HOST, host.name);
+
+         host.name = XSTRDUP (MTYPE_HOST, val);
+      }
+   }
+#endif
 
    hostname = host.name;
    if (!hostname)
