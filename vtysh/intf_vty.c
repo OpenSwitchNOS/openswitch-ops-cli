@@ -1012,8 +1012,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
          vty_out (vty, " Hardware: Ethernet, MAC Address: %s %s", ifrow->mac_in_use, VTY_NEWLINE);
 
          datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
-         if(NULL!=datum) intVal = datum->keys[0].integer;
-
+         ifi ((NULL!=datum) && (datum->n >0)) intVal = datum->keys[0].integer;
          vty_out(vty, " MTU %ld %s", intVal, VTY_NEWLINE);
 
          if((NULL != ifrow->duplex) && (strcmp(ifrow->duplex, "half") == 0))
@@ -1027,7 +1026,7 @@ int cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
          intVal = 0;
          datum = ovsrec_interface_get_link_speed(ifrow, OVSDB_TYPE_INTEGER);
-         if(NULL!=datum) intVal = datum->keys[0].integer;
+         if ((NULL!=datum) && (datum->n >0)) intVal = datum->keys[0].integer;
          vty_out(vty, " Speed %ld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
 
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_AUTONEG);
