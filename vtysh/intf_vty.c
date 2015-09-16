@@ -147,13 +147,14 @@ DEFUN_NO_FORM (cli_intf_shutdown,
 /*
  * CLI "speed"
  * default : auto
+ * Maximum speed is consitent with maximum speed mentioned in ports.yaml.
  */
 DEFUN (cli_intf_speed,
-        cli_intf_speed_cmd,
-        "speed (auto|1000|10000|100000|40000)",
-        "Configure the interface speed\n"
-        "Auto negotiate speed (Default)\n"
-        "1Gb/s\n10Gb/s\n100Gb/s\n40Gb/s")
+      cli_intf_speed_cmd,
+      "speed (auto|1000|10000|40000)",
+      "Configure the interface speed\n"
+      "Auto negotiate speed (Default)\n"
+      "1Gb/s\n10Gb/s\n40Gb/s")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();
