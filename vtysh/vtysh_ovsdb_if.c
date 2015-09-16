@@ -375,7 +375,6 @@ system_ovsdb_init()
     ovsdb_idl_add_table(idl,&ovsrec_table_temp_sensor);
 
     /* Add Columns for System Related Tables */
-
     //Power Supply
     ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_name);
     ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_status);
@@ -482,6 +481,9 @@ ovsdb_init(const char *db_path)
     idl_seqno = ovsdb_idl_get_seqno(idl);
     ovsdb_idl_enable_reconnect(idl);
     latch_init(&ovsdb_latch);
+
+    /* Add switch version column */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_switch_version);
 
     /* Add hostname columns */
     ovsdb_idl_add_table(idl, &ovsrec_table_system);
@@ -806,11 +808,12 @@ int vtysh_ovsdb_vlan_match(const char *str)
   return 1;
 }
 
+/* Validate MAC address that will be used by MAC type tokens */
 int vtysh_ovsdb_mac_match(const char *str)
 {
   int i = 0;
   /*
-   * HALON_TODO : Checking for reserved MAC addresses if needed
+   * OPS_TODO : Checking for reserved MAC addresses if needed
    */
   if(!str)
       return 1;
