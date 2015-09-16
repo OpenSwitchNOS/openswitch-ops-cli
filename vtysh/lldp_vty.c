@@ -31,7 +31,6 @@
 #include <readline/history.h>
 
 #include <lib/version.h>
-#include "getopt.h"
 #include "command.h"
 #include "memory.h"
 #include "vtysh/vtysh.h"
@@ -48,7 +47,6 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_lldp_cli);
 extern struct ovsdb_idl *idl;
 
-#define INTF_NAME_SIZE 20
 typedef enum
 {
   LLDP_OFF,
@@ -75,9 +73,9 @@ typedef struct
   int delete_count;
   int drop_count;
   int ageout_count;
-  char  chassis_id[256];
-  char  port_id[256];
-  char  chassis_ttl[10];
+  char  chassis_id[LLDP_MAX_BUF_SIZE];
+  char  port_id[LLDP_MAX_BUF_SIZE];
+  char  chassis_ttl[LLDP_STR_CHASSIS_TLV_LENGTH];
 }lldp_neighbor_info;
 
 
@@ -90,7 +88,7 @@ static int lldp_set_global_status(const char *status)
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -132,7 +130,7 @@ static int lldp_set_global_status(const char *status)
 DEFUN (cli_lldp_set_global_status,
        lldp_set_global_status_cmd,
        "feature lldp",
-       "Enables or disables the selected feature.\n"
+       "Enables or disables the selected feature\n"
        CONFIG_LLDP_STR)
 {
   return lldp_set_global_status("true");
@@ -142,7 +140,7 @@ DEFUN (cli_lldp_no_set_global_status,
        lldp_no_set_global_status_cmd,
        "no feature lldp",
         NO_STR
-       "Enables or disables the selected feature.\n"
+       "Enables or disables the selected feature\n"
        CONFIG_LLDP_STR)
 {
   return lldp_set_global_status("false");
@@ -157,7 +155,7 @@ static int set_global_hold_time(const char *hold_time)
   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -198,18 +196,19 @@ DEFUN (cli_lldp_set_hold_time,
        lldp_set_global_hold_time_cmd,
        "lldp holdtime <2-10>",
        CONFIG_LLDP_STR
-       "The amount of time a receiving device should hold the information sent by your device before discarding it.\n"
-       "The range is 2 to 10; the default is 4.\n")
+       "The amount of time a receiving device should hold the information before discarding it\n"
+       "Hold time multiplier, total hold time is calculated by multiplying it with transmission interval(Default:4)\n")
 {
   return set_global_hold_time(argv[0]);
 }
 
 DEFUN (cli_lldp_no_set_hold_time,
        lldp_no_set_global_hold_time_cmd,
-       "no lldp holdtime",
+       "no lldp holdtime [<2-10>]",
         NO_STR
        CONFIG_LLDP_STR
-       "The amount of time a receiving device should hold the information sent by your device before discarding it.\n")
+       "The amount of time a receiving device should hold the information before discarding it\n"
+       "Hold time multiplier, total hold time is calculated by multiplying it with transmission interval(Default:4)\n")
 {
   char def_holdtime[LLDP_TIMER_MAX_STRING_LENGTH]={0};
   snprintf(def_holdtime,LLDP_TIMER_MAX_STRING_LENGTH, "%d",SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
@@ -225,7 +224,7 @@ static int lldp_set_global_timer(const char *timer)
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -264,18 +263,19 @@ DEFUN (cli_lldp_set_timer,
        lldp_set_global_timer_cmd,
        "lldp timer <5-32768>",
        CONFIG_LLDP_STR
-       "The interval at which LLDP status updates are transmitted to neighbors in seconds.\n"
-        "The range is 5 to 32768 seconds; the default is 30 seconds.\n")
+       "The interval(in seconds) at which LLDP status updates are transmitted to neighbors\n"
+        "The range is 5 to 32768 seconds (Default:30 seconds)\n")
 {
   return lldp_set_global_timer(argv[0]);
 }
 
 DEFUN (cli_no_lldp_set_timer,
        lldp_no_set_global_timer_cmd,
-       "no lldp timer",
+       "no lldp timer [<5-32768>]",
        NO_STR
        CONFIG_LLDP_STR
-       "The interval at which LLDP status updates are transmitted to neighbors in seconds.\n")
+       "The interval(in seconds) at which LLDP status updates are transmitted to neighbors\n"
+       "The range is 5 to 32768 seconds (Default:30 seconds)\n")
 {
   char def_global_time[LLDP_TIMER_MAX_STRING_LENGTH]={0};
   snprintf(def_global_time,LLDP_TIMER_MAX_STRING_LENGTH, "%d",SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
@@ -287,17 +287,17 @@ DEFUN (cli_lldp_clear_counters,
        lldp_clear_counters_cmd,
        "lldp clear counters",
        CONFIG_LLDP_STR
-       "Clear LLDP information.\n"
-       "Clear LLDP counters.\n")
+       "Clear LLDP information\n"
+       "Clear LLDP counters\n")
 {
   const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   int clear_counter = 0;
-  char buffer[10];
+  char buffer[10] = {0};
   struct smap smap_status;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -338,17 +338,17 @@ DEFUN (cli_lldp_clear_neighbors,
        lldp_clear_neighbors_cmd,
        "lldp clear neighbors",
        CONFIG_LLDP_STR
-       "Clear LLDP information.\n"
-       "Clear LLDP neighbor tables.\n")
+       "Clear LLDP information\n"
+       "Clear LLDP neighbor entries\n")
 {
   const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   int clear_neighbor_table = 0;
-  char buffer[10];
+  char buffer[10] = {0};
   struct smap smap_status;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -395,7 +395,7 @@ lldp_set_tlv(const char *tlv_name, const char *status)
   char tlv[50]={0};
   struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -459,16 +459,16 @@ DEFUN (cli_lldp_select_tlv,
                         port-protocol-id | system-capabilities |\
                         system-description | system-name)",
        CONFIG_LLDP_STR
-       "Specifies the TLVs to send and receive in LLDP packets.\n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n")
+       "Specifies the TLVs to send and receive in LLDP packets\n"
+       "Select management-address TLV\n"
+       "Select port-description TLV\n"
+       "Select port-vlan-id TLV\n"
+       "Select port-vlan-name TLV\n"
+       "Select port-protocol-vlan-id TLV\n"
+       "Select port-protocol-id TLV\n"
+       "Select system-capabilities TLV\n"
+       "Select system-description TLV\n"
+       "Select system-name TLV\n")
 {
   return lldp_set_tlv(argv[0],"true");
 }
@@ -481,16 +481,16 @@ DEFUN (cli_no_lldp_select_tlv,
                         system-description | system-name)",
        NO_STR
        CONFIG_LLDP_STR
-       "Specifies the TLVs to send and receive in LLDP packets.\n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n")
+       "Specifies the TLVs to send and receive in LLDP packets\n"
+       "Select management-address TLV\n"
+       "Select port-description TLV\n"
+       "Select port-vlan-id TLV\n"
+       "Select port-vlan-name TLV\n"
+       "Select port-protocol-vlan-id TLV\n"
+       "Select port-protocol-id TLV\n"
+       "Select system-capabilities TLV\n"
+       "Select system-description TLV\n"
+       "Select system-name TLV\n")
 {
   return lldp_set_tlv(argv[0],"false");
 }
@@ -503,7 +503,7 @@ static int lldp_set_mgmt_address(const char *status, boolean set)
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -544,9 +544,9 @@ DEFUN (cli_lldp_set_mgmt_address,
        lldp_set_mgmt_address_cmd,
        "lldp management-address (A.B.C.D | X:X::X:X)",
        CONFIG_LLDP_STR
-       "LLDP Management IP Address to be sent in TLV.\n"
-       "LLDP Management IP4 Address.\n"
-       "LLDP Management IP6 Address.\n")
+       "LLDP management IP address to be sent in TLV\n"
+       "LLDP management IPv4 address\n"
+       "LLDP management IPv6 address\n")
 {
   return lldp_set_mgmt_address(argv[0], true);
 }
@@ -556,10 +556,23 @@ DEFUN (cli_lldp_set_no_mgmt_address,
        "no lldp management-address",
        NO_STR
        CONFIG_LLDP_STR
-       "LLDP Management IP Address to be sent in TLV.\n")
+       "LLDP management IP address to be sent in TLV\n")
 {
   return lldp_set_mgmt_address(argv[0], false);
 }
+
+DEFUN (cli_lldp_set_no_mgmt_address_arg,
+       lldp_set_no_mgmt_address_cmd_arg,
+       "no lldp management-address (A.B.C.D | X:X::X:X)",
+       NO_STR
+       CONFIG_LLDP_STR
+       "LLDP management IP address to be sent in TLV\n"
+       "LLDP management IPv4 address\n"
+       "LLDP management IPv6 address\n")
+{
+  return lldp_set_mgmt_address(argv[0], false);
+}
+
 
 /* Prints TLVs enabled for LLDP*/
 void
@@ -572,7 +585,7 @@ lldp_show_tlv(const struct ovsrec_system *row)
                            SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_MGMT_ADDR_ENABLE,
                            SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
-     vty_out (vty, "Management Adress %s", VTY_NEWLINE);
+     vty_out (vty, "Management Address %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
                            SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE,
@@ -629,7 +642,7 @@ DEFUN (cli_lldp_show_tlv,
        "show lldp tlv",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show TLVs advertised by LLDP.\n")
+       "Show TLVs advertised by LLDP\n")
 {
   const struct ovsrec_system *row = NULL;
 
@@ -650,8 +663,8 @@ DEFUN (cli_lldp_show_intf_statistics,
        "show lldp statistics IFNAME",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show LLDP statistics.\n"
-       "Specify the interface name.\n")
+       "Show LLDP statistics\n"
+       "Specify the interface name\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
   bool port_found = false;
@@ -699,7 +712,7 @@ DEFUN (cli_lldp_show_intf_statistics,
 
   if(!port_found)
   {
-    vty_out (vty, "Error: Wrong interface name.%s", VTY_NEWLINE);
+    vty_out (vty, "Wrong interface name%s", VTY_NEWLINE);
     return CMD_WARNING;
   }
 
@@ -711,7 +724,7 @@ DEFUN (cli_lldp_show_config,
        "show lldp configuration ",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show LLDP configuration. \n")
+       "Show LLDP configuration\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
   const struct ovsrec_system *row = NULL;
@@ -726,6 +739,7 @@ DEFUN (cli_lldp_show_config,
 
   if(!row)
   {
+     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
      return CMD_OVSDB_FAILURE;
   }
 
@@ -784,7 +798,7 @@ DEFUN (cli_lldp_show_config,
     {
       new_intf_stats->lldp_dir = LLDP_TXRX;
     }
-    if((intf_stats == NULL) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
+    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
     {
       new_intf_stats->next = intf_stats;
       intf_stats = new_intf_stats;
@@ -793,7 +807,7 @@ DEFUN (cli_lldp_show_config,
     {
       current = intf_stats;
 
-      while(current->next != NULL && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
+      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
       {
         current = current->next;
       }
@@ -848,14 +862,14 @@ DEFUN (cli_lldp_show_statistics,
        "show lldp statistics",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show LLDP statistics.\n")
+       "Show LLDP statistics\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
   const struct ovsrec_system *row = NULL;
   lldp_intf_stats *intf_stats = NULL;
   lldp_intf_stats *new_intf_stats = NULL;
   lldp_intf_stats *temp = NULL, *current = NULL;
-  const struct ovsdb_datum *datum;
+  const struct ovsdb_datum *datum = NULL;
   static char *lldp_interface_statistics_keys [] = {
     INTERFACE_STATISTICS_LLDP_TX_COUNT,
     INTERFACE_STATISTICS_LLDP_RX_COUNT,
@@ -872,6 +886,7 @@ DEFUN (cli_lldp_show_statistics,
 
   if(!row)
   {
+     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
      return CMD_OVSDB_FAILURE;
   }
 
@@ -901,7 +916,7 @@ DEFUN (cli_lldp_show_statistics,
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
     new_intf_stats->rx_unrecognized = (index == UINT_MAX)? 0 : datum->values[index].integer;
 
-    if((intf_stats == NULL) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
+    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
     {
       new_intf_stats->next = intf_stats;
       intf_stats = new_intf_stats;
@@ -910,7 +925,7 @@ DEFUN (cli_lldp_show_statistics,
     {
       current = intf_stats;
 
-      while(current->next != NULL && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
+      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
       {
         current = current->next;
       }
@@ -967,6 +982,9 @@ DEFUN (cli_lldp_show_statistics,
   return CMD_SUCCESS;
 }
 
+/* qsort comparator function.
+ * This may need to be modified depending on the format of interface name
+ */
 static inline int compare_intf(const void*a, const void* b)
 {
     lldp_neighbor_info* s1 = (lldp_neighbor_info*)a;
@@ -999,13 +1017,13 @@ DEFUN (cli_lldp_show_neighbor_info,
        "show lldp neighbor-info",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show global LLDP neighbor information.\n")
+       "Show global LLDP neighbor information\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
   const struct ovsrec_subsystem *row = NULL;
   lldp_neighbor_info *nbr_info = NULL;
   uint  iter = 0, nIntf = 0;
-  const struct ovsdb_datum *datum;
+  const struct ovsdb_datum *datum = NULL;
   static char *lldp_interface_neighbor_info_keys [] = {
     INTERFACE_STATISTICS_LLDP_INSERT_COUNT,
     INTERFACE_STATISTICS_LLDP_DELETE_COUNT,
@@ -1027,10 +1045,16 @@ DEFUN (cli_lldp_show_neighbor_info,
   {
      nIntf = row->n_interfaces;
      if(!nIntf)
+     {
+        VLOG_ERR(OVSDB_LLDP_INTF_ROW_FETCH_ERROR);
         return CMD_OVSDB_FAILURE;
+     }
   }
   else
+  {
+     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
       return CMD_OVSDB_FAILURE;
+  }
 
   nbr_info = xcalloc(nIntf, sizeof (lldp_neighbor_info));
 
@@ -1038,11 +1062,16 @@ DEFUN (cli_lldp_show_neighbor_info,
   {
     union ovsdb_atom atom;
 
+   if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
+   {
+      /* Skipping internal interfaces */
+      continue;
+   }
   /*
    * If for some reason the n_interfaces doesnt comply with
    * OVSREC_INTERFACE_FOR_EACH rows.
   */
-   if(iter > nIntf)
+   if(iter >= nIntf)
     break;
 
     strncpy(nbr_info[iter].name, ifrow->name, INTF_NAME_SIZE);
@@ -1131,12 +1160,12 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
        "show lldp neighbor-info IFNAME",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show global LLDP neighbor information.\n"
-       "Specify the interface name.")
+       "Show global LLDP neighbor information\n"
+       "Specify the interface name")
 {
   const struct ovsrec_interface *ifrow = NULL;
   bool port_found = false;
-  const struct ovsdb_datum *datum;
+  const struct ovsdb_datum *datum = NULL;
   static char *lldp_interface_neighbor_info_keys [] = {
     INTERFACE_STATISTICS_LLDP_INSERT_COUNT,
     INTERFACE_STATISTICS_LLDP_DELETE_COUNT,
@@ -1214,7 +1243,7 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
   if(!port_found)
   {
-    vty_out (vty, "Error: Wrong interface name.%s", VTY_NEWLINE);
+    VLOG_ERR("Wrong interface name");
     return CMD_WARNING;
   }
 
@@ -1222,7 +1251,7 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
 }
 
-
+/* set LLDP interface state as TX, RX or both */
 int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   const struct ovsrec_interface * row = NULL;
   enum ovsdb_idl_txn_status status;
@@ -1230,7 +1259,7 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   const char *state_value;
   struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -1240,7 +1269,7 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   row = ovsrec_interface_first(idl);
   if(!row)
   {
-    VLOG_ERR("unable to fetch a row.");
+    VLOG_ERR("unable to fetch row");
     cli_do_config_abort(status_txn);
     return 1;
   }
@@ -1304,7 +1333,7 @@ DEFUN (lldp_if_lldp_tx,
        "Set the transmission\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_TX) != 0)
-    VLOG_ERR("Failed to set lldp transmission in Interface context");
+    VLOG_ERR("Failed to set lldp transmission");
 
   return CMD_SUCCESS;
 }
@@ -1313,15 +1342,15 @@ DEFUN (lldp_if_lldp_rx,
        lldp_if_lldp_rx_cmd,
        "lldp reception",
        INTF_LLDP_STR
-       "Set the receiption\n")
+       "Set the reception\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_RX) != 0)
-    VLOG_ERR("Failed to set lldp reception in Interface context");
+    VLOG_ERR("Failed to set lldp reception");
 
   return CMD_SUCCESS;
 }
 
-
+/* set LLDP interface state to default */
 int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 {
   const struct ovsrec_interface * row = NULL;
@@ -1331,7 +1360,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
   boolean validstate = false, ifexists = false;
   struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -1341,7 +1370,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
   row = ovsrec_interface_first(idl);
   if(!row)
   {
-    VLOG_ERR("unable to fetch a row.");
+    VLOG_ERR("unable to fetch a row");
     cli_do_config_abort(status_txn);
     return 1;
   }
@@ -1414,7 +1443,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
     }
     if ((true == ifexists) && (false == validstate))
     {
-      VLOG_ERR("ifrow other_config has invalid lldp dir state");
+      VLOG_ERR("ifrow other_config has invalid LLDP dir state");
     }
 
     cli_do_config_abort(status_txn);
@@ -1431,7 +1460,7 @@ DEFUN (lldp_if_no_lldp_tx,
        "Set the transmission\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_TX) != 0)
-    VLOG_ERR("Failed to set lldp transmission in Interface context");
+    VLOG_ERR("Failed to set lldp transmission");
 
   return CMD_SUCCESS;
 }
@@ -1441,10 +1470,10 @@ DEFUN (lldp_if_no_lldp_rx,
        "no lldp reception",
        NO_STR
        INTF_LLDP_STR
-       "Set the receiption\n")
+       "Set the reception\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_RX) != 0)
-    VLOG_ERR("Failed to set lldp reception in Interface context");
+    VLOG_ERR("Failed to set lldp reception");
 
   return CMD_SUCCESS;
 }
@@ -1465,6 +1494,7 @@ lldp_vty_init (void)
   install_element (CONFIG_NODE, &lldp_clear_neighbors_cmd);
   install_element (CONFIG_NODE, &lldp_set_mgmt_address_cmd);
   install_element (CONFIG_NODE, &lldp_set_no_mgmt_address_cmd);
+  install_element (CONFIG_NODE, &lldp_set_no_mgmt_address_cmd_arg);
   install_element (ENABLE_NODE, &lldp_show_tlv_cmd);
   install_element (ENABLE_NODE, &lldp_show_intf_statistics_cmd);
   install_element (ENABLE_NODE, &lldp_show_intf_neighbor_info_cmd);
