@@ -1327,19 +1327,19 @@ DEFUN (cli_vrf_no_routing,
 
 DEFUN (cli_vrf_config_ip,
         cli_vrf_config_ip_cmd,
-        "ip address A.B.C.D/M [secondary]",
+        "ip address A.B.C.D/M {secondary}",
         IP_STR
         "Set the IP Address\n"
         "IP address of port.\n"
         "IP address is secondary.\n")
 {
     return vrf_config_ip((char*) vty->index, argv[0],
-            (argc > 1) ? true : false);
+            (argv[1] != NULL) ? true : false);
 }
 
 DEFUN (cli_vrf_del_ip,
         cli_vrf_del_ip_cmd,
-        "no ip address A.B.C.D/M [secondary]",
+        "no ip address A.B.C.D/M {secondary}",
         NO_STR
         IP_STR
         "Set the IP Address\n"
@@ -1347,24 +1347,24 @@ DEFUN (cli_vrf_del_ip,
         "IP address is secondary.\n")
 {
     return vrf_del_ip((char*) vty->index, argv[0],
-            (argc > 1) ? true : false);
+            (argv[1] != NULL) ? true : false);
 }
 
 DEFUN (cli_vrf_config_ipv6,
         cli_vrf_config_ipv6_cmd,
-        "ipv6 address X:X::X:X/M [secondary]",
+        "ipv6 address X:X::X:X/M {secondary}",
         IPV6_STR
         "Set the IP Address\n"
         "IPv6 address of port.\n"
         "IP address is secondary.\n")
 {
     return vrf_config_ipv6((char*) vty->index, argv[0],
-            (argc > 1) ? true : false);
+            (argv[1] != NULL) ? true : false);
 }
 
 DEFUN (cli_vrf_del_ipv6,
         cli_vrf_del_ipv6_cmd,
-        "no ipv6 address X:X::X:X/M [secondary]",
+        "no ipv6 address X:X::X:X/M {secondary}",
         NO_STR
         IPV6_STR
         "Set the IP Address\n"
@@ -1372,7 +1372,7 @@ DEFUN (cli_vrf_del_ipv6,
         "IP address is secondary.\n")
 {
     return vrf_del_ipv6((char*) vty->index, argv[0],
-            (argc > 1) ? true : false);
+            (argv[1] != NULL) ? true : false);
 }
 
 DEFUN (cli_vrf_show,
