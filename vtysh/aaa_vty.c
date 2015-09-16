@@ -54,7 +54,7 @@ VLOG_DEFINE_THIS_MODULE(vtysh_aaa_cli);
 
 static int aaa_set_global_status(const char *status)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct smap smap_aaa;
@@ -65,7 +65,7 @@ static int aaa_set_global_status(const char *status)
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if (!row) {
      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -74,14 +74,14 @@ static int aaa_set_global_status(const char *status)
   }
 
   smap_clone(&smap_aaa, &row->aaa);
-  if (strcmp(OPEN_VSWITCH_AAA_RADIUS, status) == 0) {
-      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_RADIUS , HALON_TRUE_STR);
+  if (strcmp(SYSTEM_AAA_RADIUS, status) == 0) {
+      smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS , HALON_TRUE_STR);
   }
-  else if (strcmp(OPEN_VSWITCH_AAA_RADIUS_LOCAL,status) == 0) {
-      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_RADIUS  ,HALON_FALSE_STR);
+  else if (strcmp(SYSTEM_AAA_RADIUS_LOCAL,status) == 0) {
+      smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS  ,HALON_FALSE_STR);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
+  ovsrec_system_set_aaa(row, &smap_aaa);
   smap_destroy(&smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
@@ -109,7 +109,7 @@ DEFUN (cli_aaa_set_global_status,
 
 static int aaa_fallback_option(const char *value)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct smap smap_aaa;
@@ -120,7 +120,7 @@ static int aaa_fallback_option(const char *value)
       return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if (!row) {
       VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -130,13 +130,13 @@ static int aaa_fallback_option(const char *value)
 
   smap_clone(&smap_aaa, &row->aaa);
   if ((strcmp(value,HALON_TRUE_STR) == 0) ) {
-      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_TRUE_STR);
+      smap_replace(&smap_aaa, SYSTEM_AAA_FALLBACK, HALON_TRUE_STR);
   }
   else {
-      smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_FALSE_STR);
+      smap_replace(&smap_aaa, SYSTEM_AAA_FALLBACK, HALON_FALSE_STR);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
+  ovsrec_system_set_aaa(row, &smap_aaa);
   smap_destroy(&smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
@@ -180,16 +180,16 @@ DEFUN (cli_aaa_no_remove_fallback,
 
 static int aaa_show_aaa_authenctication()
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if (!row) {
       VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
       return CMD_OVSDB_FAILURE;
   }
   vty_out(vty, "AAA Authentication:%s", VTY_NEWLINE);
-  if (!strcmp(smap_get(&row->aaa,OPEN_VSWITCH_AAA_RADIUS ),HALON_TRUE_STR)){
+  if (!strcmp(smap_get(&row->aaa,SYSTEM_AAA_RADIUS ),HALON_TRUE_STR)){
       vty_out(vty, "  Local authentication\t\t\t: %s%s","Disabled",VTY_NEWLINE);
       vty_out(vty, "  Radius authentication\t\t\t: %s%s","Enabled",VTY_NEWLINE);
   }
@@ -197,7 +197,7 @@ static int aaa_show_aaa_authenctication()
       vty_out(vty, "  Local authentication\t\t\t: %s%s","Enabled",VTY_NEWLINE);
       vty_out(vty, "  Radius authentication\t\t\t: %s%s","Disabled",VTY_NEWLINE);
   }
-  if (!strcmp(smap_get(&row->aaa,OPEN_VSWITCH_AAA_FALLBACK),HALON_TRUE_STR)){
+  if (!strcmp(smap_get(&row->aaa,SYSTEM_AAA_FALLBACK),HALON_TRUE_STR)){
       vty_out(vty, "  Fallback to local authentication\t: %s%s","Enabled",VTY_NEWLINE);
   }
   else {
@@ -224,7 +224,7 @@ static int radius_server_add_host(const char *ipv4)
   int64_t udp_port = 0, timeout = 0, retries = 0, i = 0, priority = 1;
   const struct ovsrec_radius_server *tempRow = NULL, **radius_info = NULL;
   struct ovsrec_radius_server *row = NULL;
-  const struct ovsrec_open_vswitch *ovs = NULL;
+  const struct ovsrec_system *ovs = NULL;
   struct in_addr addr;
   struct ovsdb_idl_txn *status_txn = NULL;
   enum ovsdb_idl_txn_status txn_status;
@@ -265,7 +265,7 @@ static int radius_server_add_host(const char *ipv4)
       priority += 1;
   }
 
-  ovs = ovsrec_open_vswitch_first(idl);
+  ovs = ovsrec_system_first(idl);
   if (ovs == NULL) {
       assert(0);
       cli_do_config_abort(status_txn);
@@ -293,7 +293,7 @@ static int radius_server_add_host(const char *ipv4)
       radius_info[i] = ovs->radius_servers[i];
   }
   radius_info[ovs->n_radius_servers] = row;
-  ovsrec_open_vswitch_set_radius_servers(ovs, (struct ovsrec_radius_server**)radius_info, ovs->n_radius_servers + 1);
+  ovsrec_system_set_radius_servers(ovs, (struct ovsrec_radius_server**)radius_info, ovs->n_radius_servers + 1);
   free(radius_info);
 
   txn_status = cli_do_config_finish(status_txn);
@@ -466,7 +466,7 @@ static int radius_server_remove_host(const char *ipv4)
   int64_t priority = 0;
   const struct ovsrec_radius_server *row = NULL, *tempRow = NULL;
   const struct ovsrec_radius_server **radius_info = NULL;
-  const struct ovsrec_open_vswitch *ovs = NULL;
+  const struct ovsrec_system *ovs = NULL;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct in_addr addr;
   enum ovsdb_idl_txn_status txn_status;
@@ -512,7 +512,7 @@ static int radius_server_remove_host(const char *ipv4)
      }
   }
 
-  ovs = ovsrec_open_vswitch_first(idl);
+  ovs = ovsrec_system_first(idl);
 
   ovsrec_radius_server_delete(tempRow);
   radius_info = xmalloc(sizeof *ovs->radius_servers * ovs->n_radius_servers );
@@ -522,7 +522,7 @@ static int radius_server_remove_host(const char *ipv4)
           radius_info[n++] = ovs->radius_servers[i];
       }
   }
-  ovsrec_open_vswitch_set_radius_servers(ovs, (struct ovsrec_radius_server**)radius_info, n);
+  ovsrec_system_set_radius_servers(ovs, (struct ovsrec_radius_server**)radius_info, n);
   free(radius_info);
 
   txn_status = cli_do_config_finish(status_txn);
@@ -897,9 +897,9 @@ DEFUN (cli_show_radius_server,
 
 static int show_auto_provisioning()
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if (!row) {
       VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -931,9 +931,9 @@ DEFUN (cli_show_auto_provisioning,
 
 static int show_ssh_auth_method()
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if (!row) {
       VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -970,7 +970,7 @@ DEFUN (cli_show_ssh_auth_method,
 
 static int set_ssh_publickey_auth(const char *status)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct smap smap_aaa;
@@ -981,7 +981,7 @@ static int set_ssh_publickey_auth(const char *status)
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if (!row) {
      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -998,7 +998,7 @@ static int set_ssh_publickey_auth(const char *status)
       smap_replace(&smap_aaa, SSH_PUBLICKEY_AUTHENTICATION, SSH_AUTH_DISABLE);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
+  ovsrec_system_set_aaa(row, &smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
   smap_destroy(&smap_aaa);
@@ -1036,7 +1036,7 @@ DEFUN (cli_no_set_ssh_publickey_auth,
 
 static int set_ssh_password_auth(const char *status)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   struct smap smap_aaa;
@@ -1047,7 +1047,7 @@ static int set_ssh_password_auth(const char *status)
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if (!row) {
      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -1064,7 +1064,7 @@ static int set_ssh_password_auth(const char *status)
       smap_replace(&smap_aaa, SSH_PASSWORD_AUTHENTICATION, SSH_AUTH_DISABLE);
   }
 
-  ovsrec_open_vswitch_set_aaa(row, &smap_aaa);
+  ovsrec_system_set_aaa(row, &smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
   smap_destroy(&smap_aaa);
