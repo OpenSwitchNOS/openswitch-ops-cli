@@ -110,7 +110,7 @@ class LogrotateTests(HalonTest):
         # out = switch.cmdCLI("show logrotate")
         # out = switch.cmdCLI("exit")
 
-        out = switch.cmd('ovs-vsctl list open_vswitch')
+        out = switch.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'period=hourly' in line:
@@ -123,7 +123,7 @@ class LogrotateTests(HalonTest):
         # out = switch.cmdCLI("show logrotate")
         # out = switch.cmdCLI("exit")
 
-        out = switch.cmd('ovs-vsctl list open_vswitch')
+        out = switch.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'maxsize="10"' in line:
@@ -131,7 +131,7 @@ class LogrotateTests(HalonTest):
         return False
 
     def confLogrotateCliGetTarget(self, switch):
-        out = switch.cmd('ovs-vsctl list open_vswitch')
+        out = switch.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'target="tftp://1.1.1.1"' \
@@ -140,7 +140,7 @@ class LogrotateTests(HalonTest):
         return False
 
     def confLogrotateCliGetIP(self, switch):
-        out = switch.cmd('ovs-vsctl list open_vswitch')
+        out = switch.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'ip="1.1.1.1"' in line:

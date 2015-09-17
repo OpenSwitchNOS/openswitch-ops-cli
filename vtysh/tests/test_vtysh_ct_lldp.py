@@ -79,7 +79,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('feature lldp')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_enable' in line:
@@ -96,7 +96,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('no feature lldp')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_enable' in line:
@@ -113,7 +113,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lldp holdtime 7')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_hold="7"' in line:
@@ -147,7 +147,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lldp holdtime 4')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_hold' in line:
@@ -164,7 +164,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lldp timer 100')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_tx_interval="100"' in line:
@@ -198,7 +198,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lldp timer 30')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_tx_interval' in line:
@@ -215,7 +215,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lldp management-address 1.1.1.1')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_mgmt_addr="1.1.1.1"' in line:
@@ -232,7 +232,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('no lldp management-address')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_mgmt_addr' in line:
@@ -249,7 +249,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lldp clear counters')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_num_clear_counters_requested="1"' in line:
@@ -266,7 +266,7 @@ class LLDPCliTest(HalonTest):
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('lldp clear neighbors')
-        out = s1.cmd('ovs-vsctl list open_vswitch')
+        out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'lldp_num_clear_table_requested="1"' in line:

@@ -21,9 +21,9 @@
  * Purpose:  To add declarations required for aaa_vty.c
  */
 
-#define OPEN_VSWITCH_AAA_RADIUS               "radius"
-#define OPEN_VSWITCH_AAA_FALLBACK             "fallback"
-#define OPEN_VSWITCH_AAA_RADIUS_LOCAL         "local"
+#define SYSTEM_AAA_RADIUS               "radius"
+#define SYSTEM_AAA_FALLBACK             "fallback"
+#define SYSTEM_AAA_RADIUS_LOCAL         "local"
 #define HALON_TRUE_STR                        "true"
 #define HALON_FALSE_STR                       "false"
 

@@ -93,10 +93,10 @@ static const char* format_psu_string(char* status)
  * @param[in]
  *      vty : Pointer to vty structure
  *  pSys    : Pointer to ovsrec_subsystem structure
- *  pVswitch: Pointer to ovsrec_open_vswitch structure
+ *  pVswitch: Pointer to ovsrec_system structure
  ***********************************************************/
 static void format_sys_output(struct vty* vty, const struct ovsrec_subsystem* pSys,
-            const struct ovsrec_open_vswitch* pVswitch)
+            const struct ovsrec_system* pVswitch)
 {
     const char* buf = NULL;
     (pVswitch->switch_version) ? vty_out(vty,"%-20s%s%-30s%s","openwitchVersion",": ",pVswitch->switch_version,VTY_NEWLINE):\
@@ -178,7 +178,7 @@ static void format_sys_output(struct vty* vty, const struct ovsrec_subsystem* pS
 int cli_system_get_all()
 {
     const struct ovsrec_subsystem* pSys = NULL;
-    const struct ovsrec_open_vswitch* pVswitch = NULL;
+    const struct ovsrec_system* pVswitch = NULL;
     const struct ovsrec_fan* pFan = NULL;
     struct ovsrec_fan* pFanSort = NULL;
     const struct ovsrec_led* pLed = NULL;
@@ -187,7 +187,7 @@ int cli_system_get_all()
     int n = 0, i = 0;
 
     pSys = ovsrec_subsystem_first(idl);
-    pVswitch = ovsrec_open_vswitch_first(idl);
+    pVswitch = ovsrec_system_first(idl);
 
     if(pSys && pVswitch)
     {

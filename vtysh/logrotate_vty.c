@@ -58,7 +58,7 @@ typedef unsigned char boolean;
 /* Sets logrotation period value in DB*/
 static int set_logrotate_period(const char *period_value)
 {
-    const struct ovsrec_open_vswitch *ovs = NULL;
+    const struct ovsrec_system *ovs = NULL;
     enum ovsdb_idl_txn_status txn_status;
     struct ovsdb_idl_txn *txn = cli_do_config_start();
 
@@ -70,7 +70,7 @@ static int set_logrotate_period(const char *period_value)
         return CMD_OVSDB_FAILURE;
         }
 
-    ovs = ovsrec_open_vswitch_first(idl);
+    ovs = ovsrec_system_first(idl);
     if (NULL == ovs)
         {
         VLOG_ERR_LOGROTATE_OPENVSWITCH_READ_FAILED;
@@ -80,10 +80,10 @@ static int set_logrotate_period(const char *period_value)
 
     if(NULL != period_value)
         {
-        smap_replace((struct smap *)&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD, period_value);
+        smap_replace((struct smap *)&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_PERIOD, period_value);
         }
 
-    ovsrec_open_vswitch_set_logrotate_config(ovs, &ovs->logrotate_config);
+    ovsrec_system_set_logrotate_config(ovs, &ovs->logrotate_config);
 
     txn_status = cli_do_config_finish(txn);
 
@@ -101,7 +101,7 @@ static int set_logrotate_period(const char *period_value)
 /* Sets logrotation maxsize value in DB*/
 static int set_logrotate_maxsize(const char *size_value)
 {
-    const struct ovsrec_open_vswitch *ovs = NULL;
+    const struct ovsrec_system *ovs = NULL;
     enum ovsdb_idl_txn_status txn_status;
     struct ovsdb_idl_txn *txn = cli_do_config_start();
 
@@ -112,7 +112,7 @@ static int set_logrotate_maxsize(const char *size_value)
         return CMD_OVSDB_FAILURE;
         }
 
-    ovs = ovsrec_open_vswitch_first(idl);
+    ovs = ovsrec_system_first(idl);
     if (NULL == ovs)
         {
         VLOG_ERR_LOGROTATE_OPENVSWITCH_READ_FAILED;
@@ -122,10 +122,10 @@ static int set_logrotate_maxsize(const char *size_value)
 
     if(NULL != size_value)
         {
-        smap_replace((struct smap *)&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE, size_value);
+        smap_replace((struct smap *)&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_MAXSIZE, size_value);
         }
 
-    ovsrec_open_vswitch_set_logrotate_config(ovs, &ovs->logrotate_config);
+    ovsrec_system_set_logrotate_config(ovs, &ovs->logrotate_config);
 
     txn_status = cli_do_config_finish(txn);
 
@@ -143,7 +143,7 @@ static int set_logrotate_maxsize(const char *size_value)
 /* Sets logrotation target uri in DB*/
 static int set_logrotate_target(const char *uri)
 {
-    const struct ovsrec_open_vswitch *ovs = NULL;
+    const struct ovsrec_system *ovs = NULL;
     enum ovsdb_idl_txn_status txn_status;
     struct ovsdb_idl_txn *txn;
     const char *ip_value;
@@ -151,7 +151,7 @@ static int set_logrotate_target(const char *uri)
     struct in6_addr addrv6;
     boolean is_ipv4 = TRUE;
 
-    if(strncmp(uri,OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
+    if(strncmp(uri,SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
         {
         if(strlen(uri) <= 7)
             {
@@ -197,7 +197,7 @@ static int set_logrotate_target(const char *uri)
         return CMD_OVSDB_FAILURE;
         }
 
-    ovs = ovsrec_open_vswitch_first(idl);
+    ovs = ovsrec_system_first(idl);
     if (NULL == ovs)
         {
         VLOG_ERR_LOGROTATE_OPENVSWITCH_READ_FAILED;
@@ -205,16 +205,16 @@ static int set_logrotate_target(const char *uri)
         return CMD_OVSDB_FAILURE;
         }
 
-    if((NULL != uri) && (strncmp(uri,OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5)))
+    if((NULL != uri) && (strncmp(uri,SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5)))
         {
-        smap_replace((struct smap *)&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET, uri);
+        smap_replace((struct smap *)&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_TARGET, uri);
         }
     else
         {
-        smap_remove((struct smap *)&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET);
+        smap_remove((struct smap *)&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_TARGET);
         }
 
-    ovsrec_open_vswitch_set_logrotate_config(ovs, &ovs->logrotate_config);
+    ovsrec_system_set_logrotate_config(ovs, &ovs->logrotate_config);
 
     txn_status = cli_do_config_finish(txn);
 
@@ -243,7 +243,7 @@ DEFUN (configure_no_logrotate_period,
        LOGROTATE_NO_CMD_STR_PERIOD,
        LOGROTATE_NO_HELP_STR_PERIOD)
 {
-    set_logrotate_period(OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT);
+    set_logrotate_period(SYSTEM_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT);
     return CMD_SUCCESS;
 }
 
@@ -261,7 +261,7 @@ DEFUN (configure_no_logrotate_maxsize,
        LOGROTATE_NO_CMD_STR_MAXSIZE,
        LOGROTATE_NO_HELP_STR_MAXSIZE)
 {
-    set_logrotate_maxsize(OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT);
+    set_logrotate_maxsize(SYSTEM_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT);
     return CMD_SUCCESS;
 }
 
@@ -280,7 +280,7 @@ DEFUN (configure_no_logrotate_targetRemote,
        LOGROTATE_NO_CMD_STR_TARGET,
        LOGROTATE_NO_HELP_STR_TARGET)
 {
-    set_logrotate_target(OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT);
+    set_logrotate_target(SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT);
     return CMD_SUCCESS;
 }
 
@@ -291,24 +291,24 @@ DEFUN (show_logrotate_config,
        "Show logrotate config parameters\n"
        )
 {
-    const struct ovsrec_open_vswitch *ovs = NULL;
+    const struct ovsrec_system *ovs = NULL;
     const char *data = NULL;
 
     ovsdb_idl_run(idl);
     ovsdb_idl_wait(idl);
 
-    ovs = ovsrec_open_vswitch_first(idl);
+    ovs = ovsrec_system_first(idl);
 
     if(ovs) {
         vty_out (vty, "Logrotate configurations : %s", VTY_NEWLINE);
-        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD);
-        vty_out (vty, "Period            : %s%s", (NULL == data) ? OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT : data, VTY_NEWLINE);
-        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE);
-        vty_out (vty, "Maxsize           : %sMB%s", (NULL == data) ? OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT : data, VTY_NEWLINE);
-        data = smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET);
+        data = smap_get(&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_PERIOD);
+        vty_out (vty, "Period            : %s%s", (NULL == data) ? SYSTEM_LOGROTATE_CONFIG_MAP_PERIOD_DEFAULT : data, VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_MAXSIZE);
+        vty_out (vty, "Maxsize           : %sMB%s", (NULL == data) ? SYSTEM_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT : data, VTY_NEWLINE);
+        data = smap_get(&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_TARGET);
         if (data != NULL)
             {
-            vty_out (vty, "Target            : %s%s", smap_get(&ovs->logrotate_config, OPEN_VSWITCH_LOGROTATE_CONFIG_MAP_TARGET), VTY_NEWLINE);
+            vty_out (vty, "Target            : %s%s", smap_get(&ovs->logrotate_config, SYSTEM_LOGROTATE_CONFIG_MAP_TARGET), VTY_NEWLINE);
             }
     }
     else {
