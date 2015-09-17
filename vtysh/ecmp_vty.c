@@ -1,4 +1,6 @@
-/* Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+/*
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -52,6 +54,7 @@ static int ecmp_config_set_status(bool status, const char * field)
     enum ovsdb_idl_txn_status txn_status;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     bool rc = false;
+    struct smap smap_ecmp_config;
 
     if(status_txn == NULL)
     {
@@ -73,12 +76,14 @@ static int ecmp_config_set_status(bool status, const char * field)
     rc = smap_get_bool(&ovs_row->ecmp_config, field, OPEN_VSWITCH_ECMP_CONFIG_ENABLE_DEFAULT);
 
     if (rc != status) {
-        smap_replace(&ovs_row->ecmp_config, field,
+        smap_clone(&smap_ecmp_config, &ovs_row->ecmp_config);
+        smap_replace(&smap_ecmp_config, field,
                      status?"true":"false");
         VLOG_DBG("%s Set the ecmp config to status = %s old state = %s",
                  __func__, status?"enabled":"disabled",
                  rc?"enabled":"disabled");
-        ovsrec_open_vswitch_set_ecmp_config(ovs_row, &ovs_row->ecmp_config);
+        ovsrec_open_vswitch_set_ecmp_config(ovs_row, &smap_ecmp_config);
+        smap_destroy(&smap_ecmp_config);
     }
 
     txn_status = cli_do_config_finish(status_txn);

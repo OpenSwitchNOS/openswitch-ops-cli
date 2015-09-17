@@ -1,6 +1,7 @@
 /* Management Interface CLI commands source file
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -60,7 +61,7 @@ bool is_mode_static(const struct ovsrec_open_vswitch *ovs)
 
 
 /* Removes Ipv4, default gw from DB*/
-void mgmt_intf_clear_ipv4_config_db(const struct ovsrec_open_vswitch *row)
+void mgmt_intf_clear_ipv4_config_db(const struct ovsrec_open_vswitch *row, struct smap smap_mgmt_intf)
 {
     const char* ip_addr;
 
@@ -69,23 +70,22 @@ void mgmt_intf_clear_ipv4_config_db(const struct ovsrec_open_vswitch *row)
         VLOG_ERR("Invalid Open_vSwitch row pointer");
         return;
     }
-
     ip_addr = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IP);
     if(ip_addr != NULL)
     {
-        smap_remove((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IP);
+        smap_remove(&smap_mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IP);
     }
 
     ip_addr = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
     if(ip_addr != NULL)
     {
-        smap_remove((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
+        smap_remove(&smap_mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY);
     }
     return;
 }
 
 /* Removes Ipv6 default gw and dns server configs from DB*/
-void mgmt_intf_clear_ipv6_config_db(const struct ovsrec_open_vswitch *row)
+void mgmt_intf_clear_ipv6_config_db(const struct ovsrec_open_vswitch *row, struct smap smap_mgmt_intf)
 {
     const char* ip_addr;
 
@@ -97,25 +97,25 @@ void mgmt_intf_clear_ipv6_config_db(const struct ovsrec_open_vswitch *row)
     ip_addr = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
     if(ip_addr != NULL)
     {
-        smap_remove((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
+        smap_remove(&smap_mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_IPV6);
     }
 
     ip_addr = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
     if(ip_addr != NULL)
     {
-        smap_remove((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
+        smap_remove(&smap_mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
     }
 
     ip_addr = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
     if(ip_addr != NULL)
     {
-        smap_remove((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
+        smap_remove(&smap_mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_1);
     }
 
     ip_addr = smap_get(&row->mgmt_intf,OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
     if(ip_addr != NULL)
     {
-        smap_remove((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
+        smap_remove(&smap_mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_DNS_SERVER_2);
     }
     return;
 }
@@ -125,6 +125,7 @@ static int mgmt_intf_set_dhcp()
     const struct ovsrec_open_vswitch *row = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
+    struct smap smap_mgmt_intf;
 
     status_txn = cli_do_config_start();
     if(status_txn == NULL)
@@ -145,16 +146,17 @@ static int mgmt_intf_set_dhcp()
 
 
  /*   if current mode is static remove static configs from DB */
+    smap_clone(&smap_mgmt_intf, &row->mgmt_intf);
     if(is_mode_static(row))
     {
-        mgmt_intf_clear_ipv4_config_db(row);
-        mgmt_intf_clear_ipv6_config_db(row);
+        mgmt_intf_clear_ipv4_config_db(row, smap_mgmt_intf);
+        mgmt_intf_clear_ipv6_config_db(row, smap_mgmt_intf);
     }
 
-    smap_replace((struct smap *)&row->mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_MODE, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_DHCP);
+    smap_replace(&smap_mgmt_intf, OPEN_VSWITCH_MGMT_INTF_MAP_MODE, OPEN_VSWITCH_MGMT_INTF_MAP_MODE_DHCP);
 
-    ovsrec_open_vswitch_set_mgmt_intf(row, &row->mgmt_intf);
-
+    ovsrec_open_vswitch_set_mgmt_intf(row, &smap_mgmt_intf);
+    smap_destroy(&smap_mgmt_intf);
     status = cli_do_config_finish(status_txn);
     if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
     {
@@ -252,7 +254,7 @@ static int mgmt_intf_remove_static_ipv4_address(struct smap *smap, const char *i
 /* Check for any static def-gateway or nameserver config before removing static IPv6*/
 static int mgmt_intf_remove_static_ipv6_address(struct smap *smap,const char *ipv6)
 {
-    const char *cfg_ip, *cfg_subnet, *cfg_gw, *cfg_dns, *cfg_ipv6;
+    const char *cfg_ip, *cfg_gw, *cfg_dns, *cfg_ipv6;
     struct in6_addr addrv6;
 
     memset (&addrv6, 0, sizeof (struct in6_addr));

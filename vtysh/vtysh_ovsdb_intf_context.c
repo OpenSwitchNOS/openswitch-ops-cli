@@ -1,19 +1,22 @@
 /*
- Copyright (C) 2015 Hewlett Packard Enterprise Development LP
- All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License"); you may
- not use this file except in compliance with the License. You may obtain
- a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- License for the specific language governing permissions and limitations
- under the License.
-*/
+ * Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ *
+ * GNU Zebra is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2, or (at your option) any
+ * later version.
+ *
+ * GNU Zebra is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Zebra; see the file COPYING.  If not, write to the Free
+ * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ */
 /****************************************************************************
  * @ingroup cli
  *
@@ -23,7 +26,8 @@
  ***************************************************************************/
 
 #include <zebra.h>
-
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -70,10 +74,10 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
 |    const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
 | Return : pointer to VRF row
 -----------------------------------------------------------------------------*/
-struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
+const struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
                                   const struct ovsrec_port *port_row)
 {
-    struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
     size_t i;
     OVSREC_VRF_FOR_EACH(vrf_row, idl)
     {
@@ -94,11 +98,10 @@ struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
 |   const struct ovsdb_idl *idl : IDL for vtysh
 | Return : bool : returns true/false
 -----------------------------------------------------------------------------*/
-struct ovsrec_port* port_lookup(const char *if_name,
+const struct ovsrec_port* port_lookup(const char *if_name,
                                 const struct ovsdb_idl *idl)
 {
-    struct ovsrec_port *port_row = NULL;
-    size_t i;
+    const struct ovsrec_port *port_row = NULL;
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
       if (strcmp(port_row->name, if_name) == 0) {
@@ -221,7 +224,7 @@ vtysh_ovsdb_intftable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsd
 
   return e_vtysh_ok;
 }
-
+#if 0
 /*-----------------------------------------------------------------------------
 | Function : intfd_get_user_cfg_adminstate
 | Responsibility : get teh admin state form user_config column in specific row
@@ -242,7 +245,7 @@ intfd_get_user_cfg_adminstate(const struct smap *ifrow_config,
     *adminstate = true;
   }
 }
-
+#endif
 /*-----------------------------------------------------------------------------
 | Function : display_l3_info
 | Responsibility : Decide if L3 info needs to be printed
@@ -282,7 +285,6 @@ vtysh_intf_context_clientcallback(void *p_private)
 {
    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
    const struct ovsrec_interface *ifrow;
-   bool adminstate = false;
    const char *cur_state =NULL;
 
    OVSREC_INTERFACE_FOR_EACH(ifrow, p_msg->idl)
@@ -402,8 +404,7 @@ vtysh_ovsdb_intftable_parse_vlan(const char *if_name,
 vtysh_ovsdb_cbmsg_ptr p_msg,
 bool interfaceNameWritten)
 {
-    struct ovsrec_port *port_row;
-    bool displayL3Info = false;
+    const struct ovsrec_port *port_row;
     int i;
 
     port_row = port_lookup(if_name, p_msg->idl);
@@ -418,8 +419,11 @@ bool interfaceNameWritten)
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
-            *port_row->tag);
+        if(port_row->n_tag == 1)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
+                *port_row->tag);
+        }
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
     {
@@ -475,9 +479,8 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
                                      vtysh_ovsdb_cbmsg_ptr p_msg,
                                      bool interfaceNameWritten)
 {
-  struct ovsrec_port *port_row;
-  struct ovsrec_vrf *vrf_row;
-  bool displayL3Info = false;
+  const struct ovsrec_port *port_row;
+  const struct ovsrec_vrf *vrf_row;
   size_t i;
 
   port_row = port_lookup(if_name, p_msg->idl);

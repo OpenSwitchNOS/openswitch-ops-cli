@@ -8,6 +8,7 @@ LIBS = @LIBS@ @CURSES@ @LIBPAM@
 AM_CFLAGS = $(PICFLAGS)
 if ENABLE_OVSDB
 AM_CFLAGS += -I $(LOCAL_SYSROOT_DIR)/usr/local/include/ovs
+#AM_CFLAGS += -Wall -Werror
 endif
 
 AM_LDFLAGS = $(PILDFLAGS)

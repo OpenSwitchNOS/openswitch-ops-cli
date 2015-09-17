@@ -1,19 +1,22 @@
 /*
- Copyright (C) 2015 Hewlett Packard Enterprise Development LP
- All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License"); you may
- not use this file except in compliance with the License. You may obtain
- a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- License for the specific language governing permissions and limitations
- under the License.
-*/
+ * Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ *
+ * GNU Zebra is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2, or (at your option) any
+ * later version.
+ *
+ * GNU Zebra is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Zebra; see the file COPYING.  If not, write to the Free
+ * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ */
 /****************************************************************************
  * @ingroup cli
  *
@@ -23,7 +26,8 @@
  ***************************************************************************/
 
 #include <zebra.h>
-
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -237,7 +241,7 @@ vtysh_ovsdb_ovstable_parse_lacpcfg(const struct smap *lacp_config, vtysh_ovsdb_c
 static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 {
-  struct ovsrec_cli_alias *alias_row = NULL;
+  const struct ovsrec_cli_alias *alias_row = NULL;
   OVSREC_CLI_ALIAS_FOR_EACH (alias_row, p_msg->idl)
   {
      vtysh_ovsdb_cli_print(p_msg, "alias %s %s",
@@ -322,7 +326,6 @@ vtysh_display_radiusservertable_commands(void *p_private)
   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
   const struct ovsrec_radius_server *row;
-  int server_count = 0;
 
   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                            "vtysh_ovsdb_radiusservertable_clientcallback entered");
@@ -347,8 +350,7 @@ vtysh_display_radiusservertable_commands(void *p_private)
 static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_logrotate_cfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
 {
-  const char *data = NULL, *uri = NULL;
-  int maxSize = 0;
+  const char *data = NULL;
 
   if(NULL == ifrow_config)
   {
@@ -566,7 +568,7 @@ vtysh_ret_val
 vtysh_config_context_led_clientcallback(void *p_private)
 {
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-    struct ovsrec_led *pLedRow = NULL;
+    const struct ovsrec_led *pLedRow = NULL;
 
     OVSREC_LED_FOR_EACH(pLedRow,p_msg->idl)
     {
@@ -599,7 +601,6 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
   char str_temp[80];
   int ipv4_flag = 0;
   int ipv6_flag = 0;
-  int len = 0;
   char str[50];
   int i;
 
@@ -627,8 +628,7 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
           for (i = 0; i < row_route->n_nexthops; i++) {
               if (row_route->prefix) {
                   memset(str, 0, sizeof(str));
-                  len = 0;
-                  len = snprintf(str, sizeof(str), "%s", row_route->prefix);
+                  snprintf(str, sizeof(str), "%s", row_route->prefix);
                   if (ipv4_flag == 1 && ipv6_flag == 0) {
                       snprintf(str_temp, sizeof(str_temp), "ip route %s", str);
                   }

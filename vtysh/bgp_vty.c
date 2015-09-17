@@ -1,7 +1,8 @@
 
 /* BGP CLI implementation with Halon vtysh.
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -66,9 +67,8 @@ extern struct ovsdb_idl *idl;
 static struct rt_map_context {
     char name [80];
     int pref;
-} ;
+};
 struct rt_map_context rmp_context;
-
 
 #define NET_BUFSZ    18
 #define BGP_ATTR_DEFAULT_WEIGHT 32768
@@ -103,8 +103,8 @@ struct rt_map_context rmp_context;
 
 VLOG_DEFINE_THIS_MODULE(bgp_vty);
 
-/* Structure definition for protocol specific column in the
- * OVSDB Route table. These fields are owned by bgpd and shared
+/* Structure definition for path attributes column in the
+ * OVSDB BGP_Route table. These fields are owned by bgpd and shared
  * with CLI daemon.
  */
 typedef struct route_psd_bgp_s {
@@ -112,7 +112,6 @@ typedef struct route_psd_bgp_s {
     const char *aspath;
     const char *origin;
     int local_pref;
-    const char *peer_id;
     bool internal;
     bool ibgp;
     const char *uptime;
@@ -122,7 +121,7 @@ typedef struct route_psd_bgp_s {
 /********************** simple error handling ***********************/
 
 static void
-report_unimplemented_command (struct vty *vty, int argc, char *argv[])
+report_unimplemented_command (struct vty *vty, int argc, const char *argv[])
 {
     int i;
 
@@ -171,10 +170,10 @@ safe_print_bool (size_t count, bool *bvalue)
 }
 
 static char *
-safe_print_smap_value (struct smap *smap, char *key)
+safe_print_smap_value (const struct smap *smap, char *key)
 {
     const char *value = smap_get(smap, key);
-    return value ? value : _undefined;
+    return value ? (char*)value : _undefined;
 }
 
 static bool
@@ -184,7 +183,7 @@ string_is_an_ip_address (const char *string)
     return
 	(str2sockunion(string, &su) >= 0);
 }
-
+#ifndef ENABLE_OVSDB
 static bool
 string_is_a_name (const char *string)
 {
@@ -192,11 +191,11 @@ string_is_a_name (const char *string)
     return
 	(str2sockunion(string, &su) < 0);
 }
-
+#endif
 /*
 ** find the vrf with matching name
 */
-static struct ovsrec_vrf *
+static const struct ovsrec_vrf *
 get_ovsrec_vrf_with_name (char *name)
 {
     /* HALON TODO change this later when multi vrf's are supported */
@@ -206,8 +205,8 @@ get_ovsrec_vrf_with_name (char *name)
 /*
 ** find the bgp router with matching asn
 */
-static struct ovsrec_bgp_router *
-get_ovsrec_bgp_router_with_asn (struct ovsrec_vrf *vrf_row, int asn)
+static const struct ovsrec_bgp_router *
+get_ovsrec_bgp_router_with_asn (const struct ovsrec_vrf *vrf_row, int asn)
 {
     int i = 0;
     for (i = 0; i < vrf_row->n_bgp_routers; i++) {
@@ -222,7 +221,7 @@ get_ovsrec_bgp_router_with_asn (struct ovsrec_vrf *vrf_row, int asn)
 ** makes a bgp neighbor database object into a bgp peer/neighbor
 */
 static void
-define_object_as_a_bgp_peer (struct ovsrec_bgp_neighbor *bgpn)
+define_object_as_a_bgp_peer (const struct ovsrec_bgp_neighbor *bgpn)
 {
     bool is_peer_group = false;
     ovsrec_bgp_neighbor_set_is_peer_group(bgpn, &is_peer_group, 1);
@@ -232,7 +231,7 @@ define_object_as_a_bgp_peer (struct ovsrec_bgp_neighbor *bgpn)
 ** makes a bgp neighbor database object into a bgp peer group
 */
 static void
-define_object_as_a_bgp_peer_group (struct ovsrec_bgp_neighbor *bgpn)
+define_object_as_a_bgp_peer_group (const struct ovsrec_bgp_neighbor *bgpn)
 {
     bool is_peer_group = true;
     ovsrec_bgp_neighbor_set_is_peer_group(bgpn, &is_peer_group, 1);
@@ -247,7 +246,7 @@ define_object_as_a_bgp_peer_group (struct ovsrec_bgp_neighbor *bgpn)
 ** type.
 */
 static bool
-object_is_bgp_peer_group (struct ovsrec_bgp_neighbor *bgpn)
+object_is_bgp_peer_group (const struct ovsrec_bgp_neighbor *bgpn)
 {
     if (0 == bgpn->n_is_peer_group) return false;
     return
@@ -256,7 +255,7 @@ object_is_bgp_peer_group (struct ovsrec_bgp_neighbor *bgpn)
 #define object_is_peer_group	object_is_bgp_peer_group
 
 static bool
-object_is_bgp_neighbor (struct ovsrec_bgp_neighbor *bgpn)
+object_is_bgp_neighbor (const struct ovsrec_bgp_neighbor *bgpn)
 {
     if (0 == bgpn->n_is_peer_group) return true;
     return
@@ -272,20 +271,11 @@ object_is_bgp_neighbor (struct ovsrec_bgp_neighbor *bgpn)
 ** neighbor object, name is an ip address and for a peer
 ** group object, it is just a user defined name.
 */
-
-static struct ovsrec_bgp_neighbor *
+static const struct ovsrec_bgp_neighbor *
 find_matching_neighbor_or_peer_group_object (bool is_peer_group,
-    struct ovsrec_bgp_router *ovs_bgpr, char *name)
+    const struct ovsrec_bgp_router *ovs_bgpr,const char *name)
 {
-    bool object_type_matches;
     int i = 0;
-#if 0
-	/* looking for a bgp neighbor or a peer group object */
-	object_type_matches =
-	    (is_peer_group && object_is_bgp_peer_group(ovs_bgpn)) ||
-	    (!is_peer_group && !object_is_bgp_peer_group(ovs_bgpn));
-	if (!object_type_matches) continue;
-#endif
 	/* correct type, now match its parent bgp router and name */
         for (i = 0; i < ovs_bgpr->n_bgp_neighbors; i++) {
             if (ovs_bgpr &&
@@ -298,9 +288,9 @@ find_matching_neighbor_or_peer_group_object (bool is_peer_group,
 /*
 ** Find the bgp neighbor with matching bgp_router and ip address.
 */
-static struct ovsrec_bgp_neighbor *
-get_bgp_neighbor_with_bgp_router_and_ipaddr (struct ovsrec_bgp_router *ovs_bgpr,
-    char *ipaddr)
+static const struct ovsrec_bgp_neighbor *
+get_bgp_neighbor_with_bgp_router_and_ipaddr (const struct ovsrec_bgp_router *ovs_bgpr,
+    const char *ipaddr)
 {
     return
 	find_matching_neighbor_or_peer_group_object(false, ovs_bgpr, ipaddr);
@@ -309,9 +299,9 @@ get_bgp_neighbor_with_bgp_router_and_ipaddr (struct ovsrec_bgp_router *ovs_bgpr,
 /*
 ** Find the bgp peer group with matching bgp_router and name
 */
-static struct ovsrec_bgp_neighbor *
-get_bgp_peer_group_with_bgp_router_and_name (struct ovsrec_bgp_router *ovs_bgpr,
-    char *name)
+static const struct ovsrec_bgp_neighbor *
+get_bgp_peer_group_with_bgp_router_and_name (const struct ovsrec_bgp_router *ovs_bgpr,
+    const char *name)
 {
     return
 	find_matching_neighbor_or_peer_group_object(true, ovs_bgpr, name);
@@ -353,37 +343,37 @@ print_route_status(struct vty *vty, route_psd_bgp_t *ppsd)
 }
 
 static void
-get_rib_protocol_specific_data(const struct ovsrec_route *rib_row, route_psd_bgp_t *data)
+bgp_get_rib_path_attributes(const struct ovsrec_bgp_route *rib_row,
+                            route_psd_bgp_t *data)
 {
     assert(data);
     memset(data, 0, sizeof(*data));
-    data->flags = smap_get_int(&rib_row->protocol_specific,
-                               OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_FLAGS, 0);
-    data->aspath = smap_get(&rib_row->protocol_specific,
-                            OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_AS_PATH);
-    data->origin = smap_get(&rib_row->protocol_specific,
-                            OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_ORIGIN);
-    data->local_pref = smap_get_int(&rib_row->protocol_specific,
-                                    OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_LOC_PREF, 0);
-    data->peer_id = smap_get(&rib_row->protocol_specific,
-                             OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_PEER_ID);
+
+    data->flags = smap_get_int(&rib_row->path_attributes,
+                               OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_FLAGS, 0);
+    data->aspath = smap_get(&rib_row->path_attributes,
+                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_AS_PATH);
+    data->origin = smap_get(&rib_row->path_attributes,
+                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ORIGIN);
+    data->local_pref = smap_get_int(&rib_row->path_attributes,
+                                    OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_LOC_PREF, 0);
     const char *value;
-    value = smap_get(&rib_row->protocol_specific,
-                     OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_INTERNAL);
+    value = smap_get(&rib_row->path_attributes,
+                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_INTERNAL);
     if (!strcmp(value, "true")) {
         data->internal = 1;
     } else {
         data->internal = 0;
     }
-    value = smap_get(&rib_row->protocol_specific,
-                     OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_IBGP);
+    value = smap_get(&rib_row->path_attributes,
+                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_IBGP);
     if (!strcmp(value, "true")) {
         data->ibgp = 1;
     } else {
         data->ibgp = 0;
     }
-    data->uptime = smap_get(&rib_row->protocol_specific,
-                            OVSDB_ROUTE_PROTOCOL_SPECIFIC_BGP_UPTIME);
+    data->uptime = smap_get(&rib_row->path_attributes,
+                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_UPTIME);
     return;
 }
 
@@ -419,7 +409,7 @@ bgp_get_origin_long_str(const char *c)
 
 /* Function to get neighbor name from BGP Router */
 char *
-get_bgp_neighbor_name_from_bgp_router (struct ovsrec_bgp_router *ovs_bgpr, const char *name)
+get_bgp_neighbor_name_from_bgp_router (const struct ovsrec_bgp_router *ovs_bgpr, const char *name)
 {
     int i = 0;
     /* correct type, now match its parent bgp router and name */
@@ -433,25 +423,83 @@ get_bgp_neighbor_name_from_bgp_router (struct ovsrec_bgp_router *ovs_bgpr, const
 
 static int
 bgp_get_peer_weight(const struct ovsrec_bgp_router *bgp_row,
-                    const struct ovsrec_route *rib_row,
+                    const struct ovsrec_bgp_route *rib_row,
                     const char *peer)
 {
     const struct ovsrec_bgp_neighbor *bgp_peer = NULL;
     assert(rib_row);
     assert(peer);
+    if (strncmp(peer, "Static", 6) == 0) {
+        return BGP_ATTR_DEFAULT_WEIGHT;
+    }
     bgp_peer = bgp_peer_lookup(bgp_row, peer);
     if (!bgp_peer) {
-        VLOG_INFO("No BGP peer info for route %s\n",
-                  rib_row->prefix);
+        VLOG_ERR("BGP peer info not found for route %s\n",
+                 rib_row->prefix);
         return BGP_ATTR_DEFAULT_WEIGHT;
     } else {
         if (bgp_peer->n_weight) {
             return *bgp_peer->weight;
         } else {
-            VLOG_INFO("BGP peer %s weight not configured\n",
+            VLOG_DBG("BGP peer %s weight not configured\n",
                       get_bgp_neighbor_name_from_bgp_router(bgp_row, peer));
             return 0;
         }
+    }
+}
+
+static int
+bgp_get_rib_count(void)
+{
+    int count = 0;
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    OVSREC_BGP_ROUTE_FOR_EACH(rib_row, idl) {
+        count++;
+    }
+    return count;
+}
+
+static int
+bgp_rib_cmp(void *a, void *b)
+{
+    int res;
+    struct ovsrec_bgp_route *rt1 = (struct ovsrec_bgp_route *)a;
+    struct ovsrec_bgp_route *rt2 = (struct ovsrec_bgp_route *)b;
+    res = strcmp(rt1->prefix, rt2->prefix);
+    if (res == 0) {
+        // compare nexthops
+        if (rt1->bgp_nexthops[0] && rt2->bgp_nexthops[0])
+            return (strcmp(rt1->bgp_nexthops[0]->ip_address,
+                           rt2->bgp_nexthops[0]->ip_address));
+    } else {
+        return res;
+    }
+}
+
+static void
+bgp_rib_sort_init(struct ovsrec_bgp_route **rib_sorted, int count)
+{
+    int kk = 0;
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    assert(*rib_sorted == NULL);
+    *rib_sorted = (struct ovsrec_bgp_route *)calloc(count,
+                                                    sizeof(struct ovsrec_bgp_route));
+    OVSREC_BGP_ROUTE_FOR_EACH(rib_row, idl) {
+        memcpy((*rib_sorted)+kk, rib_row, sizeof(struct ovsrec_bgp_route));
+        kk++;
+    }
+    qsort((void *)*rib_sorted,
+          count,
+          sizeof(struct ovsrec_bgp_route),
+          bgp_rib_cmp);
+}
+
+static void
+bgp_rib_sort_fin(struct ovsrec_bgp_route **rib_sorted)
+{
+    if (*rib_sorted) {
+        free(*rib_sorted);
+        *rib_sorted = NULL;
     }
 }
 
@@ -459,19 +507,21 @@ bgp_get_peer_weight(const struct ovsrec_bgp_router *bgp_row,
 static void show_routes (struct vty *vty,
                          const struct ovsrec_bgp_router *bgp_row)
 {
-    const struct ovsrec_route *rib_row = NULL;
-    int ii, def_metric = 0;
-    const struct ovsrec_nexthop *nexthop_row = NULL;
-
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    int ii = 0, def_metric = 0, kk = 0;
+    const struct ovsrec_bgp_nexthop *nexthop_row = NULL;
     const struct ovsrec_bgp_neighbor *bgp_peer = NULL;
     route_psd_bgp_t psd, *ppsd = NULL;
+    struct ovsrec_bgp_route *rib_sorted = NULL;
+    int count = bgp_get_rib_count();
 
     ppsd = &psd;
-    // Read BGP routes from Route table
-    OVSREC_ROUTE_FOR_EACH(rib_row, idl) {
-        if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
-            continue;
-        get_rib_protocol_specific_data(rib_row, ppsd);
+    bgp_rib_sort_init(&rib_sorted, count);
+
+    // Read BGP routes from BGP local RIB
+    for (kk = 0; kk < count; kk++) {
+        rib_row = &rib_sorted[kk];
+        bgp_get_rib_path_attributes(rib_row, ppsd);
         print_route_status(vty, ppsd);
         if (rib_row->prefix) {
             int len = 0;
@@ -482,15 +532,16 @@ static void show_routes (struct vty *vty,
             // nexthop
             if (!strcmp(rib_row->address_family, OVSREC_ROUTE_ADDRESS_FAMILY_IPV4)) {
                 // Get the nexthop list
-                VLOG_DBG("No. of next hops : %d", rib_row->n_nexthops);
-                for (ii = 0; ii < rib_row->n_nexthops; ii++) {
-                    if (ii != 0)
+                VLOG_DBG("No. of next hops : %d", rib_row->n_bgp_nexthops);
+                for (ii = 0; ii < rib_row->n_bgp_nexthops; ii++) {
+                    if (ii != 0) {
                         vty_out (vty, VTY_NEWLINE);
-                    vty_out (vty, "%*s", NET_BUFSZ, " ");
-                    nexthop_row = rib_row->nexthops[ii];
+                        vty_out (vty, "%*s", NET_BUFSZ, " ");
+                    }
+                    nexthop_row = rib_row->bgp_nexthops[ii];
                     vty_out (vty, "%-19s", nexthop_row->ip_address);
                 }
-                if (!rib_row->n_nexthops)
+                if (!rib_row->n_bgp_nexthops)
                     vty_out (vty, "%-19s", "0.0.0.0");
                 if (rib_row->n_metric)
                     vty_out (vty, "%7d", *rib_row->metric);
@@ -498,22 +549,10 @@ static void show_routes (struct vty *vty,
                     vty_out (vty, "%7d", def_metric);
                 // Print local preference
                 vty_out (vty, "%7d", ppsd->local_pref);
-                // Print weight
-                bgp_peer = bgp_peer_lookup(bgp_row, ppsd->peer_id);
-                if (!bgp_peer) {
-                    VLOG_DBG("Failed to get BGP peer for route %s\n",
-                             rib_row->prefix);
-                    vty_out (vty, "%7d ", BGP_ATTR_DEFAULT_WEIGHT);
-                } else {
-                    if (bgp_peer->n_weight) {
-                        vty_out (vty, "%7d ", *bgp_peer->weight);
-                    } else {
-                        VLOG_INFO("BGP peer %s weight not configured\n",
-                                 get_bgp_neighbor_name_from_bgp_router(bgp_row,
-                                                                ppsd->peer_id));
-                        vty_out (vty, "%7d ", 0);
-                    }
-                }
+                // Print weight for non-static routes
+                vty_out (vty, "%7d ", bgp_get_peer_weight(bgp_row,
+                                                          rib_row,
+                                                          rib_row->peer));
                 // Print AS path
                 if (ppsd->aspath) {
                     vty_out(vty, "%s", ppsd->aspath);
@@ -529,6 +568,8 @@ static void show_routes (struct vty *vty,
             vty_out (vty, VTY_NEWLINE);
         }
     }
+    vty_out(vty, "Total number of entries %d\n", count);
+    bgp_rib_sort_fin(&rib_sorted);
 }
 
 DEFUN(vtysh_show_ip_bgp,
@@ -539,42 +580,32 @@ DEFUN(vtysh_show_ip_bgp,
       BGP_STR)
 {
     const struct ovsrec_bgp_router *bgp_row = NULL;
-    const struct ovsrec_vrf *vrf_row = NULL;
-    char *vrf_name = NULL;
-    int i = 0;
 
     vty_out (vty, BGP_SHOW_SCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
     vty_out (vty, BGP_SHOW_OCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
-    if (vrf_row == NULL) {
-        VLOG_DBG("no vrf found");
+    bgp_row = ovsrec_bgp_router_first(idl);
+    if (!bgp_row) {
+        vty_out(vty, "%% No bgp router configured\n");
+        return CMD_SUCCESS;
     }
 
-    for (i = 0; i < vrf_row->n_bgp_routers; i++) {
-        if (vrf_row->n_bgp_routers <= 0) {
-            vty_out(vty, "No bgp router configured\n");
-            return CMD_SUCCESS;
-        }
-
-        // HALON_TODO: Need to update this when multiple BGP routers are supported.
-        char *id = vrf_row->value_bgp_routers[i]->router_id;
-        if (id) {
-            vty_out (vty, "Local router-id %s\n", id);
-        } else {
-            vty_out (vty, "Router-id not configured\n");
-        }
-        vty_out (vty, BGP_SHOW_HEADER, VTY_NEWLINE);
-
-        show_routes(vty, vrf_row->value_bgp_routers[i]);
+    // OPS_TODO: Need to update this when multiple BGP routers are supported.
+    char *id = bgp_row->router_id;
+    if (id) {
+        vty_out (vty, "Local router-id %s\n", id);
+    } else {
+        vty_out (vty, "Router-id not configured\n");
     }
+    vty_out (vty, BGP_SHOW_HEADER, VTY_NEWLINE);
+    show_routes(vty, bgp_row);
     return CMD_SUCCESS;
 }
 
 static void
 bgp_get_paths_count_for_prefix(const char *ip, int *count, int *best)
 {
-    const struct ovsrec_route *rib_row;
+    const struct ovsrec_bgp_route *rib_row;
     route_psd_bgp_t psd, *ppsd = NULL;
 
     assert(ip);
@@ -583,10 +614,8 @@ bgp_get_paths_count_for_prefix(const char *ip, int *count, int *best)
     ppsd = &psd;
     *count = *best = 0;
     // Get all routes matching this prefix
-    OVSREC_ROUTE_FOR_EACH(rib_row, idl) {
-        if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
-            continue;
-        get_rib_protocol_specific_data(rib_row, ppsd);
+    OVSREC_BGP_ROUTE_FOR_EACH(rib_row, idl) {
+        bgp_get_rib_path_attributes(rib_row, ppsd);
         if (rib_row->prefix
             && strcmp(rib_row->prefix, ip) == 0) {
             (*count)++;
@@ -599,7 +628,7 @@ bgp_get_paths_count_for_prefix(const char *ip, int *count, int *best)
 static int
 show_route_detail(struct vty *vty,
                   const struct ovsrec_bgp_router *bgp_row,
-                  const struct ovsrec_route *rib_row,
+                  const struct ovsrec_bgp_route *rib_row,
                   boolean print_header)
 {
     int ret;
@@ -616,7 +645,7 @@ show_route_detail(struct vty *vty,
         vty_out (vty, "address is malformed%s", VTY_NEWLINE);
         return CMD_WARNING;
     }
-    get_rib_protocol_specific_data(rib_row, ppsd);
+    bgp_get_rib_path_attributes(rib_row, ppsd);
 
     if (print_header) {
         vty_out (vty, "BGP routing table entry for %s%s",
@@ -647,19 +676,19 @@ show_route_detail(struct vty *vty,
     vty_out (vty, "%s", VTY_NEWLINE);
 
     /* Line2 display Next-hop, Neighbor, Router-id */
-    if (!rib_row->n_nexthops)
+    if (!rib_row->n_bgp_nexthops)
         vty_out (vty, "    %s", "0.0.0.0");
     else
-        vty_out (vty, "    %s", rib_row->nexthops[0]->ip_address);
-    if (strncmp(ppsd->peer_id, "Static", 6) == 0) {
+        vty_out (vty, "    %s", rib_row->bgp_nexthops[0]->ip_address);
+    if (strncmp(rib_row->peer, "Static", 6) == 0) {
         vty_out (vty, " from %s ",
                  p.family == AF_INET ? "0.0.0.0" : "::");
         vty_out (vty, "(%s)", bgp_row->router_id);
         static_route = 1;
     } else {
-        if (!ppsd->flags & BGP_INFO_VALID)
+        if (!(ppsd->flags & BGP_INFO_VALID))
             vty_out (vty, " (inaccessible)");
-        vty_out (vty, " from %s", ppsd->peer_id);
+        vty_out (vty, " from %s", rib_row->peer);
         // HALON_TODO: display peer router_id when it is saved in table.
     }
     vty_out (vty, "%s", VTY_NEWLINE);
@@ -669,7 +698,9 @@ show_route_detail(struct vty *vty,
     int metric = (rib_row->n_metric) ? *rib_row->metric : 0;
     vty_out (vty, ", metric %d", metric);
     vty_out (vty, ", localpref %d", ppsd->local_pref);
-    vty_out (vty, ", weight %d", bgp_get_peer_weight(bgp_row, rib_row, ppsd->peer_id));
+    vty_out (vty, ", weight %d", bgp_get_peer_weight(bgp_row,
+                                                     rib_row,
+                                                     rib_row->peer));
     if (! (ppsd->flags & BGP_INFO_HISTORY))
         vty_out (vty, ", valid");
     if (!static_route) {
@@ -688,57 +719,52 @@ show_route_detail(struct vty *vty,
     /* Line 4 display Uptime */
     vty_out (vty, "      Last update: %s", ppsd->uptime);
     vty_out (vty, "%s", VTY_NEWLINE);
+    return 0;
 }
 
 static int
 bgp_show_route(char *vrf_name, struct vty *vty, const char *view_name, const char *ip_str,
                afi_t afi, safi_t safi)
 {
-    const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_bgp_router *bgp_row = NULL;
-    const struct ovsrec_route *rib_row = NULL;
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    struct ovsrec_bgp_route *rib_sorted = NULL;
     struct prefix match;
-    int cmpLen = 0, found = 0, ret;
+    int cmpLen = 0, found = 0, ret, ii = 0;
     boolean print_header = 0;
-    int i = 0;
+    int count = bgp_get_rib_count();
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
-    if (vrf_row == NULL) {
-        VLOG_ERR("no vrf found");
+    bgp_row = ovsrec_bgp_router_first(idl);
+    if (!bgp_row) {
+        vty_out(vty, "%% No bgp router configured\n");
+        return CMD_SUCCESS;
+    }
+    if (!ip_str)
+        return CMD_WARNING;
+    cmpLen = strlen(ip_str);
+    ret = str2prefix (ip_str, &match);
+    if (!ret) {
+        vty_out (vty, "%% Address is malformed%s", VTY_NEWLINE);
+        return CMD_WARNING;
     }
 
-    for (i = 0; i < vrf_row->n_bgp_routers; i++) {
-        if (vrf_row->n_bgp_routers <= 0) {
-            vty_out(vty, "No bgp router configured\n");
-            return CMD_SUCCESS;
-        }
-
-        if (!ip_str)
-            return CMD_WARNING;
-        cmpLen = strlen(ip_str);
-        ret = str2prefix (ip_str, &match);
-        if (!ret) {
-            vty_out (vty, "address is malformed%s", VTY_NEWLINE);
-            return CMD_WARNING;
-        }
-        OVSREC_ROUTE_FOR_EACH(rib_row, idl) {
-            if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
-                continue;
-            if (rib_row->prefix
-                 && strncmp(rib_row->prefix, ip_str, cmpLen) == 0) {
-                if (!found) {
-                    found = 1;
-                    print_header = 1;
-                }
-                show_route_detail(vty, vrf_row->value_bgp_routers[i],
-                                  rib_row, print_header);
-                print_header = 0;
+    bgp_rib_sort_init(&rib_sorted, count);
+    for (ii = 0; ii < count; ii++) {
+        rib_row = &rib_sorted[ii];
+        if (rib_row->prefix
+            && strncmp(rib_row->prefix, ip_str, cmpLen) == 0) {
+            if (!found) {
+                found = 1;
+                print_header = 1;
             }
+            show_route_detail(vty, bgp_row, rib_row, print_header);
+            print_header = 0;
         }
-        if(!found) {
-            vty_out (vty, "%% Network not in table%s", VTY_NEWLINE);
-            return CMD_WARNING;
-        }
+    }
+    bgp_rib_sort_fin(&rib_sorted);
+    if(!found) {
+        vty_out (vty, "%% Network not in table%s", VTY_NEWLINE);
+        return CMD_WARNING;
     }
     return CMD_SUCCESS;
 }
@@ -872,8 +898,8 @@ bgp_router_insert_to_vrf(struct ovsrec_vrf *vrf_row,
 static int
 cli_router_bgp_cmd_execute (char *vrf_name, int64_t asn)
 {
-    struct ovsrec_bgp_router *bgp_router_row;
-    struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn;
 
     /* Start of transaction */
@@ -929,8 +955,8 @@ ALIAS (router_bgp,
 
 void
 bgp_router_remove_from_vrf(struct ovsrec_vrf *vrf_row,
-                         struct ovsrec_bgp_router *bgp_router_row,
-                         int64_t asn)
+                           struct ovsrec_bgp_router *bgp_router_row,
+                           int64_t asn)
 {
     int64_t *asn_list;
     struct ovsrec_bgp_router **bgp_routers_list;
@@ -955,8 +981,7 @@ bgp_router_remove_from_vrf(struct ovsrec_vrf *vrf_row,
 static int
 cli_no_router_bgp_cmd_execute (char *vrf_name, int64_t asn)
 {
-    struct ovsrec_bgp_router *bgp_router_row = NULL;
-    struct ovsrec_bgp_router **bgp_routers_list;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
     const struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
 
@@ -1011,8 +1036,8 @@ cli_bgp_router_id_cmd_execute (char *vrf_name, char *router_ip_addr)
 {
     int ret;
     struct in_addr id;
-    struct ovsrec_bgp_router *bgp_router_row;
-    struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
 
     if(string_is_an_ip_address(router_ip_addr)) {
@@ -1025,15 +1050,14 @@ cli_bgp_router_id_cmd_execute (char *vrf_name, char *router_ip_addr)
         /* Start of transaction */
         START_DB_TXN(bgp_router_txn);
 
-        VLOG_DBG("vty_index for router_id: %d\n",(int)vty->index);
+        VLOG_DBG("vty_index for router_id: %d\n",(int64_t)vty->index);
 
         vrf_row = get_ovsrec_vrf_with_name(vrf_name);
         if (vrf_row == NULL) {
             ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
         }
-
         /* See if it already exists */
-        bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+        bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
         /* If does not exist, nothing to modify */
         if (bgp_router_row == NULL) {
@@ -1062,7 +1086,7 @@ DEFUN (bgp_router_id,
        "Manually configured router identifier\n")
 {
     return
-	cli_bgp_router_id_cmd_execute (NULL, argv[0]);
+        cli_bgp_router_id_cmd_execute (NULL, CONST_CAST(char*,argv[0]));
 }
 
 DEFUN (no_bgp_router_id,
@@ -1191,7 +1215,7 @@ cli_bgp_maxpaths_cmd_execute(char *vrf_name, int64_t max_paths)
     /* Start of transaction */
     START_DB_TXN(bgp_router_txn);
 
-    VLOG_DBG("vty_index for maxpaths : %d\n",(int)vty->index);
+    VLOG_DBG("vty_index for maxpaths : %d\n",(int64_t)vty->index);
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
@@ -1199,8 +1223,7 @@ cli_bgp_maxpaths_cmd_execute(char *vrf_name, int64_t max_paths)
     }
 
     /* See if it already exists */
-    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
-
+    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     /* If does not exist, nothing to modify */
     if (bgp_router_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
@@ -1281,14 +1304,13 @@ cli_bgp_timers_cmd_execute(char *vrf_name, int64_t keepalive, int64_t holdtime)
     struct ovsrec_bgp_router *bgp_router_row;
     struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
-    int i = 0;
-    char **bgp_key_timers;
+    char **bgp_key_timers = NULL;
     int64_t bgp_value_timers[2];
 
     /* Start of transaction */
     START_DB_TXN(bgp_router_txn);
 
-    VLOG_DBG("vty_index for timers : %d\n",(int)vty->index);
+    VLOG_DBG("vty_index for timers : %d\n",(int64_t)vty->index);
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
@@ -1296,8 +1318,7 @@ cli_bgp_timers_cmd_execute(char *vrf_name, int64_t keepalive, int64_t holdtime)
     }
 
     /* See if it already exists */
-    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
-
+    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     /* If does not exist, nothing to modify */
     if (bgp_router_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
@@ -1321,7 +1342,7 @@ cli_bgp_timers_cmd_execute(char *vrf_name, int64_t keepalive, int64_t holdtime)
 
                /* Set the timers with matching asn */
                ovsrec_bgp_router_set_timers(bgp_router_row, bgp_key_timers,
-                                            &bgp_value_timers, 2);
+                                            bgp_value_timers, 2);
            }
         }
         else {
@@ -1331,7 +1352,8 @@ cli_bgp_timers_cmd_execute(char *vrf_name, int64_t keepalive, int64_t holdtime)
         }
     }
 
-    free(bgp_key_timers);
+    if(bgp_key_timers != NULL)
+        free(bgp_key_timers);
 
     /* End of transaction*/
     END_DB_TXN(bgp_router_txn);
@@ -1784,13 +1806,12 @@ cli_bgp_network_cmd_execute (char *vrf_name, char *network)
     }
 
     /* See if it already exists */
-    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
-
+    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (bgp_router_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
     }
     else {
-        VLOG_DBG("vty_index for network : %d\n",(int)vty->index);
+        VLOG_DBG("vty_index for network : %ld\n",(int64_t)vty->index);
         /* Insert networks in BGP_Router table */
         network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
                                (bgp_router_row->n_networks + 1));
@@ -1815,7 +1836,7 @@ DEFUN (bgp_network,
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 {
     return
-	cli_bgp_network_cmd_execute(NULL, argv[0]);
+        cli_bgp_network_cmd_execute(NULL, CONST_CAST(char*,argv[0]));
 }
 
 /* Unconfigure static BGP network */
@@ -1826,7 +1847,7 @@ cli_no_bgp_network_cmd_execute (char *vrf_name, char *network)
     struct prefix p;
     struct in_addr *id;
     char buf[SU_ADDRSTRLEN];
-    struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_bgp_router *bgp_router_row;
     struct ovsrec_vrf *vrf_row;
     char **network_list;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
@@ -1847,13 +1868,12 @@ cli_no_bgp_network_cmd_execute (char *vrf_name, char *network)
     }
 
     /* See if it already exists */
-    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
-
+    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (bgp_router_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
     }
     else {
-        VLOG_DBG("vty_index for no network : %d\n",(int)vty->index);
+        VLOG_DBG("vty_index for no network : %ld\n",(int64_t)vty->index);
         /* Insert networks in BGP_Router table */
         network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
                                (bgp_router_row->n_networks - 1));
@@ -1950,13 +1970,13 @@ ALIAS (no_bgp_default_local_preference,
 */
 static int
 cli_neighbor_remote_as_cmd_execute (char *vrf_name, struct vty *vty,
-    int argc, char *argv[])
+                                    int argc, char *argv[])
 {
-    char *peer_str = argv[0];
+    const char *peer_str = argv[0];
     int64_t remote_as = (int64_t) atoi(argv[1]);
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor, *ovs_peer_grp;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor, *ovs_peer_grp;
     struct ovsdb_idl_txn *txn;
     bool update_all_peers = false;
     char *name;
@@ -1968,8 +1988,7 @@ cli_neighbor_remote_as_cmd_execute (char *vrf_name, struct vty *vty,
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
-
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "% Bgp router context not available");
     }
@@ -2032,15 +2051,15 @@ cli_neighbor_remote_as_cmd_execute (char *vrf_name, struct vty *vty,
     /* done */
     END_DB_TXN(txn);
 }
-
+#ifndef ENABLE_OVSDB
 static int
 cli_no_neighbor_remote_as_cmd_execute (struct vty *vty,
-    int argc, char *argv[])
+    int argc, const char *argv[])
 {
     report_unimplemented_command(vty, argc, argv);
     return CMD_SUCCESS;
 }
-
+#endif
 DEFUN (neighbor_remote_as,
        neighbor_remote_as_cmd,
        NEIGHBOR_CMD2 "remote-as " CMD_AS_RANGE,
@@ -2087,11 +2106,11 @@ bgp_neighbor_remove_for_matching_peer_group_from_bgp_router(
 }
 
 static int
-delete_neighbor_peer_group (struct ovsrec_bgp_router *bgp_router_context,
+delete_neighbor_peer_group (const struct ovsrec_bgp_router *bgp_router_context,
     const char *name)
 {
-    struct ovsrec_bgp_neighbor *peer_group;
-    struct ovsrec_bgp_neighbor *bgpn, *bgpn_next;
+    const struct ovsrec_bgp_neighbor *peer_group;
+    const struct ovsrec_bgp_neighbor *bgpn, *bgpn_next;
 
     peer_group =
 	get_bgp_peer_group_with_bgp_router_and_name
@@ -2122,11 +2141,10 @@ delete_neighbor_peer_group (struct ovsrec_bgp_router *bgp_router_context,
 static int
 cli_no_neighbor_cmd_execute (char *vrf_name, const char *peer_str)
 {
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
-    union sockunion su;
 
     START_DB_TXN(txn);
 
@@ -2135,7 +2153,7 @@ cli_no_neighbor_cmd_execute (char *vrf_name, const char *peer_str)
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -2186,9 +2204,9 @@ ALIAS (no_neighbor,
 static int
 cli_no_neighbor_peer_group_cmd_execute (char *vrf_name, const char *name)
 {
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *peer_group;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *peer_group;
     struct ovsdb_idl_txn *txn;
     int res;
 
@@ -2199,7 +2217,7 @@ cli_no_neighbor_peer_group_cmd_execute (char *vrf_name, const char *name)
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -2243,9 +2261,9 @@ bgp_neighbor_peer_group_insert_to_bgp_router(struct ovsrec_bgp_router *bgp_route
 static int
 cli_neighbor_peer_group_cmd_execute (char *vrf_name, const char *groupName)
 {
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_peer_group;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_peer_group;
     struct ovsdb_idl_txn *txn;
 
     START_DB_TXN(txn);
@@ -2255,7 +2273,7 @@ cli_neighbor_peer_group_cmd_execute (char *vrf_name, const char *groupName)
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -2397,13 +2415,13 @@ ALIAS (no_neighbor_local_as,
        "Do not prepend local-as to updates from ibgp peers\n")
 
 static int
-cli_neighbor_password_execute(char *vrf_name, int argc, char *argv[])
+cli_neighbor_password_execute(char *vrf_name, int argc, const char *argv[])
 {
-    char *ip_addr = argv[0];
+    const char *ip_addr = argv[0];
     char *str;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
 
     START_DB_TXN(txn);
@@ -2413,7 +2431,7 @@ cli_neighbor_password_execute(char *vrf_name, int argc, char *argv[])
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
@@ -2451,11 +2469,11 @@ DEFUN (no_neighbor_password,
        NEIGHBOR_ADDR_STR2
        "Set a password\n")
 {
-    char *ip_addr = argv[0];
+    const char *ip_addr = argv[0];
     char *str;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char * vrf_name = NULL;
 
@@ -2466,7 +2484,7 @@ DEFUN (no_neighbor_password,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
@@ -2514,10 +2532,10 @@ static int
 cli_neighbor_set_peer_group_cmd_execute (char *vrf_name, const char *ip_addr,
     const char *peer_group)
 {
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_neighbor *ovs_bgp_peer_group;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_peer_group;
     struct ovsdb_idl_txn *txn;
 
     START_DB_TXN(txn);
@@ -2528,7 +2546,7 @@ cli_neighbor_set_peer_group_cmd_execute (char *vrf_name, const char *ip_addr,
     }
 
     /* This *MUST* be already available */
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -2630,10 +2648,10 @@ static int
 cli_no_neighbor_set_peer_group_cmd_execute (char *vrf_name, const char *ip_addr,
     const char *peer_group)
 {
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbors_peer_group;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbors_peer_group;
     struct ovsdb_idl_txn *txn;
     char *name;
     int i = 0;
@@ -2645,7 +2663,7 @@ cli_no_neighbor_set_peer_group_cmd_execute (char *vrf_name, const char *ip_addr,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -2725,10 +2743,10 @@ DEFUN (neighbor_shutdown,
        NEIGHBOR_ADDR_STR2
        "Administratively shut down this neighbor\n")
 {
-    char *ip_addr = argv[0];
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const char *ip_addr = argv[0];
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
     const bool shutdown = true;
     char *vrf_name = NULL;
@@ -2740,7 +2758,7 @@ DEFUN (neighbor_shutdown,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -2766,10 +2784,10 @@ DEFUN (no_neighbor_shutdown,
        NEIGHBOR_ADDR_STR2
        "Administratively shut down this neighbor\n")
 {
-    char *ip_addr = argv[0];
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const char *ip_addr = argv[0];
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
 
@@ -2780,7 +2798,7 @@ DEFUN (no_neighbor_shutdown,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -2936,12 +2954,12 @@ DEFUN (no_neighbor_nexthop_self,
 
 static int
 cli_neighbor_remove_private_as_cmd_execute (struct vty *vty,
-    int argc, char *argv[])
+    int argc,const char *argv[])
 {
-    char *ip_addr = argv[0];
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const char *ip_addr = argv[0];
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
     const bool remove_private_as = true;
     char *vrf_name = NULL;
@@ -2953,7 +2971,7 @@ cli_neighbor_remove_private_as_cmd_execute (struct vty *vty,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router not configured");
     }
@@ -2987,12 +3005,12 @@ DEFUN (neighbor_remove_private_as,
 
 static int
 cli_no_neighbor_remove_private_as_cmd_execute (struct vty *vty,
-    int argc, char *argv[])
+    int argc,const char *argv[])
 {
-    char *ip_addr = argv[0];
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const char *ip_addr = argv[0];
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
 
@@ -3003,7 +3021,7 @@ cli_no_neighbor_remove_private_as_cmd_execute (struct vty *vty,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router not configured");
     }
@@ -3092,9 +3110,9 @@ DEFUN (no_neighbor_send_community_type,
 static int
 cli_neighbor_soft_reconfiguration_inbound_cmd_execute (char *vrf_name, const char *ip_addr)
 {
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
 
     START_DB_TXN(txn);
@@ -3104,7 +3122,7 @@ cli_neighbor_soft_reconfiguration_inbound_cmd_execute (char *vrf_name, const cha
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (bgp_router_context) {
         ovs_bgp_neighbor =
 	    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
@@ -3143,9 +3161,9 @@ DEFUN (neighbor_soft_reconfiguration,
 static int
 cli_no_neighbor_soft_reconfiguration_inbound_cmd_execute(char *vrf_name, const char *ip_addr)
 {
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
 
     START_DB_TXN(txn);
@@ -3155,7 +3173,7 @@ cli_no_neighbor_soft_reconfiguration_inbound_cmd_execute(char *vrf_name, const c
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (bgp_router_context) {
         ovs_bgp_neighbor =
 	    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
@@ -3636,13 +3654,13 @@ ALIAS (no_neighbor_disable_connected_check,
        "Enforce EBGP neighbors perform multihop\n")
 
 static int
-cli_neighbor_description_execute(int argc, char *argv[])
+cli_neighbor_description_execute(int argc,const char *argv[])
 {
-    char *ip_addr = argv[0];
+    const char *ip_addr = argv[0];
     char *str;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
 
@@ -3653,7 +3671,7 @@ cli_neighbor_description_execute(int argc, char *argv[])
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
@@ -3694,10 +3712,10 @@ DEFUN (no_neighbor_description,
        NEIGHBOR_ADDR_STR2
        "Neighbor specific description\n")
 {
-    char *ip_addr = argv[0];
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
+    const char *ip_addr = argv[0];
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
 
@@ -3708,7 +3726,7 @@ DEFUN (no_neighbor_description,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
@@ -3924,21 +3942,21 @@ typedef struct timer_val {
 } timer_val_t;
 
 static int
-cli_neighbor_timers_execute (char *vrf_name, int argc, char *argv[])
+cli_neighbor_timers_execute (char *vrf_name, int argc, const char *argv[])
 {
-    char *ip_addr = argv[0];
+    const char *ip_addr = argv[0];
     char *key_timers[2];
     timer_val_t tim_val;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
 
     VTY_GET_INTEGER_RANGE ("Keepalive", tim_val.keepalive, argv[1], 0, 65535);
     VTY_GET_INTEGER_RANGE ("Holdtime", tim_val.holdtime, argv[2], 0, 65535);
 
      if (tim_val.holdtime < 3 && tim_val.holdtime != 0) {
-        vty_out(vty, "\n%%Hold time cannot be 1 or 2\n",
+        vty_out(vty, "\n%d%s%dHold time cannot be 1 or 2\n",
         argc, __FILE__, __LINE__);
         return CMD_WARNING;
     }
@@ -3951,7 +3969,7 @@ cli_neighbor_timers_execute (char *vrf_name, int argc, char *argv[])
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
@@ -3993,12 +4011,12 @@ DEFUN (no_neighbor_timers,
        NEIGHBOR_ADDR_STR2
        "BGP per neighbor timers\n")
 {
-    char *ip_addr = argv[0];
+    const char *ip_addr = argv[0];
     char *key_timers[2];
     timer_val_t tim_val;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
 
@@ -4009,7 +4027,7 @@ DEFUN (no_neighbor_timers,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
@@ -4215,7 +4233,7 @@ DEFUN (no_neighbor_filter_list,
 }
 
 struct ovsrec_route_map *
-get_neighbor_route_map (struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
+get_neighbor_route_map (const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
                         char *name, char *direction)
 {
     struct ovsrec_route_map *rt_map = NULL;
@@ -4241,11 +4259,11 @@ static int
 cli_neighbor_route_map_cmd_execute (char *vrf_name, char *ipAddr, char *name,
                                     char *direction)
 {
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
-    struct ovsrec_route_map *rt_map_row;
+    const struct ovsrec_route_map *rt_map_row;
     bool rm_found = false;
 
     START_DB_TXN(txn);
@@ -4255,7 +4273,7 @@ cli_neighbor_route_map_cmd_execute (char *vrf_name, char *ipAddr, char *name,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -4295,14 +4313,14 @@ cli_neighbor_route_map_cmd_execute (char *vrf_name, char *ipAddr, char *name,
         directions[i] = ovs_bgp_neighbor->key_route_maps[i];
         rt_maps[i] = ovs_bgp_neighbor->value_route_maps[i];
         if (!strcmp(direction, directions[i])) {
-            rt_maps[i] = rt_map_row;
+            rt_maps[i] = CONST_CAST(struct ovsrec_route_map*,rt_map_row);
             dir_found = true;
         }
     }
 
     if (!dir_found) {
         directions[num_elems] = direction;
-        rt_maps[num_elems] = rt_map_row;
+        rt_maps[num_elems] = CONST_CAST(struct ovsrec_route_map*,rt_map_row);
         num_elems++;
     }
 
@@ -4329,18 +4347,19 @@ DEFUN (neighbor_route_map,
        "Apply map to routes going into a Route-Server client's table\n"
        "Apply map to routes coming from a Route-Server client")
 {
-    return cli_neighbor_route_map_cmd_execute(NULL, argv[0], argv[1], argv[2]);
+    return cli_neighbor_route_map_cmd_execute(NULL,
+                                              CONST_CAST(char*,argv[0]),
+                                              CONST_CAST(char*, argv[1]),
+                                              CONST_CAST(char*, argv[2]));
 }
 
 static int
 cli_no_neighbor_route_map_cmd_execute (char *vrf_name, char *ipAddr, char *direction)
 {
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *bgp_router_context;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     struct ovsdb_idl_txn *txn;
-    struct ovsrec_route_map *rt_map_row;
-    bool rm_found = false;
 
     START_DB_TXN(txn);
 
@@ -4349,7 +4368,7 @@ cli_no_neighbor_route_map_cmd_execute (char *vrf_name, char *ipAddr, char *direc
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -4418,7 +4437,9 @@ DEFUN (no_neighbor_route_map,
        "Apply map to routes going into a Route-Server client's table\n"
        "Apply map to routes coming from a Route-Server client")
 {
-    return cli_no_neighbor_route_map_cmd_execute(NULL, argv[0], argv[2]);
+    return cli_no_neighbor_route_map_cmd_execute(NULL,
+                                                 CONST_CAST(char*,argv[0]),
+                                                 CONST_CAST(char*,argv[2]));
 }
 
 DEFUN (neighbor_unsuppress_map,
@@ -4606,13 +4627,13 @@ ALIAS (no_neighbor_maximum_prefix,
        "Restart interval in minutes")
 
 static int
-cli_allow_as_in_execute(char *vrf_name, int argc, char *argv[])
+cli_allow_as_in_execute(char *vrf_name, int argc, const char *argv[])
 {
-    char *ip_addr = argv[0];
+    const char *ip_addr = argv[0];
     char *str;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     int64_t allow_num;
 
@@ -4623,8 +4644,7 @@ cli_allow_as_in_execute(char *vrf_name, int argc, char *argv[])
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
-
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
@@ -4670,12 +4690,11 @@ DEFUN (no_neighbor_allowas_in,
        NEIGHBOR_ADDR_STR2
        "allow local ASN appears in aspath attribute\n")
 {
-    char *ip_addr = argv[0];
-    char *str;
+    const char *ip_addr = argv[0];
     int64_t allow_num;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
-    struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
 
@@ -4686,7 +4705,7 @@ DEFUN (no_neighbor_allowas_in,
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
 
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
 
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
@@ -7207,7 +7226,7 @@ DEFUN (show_ipv6_mbgp_summary,
 
 static void
 show_one_bgp_neighbor (struct vty *vty, char **name,
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
+                       const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
 {
     int i = 0;
     vty_out(vty, "  name: %s, remote-as: %s\n",
@@ -7241,7 +7260,7 @@ show_one_bgp_neighbor (struct vty *vty, char **name,
 	    ovs_bgp_neighbor->tcp_port_number));
     vty_out(vty, "    statistics:\n");
     for (i = 0; i < ovs_bgp_neighbor->n_statistics; i++) {
-	vty_out(vty, "       %s: %d\n",
+	vty_out(vty, "       %s: %ld\n",
 	    ovs_bgp_neighbor->key_statistics[i],
 	    ovs_bgp_neighbor->value_statistics[i]);
     }
@@ -7254,9 +7273,9 @@ show_one_bgp_neighbor (struct vty *vty, char **name,
 */
 static void
 show_bgp_router_neighbors (struct vty *vty,
-    struct ovsrec_bgp_router *ovs_bgp_router, char *peer)
+                           const struct ovsrec_bgp_router *ovs_bgp_router, const char *peer)
 {
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
     int i = 0;
 
     /*
@@ -7279,11 +7298,11 @@ show_bgp_router_neighbors (struct vty *vty,
 */
 static void
 cli_show_ip_bgp_neighbors_cmd_execute (char *vrf_name, struct vty *vty,
-    int argc, char *argv[])
+    int argc, const char *argv[])
 {
-    char *peer = NULL;
-    struct ovsrec_vrf *vrf_row;
-    struct ovsrec_bgp_router *ovs_bgp_router;
+    const char *peer = NULL;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *ovs_bgp_router;
     int i = 0;
 
     /* is a neighbor defined */
@@ -7979,7 +7998,7 @@ ALIAS (no_bgp_redistribute_ipv6_rmap_metric,
        "Route map reference\n"
        "Pointer to route-map entries\n")
 #endif /* HAVE_IPV6 */
-
+#ifndef ENABLE_OVSDB
 /* BGP node structure. */
 static struct cmd_node bgp_node =
 {
@@ -7987,7 +8006,7 @@ static struct cmd_node bgp_node =
   "%s(config-router)# ",
   1,
 };
-
+#endif
 static struct cmd_node bgp_ipv4_unicast_node =
 {
   BGP_IPV4_NODE,
@@ -9214,10 +9233,10 @@ char *policy_key_to_cmd_lookup(const char *key, const struct lookup_entry *looku
         return NULL;
 }
 
-struct ovsrec_prefix_list *
-policy_get_prefix_list_in_ovsdb (char *name)
+const struct ovsrec_prefix_list *
+policy_get_prefix_list_in_ovsdb (const char *name)
 {
-    struct ovsrec_prefix_list *policy_row;
+    const struct ovsrec_prefix_list *policy_row;
 
     OVSREC_PREFIX_LIST_FOR_EACH(policy_row, idl) {
         if (strcmp(policy_row->name, name) == 0) {
@@ -9227,10 +9246,11 @@ policy_get_prefix_list_in_ovsdb (char *name)
     return NULL;
 }
 
+
 struct ovsrec_prefix_list_entry *
-policy_get_prefix_list_entry_in_ovsdb (int seqnum, char *name)
+policy_get_prefix_list_entry_in_ovsdb (int seqnum, const char *name)
 {
-    struct ovsrec_prefix_list  *policy_row;
+    const struct ovsrec_prefix_list  *policy_row;
     int i = 0;
 
     OVSREC_PREFIX_LIST_FOR_EACH(policy_row, idl) {
@@ -9306,36 +9326,20 @@ policy_set_prefix_list_in_ovsdb (struct vty *vty, afi_t afi, const char *name,
 
 {
     struct ovsdb_idl_txn *policy_txn;
-    struct ovsrec_prefix_list *policy_row;
-    struct ovsrec_prefix_list_entry  *policy_entry_row;
+    const struct ovsrec_prefix_list *policy_row;
+    const struct ovsrec_prefix_list_entry  *policy_entry_row;
     enum ovsdb_idl_txn_status status;
     int ret;
-    enum prefix_list_type type;
-    struct prefix_list *plist;
-    struct prefix_list_entry *pentry;
-    struct prefix_list_entry *dup;
     struct prefix p;
-    int any = 0;
     int seqnum = -1;
-    int lenum = 0;
-    int genum = 0;
-
 
     /* Sequential number. */
     if (seq)
         seqnum = atoi (seq);
 
-    /* ge and le number */
-    if (ge)
-        genum = atoi (ge);
-    if (le)
-        lenum = atoi (le);
-
     /* Check filter type. */
-    if (strncmp ("permit", typestr, 1) == 0)
-        type = PREFIX_PERMIT;
-    else if (strncmp ("deny", typestr, 1) == 0)
-        type = PREFIX_DENY;
+    if (strncmp ("permit", typestr, 1) == 0){}
+    else if (strncmp ("deny", typestr, 1) == 0){}
     else
     {
         vty_out (vty, "%% prefix type must be permit or deny%s", VTY_NEWLINE);
@@ -9348,9 +9352,6 @@ policy_set_prefix_list_in_ovsdb (struct vty *vty, afi_t afi, const char *name,
         if (strncmp ("any", prefix, strlen (prefix)) == 0)
         {
             ret = str2prefix_ipv4 ("0.0.0.0/0", (struct prefix_ipv4 *) &p);
-            genum = 0;
-            lenum = IPV4_MAX_BITLEN;
-            any = 1;
         }
         else
             ret = str2prefix_ipv4 (prefix, (struct prefix_ipv4 *) &p);
@@ -9415,10 +9416,10 @@ DEFUN (ip_prefix_list_seq,
 /*
  * Route Map Start Below
  */
-struct ovsrec_route_map *
-policy_get_route_map_in_ovsdb (char * name)
+const struct ovsrec_route_map *
+policy_get_route_map_in_ovsdb (const char * name)
 {
-  struct ovsrec_route_map *rt_map_row;
+  const struct ovsrec_route_map *rt_map_row;
 
   OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
     if (strcmp(rt_map_row->name, name) == 0) {
@@ -9428,10 +9429,10 @@ policy_get_route_map_in_ovsdb (char * name)
   return NULL;
 }
 
-struct ovsrec_route_map_entry  *
-policy_get_route_map_entry_in_ovsdb (unsigned long pref, char *name)
+const struct ovsrec_route_map_entry  *
+policy_get_route_map_entry_in_ovsdb (unsigned long pref, const char *name)
 {
-    struct ovsrec_route_map  *rt_map_row;
+    const struct ovsrec_route_map  *rt_map_row;
     int i = 0;
 
     OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
@@ -9505,21 +9506,17 @@ policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
                          const char *typestr, const char *seq)
 {
   struct ovsdb_idl_txn *policy_txn;
-  struct ovsrec_route_map *rt_map_row;
-  struct ovsrec_route_map_entry  *rt_map_entry_row;
+  const struct ovsrec_route_map *rt_map_row;
+  const struct ovsrec_route_map_entry  *rt_map_entry_row;
   enum ovsdb_idl_txn_status status;
   int permit;
   unsigned long pref;
-  struct route_map *map;
-  struct route_map_index *index;
   char *endptr = NULL;
 
 
   /* Permit check. */
-  if (strncmp (typestr, "permit", strlen (typestr)) == 0)
-    permit = RMAP_PERMIT;
-  else if (strncmp (typestr, "deny", strlen (typestr)) == 0)
-    permit = RMAP_DENY;
+  if (strncmp (typestr, "permit", strlen (typestr)) == 0){}
+  else if (strncmp (typestr, "deny", strlen (typestr)) == 0){}
   else
     {
       vty_out (vty, "the third field must be [permit|deny]%s", VTY_NEWLINE);
@@ -9597,9 +9594,8 @@ static int
 policy_set_route_map_description_in_ovsdb (struct vty *vty, const char *description)
 {
     struct ovsdb_idl_txn *policy_txn;
-    struct ovsrec_route_map_entry  *rt_map_entry_row =
-           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
-    enum ovsdb_idl_txn_status status;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
 
     START_DB_TXN(policy_txn);
 
@@ -9619,14 +9615,12 @@ DEFUN (rmap_description,
 
 static int
 policy_set_route_map_match_in_ovsdb (struct vty *vty,
-                               struct ovsrec_route_map_entry  *rt_map_entry_row,
-                               const char *command, const char *arg)
+                                     const struct ovsrec_route_map_entry  *rt_map_entry_row,
+                                     const char *command, const char *arg)
 {
     struct ovsdb_idl_txn *policy_txn;
-    enum ovsdb_idl_txn_status status;
     struct smap smap_match;
     char *table_key;
-    struct smap *psmap;
 
     table_key = policy_cmd_to_key_lookup(command, match_table);
     if (table_key == NULL) {
@@ -9636,8 +9630,7 @@ policy_set_route_map_match_in_ovsdb (struct vty *vty,
 
     START_DB_TXN(policy_txn);
 
-    psmap = &rt_map_entry_row->match;
-    smap_clone(&smap_match, psmap);
+    smap_clone(&smap_match, &rt_map_entry_row->match);
     smap_replace(&smap_match, table_key, arg);
     ovsrec_route_map_entry_set_match(rt_map_entry_row, &smap_match);
     smap_destroy(&smap_match);
@@ -9655,7 +9648,7 @@ DEFUN (match_ip_address_prefix_list,
        "IP prefix-list name\n")
 {
 
-  struct ovsrec_route_map_entry  *rt_map_entry_row =
+  const struct ovsrec_route_map_entry  *rt_map_entry_row =
            policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
 
   return policy_set_route_map_match_in_ovsdb (vty,
@@ -9665,12 +9658,11 @@ DEFUN (match_ip_address_prefix_list,
 
 static int
 policy_set_route_map_set_in_ovsdb (struct vty *vty,
-                   struct ovsrec_route_map_entry  *rt_map_entry_row,
+                   const struct ovsrec_route_map_entry  *rt_map_entry_row,
                    const char *command, const char *arg)
 
 {
     struct ovsdb_idl_txn *policy_txn;
-    enum ovsdb_idl_txn_status status;
     struct smap smap_set;
     char *table_key;
     struct smap *psmap;
@@ -9682,6 +9674,7 @@ policy_set_route_map_set_in_ovsdb (struct vty *vty,
     }
 
     START_DB_TXN(policy_txn);
+
     psmap = &rt_map_entry_row->set;
     smap_clone(&smap_set, psmap);
     smap_replace(&smap_set, table_key, arg);
@@ -9698,7 +9691,7 @@ DEFUN (set_metric,
        "Metric value for destination routing protocol\n"
        "Metric value\n")
 {
-  struct ovsrec_route_map_entry  *rt_map_entry_row =
+  const struct ovsrec_route_map_entry  *rt_map_entry_row =
            policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
 
   return policy_set_route_map_set_in_ovsdb (vty,
@@ -9715,7 +9708,7 @@ policy_set_route_map_set_community_str_in_ovsdb (struct vty *vty,
   int additive = 0;
   char *argstr;
   int ret = 0;
-  struct ovsrec_route_map_entry  *rt_map_entry_row =
+  const struct ovsrec_route_map_entry  *rt_map_entry_row =
            policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
   int n = 0;
 

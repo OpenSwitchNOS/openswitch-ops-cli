@@ -1,5 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -172,7 +173,9 @@ struct option longopts[] =
   /* For compatibility with older zebra/quagga versions */
   { "eval",                 required_argument,       NULL, 'e'},
   { "command",              required_argument,       NULL, 'c'},
+#ifndef ENABLE_OVSDB
   { "daemon",               required_argument,       NULL, 'd'},
+#endif
   { "echo",                 no_argument,             NULL, 'E'},
   { "dryrun",		    no_argument,	     NULL, 'C'},
   { "help",                 no_argument,             NULL, 'h'},
@@ -235,7 +238,9 @@ main (int argc, char **argv, char **env)
   int opt;
   int dryrun = 0;
   int boot_flag = 0;
+#ifndef ENABLE_OVSDB
   const char *daemon_name = NULL;
+#endif
   struct cmd_rec {
     const char *line;
     struct cmd_rec *next;
@@ -246,6 +251,8 @@ main (int argc, char **argv, char **env)
   int ret = 0;
   int counter=0;
   pthread_t vtysh_ovsdb_if_thread;
+  vlog_set_verbosity("CONSOLE:OFF");
+  vlog_set_verbosity("SYSLOG:DBG");
 
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
@@ -260,7 +267,7 @@ main (int argc, char **argv, char **env)
 #ifdef ENABLE_OVSDB
       opt = getopt_long (argc, argv, "be:c:d:nEhCtv:", longopts, 0);
 #else
-      opt = getopt_long (argc, argv, "be:c:d:nEhC", longopts, 0);
+      opt = getopt_long (argc, argv, "be:c:nEhC", longopts, 0);
 #endif
 
       if (opt == EOF)
@@ -287,9 +294,11 @@ main (int argc, char **argv, char **env)
 	    tail = cr;
 	  }
 	  break;
+#ifndef ENABLE_OVSDB
 	case 'd':
 	  daemon_name = optarg;
 	  break;
+#endif
 	case 'n':
 	  no_error = 1;
 	  break;
@@ -451,9 +460,10 @@ main (int argc, char **argv, char **env)
   vtysh_pager_init ();
 
   vtysh_readline_init ();
-
+/* Welcome Banner of vtysh */
+#ifndef ENABLE_OVSDB
   vty_hello (vty);
-
+#endif
   /* Enter into enable node. */
   vtysh_execute ("enable");
 

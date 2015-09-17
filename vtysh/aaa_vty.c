@@ -1,6 +1,7 @@
 /* AAA CLI commands
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -73,7 +74,6 @@ static int aaa_set_global_status(const char *status)
   }
 
   smap_clone(&smap_aaa, &row->aaa);
-
   if (strcmp(OPEN_VSWITCH_AAA_RADIUS, status) == 0) {
       smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_RADIUS , HALON_TRUE_STR);
   }
@@ -85,7 +85,6 @@ static int aaa_set_global_status(const char *status)
   smap_destroy(&smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
-
   if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
       return CMD_SUCCESS;
   }
@@ -130,7 +129,6 @@ static int aaa_fallback_option(const char *value)
   }
 
   smap_clone(&smap_aaa, &row->aaa);
-
   if ((strcmp(value,HALON_TRUE_STR) == 0) ) {
       smap_replace(&smap_aaa, OPEN_VSWITCH_AAA_FALLBACK, HALON_TRUE_STR);
   }
@@ -142,7 +140,6 @@ static int aaa_fallback_option(const char *value)
   smap_destroy(&smap_aaa);
 
   txn_status = cli_do_config_finish(status_txn);
-
   if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
       return CMD_SUCCESS;
   }

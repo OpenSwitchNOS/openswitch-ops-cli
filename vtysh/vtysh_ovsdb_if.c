@@ -1,6 +1,7 @@
 /* Vtysh daemon ovsdb integration.
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -64,7 +65,6 @@ struct ovsdb_idl *idl;
 static unsigned int idl_seqno;
 static char *appctl_path = NULL;
 static struct unixctl_server *appctl;
-static struct ovsdb_idl_txn *txn;
 static int cur_cfg_no = 0;
 
 boolean exiting = false;
@@ -88,7 +88,7 @@ vtysh_wait(void)
 }
 
 static void
-bgp_ovsdb_init (struct ovsdb_idl *idl)
+bgp_ovsdb_init ()
 {
     /* BGP router table */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_router);
@@ -140,16 +140,31 @@ bgp_ovsdb_init (struct ovsdb_idl *idl)
     ovsdb_idl_add_column(idl, &ovsrec_route_col_nexthops);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_address_family);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_sub_address_family);
-    ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_specific);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_selected);
-    ovsdb_idl_add_column(idl, &ovsrec_route_col_protocol_private);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_distance);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
+
+    /* BGP RIB table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_bgp_route);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_prefix);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_bgp_nexthops);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_address_family);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_sub_address_family);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_distance);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_metric);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_vrf);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_path_attributes);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_peer);
+
+    /* BGP Nexthop table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_bgp_nexthop);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_nexthop_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_nexthop_col_type);
 }
 
 static void
-l3routes_ovsdb_init(struct ovsdb_idl *idl)
+l3routes_ovsdb_init()
 {
   ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
   ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
@@ -165,7 +180,7 @@ l3routes_ovsdb_init(struct ovsdb_idl *idl)
 }
 
 static void
-vrf_ovsdb_init(struct ovsdb_idl *idl)
+vrf_ovsdb_init()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
@@ -191,7 +206,7 @@ vrf_ovsdb_init(struct ovsdb_idl *idl)
 }
 
 static void
-policy_ovsdb_init(struct ovsdb_idl *idl)
+policy_ovsdb_init()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
@@ -225,7 +240,7 @@ policy_ovsdb_init(struct ovsdb_idl *idl)
  *      idl     : Pointer to idl structure
  ***********************************************************/
 static void
-intf_ovsdb_init(struct ovsdb_idl *idl)
+intf_ovsdb_init()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_interface);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
@@ -252,7 +267,7 @@ intf_ovsdb_init(struct ovsdb_idl *idl)
  *      idl     : Pointer to idl structure
  ***********************************************************/
 static void
-alias_ovsdb_init(struct ovsdb_idl *idl)
+alias_ovsdb_init()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_cli_alias);
     ovsdb_idl_add_column(idl, &ovsrec_cli_alias_col_alias_name);
@@ -285,7 +300,7 @@ radius_server_ovsdb_init()
  *      idl     : Pointer to idl structure
  ***********************************************************/
 static void
-system_ovsdb_init(struct ovsd_idl *idl)
+system_ovsdb_init()
 {
     /* Add Platform Related Tables */
     ovsdb_idl_add_table(idl,&ovsrec_table_fan);
@@ -348,7 +363,7 @@ system_ovsdb_init(struct ovsd_idl *idl)
 }
 
 static void
-logrotate_ovsdb_init(struct ovsdb_idl *idl)
+logrotate_ovsdb_init()
 {
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_logrotate_config);
 }
@@ -425,28 +440,28 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_ecmp_config);
 
     /* Interface tables */
-    intf_ovsdb_init(idl);
+    intf_ovsdb_init();
 
    /* Management interface columns */
     mgmt_intf_ovsdb_init();
 
-    alias_ovsdb_init(idl);
+    alias_ovsdb_init();
 
     /* BGP tables */
-    bgp_ovsdb_init(idl);
-    l3routes_ovsdb_init(idl);
+    bgp_ovsdb_init();
+    l3routes_ovsdb_init();
 
     /* VRF tables */
-    vrf_ovsdb_init(idl);
+    vrf_ovsdb_init();
 
     /* Radius server table */
     radius_server_ovsdb_init();
 
     /* Policy tables */
-    policy_ovsdb_init(idl);
+    policy_ovsdb_init();
 
     /* System tables */
-    system_ovsdb_init(idl);
+    system_ovsdb_init();
     /* VLAN internal commands */
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
@@ -455,7 +470,7 @@ ovsdb_init(const char *db_path)
     vlan_ovsdb_init();
 
     /* Logrotate tables */
-    logrotate_ovsdb_init(idl);
+    logrotate_ovsdb_init();
     /* Add tables/columns needed for LACP config commands */
     lacp_ovsdb_init();
 
@@ -659,7 +674,7 @@ void cli_do_config_abort(struct ovsdb_idl_txn* status_txn)
 int vtysh_ovsdb_interface_match(const char *str)
 {
 
-  struct ovsrec_interface *row, *next;
+  const struct ovsrec_interface *row, *next;
 
   if(!str)
   {
@@ -682,7 +697,7 @@ int vtysh_ovsdb_interface_match(const char *str)
  */
 int vtysh_ovsdb_port_match(const char *str)
 {
-  struct ovsrec_port *row, *next;
+  const struct ovsrec_port *row, *next;
 
   if(!str)
   {
@@ -705,7 +720,7 @@ int vtysh_ovsdb_port_match(const char *str)
 int vtysh_ovsdb_vlan_match(const char *str)
 {
 
-  struct ovsrec_vlan *row, *next;
+  const struct ovsrec_vlan *row, *next;
 
   if(!str)
   {
@@ -835,7 +850,7 @@ vtysh_ovsdb_main_thread(void *arg)
  */
 bool check_iface_in_bridge(const char *if_name)
 {
-  struct ovsrec_open_vswitch *ovs_row = NULL;
+  const struct ovsrec_open_vswitch *ovs_row = NULL;
   struct ovsrec_bridge *br_cfg = NULL;
   struct ovsrec_port *port_cfg = NULL;
   struct ovsrec_interface *iface_cfg = NULL;
@@ -864,10 +879,10 @@ bool check_iface_in_bridge(const char *if_name)
 */
 bool check_port_in_bridge(const char *port_name)
 {
-    struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_open_vswitch *ovs_row = NULL;
     struct ovsrec_bridge *br_cfg = NULL;
     struct ovsrec_port *port_cfg = NULL;
-    size_t i, j, k;
+    size_t i, j;
     ovs_row = ovsrec_open_vswitch_first(idl);
     if (ovs_row == NULL)
     {
@@ -890,7 +905,7 @@ bool check_port_in_bridge(const char *port_name)
  */
 bool check_iface_in_vrf(const char *if_name)
 {
-  struct ovsrec_open_vswitch *ovs_row = NULL;
+  const struct ovsrec_open_vswitch *ovs_row = NULL;
   struct ovsrec_vrf *vrf_cfg = NULL;
   struct ovsrec_port *port_cfg = NULL;
   struct ovsrec_interface *iface_cfg = NULL;
@@ -919,10 +934,10 @@ bool check_iface_in_vrf(const char *if_name)
 */
 bool check_port_in_vrf(const char *port_name)
 {
-    struct ovsrec_open_vswitch *ovs_row = NULL;
+    const struct ovsrec_open_vswitch *ovs_row = NULL;
     struct ovsrec_vrf *vrf_cfg = NULL;
     struct ovsrec_port *port_cfg = NULL;
-    size_t i, j, k;
+    size_t i, j;
     ovs_row = ovsrec_open_vswitch_first(idl);
     if (ovs_row == NULL)
     {

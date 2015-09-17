@@ -1,6 +1,7 @@
 /* FAN CLI commands file
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -105,7 +106,7 @@ DEFUN ( vtysh_fan_speed,
         " \n"
         " \n")
 {
-    return vtysh_ovsdb_fan_speed_set(argv[0], true);
+    return vtysh_ovsdb_fan_speed_set(CONST_CAST(char*,argv[0]), true);
 }
 
 DEFUN ( vtysh_no_fan_speed,
@@ -138,10 +139,10 @@ static void  vtysh_ovsdb_fan_show()
         {
             if(row)
             {
-                struct ovsdb_datum *at = ovsrec_fan_get_rpm(row,OVSDB_TYPE_INTEGER);
+                const struct ovsdb_datum *at = ovsrec_fan_get_rpm(row,OVSDB_TYPE_INTEGER);
                 if(at)
                     rpm=at->keys->integer;
-                vty_out (vty,"%-13s%-7s%-15s%-14s%-8lld%s",
+                vty_out (vty,"%-13s%-7s%-15s%-14s%-8ld%s",
                  row->name,row->speed,((0 == strncmp(row->direction , "f2b",3))?"front-to-back":"back-to-front"),row->status,rpm,VTY_NEWLINE);
             }
             else

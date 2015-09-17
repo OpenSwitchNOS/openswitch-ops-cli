@@ -1,5 +1,6 @@
 /* Virtual terminal [aka TeletYpe] interface routine
    Copyright (C) 1997 Kunihiro Ishiguro
+   Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
 This file is part of GNU Zebra.
 

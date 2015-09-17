@@ -1,19 +1,20 @@
 /*
- Copyright (C) 2015 Hewlett Packard Enterprise Development LP
- All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License"); you may
- not use this file except in compliance with the License. You may obtain
- a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- License for the specific language governing permissions and limitations
- under the License.
-*/
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
 /****************************************************************************
  * @ingroup cli
  *
@@ -22,6 +23,8 @@
  *
  ***************************************************************************/
 
+#include "vty.h"
+#include <vector.h>
 #include "vswitch-idl.h"
 #include "openhalon-idl.h"
 #include "vtysh_ovsdb_if.h"
@@ -47,8 +50,7 @@ static vtysh_ret_val
 vtysh_ovsdb_porttable_parse_vlan(const char *if_name,
                                  vtysh_ovsdb_cbmsg_ptr p_msg)
 {
-    struct ovsrec_port *port_row;
-    bool displayL3Info = false;
+    const struct ovsrec_port *port_row;
     int i;
 
     port_row = port_lookup(if_name, p_msg->idl);
@@ -63,8 +65,11 @@ vtysh_ovsdb_porttable_parse_vlan(const char *if_name,
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
     {
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
-            *port_row->tag);
+        if(port_row->n_tag == 1)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan access ",
+                *port_row->tag);
+        }
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
     {
