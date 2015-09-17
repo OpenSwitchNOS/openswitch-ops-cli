@@ -539,7 +539,7 @@ DEFUN (cli_lacp_set_no_heartbeat_rate_fast,
 static int
 lacp_set_global_sys_priority(const char *priority)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   struct smap smap = SMAP_INITIALIZER(&smap);
   struct ovsdb_idl_txn* txn = NULL;
   enum ovsdb_idl_txn_status status;
@@ -552,7 +552,7 @@ lacp_set_global_sys_priority(const char *priority)
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
@@ -563,12 +563,12 @@ lacp_set_global_sys_priority(const char *priority)
 
   smap_clone(&smap, &row->lacp_config);
 
-  if(DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY == atoi(priority))
+  if(DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY == atoi(priority))
     smap_remove(&smap, PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY);
   else
     smap_replace(&smap, PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY, priority);
 
-  ovsrec_open_vswitch_set_lacp_config(row, &smap);
+  ovsrec_system_set_lacp_config(row, &smap);
   smap_destroy(&smap);
   status = cli_do_config_finish(txn);
   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -601,7 +601,7 @@ DEFUN (cli_lacp_set_no_global_sys_priority,
        "The range is 0 to 65535; the default is 65534.\n")
 {
   char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
-  snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY);
+  snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY);
   return lacp_set_global_sys_priority(def_sys_priority);
 }
 
@@ -613,7 +613,7 @@ DEFUN (cli_lacp_set_no_global_sys_priority_shortform,
        "Set LACP system priority.\n")
 {
   char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
-  snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY);
+  snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY);
   return lacp_set_global_sys_priority(def_sys_priority);
 }
 
@@ -1051,11 +1051,11 @@ DEFUN (cli_lacp_remove_intf_from_lag,
 static int
 lacp_show_configuration()
 {
-   const struct ovsrec_open_vswitch *row = NULL;
+   const struct ovsrec_system *row = NULL;
    const char *system_id = NULL;
    const char *system_priority = NULL;
 
-   row = ovsrec_open_vswitch_first(idl);
+   row = ovsrec_system_first(idl);
    if(!row)
    {
       return CMD_OVSDB_FAILURE;
@@ -1068,7 +1068,7 @@ lacp_show_configuration()
    vty_out(vty,"%s",VTY_NEWLINE);
    system_priority = smap_get(&row->lacp_config, PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY);
    if(NULL == system_priority)
-      vty_out(vty, "System-priority : %d", DFLT_OPEN_VSWITCH_LACP_CONFIG_SYSTEM_PRIORITY);
+      vty_out(vty, "System-priority : %d", DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY);
    else
       vty_out(vty, "System-priority : %s", system_priority);
    vty_out(vty,"%s",VTY_NEWLINE);
