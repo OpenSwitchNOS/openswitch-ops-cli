@@ -63,7 +63,7 @@ struct route_map_list
 
   void (*add_hook) (const char *);
   void (*delete_hook) (const char *);
-  void (*event_hook) (route_map_event_t, const char *); 
+  void (*event_hook) (route_map_event_t, const char *);
 };
 
 /* Master list of route map. */
@@ -95,7 +95,7 @@ route_map_add (const char *name)
 
   map = route_map_new (name);
   list = &route_map_master;
-    
+
   map->next = NULL;
   map->prev = list->tail;
   if (list->tail)
@@ -118,7 +118,7 @@ route_map_delete (struct route_map *map)
   struct route_map_list *list;
   struct route_map_index *index;
   char *name;
-  
+
   while ((index = map->head) != NULL)
     route_map_index_delete (index, 0);
 
@@ -221,23 +221,23 @@ vty_show_route_map_entry (struct vty *vty, struct route_map *map)
       if (index->description)
 	vty_out (vty, "  Description:%s    %s%s", VTY_NEWLINE,
 		 index->description, VTY_NEWLINE);
-      
+
       /* Match clauses */
       vty_out (vty, "  Match clauses:%s", VTY_NEWLINE);
       for (rule = index->match_list.head; rule; rule = rule->next)
-        vty_out (vty, "    %s %s%s", 
+        vty_out (vty, "    %s %s%s",
                  rule->cmd->str, rule->rule_str, VTY_NEWLINE);
-      
+
       vty_out (vty, "  Set clauses:%s", VTY_NEWLINE);
       for (rule = index->set_list.head; rule; rule = rule->next)
         vty_out (vty, "    %s %s%s",
                  rule->cmd->str, rule->rule_str, VTY_NEWLINE);
-      
+
       /* Call clause */
       vty_out (vty, "  Call clause:%s", VTY_NEWLINE);
       if (index->nextrm)
         vty_out (vty, "    Call %s%s", index->nextrm, VTY_NEWLINE);
-      
+
       /* Exit Policy */
       vty_out (vty, "  Action:%s", VTY_NEWLINE);
       if (index->exitpolicy == RMAP_GOTO)
@@ -332,7 +332,11 @@ route_map_index_delete (struct route_map_index *index, int notify)
 }
 
 /* Lookup index from route map. */
+#ifdef ENABLE_OVSDB
+struct route_map_index *
+#else
 static struct route_map_index *
+#endif
 route_map_index_lookup (struct route_map *map, enum route_map_type type,
 			int pref)
 {
@@ -358,7 +362,7 @@ route_map_index_add (struct route_map *map, enum route_map_type type,
   index->map = map;
   index->type = type;
   index->pref = pref;
-  
+
   /* Compare preference. */
   for (point = map->head; point; point = point->next)
     if (point->pref >= pref)
@@ -399,7 +403,7 @@ route_map_index_add (struct route_map *map, enum route_map_type type,
 
 /* Get route map index. */
 struct route_map_index *
-route_map_index_get (struct route_map *map, enum route_map_type type, 
+route_map_index_get (struct route_map *map, enum route_map_type type,
 		     int pref)
 {
   struct route_map_index *index;
@@ -557,7 +561,7 @@ route_map_add_match (struct route_map_index *index, const char *match_name,
     {
       next = rule->next;
       if (rule->cmd == cmd)
-	{	
+	{
 	  route_map_rule_delete (&index->match_list, rule);
 	  replaced = 1;
 	}
@@ -596,9 +600,9 @@ route_map_delete_match (struct route_map_index *index, const char *match_name,
   cmd = route_map_lookup_match (match_name);
   if (cmd == NULL)
     return 1;
-  
+
   for (rule = index->match_list.head; rule; rule = rule->next)
-    if (rule->cmd == cmd && 
+    if (rule->cmd == cmd &&
 	(rulecmp (rule->rule_str, match_arg) == 0 || match_arg == NULL))
       {
 	route_map_rule_delete (&index->match_list, rule);
@@ -682,7 +686,7 @@ route_map_delete_set (struct route_map_index *index, const char *set_name,
   cmd = route_map_lookup_set (set_name);
   if (cmd == NULL)
     return 1;
-  
+
   for (rule = index->set_list.head; rule; rule = rule->next)
     if ((rule->cmd == cmd) &&
          (rulecmp (rule->rule_str, set_arg) == 0 || set_arg == NULL))
@@ -703,7 +707,7 @@ route_map_delete_set (struct route_map_index *index, const char *set_name,
    The matrix for a route-map looks like this:
    (note, this includes the description for the "NEXT"
    and "GOTO" frobs now
-  
+
               Match   |   No Match
                       |
     permit    action  |     cont
@@ -712,7 +716,7 @@ route_map_delete_set (struct route_map_index *index, const char *set_name,
                       |
     deny      deny    |     cont
                       |
-  
+
    action)
       -Apply Set statements, accept route
       -If Call statement is present jump to the specified route-map, if it
@@ -724,10 +728,10 @@ route_map_delete_set (struct route_map_index *index, const char *set_name,
       -Route is denied by route-map.
    cont)
       -Goto Next index
-  
+
    If we get no matches after we've processed all updates, then the route
    is dropped too.
-  
+
    Some notes on the new "CALL", "NEXT" and "GOTO"
      call WORD        - If this clause is matched, then the set statements
                         are executed and then we jump to route-map 'WORD'. If
@@ -740,7 +744,7 @@ route_map_delete_set (struct route_map_index *index, const char *set_name,
                         first clause greater than this. In order to ensure
                         route-maps *always* exit, you cannot jump backwards.
                         Sorry ;)
-  
+
    We need to make sure our route-map processing matches the above
 */
 
@@ -762,7 +766,7 @@ route_map_apply_match (struct route_map_rule_list *match_list,
       for (match = match_list->head; match; match = match->next)
         {
           /* Try each match statement in turn, If any do not return
-             RMAP_MATCH, return, otherwise continue on to next match 
+             RMAP_MATCH, return, otherwise continue on to next match
              statement. All match statements must match for end-result
              to be a match. */
           ret = (*match->cmd->func_apply) (match->value, prefix,
@@ -832,7 +836,7 @@ route_map_apply (struct route_map *map, struct prefix *prefix,
                   if (ret == RMAP_DENYMATCH)
                     return ret;
                 }
-                
+
               switch (index->exitpolicy)
                 {
                   case RMAP_EXIT:
@@ -1030,7 +1034,7 @@ DEFUN (no_route_map,
   index = route_map_index_lookup (map, permit, pref);
   if (index == NULL)
     {
-      vty_out (vty, "%% Could not find route-map entry %s %s%s", 
+      vty_out (vty, "%% Could not find route-map entry %s %s%s",
 	       argv[0], argv[2], VTY_NEWLINE);
       return CMD_WARNING;
     }
@@ -1071,7 +1075,7 @@ DEFUN (no_rmap_onmatch_next,
   struct route_map_index *index;
 
   index = vty->index;
-  
+
   if (index)
     index->exitpolicy = RMAP_EXIT;
 
@@ -1094,11 +1098,11 @@ DEFUN (rmap_onmatch_goto,
         VTY_GET_INTEGER_RANGE("route-map index", d, argv[0], 1, 65536);
       else
         d = index->pref + 1;
-      
+
       if (d <= index->pref)
 	{
 	  /* Can't allow you to do that, Dave */
-	  vty_out (vty, "can't jump backwards in route-maps%s", 
+	  vty_out (vty, "can't jump backwards in route-maps%s",
 		   VTY_NEWLINE);
 	  return CMD_WARNING;
 	}
@@ -1124,7 +1128,7 @@ DEFUN (no_rmap_onmatch_goto,
 
   if (index)
     index->exitpolicy = RMAP_EXIT;
-  
+
   return CMD_SUCCESS;
 }
 
@@ -1264,7 +1268,7 @@ route_map_config_write (struct vty *vty)
 	else
 	  first = 0;
 
-	vty_out (vty, "route-map %s %s %d%s", 
+	vty_out (vty, "route-map %s %s %d%s",
 		 map->name,
 		 route_map_type_str (index->type),
 		 index->pref, VTY_NEWLINE);
@@ -1273,7 +1277,7 @@ route_map_config_write (struct vty *vty)
 	  vty_out (vty, " description %s%s", index->description, VTY_NEWLINE);
 
 	for (rule = index->match_list.head; rule; rule = rule->next)
-	  vty_out (vty, " match %s %s%s", rule->cmd->str, 
+	  vty_out (vty, " match %s %s%s", rule->cmd->str,
 		   rule->rule_str ? rule->rule_str : "",
 		   VTY_NEWLINE);
 
@@ -1287,7 +1291,7 @@ route_map_config_write (struct vty *vty)
       vty_out (vty, " on-match goto %d%s", index->nextpref, VTY_NEWLINE);
 	if (index->exitpolicy == RMAP_NEXT)
 	  vty_out (vty," on-match next%s", VTY_NEWLINE);
-	
+
 	write++;
       }
   return write;
@@ -1320,12 +1324,12 @@ route_map_init_vty (void)
   install_element (RMAP_NODE, &no_rmap_onmatch_next_cmd);
   install_element (RMAP_NODE, &rmap_onmatch_goto_cmd);
   install_element (RMAP_NODE, &no_rmap_onmatch_goto_cmd);
-  
+
   /* Install the continue stuff (ALIAS of on-match). */
   install_element (RMAP_NODE, &rmap_continue_cmd);
   install_element (RMAP_NODE, &no_rmap_continue_cmd);
   install_element (RMAP_NODE, &rmap_continue_index_cmd);
-  
+
   /* Install the call stuff. */
   install_element (RMAP_NODE, &rmap_call_cmd);
   install_element (RMAP_NODE, &no_rmap_call_cmd);
@@ -1333,7 +1337,7 @@ route_map_init_vty (void)
   /* Install description commands. */
   install_element (RMAP_NODE, &rmap_description_cmd);
   install_element (RMAP_NODE, &no_rmap_description_cmd);
-   
+
   /* Install show command */
   install_element (ENABLE_NODE, &rmap_show_name_cmd);
 }

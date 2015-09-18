@@ -65,7 +65,8 @@
 extern struct ovsdb_idl *idl;
 
 static struct rt_map_context {
-    char name [80];
+    char name[80];
+    char action[80];
     int pref;
 };
 struct rt_map_context rmp_context;
@@ -1211,6 +1212,8 @@ cli_bgp_maxpaths_cmd_execute(char *vrf_name, int64_t max_paths)
     struct ovsrec_bgp_router *bgp_router_row;
     struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
+    int64_t *pmax_paths = NULL;
+    int size = 0;
 
     /* Start of transaction */
     START_DB_TXN(bgp_router_txn);
@@ -1227,10 +1230,16 @@ cli_bgp_maxpaths_cmd_execute(char *vrf_name, int64_t max_paths)
     /* If does not exist, nothing to modify */
     if (bgp_router_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
-    }
-    else {
+    } else {
+        // CLI does not allow a value less than 1 to be set, so we use it to
+        // identify the set and "no" case.
+        if (max_paths) {
+            *pmax_paths = max_paths;
+            size = 1;
+        }
+
         /* Set the maximum-paths with matching asn */
-        ovsrec_bgp_router_set_maximum_paths(bgp_router_row, &max_paths, 1);
+        ovsrec_bgp_router_set_maximum_paths(bgp_router_row, pmax_paths, size);
     }
 
     /* End of transaction*/
@@ -1265,8 +1274,7 @@ DEFUN (no_bgp_maxpaths,
        "Forward packets over multiple paths\n"
        "Number of paths\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_bgp_maxpaths_cmd_execute(NULL, 0);
 }
 
 ALIAS (no_bgp_maxpaths,
@@ -1359,6 +1367,38 @@ cli_bgp_timers_cmd_execute(char *vrf_name, int64_t keepalive, int64_t holdtime)
     END_DB_TXN(bgp_router_txn);
 }
 
+static int
+cli_no_bgp_timers_cmd_execute(char *vrf_name)
+{
+    struct ovsrec_bgp_router *bgp_router_row;
+    struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *bgp_router_txn = NULL;
+
+    /* Start of transaction */
+    START_DB_TXN(bgp_router_txn);
+
+    VLOG_DBG("vty_index for timers : %d\n",(int)(vty->index));
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+    }
+
+    /* See if it already exists */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int)(vty->index));
+
+    /* If does not exist, nothing to modify */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    }
+
+    /* Set the timers with matching asn */
+    ovsrec_bgp_router_set_timers(bgp_router_row, NULL, NULL, 0);
+
+    /* End of transaction*/
+    END_DB_TXN(bgp_router_txn);
+}
+
 DEFUN (bgp_timers,
        bgp_timers_cmd,
        "timers bgp <0-65535> <0-65535>",
@@ -1378,8 +1418,7 @@ DEFUN (no_bgp_timers,
        "Adjust routing timers\n"
        "BGP timers\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_bgp_timers_cmd_execute(NULL);
 }
 
 ALIAS (no_bgp_timers,
@@ -9223,14 +9262,14 @@ char *policy_cmd_to_key_lookup(const char *cmd, const struct lookup_entry *looku
  */
 char *policy_key_to_cmd_lookup(const char *key, const struct lookup_entry *lookup_table)
 {
-        int i;
+    int i;
 
-        for (i=0; lookup_table[i].cli_cmd; i++) {
-            if (strcmp(key, lookup_table[i].table_key) == 0)
-               return lookup_table[i].cli_cmd;
-        }
+    for (i=0; lookup_table[i].cli_cmd; i++) {
+        if (strcmp(key, lookup_table[i].table_key) == 0)
+           return lookup_table[i].cli_cmd;
+    }
 
-        return NULL;
+    return NULL;
 }
 
 const struct ovsrec_prefix_list *
@@ -9248,16 +9287,22 @@ policy_get_prefix_list_in_ovsdb (const char *name)
 
 
 struct ovsrec_prefix_list_entry *
-policy_get_prefix_list_entry_in_ovsdb (int seqnum, const char *name)
+policy_get_prefix_list_entry_in_ovsdb(int seqnum, char *name, const char *action)
 {
-    const struct ovsrec_prefix_list  *policy_row;
+    const struct ovsrec_prefix_list *policy_row;
+    struct ovsrec_prefix_list_entry *policy_entry_row;
     int i = 0;
 
     OVSREC_PREFIX_LIST_FOR_EACH(policy_row, idl) {
         if (strcmp(name, policy_row->name) == 0) {
             for(i = 0; i < policy_row->n_prefix_list_entries; i++) {
-                if (policy_row->key_prefix_list_entries[i] == seqnum)
-                    return policy_row->value_prefix_list_entries[i];
+                if (policy_row->key_prefix_list_entries[i] == seqnum) {
+                    policy_entry_row = policy_row->value_prefix_list_entries[i];
+
+                    if (!strcmp(policy_entry_row->action, action)) {
+                        return policy_entry_row;
+                    }
+                }
             }
         }
     }
@@ -9271,11 +9316,12 @@ bgp_prefix_list_entry_insert_to_prefix_list(struct ovsrec_prefix_list *policy_ro
 {
     int64_t *pref_list;
     struct ovsrec_prefix_list_entry  **policy_entry_list;
-    int i = 0;
+    int i, new_size;
 
-    pref_list = xmalloc(sizeof(int64_t) * (policy_row->n_prefix_list_entries + 1));
+    new_size = policy_row->n_prefix_list_entries + 1;
+    pref_list = xmalloc(sizeof(int64_t) * new_size);
     policy_entry_list = xmalloc(sizeof * policy_row->value_prefix_list_entries *
-                              (policy_row->n_prefix_list_entries + 1));
+                                new_size);
 
     for (i = 0; i < policy_row->n_prefix_list_entries; i++) {
         pref_list[i] = policy_row->key_prefix_list_entries[i];
@@ -9284,34 +9330,37 @@ bgp_prefix_list_entry_insert_to_prefix_list(struct ovsrec_prefix_list *policy_ro
     pref_list[policy_row->n_prefix_list_entries] = seq;
     policy_entry_list[policy_row->n_prefix_list_entries] = policy_entry_row;
     ovsrec_prefix_list_set_prefix_list_entries(policy_row, pref_list,
-                                           policy_entry_list,
-                                          (policy_row->n_prefix_list_entries + 1));
+                                               policy_entry_list, new_size);
+
     free(pref_list);
     free(policy_entry_list);
 }
 
 void
-bgp_prefix_list_entry_remove_to_prefix_list(struct ovsrec_prefix_list *policy_row,
-                              struct ovsrec_prefix_list_entry  *policy_entry_row,
-                              int64_t seq)
+bgp_prefix_list_entry_remove_from_prefix_list(
+    struct ovsrec_prefix_list *policy_row,
+    struct ovsrec_prefix_list_entry  *policy_entry_row,
+    int64_t seq)
 {
     int64_t *pref_list;
     struct ovsrec_prefix_list_entry  **policy_entry_list;
-    int i = 0;
+    int i, j, new_size;
 
-    pref_list = xmalloc(sizeof(int64_t) * (policy_row->n_prefix_list_entries - 1));
+    new_size = policy_row->n_prefix_list_entries - 1;
+    pref_list = xmalloc(sizeof(int64_t) * new_size);
     policy_entry_list = xmalloc(sizeof * policy_row->value_prefix_list_entries *
-                              (policy_row->n_prefix_list_entries - 1));
+                                new_size);
 
-    for (i = 0; i < policy_row->n_prefix_list_entries; i++) {
-        if(pref_list[i] != seq) {
-            pref_list[i] = policy_row->key_prefix_list_entries[i];
-            policy_entry_list[i] = policy_row->value_prefix_list_entries[i];
+    for (i = 0, j = 0; i < policy_row->n_prefix_list_entries; i++) {
+        if(policy_row->key_prefix_list_entries[i] != seq) {
+            pref_list[j] = policy_row->key_prefix_list_entries[i];
+            policy_entry_list[j] = policy_row->value_prefix_list_entries[i];
+            j++;
         }
     }
     ovsrec_prefix_list_set_prefix_list_entries(policy_row, pref_list,
-                                           policy_entry_list,
-                                          (policy_row->n_prefix_list_entries - 1));
+                                               policy_entry_list, new_size);
+
     free(pref_list);
     free(policy_entry_list);
 }
@@ -9378,7 +9427,8 @@ policy_set_prefix_list_in_ovsdb (struct vty *vty, afi_t afi, const char *name,
         ovsrec_prefix_list_set_name(policy_row, name);
     }
 
-    policy_entry_row = policy_get_prefix_list_entry_in_ovsdb (seqnum, name);
+    policy_entry_row = policy_get_prefix_list_entry_in_ovsdb(seqnum, name,
+                                                             typestr);
 
     /*
      * If row not found, create an empty row and set name field
@@ -9413,6 +9463,88 @@ DEFUN (ip_prefix_list_seq,
                                   argv[3], NULL, NULL);
 }
 
+static int
+cli_no_ip_prefix_list_cmd_execute(const char *name)
+{
+    struct ovsrec_prefix_list *plist_row;
+    struct ovsdb_idl_txn *policy_txn;
+
+    /* Start of transaction */
+    START_DB_TXN(policy_txn);
+
+    plist_row = policy_get_prefix_list_in_ovsdb(name);
+    if (!plist_row) {
+        ERRONEOUS_DB_TXN(policy_txn, "Prefix List not found");
+    }
+
+    ovsrec_prefix_list_delete(plist_row);
+
+    /* End of transaction */
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (no_ip_prefix_list,
+       no_ip_prefix_list_cmd,
+       "no ip prefix-list WORD",
+       NO_STR
+       IP_STR
+       PREFIX_LIST_STR
+       "Name of a prefix list\n")
+{
+  return cli_no_ip_prefix_list_cmd_execute(argv[0]);
+}
+
+static int
+cli_no_ip_prefix_list_seq_cmd_execute(const char *name, int64_t seq,
+                                      const char *action, const char *prefix)
+{
+    VLOG_DBG("Deleting any prefix list entries...");
+    struct ovsrec_prefix_list *plist_row;
+    struct ovsrec_prefix_list_entry *plist_entry;
+    struct ovsdb_idl_txn *policy_txn;
+    bool deleted = false;
+
+    /* Start of transaction */
+    START_DB_TXN(policy_txn);
+
+    plist_row = policy_get_prefix_list_in_ovsdb(name);
+    if (!plist_row) {
+        ERRONEOUS_DB_TXN(policy_txn, "Prefix List not found");
+    }
+
+    plist_entry = policy_get_prefix_list_entry_in_ovsdb(seq, name, action);
+    if (!plist_row) {
+        ERRONEOUS_DB_TXN(policy_txn, "Prefix List entry not found");
+    }
+
+    /* Need to remove the reference to the prefix-list entry from
+     * the prefix-list table first.
+     */
+    bgp_prefix_list_entry_remove_from_prefix_list(plist_row, plist_entry, seq);
+    ovsrec_prefix_list_entry_delete(plist_entry);
+
+    /* End of transaction */
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (no_ip_prefix_list_seq,
+       no_ip_prefix_list_seq_cmd,
+       "no ip prefix-list WORD seq <1-4294967295> (deny|permit) (A.B.C.D/M|any)",
+       NO_STR
+       IP_STR
+       PREFIX_LIST_STR
+       "Name of a prefix list\n"
+       "sequence number of an entry\n"
+       "Sequence number\n"
+       "Specify packets to reject\n"
+       "Specify packets to forward\n"
+       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n"
+       "Any prefix match.  Same as \"0.0.0.0/0 le 32\"\n")
+{
+  return cli_no_ip_prefix_list_seq_cmd_execute(argv[0], argv[1], argv[2],
+                                               argv[3]);
+}
+
 /*
  * Route Map Start Below
  */
@@ -9430,16 +9562,24 @@ policy_get_route_map_in_ovsdb (const char * name)
 }
 
 const struct ovsrec_route_map_entry  *
-policy_get_route_map_entry_in_ovsdb (unsigned long pref, const char *name)
+policy_get_route_map_entry_in_ovsdb (unsigned long pref, const char *name,
+                                     char *action)
 {
-    const struct ovsrec_route_map  *rt_map_row;
+    const struct ovsrec_route_map *rt_map_row;
+    struct ovsrec_route_map_entry *rt_map_entry_row;
+    bool match = false;
     int i = 0;
 
     OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
         if(strcmp(name, rt_map_row->name) == 0) {
             for ( i = 0 ; i < rt_map_row->n_route_map_entries; i++) {
-                if (rt_map_row->key_route_map_entries[i] == pref)
-                    return rt_map_row->value_route_map_entries[i];
+                if (rt_map_row->key_route_map_entries[i] == pref) {
+                    rt_map_entry_row = rt_map_row->value_route_map_entries[i];
+
+                    if (!strcmp(rt_map_entry_row->action, action)) {
+                        return rt_map_entry_row;
+                    }
+                }
             }
         }
     }
@@ -9453,11 +9593,12 @@ bgp_route_map_entry_insert_to_route_map(struct ovsrec_route_map *rt_map_row,
 {
     int64_t *pref_list;
     struct ovsrec_route_map_entry  **rt_map_entry_list;
-    int i = 0;
+    int i, new_size;
 
-    pref_list = xmalloc(sizeof(int64_t) * (rt_map_row->n_route_map_entries + 1));
+    new_size = rt_map_row->n_route_map_entries + 1;
+    pref_list = xmalloc(sizeof(int64_t) * new_size);
     rt_map_entry_list = xmalloc(sizeof * rt_map_row->value_route_map_entries *
-                              (rt_map_row->n_route_map_entries + 1));
+                                new_size);
 
     for (i = 0; i < rt_map_row->n_route_map_entries; i++) {
         pref_list[i] = rt_map_row->key_route_map_entries[i];
@@ -9466,77 +9607,84 @@ bgp_route_map_entry_insert_to_route_map(struct ovsrec_route_map *rt_map_row,
     pref_list[rt_map_row->n_route_map_entries] = seq;
     rt_map_entry_list[rt_map_row->n_route_map_entries] = rt_map_entry_row;
     ovsrec_route_map_set_route_map_entries(rt_map_row, pref_list,
-                                           rt_map_entry_list,
-                                          (rt_map_row->n_route_map_entries + 1));
+                                           rt_map_entry_list, new_size);
+
     free(pref_list);
     free(rt_map_entry_list);
 }
 
 void
-bgp_route_map_entry_remove_to_route_map(struct ovsrec_route_map *rt_map_row,
+bgp_route_map_entry_remove_from_route_map(struct ovsrec_route_map *rt_map_row,
                               struct ovsrec_route_map_entry *rt_map_entry_row,
                               int64_t seq)
 {
     int64_t *pref_list;
     struct ovsrec_route_map_entry  **rt_map_entry_list;
-    int i = 0;
+    int i, j, new_size;
 
-    pref_list = xmalloc(sizeof(int64_t) * (rt_map_row->n_route_map_entries - 1));
+    new_size = rt_map_row->n_route_map_entries - 1;
+    pref_list = xmalloc(sizeof(int64_t) * new_size);
     rt_map_entry_list = xmalloc(sizeof * rt_map_row->value_route_map_entries *
-                              (rt_map_row->n_route_map_entries - 1));
+                                new_size);
 
-    for (i = 0; i < rt_map_row->n_route_map_entries; i++) {
-        if(pref_list[i] != seq) {
-            pref_list[i] = rt_map_row->key_route_map_entries[i];
-            rt_map_entry_list[i] = rt_map_row->value_route_map_entries[i];
+    for (i = 0, j = 0; i < rt_map_row->n_route_map_entries; i++) {
+        if(rt_map_row->key_route_map_entries[i] != seq) {
+            pref_list[j] = rt_map_row->key_route_map_entries[i];
+            rt_map_entry_list[j] = rt_map_row->value_route_map_entries[i];
+            j++;
         }
     }
     ovsrec_route_map_set_route_map_entries(rt_map_row, pref_list,
-                                           rt_map_entry_list,
-                                          (rt_map_row->n_route_map_entries - 1));
+                                           rt_map_entry_list, new_size);
+
     free(pref_list);
     free(rt_map_entry_list);
+}
+
+static int
+policy_route_map_get_seq(const char *seqstr, unsigned long *pseq)
+{
+    char *endptr = NULL;
+
+    if (!seqstr) {
+        VLOG_ERR("Invalid sequence");
+        return CMD_WARNING;
+    }
+
+    /* Preference check. */
+    *pseq = strtoul(seqstr, &endptr, 10);
+
+    if ((*pseq == ULONG_MAX) || (*endptr != '\0') || (*pseq == 0) ||
+        (*pseq > 65535)) {
+        VLOG_ERR("Invalid seq number");
+        return CMD_WARNING;
+    }
+
+    return CMD_SUCCESS;
 }
 
 /*
  * Route Map
  */
 static int
-policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
-                         const char *typestr, const char *seq)
+policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
+                              const char *typestr, const char *seq)
 {
-  struct ovsdb_idl_txn *policy_txn;
-  const struct ovsrec_route_map *rt_map_row;
-  const struct ovsrec_route_map_entry  *rt_map_entry_row;
-  enum ovsdb_idl_txn_status status;
-  int permit;
-  unsigned long pref;
-  char *endptr = NULL;
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_route_map *rt_map_row;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row;
+    enum ovsdb_idl_txn_status status;
+    unsigned long pref;
 
-
-  /* Permit check. */
-  if (strncmp (typestr, "permit", strlen (typestr)) == 0){}
-  else if (strncmp (typestr, "deny", strlen (typestr)) == 0){}
-  else
-    {
-      vty_out (vty, "the third field must be [permit|deny]%s", VTY_NEWLINE);
-      return CMD_WARNING;
+    /* Permit check. */
+    if ((strncmp(typestr, "permit", strlen (typestr)) != 0) &&
+        (strncmp(typestr, "deny", strlen (typestr)) != 0)) {
+        VLOG_ERR("The third field must be [permit|deny]");
+        return CMD_WARNING;
     }
 
-  /* Preference check. */
-  pref = strtoul (seq, &endptr, 10);
-
-  if (pref == ULONG_MAX || *endptr != '\0')
-    {
-      vty_out (vty, "the fourth field must be positive integer%s",
-               VTY_NEWLINE);
-      return CMD_SUCCESS;
-    }
-
-  if (pref == 0 || pref > 65535)
-    {
-      vty_out (vty, "the fourth field must be <1-65535>%s", VTY_NEWLINE);
-      return CMD_WARNING;
+    if (policy_route_map_get_seq(seq, &pref) != CMD_SUCCESS) {
+        return CMD_SUCCESS;
     }
 
     START_DB_TXN(policy_txn);
@@ -9558,11 +9706,13 @@ policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
     /*
      * create a empty row, it will be used as uuid, refer to from another table
      */
-    rt_map_entry_row = policy_get_route_map_entry_in_ovsdb (pref, name);
+    rt_map_entry_row = policy_get_route_map_entry_in_ovsdb(pref, name,
+                                                           typestr);
 
     if (!rt_map_entry_row) {
         rt_map_entry_row = ovsrec_route_map_entry_insert(policy_txn);
-        bgp_route_map_entry_insert_to_route_map(rt_map_row, rt_map_entry_row, (int64_t)pref);
+        bgp_route_map_entry_insert_to_route_map(rt_map_row, rt_map_entry_row,
+                                                (int64_t)pref);
     }
 
     ovsrec_route_map_entry_set_action(rt_map_entry_row, typestr);
@@ -9571,6 +9721,7 @@ policy_set_route_map_in_ovsdb (struct vty *vty, const char *name,
 
     rmp_context.pref = pref;
     strncpy(rmp_context.name, name, sizeof(rmp_context.name));
+    strncpy(rmp_context.action, typestr, sizeof(rmp_context.action));
     vty->index = &rmp_context;
     vty->node = RMAP_NODE;
 
@@ -9591,11 +9742,97 @@ DEFUN (route_map,
 }
 
 static int
-policy_set_route_map_description_in_ovsdb (struct vty *vty, const char *description)
+cli_no_route_map_all_cmd_execute(const char *name)
+{
+    struct ovsrec_route_map *rt_map_row;
+    struct ovsdb_idl_txn *policy_txn;
+
+    /* Start of transaction */
+    START_DB_TXN(policy_txn);
+
+    rt_map_row = policy_get_route_map_in_ovsdb(name);
+    if (!rt_map_row) {
+        ERRONEOUS_DB_TXN(policy_txn, "Route Map not found");
+    }
+
+    ovsrec_route_map_delete(rt_map_row);
+
+    /* End of transaction */
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (no_route_map_all,
+       no_rt_map_all_cmd,
+       "no route-map WORD",
+       NO_STR
+       "Create route-map or enter route-map command mode\n"
+       "Route map tag\n")
+{
+    return cli_no_route_map_all_cmd_execute(argv[0]);
+}
+
+static int
+cli_no_route_map_cmd_execute(const char *name, const char *action,
+                             const char *seqstr)
+{
+    VLOG_DBG("Deleting any route map entries...");
+    struct ovsrec_route_map *rt_map_row;
+    struct ovsrec_route_map_entry *rt_map_entry_row;
+    struct ovsdb_idl_txn *policy_txn;
+    unsigned long pref;
+    bool deleted = false;
+
+    if (policy_route_map_get_seq(seqstr, &pref) != CMD_SUCCESS) {
+        return CMD_SUCCESS;
+    }
+
+    /* Start of transaction */
+    START_DB_TXN(policy_txn);
+
+    rt_map_row = policy_get_route_map_in_ovsdb(name);
+    if (!rt_map_row) {
+        ERRONEOUS_DB_TXN(policy_txn, "Route Map not found");
+    }
+
+    rt_map_entry_row = policy_get_route_map_entry_in_ovsdb(pref, name, action);
+    if (!rt_map_entry_row) {
+        ERRONEOUS_DB_TXN(policy_txn, "Route Map entry not found");
+    }
+
+    /* Need to remove the reference to the route-map entry from route-map table
+     * first.
+     */
+    bgp_route_map_entry_remove_from_route_map(rt_map_row, rt_map_entry_row,
+                                              pref);
+
+    ovsrec_route_map_entry_delete(rt_map_entry_row);
+
+    /* End of transaction */
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (no_route_map,
+       no_rt_map_cmd,
+       "no route-map WORD (deny|permit) <1-65535>",
+       NO_STR
+       "Create route-map or enter route-map command mode\n"
+       "Route map tag\n"
+       "Route map denies set operations\n"
+       "Route map permits set operations\n"
+       "Sequence to insert to/delete from existing route-map entry\n")
+{
+    return cli_no_route_map_cmd_execute(argv[0], argv[1], argv[2]);
+}
+
+static int
+policy_set_route_map_description_in_ovsdb(struct vty *vty,
+                                          const char *description)
 {
     struct ovsdb_idl_txn *policy_txn;
     const struct ovsrec_route_map_entry  *rt_map_entry_row =
-        policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
 
     START_DB_TXN(policy_txn);
 
@@ -9610,13 +9847,24 @@ DEFUN (rmap_description,
        "Route-map comment\n"
        "Comment describing this route-map rule\n")
 {
-    return policy_set_route_map_description_in_ovsdb(vty, argv_concat(argv, argc, 0));
+    return policy_set_route_map_description_in_ovsdb(vty,
+                                                    argv_concat(argv, argc, 0));
+}
+
+DEFUN (no_rmap_description,
+       no_rmap_description_cmd,
+       "no description",
+       NO_STR
+       "Route-map comment\n")
+{
+    return policy_set_route_map_description_in_ovsdb(vty, NULL);
 }
 
 static int
-policy_set_route_map_match_in_ovsdb (struct vty *vty,
-                                     const struct ovsrec_route_map_entry  *rt_map_entry_row,
-                                     const char *command, const char *arg)
+policy_set_route_map_match_in_ovsdb(
+    struct vty *vty,
+    const struct ovsrec_route_map_entry  *rt_map_entry_row,
+    const char *command, const char *arg)
 {
     struct ovsdb_idl_txn *policy_txn;
     struct smap smap_match;
@@ -9647,13 +9895,14 @@ DEFUN (match_ip_address_prefix_list,
        "Match entries of prefix-lists\n"
        "IP prefix-list name\n")
 {
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
 
-  const struct ovsrec_route_map_entry  *rt_map_entry_row =
-           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
-
-  return policy_set_route_map_match_in_ovsdb (vty,
-                             rt_map_entry_row,
-                            "ip address prefix-list", argv[0]);
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ip address prefix-list",
+                                               argv[0]);
 }
 
 static int
@@ -9684,6 +9933,35 @@ policy_set_route_map_set_in_ovsdb (struct vty *vty,
     END_DB_TXN(policy_txn);
 }
 
+DEFUN (no_match_ip_address_prefix_list,
+       no_match_ip_address_prefix_list_cmd,
+       "no match ip address prefix-list",
+       NO_STR
+       MATCH_STR
+       IP_STR
+       "Match address of route\n"
+       "Match entries of prefix-lists\n")
+{
+    struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ip address prefix-list",
+                                               NULL);
+}
+
+ALIAS (no_match_ip_address_prefix_list,
+       no_match_ip_address_prefix_list_val_cmd,
+       "no match ip address prefix-list WORD",
+       NO_STR
+       MATCH_STR
+       IP_STR
+       "Match address of route\n"
+       "Match entries of prefix-lists\n"
+       "IP prefix-list name\n")
+
 DEFUN (set_metric,
        set_metric_cmd,
        "set metric <0-4294967295>",
@@ -9691,52 +9969,81 @@ DEFUN (set_metric,
        "Metric value for destination routing protocol\n"
        "Metric value\n")
 {
-  const struct ovsrec_route_map_entry  *rt_map_entry_row =
-           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
 
-  return policy_set_route_map_set_in_ovsdb (vty,
-                  rt_map_entry_row,
-                     "metric", argv[0]);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "metric", argv[0]);
 }
 
-static int
-policy_set_route_map_set_community_str_in_ovsdb (struct vty *vty,
-                                        const int argc,  const char **argv)
+DEFUN (no_set_metric,
+       no_set_metric_cmd,
+       "no set metric",
+       NO_STR
+       SET_STR
+       "Metric value for destination routing protocol\n")
 {
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
 
-  int i;
-  int additive = 0;
-  char *argstr;
-  int ret = 0;
-  const struct ovsrec_route_map_entry  *rt_map_entry_row =
-           policy_get_route_map_entry_in_ovsdb (rmp_context.pref, rmp_context.name);
-  int n = 0;
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "metric", NULL);
+}
 
+ALIAS (no_set_metric,
+       no_set_metric_val_cmd,
+       "no set metric <0-4294967295>",
+       NO_STR
+       SET_STR
+       "Metric value for destination routing protocol\n"
+       "Metric value\n")
 
-  argstr = xmalloc(1024);
+static int
+policy_set_route_map_set_community_str_in_ovsdb(struct vty *vty,
+                                                const int argc,
+                                                const char **argv)
+{
+    int i;
+    int additive = 0;
+    char *argstr;
+    int ret = 0;
+    int n = 0;
 
-  if (!argstr)
-      return 0;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
 
-  for (i = 0; i < argc; i++)
+    argstr = xmalloc(1024);
+
+    if (!argstr)
+        return 0;
+
+    for (i = 0; i < argc; i++)
     {
-      if (strncmp (argv[i], "additive", strlen (argv[i])) == 0)
+        if (strncmp (argv[i], "additive", strlen (argv[i])) == 0)
         {
-          additive = 1;
-          continue;
+            additive = 1;
+            continue;
         }
 
         n += sprintf(&argstr[n], "%s", argv[i]);
     }
 
-  if (additive)
+    if (additive)
     {
-      n += sprintf(&argstr[n], " %s", "additive");
+        n += sprintf(&argstr[n], " %s", "additive");
     }
-    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
-                                        "community", argstr);
-  free (argstr);
-  return ret;
+
+    policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                      "community", argstr);
+
+    free (argstr);
+    return ret;
 }
 
 DEFUN (set_community,
@@ -9746,16 +10053,50 @@ DEFUN (set_community,
        "BGP community attribute\n"
        "Community number in aa:nn format or local-AS|no-advertise|no-export|internet or additive\n")
 {
-    return policy_set_route_map_set_community_str_in_ovsdb (vty, argc,  argv);
+    return policy_set_route_map_set_community_str_in_ovsdb(vty, argc, argv);
 }
 
+DEFUN (no_set_community,
+       no_set_community_cmd,
+       "no set community",
+       NO_STR
+       SET_STR
+       "BGP community attribute\n")
+{
+    struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "community", NULL);
+}
+
+ALIAS (no_set_community,
+       no_set_community_val_cmd,
+       "no set community .AA:NN",
+       NO_STR
+       SET_STR
+       "BGP community attribute\n"
+       "Community number in aa:nn format or local-AS|no-advertise|no-export|internet or additive\n")
 
 void policy_vty_init(void)
 {
     install_element (CONFIG_NODE, &ip_prefix_list_seq_cmd);
+    install_element (CONFIG_NODE, &no_ip_prefix_list_cmd);
+    install_element (CONFIG_NODE, &no_ip_prefix_list_seq_cmd);
     install_element (CONFIG_NODE, &rt_map_cmd);
+    install_element (CONFIG_NODE, &no_rt_map_cmd);
+    install_element (CONFIG_NODE, &no_rt_map_all_cmd);
     install_element (RMAP_NODE, &rmap_description_cmd);
+    install_element (RMAP_NODE, &no_rmap_description_cmd);
     install_element (RMAP_NODE, &match_ip_address_prefix_list_cmd);
+    install_element (RMAP_NODE, &no_match_ip_address_prefix_list_cmd);
+    install_element (RMAP_NODE, &no_match_ip_address_prefix_list_val_cmd);
     install_element (RMAP_NODE, &set_metric_cmd);
+    install_element (RMAP_NODE, &no_set_metric_cmd);
+    install_element (RMAP_NODE, &no_set_metric_val_cmd);
     install_element (RMAP_NODE, &set_community_cmd);
+    install_element (RMAP_NODE, &no_set_community_cmd);
+    install_element (RMAP_NODE, &no_set_community_val_cmd);
 }
