@@ -49,25 +49,25 @@ class PlatformSystemTests(HalonTest):
         # Assume there would be only one entry in subsystem table
 
         s1 = self.net.switches[0]
-        out = s1.cmd('ovs-vsctl list subsystem')
+        out = s1.ovscmd('ovs-vsctl list subsystem')
         lines = out.split('\n')
         for line in lines:
             if '_uuid' in line:
                 _id = line.split(':')
                 PlatformSystemTests.uuid = _id[1].strip()
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformSystemTests.uuid
                        + ' leds=@led1 -- --id=@led1 create led id=Led_base state=flashing status=ok'
                        )
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformSystemTests.uuid
                        + ' fans=@fan1 -- --id=@fan1 create fan name=Fan_base speed=normal direction=f2b rpm=9000 status=ok'
                        )
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformSystemTests.uuid
                        + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base status=ok'
                        )
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformSystemTests.uuid
                        + ' temp_sensors=@tmp1 -- --id=@tmp1 create Temp_sensor name=Temp_base location=Chassis temperature=20000 status=normal fan_state=normal'
                        )
@@ -77,13 +77,13 @@ class PlatformSystemTests(HalonTest):
 
         # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
 
-        s1.cmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
+        s1.ovscmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
                + ' leds')
-        s1.cmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
+        s1.ovscmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
                + ' power_supplies')
-        s1.cmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
+        s1.ovscmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
                + ' temp_sensors')
-        s1.cmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
+        s1.ovscmd('ovs-vsctl clear subsystem ' + PlatformSystemTests.uuid
                + ' fans')
 
     def showSystemTest(self):
@@ -102,33 +102,31 @@ class PlatformSystemTests(HalonTest):
                 counter += 1
 
             if 'Manufacturer' in line:
-                out = s1.cmd('ovs-vsctl list Subsystem')
+                out = s1.ovscmd('ovs-vsctl list Subsystem')
                 lines1 = out.split('\n')
                 for line1 in lines1:
                     if 'other_info' in line1:
                         lines1 = line1.split(',')
                         manufacturerValue = lines1[9].split('=')
                         manufacturerValue = manufacturerValue[1].strip()
-                        manufacturer = manufacturerValue.split('"'
-                                )[1].strip()
+                        manufacturer = manufacturerValue.strip()
                 if manufacturer in line:
                     counter += 1
 
             if 'Interface Count' in line:
-                out = s1.cmd('ovs-vsctl list Subsystem')
+                out = s1.ovscmd('ovs-vsctl list Subsystem')
                 lines1 = out.split('\n')
                 for line1 in lines1:
                     if 'other_info' in line1:
                         lines1 = line1.split(',')
                         interfaceValue = lines1[5].split('=')
                         interfaceValue = interfaceValue[1].strip()
-                        interfaceCount = interfaceValue.split('"'
-                                )[1].strip()
+                        interfaceCount = interfaceValue.strip()
                 if interfaceCount in line[:-32]:
                     counter += 1
 
             if 'Max Interface Speed' in line:
-                out = s1.cmd('ovs-vsctl list Subsystem')
+                out = s1.ovscmd('ovs-vsctl list Subsystem')
                 lines1 = out.split('\n')
                 for line1 in lines1:
                     if 'other_info' in line1:
@@ -136,8 +134,7 @@ class PlatformSystemTests(HalonTest):
                         interfaceSpeedValue = lines1[12].split('=')
                         interfaceSpeedValue = \
                             interfaceSpeedValue[1].strip()
-                        interfaceSpeed = interfaceSpeedValue.split('"'
-                                )[1].strip()
+                        interfaceSpeed = interfaceSpeedValue.strip()
                 if interfaceSpeed in line[42:]:
                     counter += 1
 
