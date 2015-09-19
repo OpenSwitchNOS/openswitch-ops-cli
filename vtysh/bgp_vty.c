@@ -961,16 +961,17 @@ bgp_router_remove_from_vrf(struct ovsrec_vrf *vrf_row,
 {
     int64_t *asn_list;
     struct ovsrec_bgp_router **bgp_routers_list;
-    int i = 0;
+    int i = 0, j = 0;
 
     /* Insert BGP_Router table reference in VRF table */
     asn_list = xmalloc(sizeof(int64_t) * (vrf_row->n_bgp_routers - 1));
     bgp_routers_list = xmalloc(sizeof * vrf_row->key_bgp_routers *
                               (vrf_row->n_bgp_routers - 1));
-    for (i = 0; i < vrf_row->n_bgp_routers; i++) {
-        if(asn_list[i] != asn) {
-            asn_list[i] = vrf_row->key_bgp_routers[i];
-            bgp_routers_list[i] = vrf_row->value_bgp_routers[i];
+    for (i = 0, j = 0; i < vrf_row->n_bgp_routers; i++) {
+        if(vrf_row->key_bgp_routers[i] != asn) {
+            asn_list[j] = vrf_row->key_bgp_routers[i];
+            bgp_routers_list[j] = vrf_row->value_bgp_routers[i];
+            j++;
         }
     }
     ovsrec_vrf_set_bgp_routers(vrf_row, asn_list, bgp_routers_list,
@@ -2123,17 +2124,18 @@ bgp_neighbor_remove_for_matching_peer_group_from_bgp_router(
 {
     struct ovsrec_bgp_neighbor **bgp_neighbor_peer_group_list;
     char **bgp_neighbor_peer_name_list;
-    int i = 0;
+    int i = 0, j = 0;
 
     bgp_neighbor_peer_name_list = xmalloc(80 * (bgp_router_context->n_bgp_neighbors - 1));
     bgp_neighbor_peer_group_list = xmalloc(sizeof * bgp_router_context->value_bgp_neighbors *
                               (bgp_router_context->n_bgp_neighbors - 1));
 
-    for (i = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
+    for (i = 0, j = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
         if (0 != strcmp(bgp_router_context->value_bgp_neighbors[i],
                         ovs_bgp_neighbor)) {
-            bgp_neighbor_peer_name_list[i] = bgp_router_context->key_bgp_neighbors[i];
-            bgp_neighbor_peer_group_list[i] = bgp_router_context->value_bgp_neighbors[i];
+            bgp_neighbor_peer_name_list[j] = bgp_router_context->key_bgp_neighbors[i];
+            bgp_neighbor_peer_group_list[j] = bgp_router_context->value_bgp_neighbors[i];
+            j++;
         }
     }
     ovsrec_bgp_router_set_bgp_neighbors(bgp_router_context,
@@ -2202,9 +2204,9 @@ cli_no_neighbor_cmd_execute (char *vrf_name, const char *peer_str)
 	ovs_bgp_neighbor =
 	    get_bgp_neighbor_with_bgp_router_and_ipaddr
 		(bgp_router_context, peer_str);
-	if (ovs_bgp_neighbor) {
-	    ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
-	}
+	    if (ovs_bgp_neighbor) {
+	        ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
+	    }
     /* peer group */
     } else {
         int res = delete_neighbor_peer_group(bgp_router_context, peer_str);
@@ -2213,9 +2215,11 @@ cli_no_neighbor_cmd_execute (char *vrf_name, const char *peer_str)
         }
     }
         /* Delete the neighbor/peer-group reference from BGP Router */
+    if (ovs_bgp_neighbor) {
         bgp_neighbor_peer_group_remove_from_bgp_router(bgp_router_context,
                                                        ovs_bgp_neighbor,
                                                        peer_str);
+    }
 
     /* done */
     END_DB_TXN(txn);
@@ -2665,15 +2669,16 @@ bgp_neighbor_peer_group_remove_from_bgp_router(struct ovsrec_bgp_router *bgp_rou
 {
     struct ovsrec_bgp_neighbor **bgp_neighbor_peer_group_list;
     char **bgp_neighbor_peer_name_list;
-    int i = 0;
+    int i = 0, j = 0;
 
     bgp_neighbor_peer_name_list = xmalloc(80 * (bgp_router_context->n_bgp_neighbors - 1));
     bgp_neighbor_peer_group_list = xmalloc(sizeof * bgp_router_context->value_bgp_neighbors *
                               (bgp_router_context->n_bgp_neighbors - 1));
-    for (i = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
+    for (i = 0, j = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
         if (0 != strcmp(bgp_router_context->key_bgp_neighbors[i], name)) {
-            bgp_neighbor_peer_name_list[i] = bgp_router_context->key_bgp_neighbors[i];
-            bgp_neighbor_peer_group_list[i] = bgp_router_context->value_bgp_neighbors[i];
+            bgp_neighbor_peer_name_list[j] = bgp_router_context->key_bgp_neighbors[i];
+            bgp_neighbor_peer_group_list[j] = bgp_router_context->value_bgp_neighbors[i];
+            j++;
         }
     }
     ovsrec_bgp_router_set_bgp_neighbors(bgp_router_context, bgp_neighbor_peer_name_list,
