@@ -179,9 +179,9 @@ DEFUN (vtysh_remove_lag,
        vtysh_remove_lag_cmd,
        "no interface lag <1-2000>",
         NO_STR
-       "Select an interface to configure.\n"
-       "Configure link-aggregation parameters.\n"
-       "LAG number ranges from 1 to 2000.\n")
+       "Select an interface to configure\n"
+       "Configure link-aggregation parameters\n"
+       "LAG number ranges from 1 to 2000\n")
 {
   char lag_number[LAG_NAME_LENGTH]={0};
   /* Form lag name in the form of lag1,lag2,etc */
@@ -265,9 +265,9 @@ DEFUN (cli_lacp_set_mode,
        lacp_set_mode_cmd,
        "lacp mode (active | passive)",
         LACP_STR
-       "Configure LACP mode.\n"
-       "Sets an interface as LACP active.\n"
-       "Sets an interface as LACP passive.\n")
+       "Configure LACP mode(Default:off)\n"
+       "Sets an interface as LACP active\n"
+       "Sets an interface as LACP passive\n")
 {
   return lacp_set_mode((char*) vty->index, argv[0], "");
 }
@@ -277,9 +277,9 @@ DEFUN (cli_lacp_set_no_mode,
        "no lacp mode (active | passive)",
        NO_STR
        LACP_STR
-       "Configure LACP mode.\n"
-       "Sets an interface as LACP active.\n"
-       "Sets an interface as LACP passive.\n")
+       "Configure LACP mode(Default:off)\n"
+       "Sets an interface as LACP active\n"
+       "Sets an interface as LACP passive\n")
 {
   return lacp_set_mode((char*) vty->index, "off", argv[0]);
 }
@@ -341,8 +341,8 @@ lacp_set_hash(const char *lag_name, const char *hash)
 DEFUN (cli_lacp_set_hash,
        lacp_set_hash_cmd,
        "hash l2-src-dst",
-       "The type of hash algorithm used for aggregated port.\n"
-       "Base the hash on l2-src-dst. The default is l3-src-dst.\n")
+       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
+       "Base the hash on l2-src-dst\n")
 {
   return lacp_set_hash((char*) vty->index, "l2-src-dst");
 }
@@ -351,8 +351,8 @@ DEFUN (cli_lacp_set_no_hash,
        lacp_set_no_hash_cmd,
        "no hash l2-src-dst",
        NO_STR
-       "The type of hash algorithm used for aggregated port.\n"
-       "Base the hash on l2-src-dst. The default is l3-src-dst.\n")
+       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
+       "Base the hash on l2-src-dst\n")
 {
   return lacp_set_hash((char*) vty->index, "l3-src-dst");
 }
@@ -361,7 +361,7 @@ DEFUN (cli_lacp_set_no_hash_shortform,
        lacp_set_no_hash_shortform_cmd,
        "no hash",
        NO_STR
-       "The type of hash algorithm used for aggregated port.\n")
+       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n")
 {
   return lacp_set_hash((char*) vty->index, "l3-src-dst");
 }
@@ -430,7 +430,7 @@ DEFUN (cli_lacp_set_fallback,
        lacp_set_fallback_cmd,
        "lacp fallback",
        LACP_STR
-       "Enable LACP fallback mode.\n")
+       "Enable LACP fallback mode\n")
 {
   return lacp_set_fallback((char*) vty->index, "true");
 }
@@ -440,7 +440,7 @@ DEFUN (cli_lacp_set_no_fallback,
        "no lacp fallback",
        NO_STR
        LACP_STR
-       "Enable LACP fallback mode.\n")
+       "Enable LACP fallback mode\n")
 {
   return lacp_set_fallback((char*) vty->index, "false");
 }
@@ -509,8 +509,8 @@ DEFUN (cli_lacp_set_heartbeat_rate,
        lacp_set_heartbeat_rate_cmd,
        "lacp rate fast",
        LACP_STR
-       "Set LACP heartbeat request time. Default is slow which is once every 30seconds.\n"
-       "LACP heartbeats are requested at the rate of one per second.\n")
+       "Set LACP heartbeat request time. Default is slow which is once every 30seconds\n"
+       "LACP heartbeats are requested at the rate of one per second\n")
 {
   return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_FAST);
 }
@@ -519,7 +519,7 @@ DEFUN (cli_lacp_set_no_heartbeat_rate,
        "no lacp rate",
        NO_STR
        LACP_STR
-       "Set LACP heartbeat request time. Default is slow which is once every 30seconds.\n")
+       "Set LACP heartbeat request time. Default is slow which is once every 30seconds\n")
 {
   return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_SLOW);
 }
@@ -529,8 +529,8 @@ DEFUN (cli_lacp_set_no_heartbeat_rate_fast,
        "no lacp rate fast",
        NO_STR
        LACP_STR
-       "Set LACP heartbeat request time. Default is slow which is once every 30seconds.\n"
-       "LACP heartbeats are requested at the rate of one per second.\n")
+       "Set LACP heartbeat request time. Default is slow which is once every 30seconds\n"
+       "LACP heartbeats are requested at the rate of one per second\n")
 {
   return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_SLOW);
 }
@@ -586,8 +586,8 @@ DEFUN (cli_lacp_set_global_sys_priority,
        lacp_set_global_sys_priority_cmd,
        "lacp system-priority <0-65535>",
        LACP_STR
-       "Set LACP system priority.\n"
-       "The range is 0 to 65535; the default is 65534.\n")
+       "Set LACP system priority\n"
+       "The range is 0 to 65535; the default is 65534\n")
 {
   return lacp_set_global_sys_priority(argv[0]);
 }
@@ -597,8 +597,8 @@ DEFUN (cli_lacp_set_no_global_sys_priority,
        "no lacp system-priority <0-65535>",
        NO_STR
        LACP_STR
-       "Set LACP system priority.\n"
-       "The range is 0 to 65535; the default is 65534.\n")
+       "Set LACP system priority\n"
+       "The range is 0 to 65535; the default is 65534\n")
 {
   char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
   snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY);
@@ -610,7 +610,7 @@ DEFUN (cli_lacp_set_no_global_sys_priority_shortform,
        "no lacp system-priority",
        NO_STR
        LACP_STR
-       "Set LACP system priority.\n")
+       "Set LACP system priority\n")
 {
   char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
   snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY);
@@ -670,8 +670,8 @@ DEFUN (cli_lacp_intf_set_port_id,
       cli_lacp_intf_set_port_id_cmd,
       "lacp port-id <1-65535>",
       LACP_STR
-      "Set port ID used in LACP negotiation.\n."
-      "The range is 1 to 65535.\n")
+      "Set port ID used in LACP negotiation\n."
+      "The range is 1 to 65535\n")
 {
   return lacp_intf_set_port_id((char*)vty->index, argv[0]);
 }
@@ -729,8 +729,8 @@ DEFUN (cli_lacp_intf_set_port_priority,
       cli_lacp_intf_set_port_priority_cmd,
       "lacp port-priority <1-65535>",
       LACP_STR
-      "Set port priority is used in LACP negotiation.\n."
-      "The range is 1 to 65535.\n")
+      "Set port priority is used in LACP negotiation\n"
+      "The range is 1 to 65535\n")
 {
   return lacp_intf_set_port_priority((char*)vty->index, argv[0]);
 }
@@ -787,13 +787,13 @@ lacp_intf_set_aggregation_key(const char *if_name, const char *agg_key)
 #endif
 
 #if 0
-/* HALON_TODO: Enable this command once LACP deamon supports aggregation-key */
+/* TODO: Enable this command once LACP deamon supports aggregation-key */
 DEFUN (cli_lacp_intf_set_aggregation_key,
       cli_lacp_intf_set_aggregation_key_cmd,
       "lacp aggregation-key <1-65535>",
       LACP_STR
-      "Set aggregation-key is used in LACP negotiation.\n."
-      "The range is 1 to 65535.\n")
+      "Set aggregation-key is used in LACP negotiation\n"
+      "The range is 1 to 65535\n")
 {
   return lacp_intf_set_aggregation_key((char*)vty->index, argv[0]);
 }
@@ -883,7 +883,7 @@ lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
            {
               if (strcmp(port_row->name, lag_name) == 0)
               {
-                 vty_out(vty, "Interface %s is already part of %s\n", if_name, port_row->name);
+                 vty_out(vty, "Interface %s is already part of %s.\n", if_name, port_row->name);
                  cli_do_config_abort(status_txn);
                  return CMD_SUCCESS;
               }
@@ -940,8 +940,8 @@ exit_loop:
 DEFUN (cli_lacp_add_intf_to_lag,
       cli_lacp_add_intf_to_lag_cmd,
       "lag <1-2000>",
-      "Add the current interface to link aggregation.\n"
-      "LAG number ranges from 1 to 2000.\n")
+      "Add the current interface to link aggregation\n"
+      "LAG number ranges from 1 to 2000\n")
 {
   return lacp_add_intf_to_lag((char*)vty->index, argv[0]);
 }
@@ -989,7 +989,7 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
    }
    if(!interface_found)
    {
-     vty_out(vty, "Interface %s is not part of %s\n", if_name, lag_name);
+     vty_out(vty, "Interface %s is not part of %s.\n", if_name, lag_name);
      return CMD_SUCCESS;
    }
 
@@ -1042,8 +1042,8 @@ DEFUN (cli_lacp_remove_intf_from_lag,
       cli_lacp_remove_intf_from_lag_cmd,
       "no lag <1-2000>",
       NO_STR
-      "Add the current interface to link aggregation.\n"
-      "LAG number ranges from 1 to 2000.\n")
+      "Add the current interface to link aggregation\n"
+      "LAG number ranges from 1 to 2000\n")
 {
   return lacp_remove_intf_from_lag((char*)vty->index, argv[0]);
 }
@@ -1079,8 +1079,8 @@ DEFUN (cli_lacp_show_configuration,
       cli_lacp_show_configuration_cmd,
       "show lacp configuration",
       SHOW_STR
-      "Show various LACP settings.\n"
-      "Show LACP system-wide configuration.\n")
+      "Show various LACP settings\n"
+      "Show LACP system-wide configuration\n")
 {
   return lacp_show_configuration();
 }
@@ -1157,8 +1157,8 @@ DEFUN (cli_lacp_show_all_aggregates,
       cli_lacp_show_all_aggregates_cmd,
       "show lacp aggregates",
       SHOW_STR
-      "Show various LACP settings.\n"
-      "Show LACP aggregates.\n")
+      "Show various LACP settings\n"
+      "Show LACP aggregates\n")
 {
   return lacp_show_aggregates("all");
 }
@@ -1167,9 +1167,9 @@ DEFUN (cli_lacp_show_aggregates,
       cli_lacp_show_aggregates_cmd,
       "show lacp aggregates WORD",
       SHOW_STR
-      "Show various LACP settings.\n"
-      "Show LACP aggregates.\n"
-      "Link-aggregate name.\n")
+      "Show various LACP settings\n"
+      "Show LACP aggregates\n"
+      "Link-aggregate name\n")
 {
   return lacp_show_aggregates(argv[0]);
 }
@@ -1316,8 +1316,8 @@ DEFUN (cli_lacp_show_all_interfaces,
       cli_lacp_show_all_interfaces_cmd,
       "show lacp interfaces",
       SHOW_STR
-      "Show various LACP settings.\n"
-      "Show LACP interfaces.\n")
+      "Show various LACP settings\n"
+      "Show LACP interfaces\n")
 {
   return lacp_show_interfaces_all();
 }
@@ -1394,9 +1394,9 @@ DEFUN (cli_lacp_show_interfaces,
       cli_lacp_show_interfaces_cmd,
       "show lacp interfaces IFNAME",
       SHOW_STR
-      "Show various LACP settings.\n"
-      "Show LACP interfaces.\n"
-      "Interface's name.\n")
+      "Show various LACP settings\n"
+      "Show LACP interfaces\n"
+      "Interface's name\n")
 {
   return lacp_show_interfaces(argv[0]);
 }
@@ -1566,7 +1566,7 @@ static int lag_no_routing(const char *port_name)
 DEFUN(cli_lag_routing,
     cli_lag_routing_cmd,
     "routing",
-    "Configure LAG as L3.\n")
+    "Configure LAG as L3\n")
 {
     return lag_routing((char*) vty->index);
 }
@@ -1575,7 +1575,7 @@ DEFUN(cli_lag_no_routing,
     cli_lag_no_routing_cmd,
     "no routing",
     NO_STR
-    "Configure LAG as L3.\n")
+    "Configure LAG as L3\n")
 {
     return lag_no_routing((char*) vty->index);
 }
