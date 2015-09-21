@@ -797,6 +797,7 @@ static struct cmd_node bgp_node =
       "%s(config-router)# ",
    };
 
+#ifndef ENABLE_OVSDB
 static struct cmd_node rip_node =
    {
       RIP_NODE,
@@ -808,6 +809,7 @@ static struct cmd_node isis_node =
       ISIS_NODE,
       "%s(config-router)# ",
    };
+#endif
 
 static struct cmd_node interface_node =
    {
@@ -878,6 +880,7 @@ static struct cmd_node bgp_ipv6m_node =
       "%s(config-router-af)# "
    };
 
+#ifndef ENABLE_OVSDB
 static struct cmd_node ospf_node =
    {
       OSPF_NODE,
@@ -901,6 +904,7 @@ static struct cmd_node babel_node =
       BABEL_NODE,
       "%s(config-babel)# "
    };
+#endif
 
 static struct cmd_node keychain_node =
    {
@@ -1079,6 +1083,7 @@ DEFUNSH (VTYSH_RIPD,
    return CMD_SUCCESS;
 }
 
+#ifndef ENABLE_OVSDB
 DEFUNSH (VTYSH_RIPD,
       router_rip,
       router_rip_cmd,
@@ -1145,6 +1150,7 @@ DEFUNSH (VTYSH_ISISD,
    vty->node = ISIS_NODE;
    return CMD_SUCCESS;
 }
+#endif
 
 #if 0
 DEFUNSH (VTYSH_RMAP,
@@ -1892,7 +1898,6 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D,
       NO_STR
       "Delete a pseudo interface's configuration\n"
       "Interface's name\n")
-#endif
 /* TODO Implement interface description commands in ripngd, ospf6d
  * and isisd. */
 DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
@@ -1906,6 +1911,7 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
       "no description",
       NO_STR
       "Interface specific description\n")
+#endif
 
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_exit_interface,
@@ -1936,6 +1942,7 @@ ALIAS (vtysh_exit_mgmt_interface,
        "Exit current mode and down to previous mode\n")
 #endif
 /* Memory */
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_memory,
       vtysh_show_memory_cmd,
       "show memory",
@@ -1957,7 +1964,7 @@ DEFUN (vtysh_show_memory,
 
    return ret;
 }
-
+#endif
 
 #ifndef ENABLE_OVSDB
 /* Logging commands. */
@@ -2554,6 +2561,7 @@ DEFUN (vtysh_terminal_no_length,
 }
 #endif
 
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_daemons,
       vtysh_show_daemons_cmd,
       "show daemons",
@@ -2569,6 +2577,8 @@ DEFUN (vtysh_show_daemons,
 
    return CMD_SUCCESS;
 }
+
+#endif
 
 #ifdef ENABLE_OVSDB
 /* Execute command in child process. */
@@ -3677,7 +3687,9 @@ vtysh_init_vty (void)
 
    /* Install nodes. */
    install_node (&bgp_node, NULL);
+#ifndef ENABLE_OVSDB
    install_node (&rip_node, NULL);
+#endif
    install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
    install_node (&vlan_node, NULL);
@@ -3694,22 +3706,28 @@ vtysh_init_vty (void)
    install_node (&bgp_ipv6_node, NULL);
    install_node (&bgp_ipv6m_node, NULL);
 /* #endif */
+#ifndef ENABLE_OVSDB
    install_node (&ospf_node, NULL);
 /* #ifdef HAVE_IPV6 */
    install_node (&ripng_node, NULL);
    install_node (&ospf6_node, NULL);
 /* #endif */
    install_node (&babel_node, NULL);
+#endif
    install_node (&keychain_node, NULL);
    install_node (&keychain_key_node, NULL);
+#ifndef ENABLE_OVSDB
    install_node (&isis_node, NULL);
+#endif
    install_node (&vty_node, NULL);
 
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
    vtysh_install_default (CONFIG_NODE);
    vtysh_install_default (BGP_NODE);
+#ifndef ENABLE_OVSDB
    vtysh_install_default (RIP_NODE);
+#endif
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
    vtysh_install_default (VLAN_NODE);
@@ -3724,11 +3742,13 @@ vtysh_init_vty (void)
    vtysh_install_default (BGP_IPV4M_NODE);
    vtysh_install_default (BGP_IPV6_NODE);
    vtysh_install_default (BGP_IPV6M_NODE);
+#ifndef ENABLE_OVSDB
    vtysh_install_default (OSPF_NODE);
    vtysh_install_default (RIPNG_NODE);
    vtysh_install_default (OSPF6_NODE);
    vtysh_install_default (BABEL_NODE);
    vtysh_install_default (ISIS_NODE);
+#endif
    vtysh_install_default (KEYCHAIN_NODE);
    vtysh_install_default (KEYCHAIN_KEY_NODE);
    vtysh_install_default (VTY_NODE);
@@ -3750,6 +3770,7 @@ vtysh_init_vty (void)
    /* install_element (CONFIG_NODE, &vtysh_quit_all_cmd); */
    install_element (ENABLE_NODE, &vtysh_exit_all_cmd);
    install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
+#ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_exit_ripd_cmd);
    install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
    install_element (RIPNG_NODE, &vtysh_exit_ripngd_cmd);
@@ -3758,6 +3779,7 @@ vtysh_init_vty (void)
    install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (OSPF6_NODE, &vtysh_exit_ospf6d_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
+#endif
    install_element (BGP_NODE, &vtysh_exit_bgpd_cmd);
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_exit_bgpd_cmd);
@@ -3773,9 +3795,10 @@ vtysh_init_vty (void)
 
    policy_vty_init();
    bgp_vty_init();
-
+#ifndef ENABLE_OVSDB
    install_element (ISIS_NODE, &vtysh_exit_isisd_cmd);
    install_element (ISIS_NODE, &vtysh_quit_isisd_cmd);
+#endif
    install_element (KEYCHAIN_NODE, &vtysh_exit_ripd_cmd);
    install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
    install_element (KEYCHAIN_KEY_NODE, &vtysh_exit_ripd_cmd);
@@ -3788,28 +3811,33 @@ vtysh_init_vty (void)
    /* "end" command. */
    install_element (CONFIG_NODE, &vtysh_end_all_cmd);
    install_element (ENABLE_NODE, &vtysh_end_all_cmd);
+#ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_end_all_cmd);
    install_element (RIPNG_NODE, &vtysh_end_all_cmd);
    install_element (OSPF_NODE, &vtysh_end_all_cmd);
    install_element (OSPF6_NODE, &vtysh_end_all_cmd);
    install_element (BABEL_NODE, &vtysh_end_all_cmd);
+#endif
    install_element (BGP_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV4_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_end_all_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV6_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_end_all_cmd);
+#ifndef ENABLE_OVSDB
    install_element (ISIS_NODE, &vtysh_end_all_cmd);
+#endif
    install_element (KEYCHAIN_NODE, &vtysh_end_all_cmd);
    install_element (KEYCHAIN_KEY_NODE, &vtysh_end_all_cmd);
    install_element (RMAP_NODE, &vtysh_end_all_cmd);
    install_element (VTY_NODE, &vtysh_end_all_cmd);
 
-   install_element (INTERFACE_NODE, &interface_desc_cmd);
-   install_element (INTERFACE_NODE, &no_interface_desc_cmd);
+   //install_element (INTERFACE_NODE, &interface_desc_cmd);
+   //install_element (INTERFACE_NODE, &no_interface_desc_cmd);
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
    install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
+#ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ripng_cmd);
@@ -3820,6 +3848,8 @@ vtysh_init_vty (void)
 #endif
    install_element (CONFIG_NODE, &router_babel_cmd);
    install_element (CONFIG_NODE, &router_isis_cmd);
+#endif /* ENABLE_OVSDB */
+
    //install_element (CONFIG_NODE, &router_bgp_cmd);
    //install_element (CONFIG_NODE, &router_bgp_view_cmd);
    install_element (BGP_NODE, &address_family_vpnv4_cmd);
@@ -3891,9 +3921,9 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_terminal_length_cmd);
   install_element (VIEW_NODE, &vtysh_terminal_no_length_cmd);
   install_element (ENABLE_NODE, &vtysh_terminal_no_length_cmd);
-#endif
   install_element (VIEW_NODE, &vtysh_show_daemons_cmd);
   install_element (ENABLE_NODE, &vtysh_show_daemons_cmd);
+#endif
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
 #endif /* ENABLE_OVSDB */
@@ -3926,9 +3956,9 @@ vtysh_init_vty (void)
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
   install_element (ENABLE_NODE, &vtysh_start_zsh_cmd);
-#endif
   install_element (VIEW_NODE, &vtysh_show_memory_cmd);
   install_element (ENABLE_NODE, &vtysh_show_memory_cmd);
+#endif
 #ifndef ENABLE_OVSDB
   /* Logging */
   install_element (ENABLE_NODE, &vtysh_show_logging_cmd);
