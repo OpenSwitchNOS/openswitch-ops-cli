@@ -53,8 +53,7 @@ struct route_map_rule
   struct route_map_rule *prev;
 };
 
-#ifdef ENABLE_OVSDB
-#else
+#ifndef ENABLE_OVSDB
 /* Making route map list. */
 struct route_map_list
 {
@@ -68,7 +67,10 @@ struct route_map_list
 
 /* Master list of route map. */
 static struct route_map_list route_map_master = { NULL, NULL, NULL, NULL };
+#else
+struct route_map_list route_map_master = { NULL, NULL, NULL, NULL };
 #endif
+
 
 static void
 route_map_rule_delete (struct route_map_rule_list *,
@@ -112,7 +114,11 @@ route_map_add (const char *name)
 }
 
 /* Route map delete from list. */
+#ifdef ENABLE_OVSDB
+void
+#else
 static void
+#endif
 route_map_delete (struct route_map *map)
 {
   struct route_map_list *list;

@@ -1234,7 +1234,7 @@ cli_bgp_maxpaths_cmd_execute(char *vrf_name, int64_t max_paths)
         // CLI does not allow a value less than 1 to be set, so we use it to
         // identify the set and "no" case.
         if (max_paths) {
-            *pmax_paths = max_paths;
+            pmax_paths = &max_paths;
             size = 1;
         }
 
@@ -2665,15 +2665,16 @@ bgp_neighbor_peer_group_remove_from_bgp_router(struct ovsrec_bgp_router *bgp_rou
 {
     struct ovsrec_bgp_neighbor **bgp_neighbor_peer_group_list;
     char **bgp_neighbor_peer_name_list;
-    int i = 0;
+    int i, j;
 
     bgp_neighbor_peer_name_list = xmalloc(80 * (bgp_router_context->n_bgp_neighbors - 1));
     bgp_neighbor_peer_group_list = xmalloc(sizeof * bgp_router_context->value_bgp_neighbors *
                               (bgp_router_context->n_bgp_neighbors - 1));
-    for (i = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
+    for (i = 0, j = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
         if (0 != strcmp(bgp_router_context->key_bgp_neighbors[i], name)) {
-            bgp_neighbor_peer_name_list[i] = bgp_router_context->key_bgp_neighbors[i];
-            bgp_neighbor_peer_group_list[i] = bgp_router_context->value_bgp_neighbors[i];
+            bgp_neighbor_peer_name_list[j] = bgp_router_context->key_bgp_neighbors[i];
+            bgp_neighbor_peer_group_list[j] = bgp_router_context->value_bgp_neighbors[i];
+            j++;
         }
     }
     ovsrec_bgp_router_set_bgp_neighbors(bgp_router_context, bgp_neighbor_peer_name_list,
@@ -9339,7 +9340,6 @@ bgp_prefix_list_entry_insert_to_prefix_list(struct ovsrec_prefix_list *policy_ro
 void
 bgp_prefix_list_entry_remove_from_prefix_list(
     struct ovsrec_prefix_list *policy_row,
-    struct ovsrec_prefix_list_entry  *policy_entry_row,
     int64_t seq)
 {
     int64_t *pref_list;
@@ -9495,7 +9495,7 @@ DEFUN (no_ip_prefix_list,
 }
 
 static int
-cli_no_ip_prefix_list_seq_cmd_execute(const char *name, int64_t seq,
+cli_no_ip_prefix_list_seq_cmd_execute(const char *name, const char *seq,
                                       const char *action, const char *prefix)
 {
     VLOG_DBG("Deleting any prefix list entries...");
@@ -9503,6 +9503,13 @@ cli_no_ip_prefix_list_seq_cmd_execute(const char *name, int64_t seq,
     struct ovsrec_prefix_list_entry *plist_entry;
     struct ovsdb_idl_txn *policy_txn;
     bool deleted = false;
+    int seqnum = -1;
+
+    /* Sequential number. */
+    if (seq)
+        seqnum = atoi(seq);
+    else
+        ERRONEOUS_DB_TXN(policy_txn, "Invalid seq number");
 
     /* Start of transaction */
     START_DB_TXN(policy_txn);
@@ -9512,15 +9519,15 @@ cli_no_ip_prefix_list_seq_cmd_execute(const char *name, int64_t seq,
         ERRONEOUS_DB_TXN(policy_txn, "Prefix List not found");
     }
 
-    plist_entry = policy_get_prefix_list_entry_in_ovsdb(seq, name, action);
-    if (!plist_row) {
+    plist_entry = policy_get_prefix_list_entry_in_ovsdb(seqnum, name, action);
+    if (!plist_entry) {
         ERRONEOUS_DB_TXN(policy_txn, "Prefix List entry not found");
     }
 
     /* Need to remove the reference to the prefix-list entry from
      * the prefix-list table first.
      */
-    bgp_prefix_list_entry_remove_from_prefix_list(plist_row, plist_entry, seq);
+    bgp_prefix_list_entry_remove_from_prefix_list(plist_row, seqnum);
     ovsrec_prefix_list_entry_delete(plist_entry);
 
     /* End of transaction */
@@ -9614,9 +9621,9 @@ bgp_route_map_entry_insert_to_route_map(struct ovsrec_route_map *rt_map_row,
 }
 
 void
-bgp_route_map_entry_remove_from_route_map(struct ovsrec_route_map *rt_map_row,
-                              struct ovsrec_route_map_entry *rt_map_entry_row,
-                              int64_t seq)
+bgp_route_map_entry_remove_from_route_map(
+    struct ovsrec_route_map *rt_map_row,
+    int64_t seq)
 {
     int64_t *pref_list;
     struct ovsrec_route_map_entry  **rt_map_entry_list;
@@ -9713,11 +9720,12 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
         rt_map_entry_row = ovsrec_route_map_entry_insert(policy_txn);
         bgp_route_map_entry_insert_to_route_map(rt_map_row, rt_map_entry_row,
                                                 (int64_t)pref);
-    }
 
-    ovsrec_route_map_entry_set_action(rt_map_entry_row, typestr);
-    ovsrec_route_map_entry_set_match(rt_map_entry_row, NULL);
-    ovsrec_route_map_entry_set_set(rt_map_entry_row, NULL);
+        /* Row was not found, which means it is a new entry. Set default vals */
+        ovsrec_route_map_entry_set_action(rt_map_entry_row, typestr);
+        ovsrec_route_map_entry_set_match(rt_map_entry_row, NULL);
+        ovsrec_route_map_entry_set_set(rt_map_entry_row, NULL);
+    }
 
     rmp_context.pref = pref;
     strncpy(rmp_context.name, name, sizeof(rmp_context.name));
@@ -9802,8 +9810,7 @@ cli_no_route_map_cmd_execute(const char *name, const char *action,
     /* Need to remove the reference to the route-map entry from route-map table
      * first.
      */
-    bgp_route_map_entry_remove_from_route_map(rt_map_row, rt_map_entry_row,
-                                              pref);
+    bgp_route_map_entry_remove_from_route_map(rt_map_row, pref);
 
     ovsrec_route_map_entry_delete(rt_map_entry_row);
 
@@ -9879,7 +9886,15 @@ policy_set_route_map_match_in_ovsdb(
     START_DB_TXN(policy_txn);
 
     smap_clone(&smap_match, &rt_map_entry_row->match);
-    smap_replace(&smap_match, table_key, arg);
+
+    if (arg) {
+        /* Non-empty key, so the value will be set. */
+        smap_replace(&smap_match, table_key, arg);
+    } else {
+        /* Empty key indicates an unset. */
+        smap_remove(&smap_match, table_key);
+    }
+
     ovsrec_route_map_entry_set_match(rt_map_entry_row, &smap_match);
     smap_destroy(&smap_match);
 
@@ -9926,7 +9941,14 @@ policy_set_route_map_set_in_ovsdb (struct vty *vty,
 
     psmap = &rt_map_entry_row->set;
     smap_clone(&smap_set, psmap);
-    smap_replace(&smap_set, table_key, arg);
+
+    if (arg) {
+        /* Non-empty key, so the value will be set. */
+        smap_replace(&smap_set, table_key, arg);
+    } else {
+        /* Empty key indicates an unset. */
+        smap_remove(&smap_set, table_key);
+    }
 
     ovsrec_route_map_entry_set_set(rt_map_entry_row, &smap_set);
     smap_destroy(&smap_set);
