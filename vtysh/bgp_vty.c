@@ -57,8 +57,24 @@
 #include "lib/routemap.h"
 #include "lib/plist.h"
 
-/*
-** enable this if exra debugging is required
+#define BGP_UPTIME_LEN (25)
+
+/* Recent absolute time of day */
+//struct timeval recent_time;
+//static struct timeval last_recent_time;
+/* Relative time, since startup */
+//static struct timeval relative_time;
+//static struct timeval relative_time_base;
+/* init flag */
+//static unsigned short timers_inited;
+
+//static struct hash *cpu_record = NULL;
+
+/* Struct timeval's tv_usec one second value.  */
+//#define TIMER_SECOND_MICRO 1000000L
+
+
+/** enable this if exra debugging is required
 */
 //#define EXTRA_DEBUG
 
@@ -389,7 +405,7 @@ bgp_peer_lookup (const struct ovsrec_bgp_router *bgp_row, const char *peer_id)
     assert(peer_id);
 
     for (i = 0; i < bgp_row->n_bgp_neighbors; i++) {
-        if (!(bgp_row->value_bgp_neighbors[i]) &&
+        if ((bgp_row->value_bgp_neighbors[i]) &&
            (0 == strcmp(bgp_row->key_bgp_neighbors[i], peer_id)))
             return (bgp_row->value_bgp_neighbors[i]);
     }
@@ -6991,6 +7007,77 @@ DEFUN (show_bgp_memory,
 
 /* `show ip bgp summary' commands. */
 
+/*Funtion to get the statistics from neighbor table*/
+int
+get_statistics_from_neighbor(struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,const char *key)
+{
+   int i=0;
+
+   vty_out("\nkey=%s\n",key);
+   for(i=0;i<ovs_bgp_neighbor->n_statistics;i++)
+   {
+        if(!strcmp(ovs_bgp_neighbor->key_statistics[i],key))
+           return ovs_bgp_neighbor->value_statistics[i];
+   }
+
+  return -1;
+}
+
+/* time_t value that is monotonicly increasing
+ * and uneffected by adjustments to system clock
+ */
+time_t bgp_clock (void)
+{
+  struct timeval tv;
+
+  quagga_gettime(QUAGGA_CLK_MONOTONIC, &tv);
+  return tv.tv_sec;
+}
+
+
+/* Display peer uptime.*/
+char *
+neighbor_uptime (time_t uptime2, char *buf, size_t len)
+{
+  time_t uptime1;
+  struct tm *tm;
+
+  /* Check buffer length. */
+  if (len < BGP_UPTIME_LEN)
+    {
+      VLOG_ERR("peer_uptime (): buffer shortage %lu", (u_long)len);
+      snprintf (buf, len, "<error> ");
+      return buf;
+    }
+
+  /* If there is no connection has been done before print `never'. */
+  if (uptime2 == 0)
+    {
+      snprintf (buf, len, "never   ");
+      return buf;
+    }
+
+  /* Get current time. */
+  uptime1 = bgp_clock ();
+  uptime1 -= uptime2;
+  tm = gmtime (&uptime1);
+
+#define ONE_DAY_SECOND 60*60*24
+#define ONE_WEEK_SECOND 60*60*24*7
+
+  if (uptime1 < ONE_DAY_SECOND)
+    snprintf (buf, len, "%02d:%02d:%02d",
+              tm->tm_hour, tm->tm_min, tm->tm_sec);
+  else if (uptime1 < ONE_WEEK_SECOND)
+    snprintf (buf, len, "%dd%02dh%02dm",
+              tm->tm_yday, tm->tm_hour, tm->tm_min);
+  else
+    snprintf (buf, len, "%02dw%dd%02dh",
+              tm->tm_yday/7, tm->tm_yday - ((tm->tm_yday/7) * 7), tm->tm_hour);
+  return buf;
+
+}
+
 static int
 cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
 {
@@ -7000,7 +7087,9 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
     struct ovsrec_route *rib_row = NULL;
     struct ovsdb_idl_txn *txn;
     int peer_count=0,rib_count=0,i=0,len=0,j=0;
-    static char header[] = "Neighbor            AS MsgRcvd MsgSent Up/Down  State/PfxRcd\n";
+    char timebuf[BGP_UPTIME_LEN];
+    static char header[] =
+                "Neighbor             AS MsgRcvd MsgSent Up/Down  State/PfxRcd\n";
 
     /* Start of transaction */
     START_DB_TXN(txn);
@@ -7014,14 +7103,14 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
                ovs_vrf->key_bgp_routers[0]);
 
     //count the number of RIB entries
-    OVSREC_ROUTE_FOR_EACH(rib_row, idl)
+    /*OVSREC_ROUTE_FOR_EACH(rib_row, idl)
     {
         if (strcmp(rib_row->from, OVSREC_ROUTE_FROM_BGP))
             continue;
 
         rib_count++;
-    }
-    vty_out(vty,"RIB entries %d\n",rib_count);
+    }*/
+    vty_out(vty,"RIB entries %d\n",bgp_get_rib_count());
 
     vty_out(vty,"Peers %d\n\n",bgp_router_context->n_bgp_neighbors);
 
@@ -7036,26 +7125,32 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
           vty_out(vty," ");
 
         vty_out(vty, "%7d", *bgp_router_context->value_bgp_neighbors[j]->remote_as);
-        vty_out(vty, "%7d", bgp_router_context->value_bgp_neighbors[j]->value_statistics[8]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[14]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[4]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[6]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[11]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[1]);
-
-        vty_out(vty, "%7d", bgp_router_context->value_bgp_neighbors[j]->value_statistics[9]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[15]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[5]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[7]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[12]+
-                            bgp_router_context->value_bgp_neighbors[j]->value_statistics[2]);
-
+        //vty_out(vty,"%8d",get_statistics_from_neighbor
+            // (bgp_router_context->value_bgp_neighbors[j],"bgp-peer-keepalive_in-count"));
+        vty_out(vty, "%8d",
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[8]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[14]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[4]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[6]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[11]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[1]);
 
         vty_out(vty, "%8d",
-               bgp_router_context->value_bgp_neighbors[j]->value_statistics[16]);
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[9]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[15]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[5]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[7]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[12]+
+                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[2]);
 
-        vty_out(vty, "%8s\n",smap_get(&bgp_router_context->value_bgp_neighbors[j]->status,
-                "bgp-peer-state"));
+        vty_out(vty, " %8s",
+          neighbor_uptime (bgp_router_context->value_bgp_neighbors[j]->value_statistics[16],
+               timebuf, BGP_UPTIME_LEN));
+               //bgp_router_context->value_bgp_neighbors[j]->value_statistics[16]);
+
+        vty_out(vty, "%12s\n",
+                     smap_get(&bgp_router_context->value_bgp_neighbors[j]->status,
+                         "bgp-peer-state"));
     }
 
     END_DB_TXN(txn);
