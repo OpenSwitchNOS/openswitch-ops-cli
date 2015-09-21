@@ -1092,6 +1092,89 @@ DEFUN (bgp_router_id,
         cli_bgp_router_id_cmd_execute (NULL, CONST_CAST(char*,argv[0]));
 }
 
+static int
+cli_no_bgp_router_id_cmd_execute (char *vrf_name)
+{
+    int ret;
+    struct in_addr id;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *bgp_router_txn=NULL;
+
+        /* Start of transaction */
+        START_DB_TXN(bgp_router_txn);
+
+        VLOG_DBG("vty_index for router_id: %d\n",(int64_t)vty->index);
+
+        vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+        if (vrf_row == NULL) {
+            ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+        }
+        /* See if it already exists */
+        bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+
+        /* If does not exist, nothing to modify */
+        if (bgp_router_row == NULL) {
+            ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+        } else {
+            /* Unset the router-id with matching asn */
+            ovsrec_bgp_router_set_router_id(bgp_router_row, "0.0.0.0");
+        }
+
+        /* End of transaction*/
+        END_DB_TXN(bgp_router_txn);
+}
+
+static int
+cli_no_bgp_router_id_val_cmd_execute (char *vrf_name, char *router_ip_addr)
+{
+    int ret;
+    struct in_addr id;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *bgp_router_txn=NULL;
+
+    if(string_is_an_ip_address(router_ip_addr)) {
+        ret = inet_aton (router_ip_addr, &id);
+        if (!ret || (id.s_addr == 0)) {
+            vty_out (vty, "%% Malformed bgp router identifier%s", VTY_NEWLINE);
+            return CMD_WARNING;
+        }
+
+        /* Start of transaction */
+        START_DB_TXN(bgp_router_txn);
+
+        VLOG_DBG("vty_index for router_id: %d\n",(int64_t)vty->index);
+
+        vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+        if (vrf_row == NULL) {
+            ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+        }
+        /* See if it already exists */
+        bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+
+        /* If does not exist, nothing to modify */
+        if (bgp_router_row == NULL) {
+            ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+        } else {
+            /* Unset the router-id with matching asn */
+            if (0 != strcmp(bgp_router_row->router_id, router_ip_addr))
+            {
+                vty_out (vty, "%% BGP router-id doesn't match%s", VTY_NEWLINE);
+                return CMD_WARNING;
+            }
+            ovsrec_bgp_router_set_router_id(bgp_router_row, "0.0.0.0");
+        }
+
+        /* End of transaction*/
+        END_DB_TXN(bgp_router_txn);
+    }
+    else {
+        vty_out (vty, "%% Malformed bgp router identifier%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+}
+
 DEFUN (no_bgp_router_id,
        no_bgp_router_id_cmd,
        "no bgp router-id",
@@ -1099,8 +1182,10 @@ DEFUN (no_bgp_router_id,
        BGP_STR
        "Override configured router identifier\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    if (argc == 1)
+        return cli_no_bgp_router_id_val_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
+    else
+        return cli_no_bgp_router_id_cmd_execute (NULL);
 }
 
 ALIAS (no_bgp_router_id,
@@ -1914,16 +1999,16 @@ cli_no_bgp_network_cmd_execute (char *vrf_name, char *network)
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
     }
     else {
-        VLOG_DBG("vty_index for no network : %ld\n",(int64_t)vty->index);
-        /* Insert networks in BGP_Router table */
+        VLOG_INFO("Sayali: vty_index for no network : %ld\n"
+                  "Sayali: network : %s",
+                  (int64_t)vty->index, network);
+        /* Delete networks in BGP_Router table */
         network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
                                (bgp_router_row->n_networks - 1));
         for (i = 0,j = 0; i < bgp_router_row->n_networks; i++) {
-            if(!strcmp(bgp_router_row->networks[i], network)) {
-                continue;
-            }
-            else {
-                network_list[j++] = bgp_router_row->networks[i];
+            if(0 != strcmp(bgp_router_row->networks[i], network)) {
+                network_list[j] = bgp_router_row->networks[i];
+                j++;
             }
         }
         ovsrec_bgp_router_set_networks(bgp_router_row, network_list,
@@ -2674,8 +2759,9 @@ bgp_neighbor_peer_group_remove_from_bgp_router(struct ovsrec_bgp_router *bgp_rou
     char **bgp_neighbor_peer_name_list;
     int i = 0, j = 0;
 
-    bgp_neighbor_peer_name_list = xmalloc(80 * (bgp_router_context->n_bgp_neighbors - 1));
-    bgp_neighbor_peer_group_list = xmalloc(sizeof * bgp_router_context->value_bgp_neighbors *
+    bgp_neighbor_peer_name_list = xmalloc(sizeof *bgp_router_context->key_bgp_neighbors *
+                                       (bgp_router_context->n_bgp_neighbors - 1));
+    bgp_neighbor_peer_group_list = xmalloc(sizeof *bgp_router_context->value_bgp_neighbors *
                               (bgp_router_context->n_bgp_neighbors - 1));
     for (i = 0, j = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
         if (0 != strcmp(bgp_router_context->key_bgp_neighbors[i], name)) {
