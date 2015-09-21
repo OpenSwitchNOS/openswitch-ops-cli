@@ -189,6 +189,7 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_vrfs);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_bridges);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
 }
 
 static void
