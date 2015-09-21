@@ -961,17 +961,16 @@ bgp_router_remove_from_vrf(struct ovsrec_vrf *vrf_row,
 {
     int64_t *asn_list;
     struct ovsrec_bgp_router **bgp_routers_list;
-    int i = 0, j = 0;
+    int i = 0;
 
     /* Insert BGP_Router table reference in VRF table */
     asn_list = xmalloc(sizeof(int64_t) * (vrf_row->n_bgp_routers - 1));
     bgp_routers_list = xmalloc(sizeof * vrf_row->key_bgp_routers *
                               (vrf_row->n_bgp_routers - 1));
-    for (i = 0, j = 0; i < vrf_row->n_bgp_routers; i++) {
-        if(vrf_row->key_bgp_routers[i] != asn) {
-            asn_list[j] = vrf_row->key_bgp_routers[i];
-            bgp_routers_list[j] = vrf_row->value_bgp_routers[i];
-            j++;
+    for (i = 0; i < vrf_row->n_bgp_routers; i++) {
+        if(asn_list[i] != asn) {
+            asn_list[i] = vrf_row->key_bgp_routers[i];
+            bgp_routers_list[i] = vrf_row->value_bgp_routers[i];
         }
     }
     ovsrec_vrf_set_bgp_routers(vrf_row, asn_list, bgp_routers_list,
@@ -1235,7 +1234,7 @@ cli_bgp_maxpaths_cmd_execute(char *vrf_name, int64_t max_paths)
         // CLI does not allow a value less than 1 to be set, so we use it to
         // identify the set and "no" case.
         if (max_paths) {
-            *pmax_paths = max_paths;
+            pmax_paths = &max_paths;
             size = 1;
         }
 
@@ -2130,7 +2129,7 @@ bgp_neighbor_remove_for_matching_peer_group_from_bgp_router(
     bgp_neighbor_peer_group_list = xmalloc(sizeof * bgp_router_context->value_bgp_neighbors *
                               (bgp_router_context->n_bgp_neighbors - 1));
 
-    for (i = 0, j = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
+    for (i = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
         if (0 != strcmp(bgp_router_context->value_bgp_neighbors[i],
                         ovs_bgp_neighbor)) {
             bgp_neighbor_peer_name_list[j] = bgp_router_context->key_bgp_neighbors[i];
@@ -2201,12 +2200,11 @@ cli_no_neighbor_cmd_execute (char *vrf_name, const char *peer_str)
 
     /* peer/neighbor */
     if (string_is_an_ip_address(peer_str)) {
-	ovs_bgp_neighbor =
-	    get_bgp_neighbor_with_bgp_router_and_ipaddr
-		(bgp_router_context, peer_str);
-	    if (ovs_bgp_neighbor) {
-	        ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
-	    }
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                                bgp_router_context, peer_str);
+        if (ovs_bgp_neighbor) {
+            ovsrec_bgp_neighbor_delete(ovs_bgp_neighbor);
+        }
     /* peer group */
     } else {
         int res = delete_neighbor_peer_group(bgp_router_context, peer_str);
@@ -2214,7 +2212,8 @@ cli_no_neighbor_cmd_execute (char *vrf_name, const char *peer_str)
             ERRONEOUS_DB_TXN(txn, "peer group does not exist.");
         }
     }
-        /* Delete the neighbor/peer-group reference from BGP Router */
+
+    /* Delete the neighbor/peer-group reference from BGP Router */
     if (ovs_bgp_neighbor) {
         bgp_neighbor_peer_group_remove_from_bgp_router(bgp_router_context,
                                                        ovs_bgp_neighbor,
@@ -2565,15 +2564,15 @@ DEFUN (no_neighbor_activate,
 }
 
 /*
-** If the peer does not exist, create it first and then bind it
-** to the peer group.  If it already exists, it must not already
-** be bound to another peer group.  Also, the peer group MUST
-** already have a remote-as configured before any peers can be
-** bound to it.  All these are checked below.
-*/
+ * If the peer does not exist, create it first and then bind it
+ * to the peer group.  If it already exists, it must not already
+ * be bound to another peer group.  Also, the peer group MUST
+ * already have a remote-as configured before any peers can be created
+ * and bound to it.  All these are checked below.
+ */
 static int
-cli_neighbor_set_peer_group_cmd_execute (char *vrf_name, const char *ip_addr,
-    const char *peer_group)
+cli_neighbor_set_peer_group_cmd_execute(char *vrf_name, const char *ip_addr,
+                                        const char *peer_group)
 {
     const struct ovsrec_vrf *vrf_row;
     const struct ovsrec_bgp_router *bgp_router_context;
@@ -2589,63 +2588,65 @@ cli_neighbor_set_peer_group_cmd_execute (char *vrf_name, const char *ip_addr,
     }
 
     /* This *MUST* be already available */
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+                                                        (int64_t)vty->index);
     if (!bgp_router_context) {
         ERRONEOUS_DB_TXN(txn, "bgp router context not available");
     }
 
     /* This *MUST* be already available */
-    ovs_bgp_peer_group =
-	get_bgp_peer_group_with_bgp_router_and_name
-	    (bgp_router_context, peer_group);
+    ovs_bgp_peer_group = get_bgp_peer_group_with_bgp_router_and_name(
+                                bgp_router_context, peer_group);
     if (!ovs_bgp_peer_group) {
         ABORT_DB_TXN(txn, "Configure the peer-group first.");
     }
 
     /* this may or may not be present */
-    ovs_bgp_neighbor =
-	get_bgp_neighbor_with_bgp_router_and_ipaddr
-	    (bgp_router_context, ip_addr);
+    ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                            bgp_router_context, ip_addr);
 
     /*
-    ** Create a peer first and assign values from peer-group.
-    ** However, to be able to do that, the peer group MUST
-    ** have its remote-as defined.  If not, a new peer cannot
-    ** be created & assigned to the peer group.  If a peer
-    ** already exists however, it CAN be bound to a peer group
-    ** which may not have a remote-as.
-    */
+     * Create a peer first and assign values from peer-group.
+     * However, to be able to do that, the peer group MUST
+     * have its remote-as defined.  If not, a new peer cannot
+     * be created & assigned to the peer group.  If a peer
+     * already exists however, it CAN be bound to a peer group
+     * which may not have a remote-as.
+     */
     if (!ovs_bgp_neighbor) {
         ovs_bgp_neighbor = ovsrec_bgp_neighbor_insert(txn);
         if (!ovs_bgp_neighbor) {
            ERRONEOUS_DB_TXN(txn, "bgp neighbor object creation failed");
         }
-	define_object_as_a_bgp_peer(ovs_bgp_neighbor);
+        define_object_as_a_bgp_peer(ovs_bgp_neighbor);
+
+        /* Add peer reference to the BGP Router table */
+        bgp_neighbor_peer_group_insert_to_bgp_router(bgp_router_context,
+                                                     ovs_bgp_neighbor, ip_addr);
     } else {
-	if (ovs_bgp_neighbor->bgp_peer_group) {
-	    if (ovs_bgp_neighbor->bgp_peer_group == ovs_bgp_peer_group) {
-		/* no op */
-		ABORT_DB_TXN(txn, "Configuration already exists.");
-	    } else {
-                ERRONEOUS_DB_TXN(txn,
-		    "Cannot change the peer-group. Deconfigure first");
-	    }
-	}
+        if (ovs_bgp_neighbor->bgp_peer_group) {
+            if (ovs_bgp_neighbor->bgp_peer_group == ovs_bgp_peer_group) {
+                ABORT_DB_TXN(txn, "Configuration already exists.");
+            } else {
+                ERRONEOUS_DB_TXN(txn, "Cannot change the peer-group. "
+                                      "Deconfigure first");
+            }
+        }
     }
 
     /* if peer group has a remote-as, it becomes primary */
     if (ovs_bgp_peer_group->n_remote_as > 0) {
-	ovsrec_bgp_neighbor_set_remote_as
-	    (ovs_bgp_neighbor, ovs_bgp_peer_group->remote_as, 1);
-    /* no remote-as in peer group or peer, unacceptable */
-    } else if (ovs_bgp_neighbor->n_remote_as <= 0) {
-	ERRONEOUS_DB_TXN(txn,
-	    "Specify peer remote AS or peer-group remote AS first");
+        ovsrec_bgp_neighbor_set_remote_as(ovs_bgp_neighbor,
+                                          ovs_bgp_peer_group->remote_as, 1);
+    } else if (!ovs_bgp_neighbor->n_remote_as) {
+        /* no remote-as in peer group or peer, unacceptable */
+        ERRONEOUS_DB_TXN(txn, "Specify peer remote AS or peer-group "
+                              "remote AS first");
     }
 
     /* make this peer bound to the peer group */
-    ovsrec_bgp_neighbor_set_bgp_peer_group
-	(ovs_bgp_neighbor, ovs_bgp_peer_group);
+    ovsrec_bgp_neighbor_set_bgp_peer_group(ovs_bgp_neighbor,
+                                           ovs_bgp_peer_group);
 
     /* done */
     END_DB_TXN(txn);
@@ -9344,7 +9345,6 @@ bgp_prefix_list_entry_insert_to_prefix_list(struct ovsrec_prefix_list *policy_ro
 void
 bgp_prefix_list_entry_remove_from_prefix_list(
     struct ovsrec_prefix_list *policy_row,
-    struct ovsrec_prefix_list_entry  *policy_entry_row,
     int64_t seq)
 {
     int64_t *pref_list;
@@ -9500,7 +9500,7 @@ DEFUN (no_ip_prefix_list,
 }
 
 static int
-cli_no_ip_prefix_list_seq_cmd_execute(const char *name, int64_t seq,
+cli_no_ip_prefix_list_seq_cmd_execute(const char *name, const char *seq,
                                       const char *action, const char *prefix)
 {
     VLOG_DBG("Deleting any prefix list entries...");
@@ -9508,24 +9508,31 @@ cli_no_ip_prefix_list_seq_cmd_execute(const char *name, int64_t seq,
     struct ovsrec_prefix_list_entry *plist_entry;
     struct ovsdb_idl_txn *policy_txn;
     bool deleted = false;
+    int seqnum = -1;
 
     /* Start of transaction */
     START_DB_TXN(policy_txn);
+
+    /* Sequential number. */
+    if (seq)
+        seqnum = atoi(seq);
+    else
+        ERRONEOUS_DB_TXN(policy_txn, "Invalid seq number");
 
     plist_row = policy_get_prefix_list_in_ovsdb(name);
     if (!plist_row) {
         ERRONEOUS_DB_TXN(policy_txn, "Prefix List not found");
     }
 
-    plist_entry = policy_get_prefix_list_entry_in_ovsdb(seq, name, action);
-    if (!plist_row) {
+    plist_entry = policy_get_prefix_list_entry_in_ovsdb(seqnum, name, action);
+    if (!plist_entry) {
         ERRONEOUS_DB_TXN(policy_txn, "Prefix List entry not found");
     }
 
     /* Need to remove the reference to the prefix-list entry from
      * the prefix-list table first.
      */
-    bgp_prefix_list_entry_remove_from_prefix_list(plist_row, plist_entry, seq);
+    bgp_prefix_list_entry_remove_from_prefix_list(plist_row, seqnum);
     ovsrec_prefix_list_entry_delete(plist_entry);
 
     /* End of transaction */
@@ -9619,9 +9626,9 @@ bgp_route_map_entry_insert_to_route_map(struct ovsrec_route_map *rt_map_row,
 }
 
 void
-bgp_route_map_entry_remove_from_route_map(struct ovsrec_route_map *rt_map_row,
-                              struct ovsrec_route_map_entry *rt_map_entry_row,
-                              int64_t seq)
+bgp_route_map_entry_remove_from_route_map(
+    struct ovsrec_route_map *rt_map_row,
+    int64_t seq)
 {
     int64_t *pref_list;
     struct ovsrec_route_map_entry  **rt_map_entry_list;
@@ -9718,11 +9725,12 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
         rt_map_entry_row = ovsrec_route_map_entry_insert(policy_txn);
         bgp_route_map_entry_insert_to_route_map(rt_map_row, rt_map_entry_row,
                                                 (int64_t)pref);
-    }
 
-    ovsrec_route_map_entry_set_action(rt_map_entry_row, typestr);
-    ovsrec_route_map_entry_set_match(rt_map_entry_row, NULL);
-    ovsrec_route_map_entry_set_set(rt_map_entry_row, NULL);
+        /* Row was not found, which means it is a new entry. Set default vals */
+        ovsrec_route_map_entry_set_action(rt_map_entry_row, typestr);
+        ovsrec_route_map_entry_set_match(rt_map_entry_row, NULL);
+        ovsrec_route_map_entry_set_set(rt_map_entry_row, NULL);
+    }
 
     rmp_context.pref = pref;
     strncpy(rmp_context.name, name, sizeof(rmp_context.name));
@@ -9807,8 +9815,7 @@ cli_no_route_map_cmd_execute(const char *name, const char *action,
     /* Need to remove the reference to the route-map entry from route-map table
      * first.
      */
-    bgp_route_map_entry_remove_from_route_map(rt_map_row, rt_map_entry_row,
-                                              pref);
+    bgp_route_map_entry_remove_from_route_map(rt_map_row, pref);
 
     ovsrec_route_map_entry_delete(rt_map_entry_row);
 
@@ -9884,7 +9891,15 @@ policy_set_route_map_match_in_ovsdb(
     START_DB_TXN(policy_txn);
 
     smap_clone(&smap_match, &rt_map_entry_row->match);
-    smap_replace(&smap_match, table_key, arg);
+
+    if (arg) {
+        /* Non-empty key, so the value will be set. */
+        smap_replace(&smap_match, table_key, arg);
+    } else {
+        /* Empty key indicates an unset. */
+        smap_remove(&smap_match, table_key);
+    }
+
     ovsrec_route_map_entry_set_match(rt_map_entry_row, &smap_match);
     smap_destroy(&smap_match);
 
@@ -9931,7 +9946,14 @@ policy_set_route_map_set_in_ovsdb (struct vty *vty,
 
     psmap = &rt_map_entry_row->set;
     smap_clone(&smap_set, psmap);
-    smap_replace(&smap_set, table_key, arg);
+
+    if (arg) {
+        /* Non-empty key, so the value will be set. */
+        smap_replace(&smap_set, table_key, arg);
+    } else {
+        /* Empty key indicates an unset. */
+        smap_remove(&smap_set, table_key);
+    }
 
     ovsrec_route_map_entry_set_set(rt_map_entry_row, &smap_set);
     smap_destroy(&smap_set);
