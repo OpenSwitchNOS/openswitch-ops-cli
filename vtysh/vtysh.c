@@ -71,6 +71,7 @@
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
+#include "dhcp_tftp_vty.h"
 #endif
 
 #include "aaa_vty.h"
@@ -927,6 +928,18 @@ static struct cmd_node vlan_interface_node =
   "%s(config-if-vlan)# ",
 };
 
+static struct cmd_node dhcp_server_node =
+{
+  DHCP_SERVER_NODE,
+  "%s(config-dhcp-server)# ",
+};
+
+static struct cmd_node tftp_server_node =
+{
+  TFTP_SERVER_NODE,
+  "%s(config-tftp-server)# ",
+};
+
 #endif
 /* Defined in lib/vty.c */
 extern struct cmd_node vty_node;
@@ -1230,6 +1243,8 @@ vtysh_exit (struct vty *vty)
     case MGMT_INTERFACE_NODE:
     case VLAN_INTERFACE_NODE:
     case LINK_AGGREGATION_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
 #endif
     case ZEBRA_NODE:
     case BGP_NODE:
@@ -1420,6 +1435,54 @@ ALIAS (vtysh_exit_line_vty,
 
 
 #ifdef ENABLE_OVSDB
+DEFUN (vtysh_dhcp_server,
+      vtysh_dhcp_server_cmd,
+      "dhcp-server",
+      "DHCP Server Configuration\n")
+{
+
+   vty->node = DHCP_SERVER_NODE;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_exit_dhcp_server,
+      vtysh_exit_dhcp_server_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_dhcp_server,
+      vtysh_quit_dhcp_server_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
+DEFUN (vtysh_tftp_server,
+      vtysh_tftp_server_cmd,
+      "tftp-server",
+      "TFTP Server Configuration\n")
+{
+
+   vty->node = TFTP_SERVER_NODE;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_exit_tftp_server,
+      vtysh_exit_tftp_server_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_tftp_server,
+      vtysh_quit_tftp_server_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
 DEFUN (vtysh_interface,
       vtysh_interface_cmd,
       "interface IFNAME",
@@ -3867,6 +3930,8 @@ vtysh_init_vty (void)
    install_node (&keychain_key_node, NULL);
    install_node (&isis_node, NULL);
    install_node (&vty_node, NULL);
+   install_node (&dhcp_server_node, NULL);
+   install_node (&tftp_server_node, NULL);
 
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
@@ -3879,6 +3944,8 @@ vtysh_init_vty (void)
    vtysh_install_default (MGMT_INTERFACE_NODE);
    vtysh_install_default (LINK_AGGREGATION_NODE);
    vtysh_install_default (VLAN_INTERFACE_NODE);
+   vtysh_install_default (DHCP_SERVER_NODE);
+   vtysh_install_default (TFTP_SERVER_NODE);
 #endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
@@ -3900,6 +3967,14 @@ vtysh_init_vty (void)
   install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
   install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
+
+   install_element (CONFIG_NODE, &vtysh_dhcp_server_cmd);
+   install_element (DHCP_SERVER_NODE, &config_exit_cmd);
+   install_element (DHCP_SERVER_NODE, &config_end_cmd);
+
+   install_element (CONFIG_NODE, &vtysh_tftp_server_cmd);
+   install_element (TFTP_SERVER_NODE, &config_exit_cmd);
+   install_element (TFTP_SERVER_NODE, &config_end_cmd);
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
@@ -4138,7 +4213,7 @@ vtysh_init_vty (void)
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();
-
+   dhcp_tftp_vty_init();
   /* Initialise System LED cli */
   led_vty_init();
   mgmt_intf_vty_init();

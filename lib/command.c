@@ -3222,6 +3222,8 @@ DEFUN (config_exit,
     case MGMT_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_INTERFACE_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
 #endif
     case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
@@ -3281,6 +3283,8 @@ DEFUN (config_end,
     case MGMT_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_INTERFACE_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
 #endif
     case ZEBRA_NODE:
     case RIP_NODE:

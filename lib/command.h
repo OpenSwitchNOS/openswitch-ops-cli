@@ -131,6 +131,8 @@ enum node_type
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
 #ifdef ENABLE_OVSDB
+  DHCP_SERVER_NODE,             /* DHCP server node */
+  TFTP_SERVER_NODE,             /* TFTP server node */
   VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
