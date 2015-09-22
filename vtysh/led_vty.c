@@ -36,7 +36,7 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 
-VLOG_DEFINE_THIS_MODULE(vtysh_led_cli);
+VLOG_DEFINE_THIS_MODULE (vtysh_led_cli);
 
 extern struct ovsdb_idl *idl;
 
@@ -46,52 +46,49 @@ const char *led_state_strings[] = {
     OVSREC_LED_STATE_ON                 /*!< LED state "on" */
 };
 
-/***********************************************************
- * @func    : lookup_led
- * @detail  : Lookup for led using name
- * @param[in]
- *  name    : Pointer to name of led character string
- * @return  : Pointer to ovsrec_led structure object
- ***********************************************************/
+/*
+ * Function    : lookup_led
+ * Resposibility  : Lookup for led using name
+ * Parameter
+ *     name    : Pointer to name of led character string
+ * Return  : Pointer to ovsrec_led structure object
+ */
 static const struct ovsrec_led *
-lookup_led(const char *name)
+lookup_led (const char *name)
 {
     const static struct ovsrec_led *led;
-    /*
-     * Re-caching the idl is necessary here because
-     * If new data is added using ovs-vsctl command
-     * then led name led command will fail to fetch
-     * the led name as its not cached
-     */
-    OVSREC_LED_FOR_EACH(led, idl) {
+
+    OVSREC_LED_FOR_EACH (led, idl) {
         if (strcmp(led->id, name) == 0) {
             return((struct ovsrec_led *)led);
         }
     }
 
-    return(NULL);
+    return (NULL);
 }
 
-/***********************************************************
- * @func        : cli_system_get_led
- * @detail      : get system led information from idl
- * @return      : 0 on success 1 otherwise
- ***********************************************************/
-int cli_system_get_led()
+/*
+ * Function        : cli_system_get_led
+ * Resposibility      : Get system led information from idl
+ * Return      : 0 on success 1 otherwise
+ */
+
+int
+cli_system_get_led ()
 {
     const struct ovsrec_led* pLed = NULL;
     const struct ovsrec_subsystem* pSys = NULL;
 
-    pSys = ovsrec_subsystem_first(idl);
+    pSys = ovsrec_subsystem_first (idl);
 
     vty_out(vty,"%-15s%-10s%-10s%s","Name","State","Status",VTY_NEWLINE);
-        vty_out(vty,"%s%s","-----------------------------------",VTY_NEWLINE);
+	vty_out(vty,"%s%s","-----------------------------------",VTY_NEWLINE);
 
-    if(pSys->n_leds)
+    if (pSys->n_leds)
     {
-        OVSREC_LED_FOR_EACH(pLed,idl)
+        OVSREC_LED_FOR_EACH (pLed,idl)
         {
-            if(pLed)
+            if (pLed)
             {
                 vty_out(vty,"%-15s",pLed->id);
                 vty_out(vty,"%-10s",pLed->state);
@@ -104,36 +101,38 @@ int cli_system_get_led()
     return CMD_SUCCESS;
 }
 
-/***********************************************************
- * @func        : cli_system_set_led
- * @detail      : set system led state
- * @param[in]
+/*
+ * Function        : cli_system_set_led
+ * Resposibility      : Set system led state
+ * Parameters
  *  sLedName: Pointer to led name string
  *  sLedState: Pointer to led state string
- * @return      : 0 on success 1 otherwise
- ***********************************************************/
-int  cli_system_set_led(char* sLedName,char* sLedState)
+ * Return      : 0 on success 1 otherwise
+ */
+
+int
+cli_system_set_led (char* sLedName,char* sLedState)
 {
     const struct ovsrec_led* pOvsLed = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    pOvsLed = lookup_led(sLedName);
+    pOvsLed = lookup_led (sLedName);
 
-    if(pOvsLed)
+    if (pOvsLed)
     {
         status_txn = cli_do_config_start();
-        if(status_txn != NULL)
+        if (status_txn != NULL)
         {
-            ovsrec_led_set_state(pOvsLed, sLedState);
-            status = cli_do_config_finish(status_txn);
-            if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+            ovsrec_led_set_state (pOvsLed, sLedState);
+            status = cli_do_config_finish (status_txn);
+            if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
             {
-                 return CMD_SUCCESS;
+                return CMD_SUCCESS;
             }
             else
             {
-                 VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
-                 return CMD_OVSDB_FAILURE;
+                VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+                return CMD_OVSDB_FAILURE;
             }
         }
         else
@@ -146,105 +145,105 @@ int  cli_system_set_led(char* sLedName,char* sLedState)
     }
     else
     {
-                vty_out(vty,"Cannot find LED%s",VTY_NEWLINE);
+		vty_out(vty,"Cannot find LED%s",VTY_NEWLINE);
     }
     return CMD_SUCCESS;
 }
 
-/***********************************************************
- * @func        : cli_system_no_set_led
- * @detail      : set system led state to default
- * @param[in]
+/*
+ * Func        : cli_system_no_set_led
+ * Resposibility      : Set system led state to default
+ * Parameters
  *      sLedName: Pointer to led name string
- * @return      : 0 on success 1 otherwise
- ***********************************************************/
+ * Return      : 0 on success 1 otherwise
+ */
 
-int cli_system_no_set_led(char* sLedName)
+int
+cli_system_no_set_led (char* sLedName)
 {
     const struct ovsrec_led* pOvsLed = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     pOvsLed = lookup_led(sLedName);
 
-    if(pOvsLed)
-        {
-                status_txn = cli_do_config_start();
-                if(status_txn != NULL)
-                {
-                        ovsrec_led_set_state(pOvsLed, OVSREC_LED_STATE_OFF);
-                        status = cli_do_config_finish(status_txn);
-                        if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
-                        {
-                            return CMD_SUCCESS;
-                        }
-                        else
-                        {
-                            VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
-                            return CMD_OVSDB_FAILURE;
-                        }
-                }
-                else
-                {
-                        VLOG_ERR("Unable to acquire transaction");
-                        cli_do_config_abort(status_txn);
-                        return CMD_OVSDB_FAILURE;
-                }
+    if (pOvsLed)
+    {
+        status_txn = cli_do_config_start();
+	if (status_txn != NULL)
+	{
+           ovsrec_led_set_state (pOvsLed, OVSREC_LED_STATE_OFF);
+           status = cli_do_config_finish(status_txn);
+           if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+           {
+              return CMD_SUCCESS;
+           }
+           else
+           {
+              VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+              return CMD_OVSDB_FAILURE;
+           }
+	}
+	else
+	{
+           VLOG_ERR("Unable to acquire transaction");
+           cli_do_config_abort(status_txn);
+           return CMD_OVSDB_FAILURE;
+	}
 
-        }
-        else
-        {
-                vty_out(vty,"Cannot find LED%s",VTY_NEWLINE);
-        }
+    }
+    else
+    {
+        vty_out(vty,"Cannot find LED%s",VTY_NEWLINE);
+    }
 
-        return CMD_SUCCESS;
+    return CMD_SUCCESS;
 
 }
 
 
 /*
  * Action routines for LED related CLIs
-*/
+ */
 DEFUN (cli_platform_show_led,
-    cli_platform_show_led_cmd,
-    "show system led",
-    SHOW_STR
-    SYS_STR
-    LED_STR)
+	cli_platform_show_led_cmd,
+	"show system led",
+	SHOW_STR
+	SYS_STR
+	LED_STR)
 {
     return cli_system_get_led();
 }
 
 DEFUN (cli_platform_set_led,
-    cli_platform_set_led_cmd,
-    "led WORD (on|off|flashing)",
-    LED_SET_STR
-    "Name of LED e.g. <base-loc> for locator LED\n"
-    "Switch on the LED\n"
-    "Switch off the LED\n"
-    "Blink the LED\n")
+        cli_platform_set_led_cmd,
+        "led WORD (on|off|flashing)",
+        LED_SET_STR
+        "Name of LED e.g. <base-loc> for locator LED\n"
+        "Switch on the LED\n"
+        "Switch off the LED (Default)\n"
+        "Blink the LED\n")
 {
-
-    return cli_system_set_led(CONST_CAST(char*,argv[0]),
-                              CONST_CAST(char*,argv[1]));
+    return cli_system_set_led (CONST_CAST(char*,argv[0]),
+			CONST_CAST(char*,argv[1]));
 }
 
 
 DEFUN (no_cli_platform_set_led,
         no_cli_platform_set_led_cmd,
         "no led WORD",
-    NO_STR
+        NO_STR
         LED_SET_STR
         "Name of LED e.g. <base-loc> for locator LED\n")
 {
-
-        return cli_system_no_set_led(CONST_CAST(char*,argv[0]));
+    return cli_system_no_set_led (CONST_CAST(char*,argv[0]));
 }
 
-/***********************************************************
- * @func        : led_vty_init
- * @detail      : Install the cli action routines
- ***********************************************************/
-void led_vty_init()
+/*
+ * Function        : led_vty_init
+ * Resposibility     : Install the cli action routines
+ */
+void
+led_vty_init()
 {
     install_element (ENABLE_NODE, &cli_platform_show_led_cmd);
     install_element (VIEW_NODE, &cli_platform_show_led_cmd);
