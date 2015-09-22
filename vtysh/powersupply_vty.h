@@ -27,9 +27,12 @@
 #ifndef SYS_STR
 #define SYS_STR         "System information\n"
 #endif
-#define PSU_STR         "Shows power supply information\n"
+#define PSU_STR         "Power supply information\n"
 
-int cli_system_get_psu();
-void powersupply_vty_init();
+int
+cli_system_get_psu();
+
+void
+powersupply_vty_init();
 
 #endif //_POWERSUPPLY_VTY_H
