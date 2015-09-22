@@ -127,7 +127,8 @@ DEFUN_NO_FORM (cli_intf_shutdown,
 DEFUN (cli_intf_speed,
       cli_intf_speed_cmd,
       "speed (auto|1000|10000|100000|40000)",
-      "Configure the interface speed\nAuto negotiate speed\n"
+      "Configure the interface speed\n"
+      "Auto negotiate speed (Default)\n"
       "1Gb/s\n10Gb/s\n100Gb/s\n40Gb/s")
 {
    const struct ovsrec_interface * row = NULL;
@@ -201,8 +202,10 @@ DEFUN_NO_FORM (cli_intf_speed,
  */
 DEFUN (cli_intf_mtu,
       cli_intf_mtu_cmd,
-      "mtu (auto|<576-16360>)",
-      "Configure mtu for the interface\nUse Default MTU (1500 bytes)\nEnter MTU (in bytes)\n")
+      "mtu (auto|<576-9216>)",
+      "Configure mtu for the interface\n"
+      "Set MTU to system default (Default)\n"
+      "Enter MTU (in bytes)\n")
 {
    const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
@@ -276,7 +279,9 @@ DEFUN_NO_FORM (cli_intf_mtu,
 DEFUN (cli_intf_duplex,
       cli_intf_duplex_cmd,
       "duplex (half|full)",
-      "Configure the interface duplex mode\nConfigure half-duplex\nConfigure full-duplex")
+      "Configure the interface duplex mode\n"
+      "Configure half-duplex\n"
+      "Configure full-duplex (Default)")
 {
    const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
@@ -346,7 +351,7 @@ DEFUN (cli_intf_flowcontrol,
       "flowcontrol (receive|send) (off|on)",
       "Configure interface flow control\n"
       "Receive pause frames\nSend pause frames\n"
-      "Turn off flow-control\nTurn on flow-control\n")
+      "Turn off flow-control (Default)\nTurn on flow-control\n")
 {
    const struct ovsrec_interface * row = NULL;
    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
