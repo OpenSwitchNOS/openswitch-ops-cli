@@ -98,7 +98,7 @@ class PlatformSystemTests(HalonTest):
         out = s1.cmdCLI('show system')
         lines = out.split('\n')
         for line in lines:
-            if 'openswitch Version' in line:
+            if 'OpenSwitch Version' in line:
                 counter += 1
 
             if 'Manufacturer' in line:

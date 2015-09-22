@@ -40,15 +40,16 @@ extern struct ovsdb_idl *idl;
 
 extern char *psu_state_string[];
 
-/***********************************************************
- * @func        : compare_psu
- * @detail      : Power Supply sort function for qsort
- * @param[in]
- *  a   : Pointer to 1st element in the array
- *  b   : Pointer to next element in the array
- * @return      : comparative difference between names.
- ***********************************************************/
-static inline int compare_psu(const void* a,const void* b)
+/*
+ * Function        : compare_psu
+ * Resposibility    : Power Supply sort function for qsort
+ * Parameters
+ *   a   : Pointer to 1st element in the array
+ *   b   : Pointer to next element in the array
+ * Return      : comparative difference between names.
+ */
+static inline int
+compare_psu(const void* a,const void* b)
 {
     struct ovsrec_power_supply* s1 = (struct ovsrec_power_supply*)a;
     struct ovsrec_power_supply* s2 = (struct ovsrec_power_supply*)b;
@@ -56,20 +57,21 @@ static inline int compare_psu(const void* a,const void* b)
     return (strcmp(s1->name,s2->name));
 }
 
-/***********************************************************
- * @func        : format_psu_string
- * @detail      : Change status string in OVSDB to more
- *        readable string
- * @param[in]
+/*
+ * Function        : format_psu_string
+ * Resposibility   : Change status string in OVSDB to more
+ *                   readable string
+ * Parameters
  *      status  : Pointer to status string
- * @return      : Pointer to formatted status string
- ***********************************************************/
-static char* format_psu_string(char* status)
+ * Return      : Pointer to formatted status string
+ */
+static char*
+format_psu_string(char* status)
 {
-    if(!status)
+    if (!status)
         return NULL;
 
-    if(0 == strcmp(status,OVSREC_POWER_SUPPLY_STATUS_FAULT_ABSENT))
+    if (0 == strcmp(status,OVSREC_POWER_SUPPLY_STATUS_FAULT_ABSENT))
         return psu_state_string[POWER_SUPPLY_STATUS_FAULT_ABSENT];
     else if (0 == strcmp(status,OVSREC_POWER_SUPPLY_STATUS_FAULT_INPUT))
         return psu_state_string[POWER_SUPPLY_STATUS_FAULT_INPUT];
@@ -79,69 +81,69 @@ static char* format_psu_string(char* status)
     return status;
 }
 
-int cli_system_get_psu()
+int
+cli_system_get_psu()
 {
-        const struct ovsrec_power_supply* pPSU = NULL;
-        struct ovsrec_power_supply* pPSUsort = NULL;
-        const struct ovsrec_subsystem* pSys = NULL;
+	const struct ovsrec_power_supply* pPSU = NULL;
+	struct ovsrec_power_supply* pPSUsort = NULL;
+	const struct ovsrec_subsystem* pSys = NULL;
 
-        int nPres = 0,nOK = 0,i = 0, n = 0;
-        /*
-         * HALON_TODO : Support for multiple subsystem
-         */
-        pSys = ovsrec_subsystem_first(idl);
-        if(pSys)
-                n = pSys->n_power_supplies;
-        else
-                return CMD_OVSDB_FAILURE;
+	int nPres = 0,nOK = 0,i = 0, n = 0;
+	/*
+	 * OPS_TODO : Support for multiple subsystem
+	 */
+	pSys = ovsrec_subsystem_first (idl);
+	if (pSys)
+		n = pSys->n_power_supplies;
+	else
+		return CMD_OVSDB_FAILURE;
 
-        if(n > 0)
-        {
-            pPSUsort = (struct ovsrec_power_supply*)calloc(n,sizeof(struct ovsrec_power_supply));
-            if(!pPSUsort)
-               return CMD_OVSDB_FAILURE;
-        }
+	if (n > 0)
+	{
+		pPSUsort = (struct ovsrec_power_supply*)calloc(n,
+				           sizeof(struct ovsrec_power_supply));
+		if (!pPSUsort)
+			return CMD_OVSDB_FAILURE;
+	}
 
-        vty_out(vty,"%s",VTY_NEWLINE);
-        vty_out(vty,"%-15s%-10s%s","Name","Status",VTY_NEWLINE);
-        vty_out(vty,"%s%s","-----------------------------",VTY_NEWLINE);
-        OVSREC_POWER_SUPPLY_FOR_EACH(pPSU,idl)
-        {
-                if(pPSU)
-                {
-                    memcpy(pPSUsort+i,pPSU,sizeof(struct ovsrec_power_supply));
-                    i++;
-                }
-        }
-        if(n > 0)
-            qsort((void*)pPSUsort,n,sizeof(struct ovsrec_power_supply),compare_psu);
+	vty_out(vty,"%s",VTY_NEWLINE);
+	vty_out(vty,"%-15s%-10s%s","Name","Status",VTY_NEWLINE);
+	vty_out(vty,"%s%s","-----------------------------",VTY_NEWLINE);
+	OVSREC_POWER_SUPPLY_FOR_EACH(pPSU,idl)
+	{
+		if (pPSU)
+		{
+			memcpy(pPSUsort+i,pPSU,sizeof(struct ovsrec_power_supply));
+			i++;
+		}
+	}
+	if (n > 0)
+		qsort((void*)pPSUsort,n,sizeof(struct ovsrec_power_supply),
+				compare_psu);
 
-        for(i = 0; i < n ; i++)
-        {
-                vty_out(vty,"%-15s",(pPSUsort+i)->name);
-                vty_out(vty,"%-10s",format_psu_string((pPSUsort+i)->status));
-                if(0 != strcasecmp((pPSUsort+i)->status,OVSREC_POWER_SUPPLY_STATUS_FAULT_ABSENT))
-                        nPres++;
-                if(0 == strcasecmp((pPSUsort+i)->status,OVSREC_POWER_SUPPLY_STATUS_OK))
-                        nOK++;
-                vty_out(vty,"%s",VTY_NEWLINE);
-        }
+	for (i = 0; i < n ; i++)
+	{
+		vty_out(vty,"%-15s",(pPSUsort+i)->name);
+		vty_out(vty,"%-10s",format_psu_string((pPSUsort+i)->status));
+		if (0 != strcasecmp((pPSUsort+i)->status,
+				OVSREC_POWER_SUPPLY_STATUS_FAULT_ABSENT))
+			nPres++;
+		if  (0 == strcasecmp((pPSUsort+i)->status,
+				OVSREC_POWER_SUPPLY_STATUS_OK))
+			nOK++;
+		vty_out(vty,"%s",VTY_NEWLINE);
+	}
+	vty_out(vty,"%s",VTY_NEWLINE);
 
-        vty_out(vty,"%s%d/%d Power Supply present%s",VTY_NEWLINE,nPres,n,VTY_NEWLINE);
-        vty_out(vty,"%d/%d Power Supply running OK%s",nOK,n,VTY_NEWLINE);
-        vty_out(vty,"%s",VTY_NEWLINE);
-
-        if(pPSUsort)
-        {
-                free(pPSUsort);
-                pPSUsort = NULL;
-        }
-        return CMD_SUCCESS;
+	if(pPSUsort)
+	{
+		free(pPSUsort);
+		pPSUsort = NULL;
+	}
+	return CMD_SUCCESS;
 }
 
-/*
- * Action routines for PSU related CLIs
-*/
+
 DEFUN (cli_platform_show_psu,
         cli_platform_show_psu_cmd,
         "show system power-supply",
@@ -149,13 +151,14 @@ DEFUN (cli_platform_show_psu,
         SYS_STR
         PSU_STR)
 {
-        return cli_system_get_psu();
+	return cli_system_get_psu();
 }
-/***********************************************************
- * @func : powersupply_vty_init
- * @detail : Install the cli action routines
- ***********************************************************/
-void powersupply_vty_init()
+/*
+ * Function : powersupply_vty_init
+ * Resposibility : Install the cli action routines
+ */
+void
+powersupply_vty_init()
 {
- install_element (ENABLE_NODE, &cli_platform_show_psu_cmd);
+	install_element (ENABLE_NODE, &cli_platform_show_psu_cmd);
 }
