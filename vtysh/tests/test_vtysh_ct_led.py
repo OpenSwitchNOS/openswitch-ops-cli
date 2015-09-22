@@ -57,13 +57,15 @@ class PlatformLedTests(HalonTest):
                 PlatformLedTests.uuid = _id[1].strip()
                 s1.cmd('ovs-vsctl -- set Subsystem '
                        + PlatformLedTests.uuid
-                       + ' leds=@led1 -- --id=@led1 create led id=base1 state=flashing status=ok'
+                       + ' leds=@led1 -- --id=@led1 create led '
+                       + ' id=base1 state=flashing status=ok'
                        )
 
     def deinitLedTable(self):
         s1 = self.net.switches[0]
 
-        # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
+        # Delete dummy data from subsystem and led table to avoid
+        # clash with other CT scripts.
 
         s1.cmd('ovs-vsctl clear subsystem ' + PlatformLedTests.uuid
                + ' leds')
@@ -84,7 +86,7 @@ class PlatformLedTests(HalonTest):
                 if 'on' in line:
                     is_led_set = True
                     break
-        assert is_led_set == True, \
+        assert is_led_set is True, \
             'Test to verify \'led\' command - FAILED!'
         return True
 
@@ -110,7 +112,7 @@ class PlatformLedTests(HalonTest):
                 else:
                     led_config_present = False
 
-        assert led_config_present == True, \
+        assert led_config_present is True, \
             'Test to verify \'show system led\' command - FAILED!'
         return True
 
@@ -130,7 +132,7 @@ class PlatformLedTests(HalonTest):
                 if 'off' in line:
                     led_state_off = True
                     break
-        assert led_state_off == True, \
+        assert led_state_off is True, \
             'Test to verify \'no led\' command - FAILED!'
         return True
 
@@ -148,7 +150,7 @@ class PlatformLedTests(HalonTest):
         for line in lines:
             if 'led base1 on' in line:
                 led_config_present = True
-        assert led_config_present == True, \
+        assert led_config_present is True, \
             'Test to verify show running-config command - FAILED!'
         return True
 
