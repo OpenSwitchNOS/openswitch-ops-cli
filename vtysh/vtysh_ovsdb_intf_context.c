@@ -295,6 +295,11 @@ vtysh_intf_context_clientcallback(void *p_private)
       intfcfg.admin_state = false;
       intfcfg.disp_intf_cfg = false;
       intfcfg.lldptxrx_state = e_lldp_dir_tx_rx;
+
+      if (ifrow && !strcmp(ifrow->name, DEFAULT_BRIDGE_NAME)) {
+          continue;
+      }
+
       if (ifrow)
       {
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
