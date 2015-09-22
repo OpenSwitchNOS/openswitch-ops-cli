@@ -36,7 +36,10 @@ typedef enum
 	CLI_TEMP
 }cli_subsystem;
 
-int cli_system_get_all();
-void system_vty_init();
+int
+cli_system_get_all();
+
+void
+system_vty_init();
 
 #endif //_SYSTEM_VTY_H

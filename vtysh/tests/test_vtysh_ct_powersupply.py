@@ -57,29 +57,35 @@ class PlatformPSUTests(HalonTest):
                 PlatformPSUTests.uuid = _id[1].strip()
                 s1.cmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
-                       + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base status=ok'
+                       + ' power_supplies=@psu1 -- --id=@psu1 create '
+                       + ' Power_supply name=Psu_base status=ok'
                        )
                 s1.cmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
-                       + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base1 status=fault_input'
+                       + ' power_supplies=@psu1 -- --id=@psu1 create '
+                       + ' Power_supply name=Psu_base1 status=fault_input'
                        )
                 s1.cmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
-                       + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base2 status=fault_output'
+                       + ' power_supplies=@psu1 -- --id=@psu1 create '
+                       + ' Power_supply name=Psu_base2 status=fault_output'
                        )
                 s1.cmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
-                       + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base3 status=fault_absent'
+                       + ' power_supplies=@psu1 -- --id=@psu1 create '
+                       + ' Power_supply name=Psu_base3 status=fault_absent'
                        )
                 s1.cmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
-                       + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base4 status=unknown'
+                       + ' power_supplies=@psu1 -- --id=@psu1 create '
+                       + ' Power_supply name=Psu_base4 status=unknown'
                        )
 
     def deinitPSUTable(self):
         s1 = self.net.switches[0]
 
-        # Delete dummy data from subsystem and PSU table to avoid clash with other CT scripts.
+        # Delete dummy data from subsystem and PSU table to avoid
+        # clash with other CT scripts.
 
         s1.cmd('ovs-vsctl clear subsystem ' + PlatformPSUTests.uuid
                + ' power_supplies')
@@ -89,9 +95,9 @@ class PlatformPSUTests(HalonTest):
         # Test to verify show system command
 
         s1 = self.net.switches[0]
-        print '''
+        info('''
 ########## Test to verify \'show system power-supply\' command ##########
-'''
+''')
         system_psu_config_present = False
         out = s1.cmdCLI('show system power-supply')
         lines = out.split('\n')
@@ -131,7 +137,7 @@ class PlatformPSUTests(HalonTest):
                 else:
                     system_psu_config_present = False
                     break
-        assert system_psu_config_present == True, \
+        assert system_psu_config_present is True, \
             'Test to verify \'show system power-supply\' command - FAILED!'
         return True
 
@@ -175,6 +181,6 @@ class Test_psu:
 
     def test_show_system_psu_command(self):
         if self.test.showSystemPSUTest():
-            print '''
-########## Test to verify \'show system power-supply\' command - SUCCESS! ##########
-'''
+            info('''
+###### Test to verify \'show system power-supply\' command - SUCCESS! ######
+''')
