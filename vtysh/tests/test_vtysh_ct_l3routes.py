@@ -100,18 +100,13 @@ class staticRouteConfigTest(HalonTest):
         s2.cmdCLI('exit')
         time.sleep(1)
 
-        s1.cmd('/usr/bin/ovs-vsctl set interface 1 user_config:admin=up'
-               )
-        s1.cmd('/usr/bin/ovs-vsctl set interface 2 user_config:admin=up'
-               )
+        s1.ovscmd('/usr/bin/ovs-vsctl set interface 1 user_config:admin=up')
+        s1.ovscmd('/usr/bin/ovs-vsctl set interface 2 user_config:admin=up')
 
-        s2.cmd('/usr/bin/ovs-vsctl set interface 1 user_config:admin=up'
-               )
-        s2.cmd('/usr/bin/ovs-vsctl set interface 2 user_config:admin=up'
-               )
+        s2.ovscmd('/usr/bin/ovs-vsctl set interface 1 user_config:admin=up')
+        s2.ovscmd('/usr/bin/ovs-vsctl set interface 2 user_config:admin=up')
 
-        info('### Verify ip route configuration with nexthop address ###\n'
-             )
+        info('### Verify ip route configuration with nexthop address ###\n')
         s1.cmdCLI('ip route 192.168.3.0/24 192.168.1.2 2')
         time.sleep(1)
         ret = s1.cmdCLI('do show ip route')
