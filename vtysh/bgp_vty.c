@@ -7190,7 +7190,24 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
         //OPS_TODO
         //vty_out(vty,"%8d",get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-keepalive_in-count"));
 
-        vty_out(vty, "%8d",
+       vty_out(vty, "%8d",
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-open_in-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-update_in-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-keepalive_in-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-notify_in-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-refresh_in-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-dynamic_cap_in-count"));
+
+       vty_out(vty, "%8d",
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-open_out-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-update_out-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-keepalive_out-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-notify_out-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-refresh_out-count")+
+                     get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-dynamic_cap_out-count"));
+
+
+        /*vty_out(vty, "%8d",
                      bgp_router_context->value_bgp_neighbors[j]->value_statistics[8]+
                      bgp_router_context->value_bgp_neighbors[j]->value_statistics[14]+
                      bgp_router_context->value_bgp_neighbors[j]->value_statistics[4]+
@@ -7206,6 +7223,7 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
                      bgp_router_context->value_bgp_neighbors[j]->value_statistics[12]+
                      bgp_router_context->value_bgp_neighbors[j]->value_statistics[2]);
 
+*/
         vty_out(vty, " %8s",
           neighbor_uptime (bgp_router_context->value_bgp_neighbors[j]->value_statistics[16],
                timebuf, BGP_UPTIME_LEN));

@@ -246,7 +246,8 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
        vtysh_ovsdb_cli_print(p_msg, "%s %d", "router bgp", ovs_vrf->key_bgp_routers[j]);
 
        if(ovs_vrf->value_bgp_routers[j]->router_id)
-         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "bgp router-id",
+           if(strcmp(ovs_vrf->value_bgp_routers[j]->router_id,"0.0.0.0"))
+               vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "bgp router-id",
                                         ovs_vrf->value_bgp_routers[j]->router_id);
 
        while(i < ovs_vrf->value_bgp_routers[j]->n_networks)
