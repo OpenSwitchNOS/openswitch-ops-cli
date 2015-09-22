@@ -266,6 +266,16 @@ DEFUN (configure_no_logrotate_maxsize,
 }
 
 
+DEFUN (configure_no_logrotate_maxsize_x,
+       configure_no_logrotate_maxsize_x_cmd,
+       LOGROTATE_NO_CMD_STR_MAXSIZE_X,
+       LOGROTATE_NO_HELP_STR_MAXSIZE_X)
+{
+    set_logrotate_maxsize(SYSTEM_LOGROTATE_CONFIG_MAP_MAXSIZE_DEFAULT);
+    return CMD_SUCCESS;
+}
+
+
 DEFUN (configure_logrotate_targetRemote,
        configure_logrotate_targetRemote_cmd,
        LOGROTATE_CMD_STR_TARGET,
@@ -326,6 +336,7 @@ void logrotate_vty_init()
     install_element(CONFIG_NODE, &configure_logrotate_targetRemote_cmd);
     install_element(CONFIG_NODE, &configure_no_logrotate_period_cmd);
     install_element(CONFIG_NODE, &configure_no_logrotate_maxsize_cmd);
+    install_element(CONFIG_NODE, &configure_no_logrotate_maxsize_x_cmd);
     install_element(CONFIG_NODE, &configure_no_logrotate_targetRemote_cmd);
     install_element(ENABLE_NODE, &show_logrotate_cmd);
 }
