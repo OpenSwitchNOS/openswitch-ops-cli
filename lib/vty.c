@@ -1360,8 +1360,19 @@ vty_buffer_reset (struct vty *vty)
   vty_redraw_line (vty);
 }
 
-#define true 1
-#define false 0
+#ifdef ENABLE_OVSDB
+
+void
+vty_periodic_refresh(void)
+{
+  /* This function is called before all command exection.
+     Keep it light for execution */
+
+  vty_refresh_aliases();
+  return;
+}
+
+#endif
 
 /* Read data via vty socket. */
 static int
@@ -1373,7 +1384,6 @@ vty_read (struct thread *thread)
 
   int vty_sock = THREAD_FD (thread);
   struct vty *vty = THREAD_ARG (thread);
-  boolean isInQuote = false;
 
   vty->t_read = NULL;
 
@@ -1534,32 +1544,24 @@ vty_read (struct thread *thread)
 	case CONTROL('Z'):
 	  vty_end_config (vty);
 	  break;
-	case 34: //'"':
-	  if(false == isInQuote) isInQuote = true;
-	  else isInQuote = false;
-	  vty_out(vty, " Quote ");
-	  break;
 	case '\n':
 	case '\r':
-	  if(true == isInQuote)
-	  {
-             vty_self_insert (vty, ';');
-	     vty_out (vty, "%s>", VTY_NEWLINE);
-          }
-	  else
-	  {
-             vty_out (vty, "%s", VTY_NEWLINE);
-	     vty_execute (vty);
-	  }
+      vty_periodic_refresh();
+      vty_out (vty, "%s", VTY_NEWLINE);
+      vty_execute (vty);
 	  break;
 	case '\t':
+      vty_periodic_refresh();
 	  vty_complete_command (vty);
 	  break;
 	case '?':
 	  if (vty->node == AUTH_NODE || vty->node == AUTH_ENABLE_NODE)
 	    vty_self_insert (vty, buf[i]);
 	  else
+      {
+        vty_periodic_refresh();
 	    vty_describe_command (vty);
+      }
 	  break;
 	case '\033':
 	  if (i + 1 < nbytes && buf[i + 1] == '[')
