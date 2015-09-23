@@ -33,12 +33,12 @@
 #define VERIFY_VLAN_IFNAME(s) strncasecmp(s, "vlan", 4)
 
 #define GET_VLANIF(s, a) \
-        strcpy(s, "vlan"); \
-        strcat(s, (a+4));
+strcpy(s, "vlan"); \
+strcat(s, (a+4));
 
 #define VLANIF_NAME(vif, s)  \
-        strcpy(vif, "vlan"); \
-        strcat(vif, s);
+strcpy(vif, "vlan"); \
+strcat(vif, s);
 
 void
 intf_vty_init (void);
