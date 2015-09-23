@@ -19,11 +19,11 @@
 #
 
 from time import sleep
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class PlatformPSUTests(HalonTest):
+class PlatformPSUTests(OpsVsiTest):
 
     uuid = ''
 
@@ -33,15 +33,12 @@ class PlatformPSUTests(HalonTest):
         # either pass getNodeOpts() into hopts/sopts of the topology that
         # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        powersupply_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(powersupply_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def initPSUTable(self):
 
@@ -49,29 +46,29 @@ class PlatformPSUTests(HalonTest):
         # Assume there would be only one entry in subsystem table
 
         s1 = self.net.switches[0]
-        out = s1.cmd('ovs-vsctl list subsystem')
+        out = s1.ovscmd('ovs-vsctl list subsystem')
         lines = out.split('\n')
         for line in lines:
             if '_uuid' in line:
                 _id = line.split(':')
                 PlatformPSUTests.uuid = _id[1].strip()
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
                        + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base status=ok'
                        )
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
                        + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base1 status=fault_input'
                        )
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
                        + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base2 status=fault_output'
                        )
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
                        + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base3 status=fault_absent'
                        )
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformPSUTests.uuid
                        + ' power_supplies=@psu1 -- --id=@psu1 create Power_supply name=Psu_base4 status=unknown'
                        )
@@ -81,7 +78,7 @@ class PlatformPSUTests(HalonTest):
 
         # Delete dummy data from subsystem and PSU table to avoid clash with other CT scripts.
 
-        s1.cmd('ovs-vsctl clear subsystem ' + PlatformPSUTests.uuid
+        s1.ovscmd('ovs-vsctl clear subsystem ' + PlatformPSUTests.uuid
                + ' power_supplies')
 
     def showSystemPSUTest(self):

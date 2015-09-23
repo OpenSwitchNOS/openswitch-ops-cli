@@ -18,15 +18,15 @@
 
 import time
 import pytest
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 script_path = '/etc/cron.hourly/log_rotate'
 logrotateCnfFile = '/etc/logrotate.ovs'
 shLogrotateCnfFile = 'cat /etc/logrotate.ovs'
 
 
-class LogrotateTests(HalonTest):
+class LogrotateTests(OpsVsiTest):
 
     def setupNet(self):
 
@@ -34,15 +34,12 @@ class LogrotateTests(HalonTest):
     # either pass getNodeOpts() into hopts/sopts of the topology that
     # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=1, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        logrotate_topo = SingleSwitchTopo(k=1, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(logrotate_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     @staticmethod
     def parseCLI(cliOutput):
@@ -110,7 +107,7 @@ class LogrotateTests(HalonTest):
         # out = switch.cmdCLI("show logrotate")
         # out = switch.cmdCLI("exit")
 
-        out = switch.cmd('ovs-vsctl list system')
+        out = switch.ovscmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'period=hourly' in line:
@@ -123,7 +120,7 @@ class LogrotateTests(HalonTest):
         # out = switch.cmdCLI("show logrotate")
         # out = switch.cmdCLI("exit")
 
-        out = switch.cmd('ovs-vsctl list system')
+        out = switch.ovscmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'maxsize="10"' in line:
@@ -131,7 +128,7 @@ class LogrotateTests(HalonTest):
         return False
 
     def confLogrotateCliGetTarget(self, switch):
-        out = switch.cmd('ovs-vsctl list system')
+        out = switch.ovscmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'target="tftp://1.1.1.1"' \
@@ -140,7 +137,7 @@ class LogrotateTests(HalonTest):
         return False
 
     def confLogrotateCliGetIP(self, switch):
-        out = switch.cmd('ovs-vsctl list system')
+        out = switch.ovscmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'ip="1.1.1.1"' in line:
