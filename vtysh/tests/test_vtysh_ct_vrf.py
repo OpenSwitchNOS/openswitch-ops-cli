@@ -16,25 +16,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 first_interface = '12'
 second_interface = '13'
 third_interface = '14'
 
-class vrfCLITest(HalonTest):
+class vrfCLITest(OpsVsiTest):
 
     def setupNet(self):
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        vrf_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(vrf_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def test_vrf_add_delete(self):
         '''

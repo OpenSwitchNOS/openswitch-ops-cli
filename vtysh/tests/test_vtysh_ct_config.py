@@ -19,11 +19,11 @@
 #
 
 from time import sleep
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class ShowRunningConfigTests(HalonTest):
+class ShowRunningConfigTests(OpsVsiTest):
 
     def setupNet(self):
 
@@ -31,15 +31,12 @@ class ShowRunningConfigTests(HalonTest):
     # either pass getNodeOpts() into hopts/sopts of the topology that
     # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        config_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(config_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def enablelldpTest(self):
         print '''
@@ -83,7 +80,7 @@ class ShowRunningConfigTests(HalonTest):
 '''
         lldp_txrx_disabled = False
         s1 = self.net.switches[0]
-        ovsout = s1.cmd('/usr/bin/ovs-vsctl list interface 1')
+        ovsout = s1.ovscmd('/usr/bin/ovs-vsctl list interface 1')
         assert '_uuid' in ovsout, 'Unable to find Interface 1 in OVSDB'
         out = s1.cmdCLI('configure terminal')
         out = s1.cmdCLI('interface 1')

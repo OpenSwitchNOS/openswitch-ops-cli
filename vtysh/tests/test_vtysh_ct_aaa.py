@@ -16,8 +16,8 @@
 
 import time
 import pytest
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 SSHD_CONFIG = '/etc/ssh/sshd_config'
 
@@ -49,33 +49,19 @@ class myTopo(Topo):
         self.addLink('h1', 's1')
 
 
-class AutoProvisioning(HalonTest):
+class AutoProvisioning(OpsVsiTest):
 
     def setupNet(self):
 
         # Create a topology with single Halon switch and
         # one host.
 
-        topo = myTopo(
-            hsts=1,
-            sws=1,
-            hopts=self.getHostOpts(),
-            sopts=self.getSwitchOpts(),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
-
-        self.net = Mininet(
-            topo,
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        aaa_topo = myTopo(hsts=1, sws=1, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(aaa_topo, switch=VsiOpenSwitch,
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     def EnablePasskeyAuth(self):
         ''' This function is to enable passkey authentication for
