@@ -888,37 +888,32 @@ static int show_rib(struct vty *vty, char * ip_addr_family)
             memset(str, 0, sizeof(str));
 
             for (i = 0; i < row_route->n_nexthops; i++) {
+                if (row_route->nexthops[i]->ip_address) {
+                    snprintf(str, sizeof(str), " %s",
+                             row_route->nexthops[i]->ip_address);
+                } else if (row_route->nexthops[i]->ports[0]->name) {
+                    snprintf(str, sizeof(str), " %s",
+                            row_route->nexthops[i]->ports[0]->name);
+                }
+
                 if (row_route->nexthops[i]->selected == NULL ||
                     row_route->nexthops[i]->selected[0] == true) {
-                    if (row_route->nexthops[i]->ip_address) {
-                        snprintf(str, sizeof(str), " %s",
-                            row_route->nexthops[i]->ip_address);
-                    } else if (row_route->nexthops[i]->ports[0]->name) {
-                        snprintf(str, sizeof(str), " %s",
-                            row_route->nexthops[i]->ports[0]->name);
-                    }
-
-                    if (row_route->selected != NULL && row_route->selected[0] == true) {
-                        if (row_route->nexthops[i]->selected == NULL ||
-                            row_route->nexthops[i]->selected[0] == true) {
-                            vty_out(vty, "\t*via %s", str);
-                        }
-                    } else {
-                        vty_out(vty, "\tvia %s", str);
-                    }
-
-                    vty_out(vty, ",  [%ld", *row_route->distance);
-
-                    if (row_route->metric) {
-                        vty_out(vty, "/%ld]", *row_route->metric);
-                    } else {
-                        vty_out(vty, "/0]");
-                    }
-
-                    vty_out(vty, ",  %s", row_route->from);
-
-                    vty_out(vty, VTY_NEWLINE);
+                    vty_out(vty, "\t*via %s", str);
+                } else {
+                    vty_out(vty, "\tvia %s", str);
                 }
+
+                vty_out(vty, ",  [%ld", *row_route->distance);
+
+                if (row_route->metric) {
+                    vty_out(vty, "/%ld]", *row_route->metric);
+                } else {
+                    vty_out(vty, "/0]");
+                }
+
+                vty_out(vty, ",  %s", row_route->from);
+
+                vty_out(vty, VTY_NEWLINE);
             }
         }
     }
