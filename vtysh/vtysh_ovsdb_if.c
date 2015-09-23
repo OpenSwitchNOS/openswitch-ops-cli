@@ -627,14 +627,14 @@ void vtysh_ovsdb_hostname_set(const char* in)
  * The get command to read from the ovsdb system table
  * hostname column from the vtysh get-hostname command
  */
-char* vtysh_ovsdb_hostname_get()
+const char* vtysh_ovsdb_hostname_get()
 {
     const struct ovsrec_system *ovs;
     ovs = ovsrec_system_first(idl);
 
     if(ovs)
     {
-        return ovs->hostname;
+        return smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_HOSTNAME);
     }
     else
     {
