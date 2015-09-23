@@ -183,6 +183,7 @@ struct option longopts[] =
 #ifdef ENABLE_OVSDB
   { "mininet-test",         no_argument,             NULL, 't'},
   { "verbose",              required_argument,       NULL, 'v'},
+  { "temporaryDB",          required_argument,       NULL, 'D'},
 #endif
   { 0 }
 };
@@ -250,6 +251,7 @@ main (int argc, char **argv, char **env)
   int no_error = 0;
   int ret = 0;
   int counter=0;
+  char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
   vlog_set_verbosity("CONSOLE:OFF");
   vlog_set_verbosity("SYSLOG:DBG");
@@ -265,7 +267,7 @@ main (int argc, char **argv, char **env)
   while (1)
     {
 #ifdef ENABLE_OVSDB
-      opt = getopt_long (argc, argv, "be:c:d:nEhCtv:", longopts, 0);
+      opt = getopt_long (argc, argv, "be:c:d:nEhCtv:D:", longopts, 0);
 #else
       opt = getopt_long (argc, argv, "be:c:nEhC", longopts, 0);
 #endif
@@ -318,6 +320,9 @@ main (int argc, char **argv, char **env)
         case 'v':
           vlog_set_verbosity(optarg);
           break;
+        case 'D':
+	  temp_db = optarg;
+          break;
 #endif
 	default:
 	  usage (1);
@@ -327,7 +332,7 @@ main (int argc, char **argv, char **env)
 
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_init_clients();
-  vtysh_ovsdb_init(argc, argv);
+  vtysh_ovsdb_init(argc, argv, temp_db);
 
   ret = pthread_create(&vtysh_ovsdb_if_thread,
                        (pthread_attr_t *)NULL,
