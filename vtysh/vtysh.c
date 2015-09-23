@@ -2555,6 +2555,8 @@ DEFUN (vtysh_show_running_config,
 
    fp = stdout;
 
+   fprintf(fp, "Current configuration:\n");
+   fprintf(fp, "!\n");
    vtysh_ovsdb_read_config(fp);
    return CMD_SUCCESS;
 }
@@ -2706,6 +2708,58 @@ execute_command (const char *command, int argc, const char *arg[])
    return ret;
 }
 
+int
+remove_temp_db(int initialize)
+{
+    char file_name[]= TEMPORARY_PROCESS_PID;
+    char *remove_db[] = {TEMPORARY_STARTUP_DB};
+    FILE * fp;
+    char *line = NULL;
+    size_t len = 0;
+    int file_not_present = 0;
+
+    fp = fopen(file_name,"r");
+    if (fp == NULL)
+    {
+        if (initialize == 0)
+        {
+            VLOG_ERR("Error while opening %s file\n", file_name);
+            return -1;
+        }
+        else
+        {
+            VLOG_INFO("No %s file present\n",file_name);
+            file_not_present = 1;
+        }
+    }
+
+    if (!file_not_present)
+    {
+        if (getline(&line, &len, fp) != -1) {
+            if (kill(atoi(line), SIGTERM) == -1)
+            {
+                VLOG_ERR("Failed to kill temp.pid process\n");
+                fclose(fp);
+                return -1;
+            }
+        }
+        fclose(fp);
+    }
+
+    if (access(TEMPORARY_STARTUP_DB, F_OK) == -1)
+    {
+        VLOG_INFO("No %s file present\n", TEMPORARY_STARTUP_DB);
+    }
+    else
+    {
+        if (execute_command ("rm", 1, (const char **)remove_db) == -1)
+        {
+            VLOG_ERR("Failed to remove temporary DB \n");
+            return -1;
+        }
+    }
+    return 0;
+}
 /* Write startup configuration into the terminal. */
 DEFUN (show_startup_config,
        show_startup_config_cmd,
@@ -2714,7 +2768,52 @@ DEFUN (show_startup_config,
        "Contents of startup configuration\n")
 {
   char *arguments[] = {"show", "startup-config"};
-  execute_command ("cfgdbutil", 2, (const char **)arguments);
+  char *temp_args[] = {"-D", TEMPORARY_STARTUP_SOCKET, "-c", "show running-config "};
+  char *copy_db[] = {OVSDB_PATH, TEMPORARY_STARTUP_DB};
+  char *run_server[] = {"--pidfile=/var/run/openvswitch/temp_startup.pid", "--detach", "--remote", "punix:/var/run/openvswitch/temp_startup.sock", TEMPORARY_STARTUP_DB};
+
+  // Check if temporary DB exists and OVSDB server running. If yes, remove it.
+  remove_temp_db(1);
+
+  // Copy current ovsdb to temporary DB.
+  if (execute_command ("cp", 2, (const char **)copy_db) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to copy OVSDB to temporary DB\n");
+      return CMD_SUCCESS;
+  }
+
+  // Run ovsdb-server for temporary DB.
+  if (execute_command ("ovsdb-server", 5, (const char **)run_server) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to run ovsdb-server for temporary DB\n");
+      return CMD_SUCCESS;
+  }
+
+  // Copy startup config to temporary DB.
+  if (execute_command ("cfgdbutil", 2, (const char **)arguments) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to run cfgdbutil\n");
+      return CMD_SUCCESS;
+  }
+
+  // Run one vtysh session on temporary DB.
+  if (execute_command ("vtysh", 4, (const char **)temp_args) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to invoke vtysh on Temporary DB\n");
+      return CMD_SUCCESS;
+  }
+
+  // Remove temporary DB and kill the ovsdb-server to temporary DB.
+  if (remove_temp_db(0))
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      return CMD_SUCCESS;
+  }
+
   return CMD_SUCCESS;
 }
 

@@ -561,7 +561,7 @@ halon_vtysh_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
 /*
  * The init for the ovsdb integration called in vtysh main function
  */
-void vtysh_ovsdb_init(int argc, char *argv[])
+void vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
 {
     int retval;
     char *ovsdb_sock;
@@ -569,8 +569,13 @@ void vtysh_ovsdb_init(int argc, char *argv[])
     set_program_name(argv[0]);
     proctitle_init(argc, argv);
     fatal_ignore_sigpipe();
-
-    ovsdb_sock = xasprintf("unix:%s/db.sock", ovs_rundir());
+    if (db_name != NULL)
+    {
+        ovsdb_sock = xasprintf("unix:%s/%s", ovs_rundir(), db_name);
+    }
+    else {
+        ovsdb_sock = xasprintf("unix:%s/db.sock", ovs_rundir());
+    }
     ovsrec_init();
 
     retval = unixctl_server_create(appctl_path, &appctl);

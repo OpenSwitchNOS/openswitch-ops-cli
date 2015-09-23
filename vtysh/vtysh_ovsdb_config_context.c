@@ -294,8 +294,9 @@ vtysh_ovsdb_radiusservertable_parse_options(const struct ovsrec_radius_server *r
        if (atoi(udp_port) != RADIUS_SERVER_DEFAULT_PORT) {
            vtysh_ovsdb_cli_print(p_msg, "radius-server host %s auth_port %s", ipaddr, udp_port);
        }
-
-       local_retries = *(row->retries);
+       if (row->retries != NULL){
+           local_retries = *(row->retries);
+       }
        row = ovsrec_radius_server_next(row);
     }
 

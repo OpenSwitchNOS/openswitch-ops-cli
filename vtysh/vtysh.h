@@ -97,6 +97,12 @@ struct vtysh_alias_data {
 #define VTYSH_PROMPT "/usr/bin/vtysh"
 #define USERDEL "/usr/sbin/userdel"
 
+#define TEMPORARY_STARTUP_SOCKET "temp_startup.sock"
+#define OVSDB_PATH "/var/run/openvswitch/ovsdb.db"
+#define TEMPORARY_STARTUP_DB "/var/run/openvswitch/temp_startup.db"
+#define TEMPORARY_PROCESS_PID "/var/run/openvswitch/temp_startup.pid"
+#define STARTUP_CONFIG_ERR "Internal error occured. Please try again"
+
 enum ip_type {
     IPV4=0,
     IPV6
@@ -136,7 +142,7 @@ void vtysh_pager_init (void);
 
 int execute_command (const char *, int, const char *arg[]);
 
-
+int remove_temp_db(int initialize);
 /* Child process execution flag. */
 extern int execute_flag;
 

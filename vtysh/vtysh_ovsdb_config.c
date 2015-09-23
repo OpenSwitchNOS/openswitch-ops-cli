@@ -358,8 +358,6 @@ vtysh_ovsdb_read_config(FILE *fp)
   msg.clientid = 0;
 
   VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
-  fprintf(fp, "Current configuration:\n");
-  fprintf(fp, "!\n");
 
   for(contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
   {
