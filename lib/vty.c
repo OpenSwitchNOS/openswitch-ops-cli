@@ -1360,8 +1360,6 @@ vty_buffer_reset (struct vty *vty)
   vty_redraw_line (vty);
 }
 
-#define true 1
-#define false 0
 
 /* Read data via vty socket. */
 static int
@@ -1373,7 +1371,6 @@ vty_read (struct thread *thread)
 
   int vty_sock = THREAD_FD (thread);
   struct vty *vty = THREAD_ARG (thread);
-  boolean isInQuote = false;
 
   vty->t_read = NULL;
 
@@ -1534,23 +1531,10 @@ vty_read (struct thread *thread)
 	case CONTROL('Z'):
 	  vty_end_config (vty);
 	  break;
-	case 34: //'"':
-	  if(false == isInQuote) isInQuote = true;
-	  else isInQuote = false;
-	  vty_out(vty, " Quote ");
-	  break;
 	case '\n':
 	case '\r':
-	  if(true == isInQuote)
-	  {
-             vty_self_insert (vty, ';');
-	     vty_out (vty, "%s>", VTY_NEWLINE);
-          }
-	  else
-	  {
-             vty_out (vty, "%s", VTY_NEWLINE);
-	     vty_execute (vty);
-	  }
+      vty_out (vty, "%s", VTY_NEWLINE);
+      vty_execute (vty);
 	  break;
 	case '\t':
 	  vty_complete_command (vty);

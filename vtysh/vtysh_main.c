@@ -475,7 +475,10 @@ main (int argc, char **argv, char **env)
   read_history(history_file);
   /* Main command loop. */
   while (vtysh_rl_gets ())
+  {
+    vtysh_periodic_refresh();
     vtysh_execute (line_read);
+  }
 
   history_truncate_file(history_file,1000);
   printf ("\n");
