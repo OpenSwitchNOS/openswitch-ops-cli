@@ -120,6 +120,12 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                    bgp_router_context->key_bgp_neighbors[n_neighbors],
                    "soft-reconfiguration inbound");
 
+           if(bgp_router_context->value_bgp_neighbors[n_neighbors]->n_shutdown)
+               if(*bgp_router_context->value_bgp_neighbors[n_neighbors]->shutdown)
+                  vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "neighbor",
+                     bgp_router_context->key_bgp_neighbors[n_neighbors],
+                         "shutdown");
+
            if(bgp_router_context->value_bgp_neighbors[n_neighbors]->bgp_peer_group)
            {
                for(k=0;k<bgp_router_context->n_bgp_neighbors;k++)
@@ -246,7 +252,8 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
        vtysh_ovsdb_cli_print(p_msg, "%s %d", "router bgp", ovs_vrf->key_bgp_routers[j]);
 
        if(ovs_vrf->value_bgp_routers[j]->router_id)
-         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "bgp router-id",
+           if(strcmp(ovs_vrf->value_bgp_routers[j]->router_id,"0.0.0.0"))
+               vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "bgp router-id",
                                         ovs_vrf->value_bgp_routers[j]->router_id);
 
        while(i < ovs_vrf->value_bgp_routers[j]->n_networks)
