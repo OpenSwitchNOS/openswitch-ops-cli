@@ -16,9 +16,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from halonvsi.docker import *
-from halonvsi.halon import *
-from halonutils.halonutil import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
+from opsvsiutils.systemutil import *
 import time
 
 
@@ -29,12 +29,7 @@ class myTopo(Topo):
         H1[h1-eth0]<--->[1]S1[2]<--->[2]S2[1]<--->[h2-eth0]H2
     '''
 
-    def build(
-        self,
-        hsts=2,
-        sws=2,
-        **_opts
-        ):
+    def build( self, hsts=2, sws=2, **_opts ):
         self.hsts = hsts
         self.sws = sws
 
@@ -53,18 +48,15 @@ class myTopo(Topo):
         self.addLink('s1', 's2')
 
 
-class staticRouteConfigTest(HalonTest):
+class staticRouteConfigTest( OpsVsiTest ):
 
     def setupNet(self):
-        self.net = Mininet(
-            topo=myTopo(hsts=0, sws=2, hopts=self.getHostOpts(),
-                        sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        static_topo = myTopo(hsts=2, sws=2, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(static_topo, switch=VsiOpenSwitch,
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     def test_ipv4(self):
         info('''
