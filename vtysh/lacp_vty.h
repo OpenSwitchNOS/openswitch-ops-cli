@@ -31,7 +31,7 @@
 #define LACP_OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction.Function=%s Line=%d"
 #define LACP_OVSDB_ROW_FETCH_ERROR  "Couldn't fetch row from the DB.Function=%s Line=%d"
 #define LACP_OVSDB_TXN_COMMIT_ERROR "Committing transaction to DB failed.Function=%s Line=%d"
-#define LACP_STR "Configure LACP parameters.\n"
+#define LACP_STR "Configure LACP parameters\n"
 #define MAX_INTF_TO_LAG 8
 #define MAX_LAG_INTERFACES 256
 
