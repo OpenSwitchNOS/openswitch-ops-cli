@@ -66,7 +66,7 @@ is_mode_static(const struct ovsrec_system *ovs)
 /* Removes Ipv4, default gw from DB. */
 void
 mgmt_intf_clear_ipv4_config_db(const struct ovsrec_system *row,
-                               struct smap smap_mgmt_intf)
+                               struct smap *smap_mgmt_intf)
 {
     const char* ip_addr;
 
@@ -78,13 +78,13 @@ mgmt_intf_clear_ipv4_config_db(const struct ovsrec_system *row,
     ip_addr = smap_get(&row->mgmt_intf, SYSTEM_MGMT_INTF_MAP_IP);
     if (ip_addr != NULL)
     {
-        smap_remove(&smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_IP);
+        smap_remove(smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_IP);
     }
 
     ip_addr = smap_get(&row->mgmt_intf, SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY);
     if (ip_addr != NULL)
     {
-        smap_remove(&smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY);
+        smap_remove(smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY);
     }
     return;
 }
@@ -92,7 +92,7 @@ mgmt_intf_clear_ipv4_config_db(const struct ovsrec_system *row,
 /* Removes Ipv6 default gw and dns server configs from DB. */
 void
 mgmt_intf_clear_ipv6_config_db(const struct ovsrec_system *row,
-                               struct smap smap_mgmt_intf)
+                               struct smap *smap_mgmt_intf)
 {
     const char* ip_addr;
 
@@ -105,26 +105,26 @@ mgmt_intf_clear_ipv6_config_db(const struct ovsrec_system *row,
     ip_addr = smap_get(&row->mgmt_intf, SYSTEM_MGMT_INTF_MAP_IPV6);
     if (ip_addr != NULL)
     {
-        smap_remove(&smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_IPV6);
+        smap_remove(smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_IPV6);
     }
 
     ip_addr = smap_get(&row->mgmt_intf,
                        SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
     if (ip_addr != NULL)
     {
-        smap_remove(&smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
+        smap_remove(smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DEFAULT_GATEWAY_V6);
     }
 
     ip_addr = smap_get(&row->mgmt_intf, SYSTEM_MGMT_INTF_MAP_DNS_SERVER_1);
     if (ip_addr != NULL)
     {
-        smap_remove(&smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DNS_SERVER_1);
+        smap_remove(smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DNS_SERVER_1);
     }
 
     ip_addr = smap_get(&row->mgmt_intf, SYSTEM_MGMT_INTF_MAP_DNS_SERVER_2);
     if (ip_addr != NULL)
     {
-        smap_remove(&smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DNS_SERVER_2);
+        smap_remove(smap_mgmt_intf, SYSTEM_MGMT_INTF_MAP_DNS_SERVER_2);
     }
 
     return;
@@ -203,7 +203,7 @@ mgmt_intf_set_dhcp()
     const struct ovsrec_system *row = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    struct smap smap_mgmt_intf;
+    struct smap smap = SMAP_INITIALIZER(&smap);
 
     status_txn = cli_do_config_start();
     if (NULL == status_txn)
@@ -224,19 +224,19 @@ mgmt_intf_set_dhcp()
 
 
  /* If current mode is static remove static configs from DB. */
-    smap_clone(&smap_mgmt_intf, &row->mgmt_intf);
+    smap_clone(&smap, &row->mgmt_intf);
     if (is_mode_static(row))
     {
-        mgmt_intf_clear_ipv4_config_db(row, smap_mgmt_intf);
-        mgmt_intf_clear_ipv6_config_db(row, smap_mgmt_intf);
+        mgmt_intf_clear_ipv4_config_db(row, &smap);
+        mgmt_intf_clear_ipv6_config_db(row, &smap);
     }
 
-    smap_replace(&smap_mgmt_intf,
+    smap_replace(&smap,
                  SYSTEM_MGMT_INTF_MAP_MODE,
                  SYSTEM_MGMT_INTF_MAP_MODE_DHCP);
 
-    ovsrec_system_set_mgmt_intf(row, &smap_mgmt_intf);
-    smap_destroy(&smap_mgmt_intf);
+    ovsrec_system_set_mgmt_intf(row, &smap);
+    smap_destroy(&smap);
     status = cli_do_config_finish(status_txn);
     if (TXN_SUCCESS == status || TXN_UNCHANGED == status)
     {
