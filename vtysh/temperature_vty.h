@@ -31,7 +31,6 @@
 #define TEMP_STR "Temperature sensor information\n"
 #define TEMP_DETAIL_STR "Detailed temperature sensor information\n"
 
-void
-temperature_vty_init (void);
+void temperature_vty_init (void);
 
 #endif // _TEMPERATURE_VTY_H

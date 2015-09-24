@@ -55,13 +55,18 @@ class TemperatureSystemTests(OpsVsiTest):
                 TemperatureSystemTests.uuid = _id[1].strip()
                 out = s1.ovscmd('/usr/bin/ovs-vsctl -- set Subsystem '
                              + TemperatureSystemTests.uuid
-                             + ' temp_sensors=@fan1 -- --id=@fan1 create Temp_sensor name=base-1 location=Faceplate_side_of_switch_chip_U16 status=normal fan-state=normal min=0 max=21000 temperature=20500'
+                             + ' temp_sensors=@fan1 -- --id=@fan1 '
+                             + ' create Temp_sensor name=base-1 '
+                             + ' location=Faceplate_side_of_switch_chip_U16 '
+                             + ' status=normal fan-state=normal min=0 '
+                             + ' max=21000 temperature=20500'
                              )
 
     def deinitTemp_sensorTable(self):
         s1 = self.net.switches[0]
 
-        # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
+        # Delete dummy data from subsystem and led table to
+        # avoid clash with other CT scripts.
 
         s1.ovscmd('ovs-vsctl clear subsystem '
                + TemperatureSystemTests.uuid + ' temp_sensors')
@@ -71,17 +76,23 @@ class TemperatureSystemTests(OpsVsiTest):
         # Test to verify show system command
 
         s1 = self.net.switches[0]
+        counter = 0
         temperature_config_present = False
-        print '''
+        info('''
 ##########  Test to verify \'show system temperature\' command ##########
-'''
-        out = s1.cmdCLI('show system temperature')
+''')
+        out = s1.cmdCLI('show system temperature detail')
         lines = out.split('\n')
         for line in lines:
-            if 'base-1' and 'Faceplate_side_of_switch_chip_U16' \
-                and 'normal' and 'normal' in line:
-                temperature_config_present = True
-        assert temperature_config_present == True, \
+            if 'base-1' in line:
+                counter += 1
+            if 'Faceplate_side_of_switch_chip_U16' in line:
+                counter += 1
+            if 'normal' in line:
+                counter += 1
+        if counter == 3:
+            temperature_config_present = True
+        assert temperature_config_present is True, \
             'Test to verify \'show system temperature\' command - FAILED!'
         return True
 
@@ -125,6 +136,6 @@ class Test_sys:
 
     def test_show_system_temperature_command(self):
         if self.test.showSystemTemperatureTest():
-            print '''
-##########  Test to verify \'show system temperature\' command - SUCCESS! ##########
-'''
+            info('''
+######  Test to verify \'show system temperature\' command - SUCCESS! ######
+''')

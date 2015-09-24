@@ -37,6 +37,7 @@ typedef enum
 }cli_subsystem;
 
 int cli_system_get_all();
+
 void system_vty_init();
 
 #endif //_SYSTEM_VTY_H
