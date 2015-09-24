@@ -19,11 +19,11 @@
 #
 
 from time import sleep
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class FanSystemTests(HalonTest):
+class FanSystemTests(OpsVsiTest):
 
     uuid = ''
 
@@ -33,15 +33,12 @@ class FanSystemTests(HalonTest):
         # either pass getNodeOpts() into hopts/sopts of the topology that
         # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        fan_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(fan_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def initFanTable(self):
 
@@ -50,13 +47,13 @@ class FanSystemTests(HalonTest):
 
         s1 = self.net.switches[0]
         print '\n'
-        out = s1.cmd('ovs-vsctl list subsystem')
+        out = s1.ovscmd('ovs-vsctl list subsystem')
         lines = out.split('\n')
         for line in lines:
             if '_uuid' in line:
                 _id = line.split(':')
                 FanSystemTests.uuid = _id[1].strip()
-                out = s1.cmd('/usr/bin/ovs-vsctl -- set Subsystem '
+                out = s1.ovscmd('/usr/bin/ovs-vsctl -- set Subsystem '
                              + FanSystemTests.uuid
                              + ' fans=@fan1 -- --id=@fan1 create Fan name=base-FAN-1L direction=f2b speed=normal status=ok rpm=9000'
                              )
@@ -66,7 +63,7 @@ class FanSystemTests(HalonTest):
 
         # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
 
-        s1.cmd('ovs-vsctl clear subsystem ' + FanSystemTests.uuid
+        s1.ovscmd('ovs-vsctl clear subsystem ' + FanSystemTests.uuid
                + ' fans')
 
     def showSystemFanTest(self):

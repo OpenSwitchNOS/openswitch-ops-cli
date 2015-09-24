@@ -20,11 +20,11 @@
 
 import pytest
 from time import sleep
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class DBTests(HalonTest):
+class DBTests(OpsVsiTest):
 
     def setupNet(self):
 
@@ -33,15 +33,12 @@ class DBTests(HalonTest):
     # you build or into addHost/addSwitch calls
     # self.setSwitchCliCountOpts(2)
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        db_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(db_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def createdbTest(self):
         print '''
@@ -49,7 +46,7 @@ class DBTests(HalonTest):
 '''
         s1 = self.net.switches[0]
         for j in range(1, 49):
-            ovsout = s1.cmd('/usr/bin/ovs-vsctl list interface '
+            ovsout = s1.ovscmd('/usr/bin/ovs-vsctl list interface '
                             + str(j))
             assert '_uuid' in ovsout, '\nUnable to find interface ' \
                 + str(j) + 'in DB'

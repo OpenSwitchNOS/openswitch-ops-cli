@@ -20,11 +20,11 @@
 
 from time import sleep
 import pytest
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class DBTests(HalonTest):
+class DBTests(OpsVsiTest):
 
     def setupNet(self):
 
@@ -33,30 +33,22 @@ class DBTests(HalonTest):
     # you build or into addHost/addSwitch calls
     # self.setSwitchCliCountOpts(2)
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        db_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(db_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def createdbTest(self):
         print '\n========================================================='
         print '***            Test method to create db                 ***'
         print '==========================================================='
         s1 = self.net.switches[0]
-        s1.cmd('/usr/bin/ovs-vsctl add-br br0')
-
-    # s1.cmd("/usr/bin/ovs-vsctl add-port br0 1 vlan_mode=trunk")
+        s1.ovscmd('/usr/bin/ovs-vsctl add-br br0')
 
         for i in range(1, 4095):
-
-        # ovsout = s1.cmd("/usr/bin/ovs-vsctl add-vlan br0 " + str(i) + " admin=up")
-
-            ovsout = s1.cmd('/usr/bin/ovs-vsctl add-vlan br0 ' + str(i))
+            ovsout = s1.ovscmd('/usr/bin/ovs-vsctl add-vlan br0 ' + str(i))
         return True
 
     def retrievedbTest(self):
@@ -96,7 +88,7 @@ class DBTests(HalonTest):
         print '*** Test to verify show running-config for lldp transmission ***'
         print '================================================================'
         s1 = self.net.switches[0]
-        ovsout = s1.cmd('/usr/bin/ovs-vsctl list interface 1')
+        ovsout = s1.ovscmd('/usr/bin/ovs-vsctl list interface 1')
         if '_uuid' not in ovsout:
             print '\nUnable to find Interface 1 in OVSBD'
             return False
