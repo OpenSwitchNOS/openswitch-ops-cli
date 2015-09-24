@@ -3552,7 +3552,7 @@ vty_alias_load_alias_table(void)
             vtysh_alias_callback;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc    =
             vtysh_alias_cmd_help_string;
-        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr   = 0;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr   = CMD_ATTR_NOLOCK;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element.daemon = 0;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string =
             vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
@@ -3560,7 +3560,7 @@ vty_alias_load_alias_table(void)
             vtysh_alias_callback;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
             vtysh_alias_cmd_help_string;
-        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = 0;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
         /* install the new commands with alias definition as token */
@@ -3775,7 +3775,7 @@ DEFUN (vtysh_alias_cli,
        vtysh_alias_callback;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc =
        vtysh_alias_cmd_help_string;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr = 0;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr = CMD_ATTR_NOLOCK;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element.daemon = 0;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string =
        vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
@@ -3783,7 +3783,7 @@ DEFUN (vtysh_alias_cli,
        vtysh_alias_callback;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
        vtysh_alias_cmd_help_string;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = 0;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
    vtysh_alias_save_alias(vtysh_aliases[vtysh_alias_count]->alias_def_str,
