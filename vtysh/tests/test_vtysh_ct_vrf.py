@@ -16,22 +16,25 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from opsvsi.docker import *
-from opsvsi.opsvsitest import *
+from halonvsi.docker import *
+from halonvsi.halon import *
 
 first_interface = '12'
 second_interface = '13'
 third_interface = '14'
 
-class vrfCLITest(OpsVsiTest):
+class vrfCLITest(HalonTest):
 
     def setupNet(self):
-        host_opts = self.getHostOpts()
-        switch_opts = self.getSwitchOpts()
-        vrf_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
-        self.net = Mininet(vrf_topo, switch=VsiOpenSwitch,
-                       host=Host, link=OpsVsiLink,
-                       controller=None, build=True)
+        self.net = Mininet(
+            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
+                                  sopts=self.getSwitchOpts()),
+            switch=HalonSwitch,
+            host=HalonHost,
+            link=HalonLink,
+            controller=None,
+            build=True
+            )
 
     def test_vrf_add_delete(self):
         '''
@@ -49,14 +52,14 @@ class vrfCLITest(OpsVsiTest):
         # Checking VRF name more than 32 characters
 
         ret = s1.cmdCLI('vrf thisisavrfnamewhichismorethan32characters')
-        assert 'Non-default VRFs not supported.' in ret, \
+        assert 'Non-default VRFs not supported' in ret, \
                'VRF name validation failed'
         info('### VRF name validation passed ###\n')
 
         # Adding another VRF
 
         ret = s1.cmdCLI('vrf thisisavrfnamewhichisexactly32c')
-        assert 'Non-default VRFs not supported.' in ret, \
+        assert 'Non-default VRFs not supported' in ret, \
                'VRF add validation failed'
         info('### VRF add validation passed ###\n')
 
@@ -70,14 +73,14 @@ class vrfCLITest(OpsVsiTest):
         # Deleting default VRF
 
         ret = s1.cmdCLI('no vrf vrf_default')
-        assert 'Error: Cannot delete default VRF.' in ret, \
+        assert 'Cannot delete default VRF.' in ret, \
                'VRF delete validation failed'
         info('### VRF delete validation passed ###\n')
 
         # Deleting VRF which does not exist
 
         ret = s1.cmdCLI('no vrf abcd')
-        assert 'Non-default VRFs not supported.' in ret, \
+        assert 'Non-default VRFs not supported' in ret, \
                'VRF lookup validation failed'
         info('### VRF lookup validation passed ###\n')
 
@@ -107,7 +110,7 @@ class vrfCLITest(OpsVsiTest):
         # Attaching to VRF which does not exist
 
         ret = s1.cmdCLI("vrf attach abcd")
-        assert 'Non-default VRFs not supported.' in ret, \
+        assert 'Non-default VRFs not supported' in ret, \
                'VRF lookup validation failed'
         info('### VRF lookup validation passed### \n')
 
@@ -115,7 +118,7 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI('no routing')
         ret = s1.cmdCLI('vrf attach vrf_default')
-        expected_output = 'Error: Interface ' + first_interface \
+        expected_output = 'Interface ' + first_interface \
             + ' is not L3.'
         assert expected_output in ret, 'L2 Interface validation failed'
         info('### L2 Interface validation passed ###\n')
@@ -197,7 +200,7 @@ class vrfCLITest(OpsVsiTest):
         intf_cmd = 'interface ' + first_interface
         s1.cmdCLI(intf_cmd)
         ret = s1.cmdCLI('ip address 10.0.20.2/24')
-        expected_output = 'Error: Interface ' + first_interface \
+        expected_output = 'Interface ' + first_interface \
             + ' is not L3.'
         assert expected_output in ret, 'IP address validation failed'
         info('### IP address validation passed ###\n')
@@ -208,7 +211,7 @@ class vrfCLITest(OpsVsiTest):
         s1.cmdCLI('routing')
         ret = s1.cmdCLI('no ip address 10.0.30.2/24')
         expected_output = \
-            'Error: No IP Address configured on interface ' \
+            'No IP address configured on interface ' \
             + first_interface
         assert expected_output in ret, \
             'IP address presence validation failed'
@@ -235,7 +238,7 @@ class vrfCLITest(OpsVsiTest):
         # Assigning existing primary IP address as primary
 
         ret = s1.cmdCLI("ip address 10.0.20.3/24")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as primary."
         assert expected_output in ret , 'IP address duplicate check failed'
 
@@ -243,21 +246,21 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI("ip address 10.0.20.4/24 secondary")
         ret = s1.cmdCLI("ip address 10.0.20.4/24")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as secondary."
         assert expected_output in ret, 'IP address duplicate check failed'
 
         # Assigning existing primary IP address as secondary
 
         ret = s1.cmdCLI("ip address 10.0.20.3/24 secondary")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as primary."
         assert expected_output in ret, 'IP address duplicate check failed'
 
         # Assigning existing secondary IP address as secondary
 
         ret = s1.cmdCLI("ip address 10.0.20.4/24 secondary")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as secondary."
         assert expected_output in ret, 'IP address duplicate check failed'
         info('### IP address duplicate checked successfully ###\n')
@@ -275,7 +278,7 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI("no ip address 10.0.20.4/24 secondary")
         ret = s1.cmdCLI("no ip address 10.0.30.2/24")
-        assert "Error: IP Address 10.0.30.2/24 not found." in ret, \
+        assert "IP address 10.0.30.2/24 not found." in ret, \
                'IP address delete validation failed'
         info('### IP address delete validation passed ###\n')
 
@@ -292,7 +295,7 @@ class vrfCLITest(OpsVsiTest):
         # have any secondary IP address
 
         ret = s1.cmdCLI("no ip address 10.0.30.2/24 secondary")
-        expected_output = "Error: No secondary IP Address configured " \
+        expected_output = "No secondary IP address configured " \
                           "on interface " + first_interface
         assert expected_output in ret, \
                'Secondary IP address presence validation failed'
@@ -346,7 +349,7 @@ class vrfCLITest(OpsVsiTest):
         intf_cmd = 'interface ' + first_interface
         s1.cmdCLI(intf_cmd)
         ret = s1.cmdCLI('ipv6 address 2002::1/128')
-        expected_output = 'Error: Interface ' + first_interface \
+        expected_output = 'Interface ' + first_interface \
             + ' is not L3.'
         assert expected_output in ret, 'IPv6 address validation failed'
         info('### IPv6 address validation passed ###\n')
@@ -357,7 +360,7 @@ class vrfCLITest(OpsVsiTest):
         s1.cmdCLI('routing')
         ret = s1.cmdCLI('no ipv6 address 2002::1/128')
         expected_output = \
-            'Error: No IPv6 Address configured on interface ' \
+            'No IPv6 address configured on interface ' \
             + first_interface
         assert expected_output in ret, \
             'IPv6 address presence validation failed'
@@ -385,7 +388,7 @@ class vrfCLITest(OpsVsiTest):
         # Assigning existing primary IPv6 address as primary
 
         ret = s1.cmdCLI("ipv6 address 2001::1/128")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as primary."
         assert expected_output in ret , \
                'IPv6 address duplicate check failed'
@@ -394,7 +397,7 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI("ipv6 address 2001::2/128 secondary")
         ret = s1.cmdCLI("ipv6 address 2001::2/128")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as secondary."
         assert expected_output in ret, \
                'IPv6 address duplicate check failed'
@@ -402,7 +405,7 @@ class vrfCLITest(OpsVsiTest):
         # Assigning existing primary IPv6 address as secondary
 
         ret = s1.cmdCLI("ipv6 address 2001::1/128 secondary")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as primary."
         assert expected_output in ret, \
                'IPv6 address duplicate check failed'
@@ -410,7 +413,7 @@ class vrfCLITest(OpsVsiTest):
         # Assigning existing secondary IPv6 address as secondary
 
         ret = s1.cmdCLI("ipv6 address 2001::2/128 secondary")
-        expected_output = "Error: IP Address is already assigned to " \
+        expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as secondary."
         assert expected_output in ret, \
                'IPv6 address duplicate check failed'
@@ -429,7 +432,7 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI("no ipv6 address 2001::2/128 secondary")
         ret = s1.cmdCLI('no ipv6 address 2004::1/128')
-        assert 'Error: IPv6 Address 2004::1/128 not found.' in ret, \
+        assert 'IPv6 address 2004::1/128 not found.' in ret, \
             'IPv6 address delete validation failed'
         info('### IPv6 address delete validation passed ###\n')
 
@@ -447,7 +450,7 @@ class vrfCLITest(OpsVsiTest):
         # have any secondary IPv6 address
 
         ret = s1.cmdCLI("no ipv6 address 2004::1/128 secondary")
-        expected_output = "Error: No secondary IPv6 Address configured on " \
+        expected_output = "No secondary IPv6 address configured on " \
                           "interface " + first_interface
         assert expected_output in ret, \
                'Secondary IPv6 address presence validation failed'
@@ -537,7 +540,7 @@ class vrfCLITest(OpsVsiTest):
         # Checking if no routing worked
 
         ret = s1.cmdCLI('ip address 10.1.1.1/8')
-        expected_output = 'Error: Interface ' + first_interface \
+        expected_output = 'Interface ' + first_interface \
             + ' is not L3.'
         assert expected_output in ret, 'Attach to bridge failed'
         info('### Attached to bridge successfully ###\n')
