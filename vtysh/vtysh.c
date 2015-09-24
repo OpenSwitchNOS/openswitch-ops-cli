@@ -2298,6 +2298,7 @@ DEFUNSH (VTYSH_ALL,
    return CMD_SUCCESS;
 }
 #endif
+#ifndef ENABLE_OVSDB
 
 DEFUNSH (VTYSH_ALL,
       vtysh_service_password_encrypt,
@@ -2376,6 +2377,7 @@ DEFUNSH (VTYSH_ALL,
 {
    return CMD_SUCCESS;
 }
+#endif
 
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_write_terminal,
@@ -4373,6 +4375,7 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_log_timestamp_precision_cmd);
   install_element (CONFIG_NODE, &vtysh_passwd_cmd);
 #endif
+#ifndef ENABLE_OVSDB
   install_element (CONFIG_NODE, &vtysh_service_password_encrypt_cmd);
   install_element (CONFIG_NODE, &no_vtysh_service_password_encrypt_cmd);
   install_element (CONFIG_NODE, &vtysh_password_cmd);
@@ -4380,6 +4383,7 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
+#endif
   install_element (ENABLE_NODE, &vtysh_passwd_cmd);
   install_element (ENABLE_NODE, &vtysh_user_add_cmd);
   install_element (ENABLE_NODE, &vtysh_user_del_cmd);
