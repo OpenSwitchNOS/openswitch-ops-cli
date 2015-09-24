@@ -1,26 +1,28 @@
 Physical Interface
 ===================
+## Contents
+
 [TOC]
 ## Overview <a id="intfover"></a> ##
-This guide provides detail for managing and monitoring the physical interface present in the switch. All configurations work in interface context. When the interface is running, all the default configurations take effect. To change the default configuration, see [optional](#intfconfopt) configuration.
+This guide provides detail for managing and monitoring the physical interface present in the switch. All configurations work in interface context. When the interface is running, all the default configurations take effect. To change the default configuration, see [Setting up the basic configuration](#intfconfopt).
 ## Configuring the physical interface <a id="intfconf"></a> ##
-###Setting up basic configuration <a id="intfconfbasic"></a> ###
-1. ++Change to the interface context++
-'interface *interface*' command changes the vtysh context to interface. The *interface* in the command depicts the name of the interface, which is replaced with interface "1" in the following example.
+###Setting up the basic configuration <a id="intfconfbasic"></a> ###
+1. Change to the interface context.
+The 'interface *interface*' command changes the vtysh context to interface. The *interface* in the command depicts the name of the interface, which is replaced with interface "1" in the following example.
 ```
 ops-as5712# configure terminal
 ops-as5712(config)# interface 1
 ops-as5712(config-if)#
 ```
 
-2. ++Enable the interface++
+2. Enable the interface.
 The 'no shutdown' command enables a particular interface on the switch. Once the interface is enabled, all other configurations take effect.
 ```
 ops-as5712(config-if)# no shutdown
 ops-as5712(config-if)#
 ```
 
-3. ++Set the interface speed++
+3. Set the interface speed.
 The 'speed' command sets the interface speed. Supported speeds are 1Gbps, 10 Gbps and 40 Gbps. Depending upon the interface type, these configurations may or may not take effect.
 ```
 ops-as5712(config-if)# speed 1000
@@ -32,7 +34,7 @@ ops-as5712(config-if)# no speed
 ops-as5712(config-if)#
 ```
 
-4. ++Set the interface duplexity++
+4. Set the interface duplexity.
 The ‘duplex’ command sets the interface duplexity to either half or full duplex.
 ```
 ops-as5712(config-if)# duplex half
@@ -44,7 +46,7 @@ ops-as5712(config-if)# no duplex
 ops-as5712(config-if)#
 ```
 
-5. ++Set the interface MTU++
+5. Set the interface MTU.
 The ‘mtu’ command sets the interface MTU (maximum transmission unit) to between 576 bytes and 16360 bytes.
 ```
 ops-as5712(config)# mtu 2000
@@ -56,7 +58,7 @@ ops-as5712(config-if)# no mtu
 ops-as5712(config-if)#
 ```
 
-6. ++Select the interface autonegotiation state++
+6. Select the interface autonegotiation state.
 The 'autonegotiation' command turns the autonegotiation state on or off. The 'no autonegotiation' command sets the autonegotiation state to default.
 ```
 ops-as5712(config-if)# autonegotiation on
@@ -65,7 +67,7 @@ ops-as5712(config-if)# no autonegotiation
 ops-as5712(config-if)#
 ```
 
-7. ++Set the flowcontrol++
+7. Set the flowcontrol.
 The ‘flowcontrol’ command enables the flow control mechanism (pause frame technique). The ‘no flowcontrol’ command disables the flow control mechanism. This command is executed to receive and send pause frames individually.
 ```
 ops-as5712(config-if)# flowcontrol receive on
@@ -76,14 +78,14 @@ ops-as5712(config-if)# no flowcontrol send on
 ```
 
 ###Setting up optional configurations <a id="intfconfopt"></a> ###
-1. ++Set up interface description++
+1. Set up interface description.
 The ‘description’ command associates a description with an interface
 ```
 ops-as5712(config-if)# description This is interface 1
 ops-as5712(config-if)#
 ```
 
-2. ++Configure the interface as L2/L3++
+2. Configure the interface as L2 or L3.
 By default all interfaces are configured as L3. If an interface is not configured as L3, the ‘routing’ command can be used to set the interface to L3.
 ```
 ops-as5712(config-if)# routing
@@ -95,7 +97,7 @@ ops-as5712(config-if)# no routing
 ops-as5712(config-if)#
 ```
 
-3. ++Set the IP address of the interface++
+3. Set the IP address of the interface.
 The ‘ip address’ and ‘ipv6 address’ commands set the ip address of the interface. These two commands work only if the interface is configured as L3.
 ```
 ops-as5712(config-if)# ip address 10.10.10.2/24
@@ -108,7 +110,7 @@ ops-as5712(config-if)# ip address 10.10.10.2/24 secondary
 ops-as5712(config-if)#
 ops-as5712(config-if)#  ipv6 address 2001:0db8:85a3:0000:0000:8a2e:0370:7334/24 secondary
 ```
-To remove the ip/ipv6 address of the interface, use the ‘no ip address’ and the ‘no ipv6 address’ commands.
+To remove the ipv4/ipv6 address of the interface, use the ‘no ip address’ and the ‘no ipv6 address’ commands.
 ```
 ops-as5712(config-if)# no ip address 10.10.10.2/24
 ops-as5712(config-if)# no ipv6 address 2001:0db8:85a3:0000:0000:8a2e:0370:7334/24
@@ -223,7 +225,7 @@ Interface 2
 
 ###Troubleshooting the configuration <a id="intftrouble"></a> ###
 #### Condition
-Unable to set the ip/ipv6 address even after enabling the interface.
+Unable to set the ipv4/ipv6 address even after enabling the interface.
 #### Cause
 Interface may be configured as L2
 #### Remedy

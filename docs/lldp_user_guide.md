@@ -1,5 +1,6 @@
 LLDP
 =======
+## Contents
 
 [TOC]
 
@@ -17,23 +18,22 @@ The Link Layer Discovery Protocol (LLDP) is an industry-standard, vendor-neutral
 ## Prerequisites <a id="lldppre"></a> ##
 All the DUT interfaces (at least the interfaces that are connected to other devices) must be administratively up.
 ## Configuring LLDP <a id="lldpconf"></a> ##
-###Setting up basic configuration <a id="lldpconfbasic"></a> ###
-1. ++Configure Terminal++
-'configure terminal' command changes the vtysh context to config.
+###Setting up the basic configuration <a id="lldpconfbasic"></a> ###
+1. Configure the terminal to change the vtysh context to config context with the following commands:
 ```
 ops-as5712# configure terminal
 ops-as5712(config)#
 ```
 
-2. ++Enable LLDP Globally++
-'Feature lldp' command enables LLDP on the switch. Once LLDP is enabled, the switch begins to transmit advertisements from those ports that are configured to send LLDP packets.
+2. Enable LLDP globally on the switch with the following command:
 ```
 ops-as5712(config)# feature lldp
 ops-as5712(config)#
 ```
+Once LLDP is enabled, the switch begins to transmit advertisements from those ports that are configured to send LLDP packets.
 
-3. ++Enable LLDP on interface++
-By using the 'lldp transmission' and 'lldp reception' commands, LLDP can be enabled or disabled on individual interfaces or configured to only
+3. Enable LLDP on interface.
+By using the `lldp transmission` and `lldp reception` commands, LLDP can be enabled or disabled on individual interfaces or configured to only
 send or only receive LLDP packets. Consider interface 1 which is connected to neighbor device,
 ```
 ops-as5712(config)# interface 1
@@ -45,39 +45,39 @@ ops-as5712(config-if)#
 
 ###Setting up optional configurations <a id="lldpconfopt"></a> ###
 
-1. ++Set LLDP Timer++
-The 'lldp timer' command specifies the time in seconds between LLDP updates sent by the switch.
+1. Setting the LLDP Timer.
+The `lldp timer` command specifies the time in seconds between LLDP updates sent by the switch.
 ```
 ops-as5712(config)# lldp timer 120
 ops-as5712(config)#
 ```
-The 'no lldp timer' commands reverts the LLDP timer to its default value of 30 seconds.
+The `no lldp timer` commands reverts the LLDP timer to its default value of 30 seconds.
 ```
 ops-as5712(config)# no lldp timer
 ops-as5712(config)#
 ```
 
-2. ++Set LLDP Hold Time++
-The lldp holdtime command sets the amount of time a receiving device should retain the information sent by the device.
+2. Setting the LLDP Hold Time.
+The `lldp holdtime` command sets the amount of time a receiving device should retain the information sent by the device.
 ```
 ops-as5712(config)# lldp holdtime 5
 ops-as5712(config)#
 ```
-The 'no lldp holdtime' commands reverts the LLDP timer to its default value of 4 seconds.
+The `no lldp holdtime` commands reverts the LLDP timer to its default value of four seconds.
 ```
 ops-as5712(config)# no lldp holdtime
 ops-as5712(config)#
 ```
 
-3. ++Set the ip to be used in the Management Address TLV++
-The 'lldp management-address' command specifies the ip to be used in  management address LLDP type-length-value (TLV) triplets.
+3. Setting the ip to be used in the Management Address TLV.
+The `lldp management-address` command specifies the ip to be used in  management address LLDP type-length-value (TLV) triplets.
 ```
 ops-as5712(config)# lldp management-address 16.93.49.1
 ops-as5712(config)#
 ```
 
-4. ++Select LLDP TLV++
-The 'lldp select-tlv' command configures the type, length, and value (TLV) to send and receive in LLDP packets. The 'no lldp select-tlv' command removes the TLV configuration.
+4. Select LLDP TLV.
+The `lldp select-tlv` command configures the type, length, and value (TLV) to send and receive in LLDP packets. The `no lldp select-tlv` command removes the TLV configuration.
 ```
 ops-as5712(config)# lldp select-tlv system-capabilities
 ops-as5712(config)#
@@ -85,15 +85,15 @@ ops-as5712(config)# lldp select-tlv port-description
 ops-as5712(config)#
 ```
 
-5. ++Clear LLDP Counters++
-The 'lldp clear counters' command resets the LLDP traffic counters to zero.
+5. Clearing the LLDP Counters.
+The `lldp clear counters` command resets the LLDP traffic counters to zero.
 ```
 ops-as5712(config)# lldp clear counters
 ops-as5712(config)#
 ```
 
-6. ++Clear LLDP neighbor information++
-The 'lldp clear neighbors' command clears neighbor information.
+6. Clearing the LLDP neighbor information.
+The `lldp clear neighbors` command clears neighbor information.
 ```
 ops-as5712(config)# lldp clear neighbors
 ops-as5712(config)#
@@ -101,7 +101,7 @@ ops-as5712(config)#
 
 ###Verifying the configuration <a id="lldpconfver"></a> ###
 #####Viewing LLDP Global Information
-The 'show lldp configuration' command displays LLDP configuration information configured above.
+The `show lldp configuration` command displays LLDP configuration information configured above.
 ```
 ops-as5712# show lldp configuration
 LLDP Global Configuration:
@@ -132,7 +132,7 @@ Port  Transmission-enabled     Receive-enabled
 ```
 
 #####Viewing LLDP Neighbors
-The 'show lldp neighbor-info' command displays information about LLDP neighbors.
+The `show lldp neighbor-info` command displays information about LLDP neighbors.
 ```
 ops-as5712# show lldp neighbor-info
 
@@ -148,7 +148,7 @@ Local Port     Neighbor Chassis-ID      Neighbor Port-ID         TTL
 .......................
 .......................
 ```
-The 'show lldp neighbor-info <interface>' command shows LLDP neighbors for a particular interface.
+The `show lldp neighbor-info <interface>` command shows LLDP neighbors for a particular interface.
 ```
 ops-as5712# show lldp neighbor-info 1
 Port                           : 1
@@ -167,7 +167,7 @@ ops-as5712#
 ```
 
 #####Viewing LLDP statistics
-The 'show lldp statistics' command displays the LLDP traffic information for the switch.
+The `show lldp statistics` command displays the LLDP traffic information for the switch.
 ```
 ops-as5712# show lldp statistics
 LLDP Global statistics:
@@ -184,7 +184,7 @@ Port-ID   Tx-Packets     Rx-packets     Rx-discarded        TLVs-Unknown
 ................
 ```
 
-The 'show lldp statistics <interface>' command shows LLDP traffic information for a particular interface.
+The `show lldp statistics <interface>` command shows LLDP traffic information for a particular interface.
 
 ```
 ops-as5712# show lldp statistics 1

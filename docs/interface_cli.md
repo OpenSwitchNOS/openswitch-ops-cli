@@ -1,9 +1,11 @@
 Interface Commands
 =======
+## Contents
+
 [TOC]
 
 ## Interface Configuration Commands <a id="intfmain"></a>
-In vtysh every command belongs to a particular context. All interface configuration commands, except "interface <interface>", works in interface context.
+In vtysh every command belongs to a particular context. All interface configuration commands, except `interface`, works in interface context.
 ### Change to interface context <a id="intfcontext"></a>
 #### Syntax
 `interface <interface>`
@@ -38,7 +40,7 @@ ops-as5712# configure terminal
 ops-as5712(config)# interface 1
 ops-as5712(config-if)# description This is interface 1
 ```
-### Removes interface description <a id="intfnodesc"></a> ###
+### Remove interface description <a id="intfnodesc"></a> ###
 #### Syntax ####
 `no description`
 #### Description ####
@@ -122,7 +124,7 @@ This command sets the operating speed of an interface.
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following parameter as speed.
+Choose one of the following parameters as speed.
 
 | Parameter | Description |
 |:-----------|:----------------:|:---------------------------------------|
@@ -160,7 +162,7 @@ This command sets the MTU(maximum transmission unit) of an interface.
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following parameter as MTU.
+Choose one of the following parameters as MTU.
 
 | Parameter | Syntax         | Description                           |
 |:-----------|:----------------:|:---------------------------------------|
@@ -197,7 +199,7 @@ This command sets the duplexity of an interface from among half duplex and full 
 #### Authority ####
 All users.
 #### Parameters
-Choose one of the following parameter as duplexity.
+Choose one of the following parameters as duplexity.
 
 | Parameter | Description|
 |:-----------|:---------------------------------------|
@@ -232,14 +234,14 @@ This command enables flow control, for sending and receiving pause frames.
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following parameter to select whether to set flow control to receive pause frames or send pause frames.
+Choose one of the following parameters to select whether to set flow control to receive pause frames or send pause frames.
 
 | Parameter 1| Description|
 |:-----------|:---------------------------------------|
 | **receive** |Select the status for receiving pause frames. |
 | **send** | Select the status for sending pause frames.
 
-Choose one of the parameter to either switch flow control on or off.
+Choose one of the parameters to either switch flow control on or off.
 
 | Parameter 2| Description|
 |:-----------|:----------|:----------------:|:---------------------------------------|
@@ -260,12 +262,12 @@ This command sets the flow control to default. The default is flow control 'off'
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following parameter to select whether to disable, 'receive' flow control or 'send' flow control.
+Choose one of the following parameters to select whether to disable, 'receive' flow control or 'send' flow control.
 
 | Parameter | Description                           |
 |:-----------|:---------------------------------------|
-| **receive** |Select to status for receiving pause frames. |
-| **send** |Select to status for sending pause frames.
+| **receive** |Select the status for receiving pause frames. |
+| **send** |Select the status for sending pause frames.
 #### Examples ####
 ```
 ops-as5712# configure terminal
@@ -281,7 +283,7 @@ This command sets the autonegotiation state of the interface.
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following parameter to switch the autonegotiation state, on or off.
+Choose one of the following parameters to switch the autonegotiation state, on or off.
 
 | Parameter| Description |
 |:-----------|:----------|:----------------:|:---------------------------------------|
@@ -297,7 +299,7 @@ ops-as5712(config-if)# autonegotiation on
 #### Syntax ####
 `no autonegotiation`
 #### Description ####
-This command sets the autonegotiation to state to default.
+This command sets the autonegotiation state to default.
 #### Authority ####
 All users.
 #### Parameters ####
@@ -331,7 +333,6 @@ ops-as5712(config-if)# ip address 16.93.50.3/24 secondary
 #### Syntax ####
 `no ip address <ipv4_address/mask> [secondary]`
 #### Description ####
-<!--Provide a description of the command. -->
 This command removes the ipv4 address associated with an interface. This command works only when the interface is configured as L3.
 #### Authority ####
 All users.

@@ -1,13 +1,16 @@
 LLDP Commands
 =======
+## Contents
+
 [TOC]
+
 ## LLDP Configuration Commands <a id="lldpmain"></a>
-All LLDP configuration commands except “lldp transmission” and “lldp reception” work in config context.
+All LLDP configuration commands except `lldp transmission` and `lldp reception` work in config context.
 ### Enable LLDP <a id="lldpfeature"></a>
 #### Syntax
 `feature lldp`
 #### Description ####
-This command enables the LLDP(Link Layer Discovery Protocol) feature in the device.
+This command enables the LLDP (Link Layer Discovery Protocol) feature in the device.
 #### Authority ####
 All users.
 #### Parameters ####
@@ -21,7 +24,7 @@ ops-as5712(config)# feature lldp
 #### Syntax ####
 `no feature lldp`
 #### Description ####
-This command disables the LLDP(Link Layer Discovery Protocol) feature in the device.
+This command disables the LLDP (Link Layer Discovery Protocol) feature in the device.
 #### Authority ####
 All users.
 #### Parameters ####
@@ -46,7 +49,6 @@ ops-as5712# configure terminal
 ops-as5712(config)# lldp clear counters
 ```
 ### Clear LLDP neighbor details <a id="lldpcleardata"></a> ###
-<!--Change the value of the anchor tag above, so this command can be directly linked. -->
 #### Syntax ####
 `lldp clear neighbors`
 #### Description ####
@@ -99,7 +101,7 @@ This command sets the Management IP Address to be sent using LLDP TLV.
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following as parameter.
+Choose one of the following as parameters.
 
 | Parameter | Syntax | Description |
 |:-----------|:----------------:|:---------------------------------------|
@@ -133,7 +135,7 @@ This command selects the TLVs to be sent and received in LLDP packets.
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following parameter.
+Choose one of the following parameters.
 
 | Parameter | Description |
 |:-----------|:---------------------------------------|
@@ -167,7 +169,7 @@ This command removes the TLVs from being sent and received in LLDP packets.
 #### Authority ####
 All users.
 #### Parameters ####
-Choose one of the following parameter.
+Choose one of the following parameters.
 
 | Parameter | Description |
 |:-----------|:---------------------------------------|
@@ -227,7 +229,7 @@ ops-as5712(config)# no lldp timer
 #### Syntax ####
 `lldp transmission`
 #### Description ####
-This command enables LLDP transmission(TX) for a particular interface. This command only works in interface context.
+This command enables LLDP transmission (TX) for a particular interface. This command only works in interface context.
 #### Authority ####
 All users.
 #### Parameters ####
@@ -242,7 +244,7 @@ ops-as5712(config-if)# lldp transmission
 #### Syntax ####
 `no lldp transmission`
 #### Description ####
-This command disables LLDP transmission(TX) for a particular interface. This command only works in interface context.
+This command disables LLDP transmission (TX) for a particular interface. This command only works in interface context.
 #### Authority ####
 All users.
 #### Parameters ####
@@ -257,7 +259,7 @@ ops-as5712(config-if)# no lldp transmission
 #### Syntax ####
 `lldp reception`
 #### Description ####
-This command enables LLDP reception(RX) for a particular interface. This command only works in interface context.
+This command enables LLDP reception (RX) for a particular interface. This command only works in interface context.
 #### Authority ####
 All users.
 #### Parameters ####
@@ -272,7 +274,7 @@ ops-as5712(config-if)# lldp reception
 #### Syntax ####
 `no lldp reception`
 #### Description ####
-This command disables LLDP reception(RX) for a particular interface. This command only works in interface context.
+This command disables LLDP reception (RX) for a particular interface. This command only works in interface context.
 #### Authority ####
 All users.
 #### Parameters ####
