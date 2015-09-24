@@ -295,6 +295,11 @@ vtysh_intf_context_clientcallback(void *p_private)
       intfcfg.admin_state = false;
       intfcfg.disp_intf_cfg = false;
       intfcfg.lldptxrx_state = e_lldp_dir_tx_rx;
+
+      if (ifrow && !strcmp(ifrow->name, DEFAULT_BRIDGE_NAME)) {
+          continue;
+      }
+
       if (ifrow)
       {
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
@@ -303,6 +308,15 @@ vtysh_intf_context_clientcallback(void *p_private)
          {
             PRINT_INT_HEADER_IN_SHOW_RUN;
             vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
+         }
+
+         cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+
+         if ((NULL != cur_state)
+               && (strcmp(cur_state, INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT) == 0))
+         {
+             PRINT_INT_HEADER_IN_SHOW_RUN;
+             vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "split");
          }
 
          cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_SPEEDS);

@@ -1,4 +1,4 @@
-/* AAA CLI commands header file
+/* AAA CLI commands header file.
  *
  * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
@@ -14,18 +14,19 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
  *
  * File: aaa_vty.h
  *
- * Purpose:  To add declarations required for aaa_vty.c
+ * Purpose:  To add declarations required for aaa_vty.c.
  */
 
 #define SYSTEM_AAA_RADIUS               "radius"
 #define SYSTEM_AAA_FALLBACK             "fallback"
 #define SYSTEM_AAA_RADIUS_LOCAL         "local"
-#define HALON_TRUE_STR                        "true"
-#define HALON_FALSE_STR                       "false"
+#define OPS_TRUE_STR                        "true"
+#define OPS_FALSE_STR                       "false"
 
 #define MAX_RADIUS_SERVERS                    64
 #define RADIUS_SERVER_DEFAULT_PASSKEY         "testing123-1"

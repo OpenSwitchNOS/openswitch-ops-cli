@@ -1,6 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
-
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 # All Rights Reserved.
 #
@@ -18,8 +16,8 @@
 
 import time
 import pytest
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 SSHD_CONFIG = '/etc/ssh/sshd_config'
 
@@ -34,12 +32,11 @@ class myTopo(Topo):
     H1[h1-eth0]<--->[1]S1
     """
 
-    def build(
-        self,
-        hsts=1,
-        sws=1,
-        **_opts
-        ):
+    def build(self,
+              hsts=1,
+              sws=1,
+              **_opts
+              ):
         self.hsts = hsts
         self.sws = sws
 
@@ -52,33 +49,19 @@ class myTopo(Topo):
         self.addLink('h1', 's1')
 
 
-class AutoProvisioning(HalonTest):
+class AutoProvisioning(OpsVsiTest):
 
     def setupNet(self):
 
         # Create a topology with single Halon switch and
         # one host.
 
-        topo = myTopo(
-            hsts=1,
-            sws=1,
-            hopts=self.getHostOpts(),
-            sopts=self.getSwitchOpts(),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
-
-        self.net = Mininet(
-            topo,
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        aaa_topo = myTopo(hsts=1, sws=1, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(aaa_topo, switch=VsiOpenSwitch,
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     def EnablePasskeyAuth(self):
         ''' This function is to enable passkey authentication for
@@ -162,8 +145,8 @@ class AutoProvisioning(HalonTest):
         ''' This function is to enable passkey authentication for
         SSH authentication method'''
 
-        info('########## Test to disable public key authentication ##########\n'
-             )
+        info('########## Test to disable public key authentication '
+             '##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -185,9 +168,9 @@ class AutoProvisioning(HalonTest):
             'Failed to disable public key authentication'
 
     def SetRadiusServerHost(self):
-        info('''
-########## Test to configure the radius server host IP ##########
-''')
+        info('########## Test to configure the radius server host IP '
+             '##########\n')
+
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
         assert 'Unknown command' not in out, \
@@ -200,15 +183,13 @@ class AutoProvisioning(HalonTest):
         out = s1.cmdCLI('show radius-server')
         lines = out.split('\n')
         for line in lines:
-            if 'Host IP address\t: 192.168.1.5' in line:
+            if 'Host IP address	: 192.168.1.5' in line:
                 return True
         assert 'Host IP address : 192.168.1.5' not in out, \
             'Test to configure the radius server host IP: Failed'
 
     def SetRadiusServerTimeout(self):
-        info('''
-########## Test to configure radius server Timeout ##########
-''')
+        info('########## Test to configure radius server Timeout ##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -229,9 +210,7 @@ class AutoProvisioning(HalonTest):
             'Test to configure radius server Timeout: Failed'
 
     def SetRadiusServerRetries(self):
-        info('''
-########## Test to configure radius server Retries ##########
-''')
+        info('########## Test to configure radius server Retries ##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -253,9 +232,8 @@ class AutoProvisioning(HalonTest):
             'Test to configure radius server Retries: Failed'
 
     def SetRadiusAuthPort(self):
-        info('''
-########## Test to configure radius server Authentication port ##########
-''')
+        info('########## Test to configure radius server Authentication port '
+             '##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -276,9 +254,7 @@ class AutoProvisioning(HalonTest):
             'Test to configure radius server Authentication port: Failed'
 
     def SetRadiuspasskey(self):
-        info('''
-########## Test to configure radius server Passkey ##########
-''')
+        info('########## Test to configure radius server Passkey ##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -299,9 +275,8 @@ class AutoProvisioning(HalonTest):
             'Test to configure radius server Passkey: Failed'
 
     def NoRadiusPassky(self):
-        info('''
-########## Test to remove radius server Passkey and reset to default ##########
-''')
+        info('########## Test to remove radius server Passkey and reset to '
+             'default ##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -325,9 +300,8 @@ class AutoProvisioning(HalonTest):
             'Test to remove radius server Passkey and reset to default: Failed'
 
     def NoRadiusAuthPort(self):
-        info('''
-########## Test to remove radius server Authentication port and resets to default ##########
-''')
+        info('########## Test to remove radius server Authentication port '
+             'and resets to default ##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -349,12 +323,12 @@ class AutoProvisioning(HalonTest):
                     if "Auth port		: 1812" in line:
                         return True
         assert 'Host IP address : 192.168.1.5' not in out, \
-            'Test to remove radius server Authentication port and reset to default: Failed'
+            'Test to remove radius server Authentication port and reset \
+             to default: Failed'
 
     def NoRadiusTimeout(self):
-        info('''
-########## Test to remove radius server timeout and resets to default ##########
-''')
+        info('########## Test to remove radius server timeout and resets to '
+             'default ##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -376,9 +350,8 @@ class AutoProvisioning(HalonTest):
             'Test to remove radius server timeout and reset to default: Failed'
 
     def NoRadiusRetries(self):
-        info('''
-########## Test to remove radius server Retries and resets to default ##########
-''')
+        info('########## Test to remove radius server Retries and resets to '
+             'default ##########\n')
 
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
@@ -422,69 +395,57 @@ class Test_autoProvision:
 
     def test_DisablePasskeyAuth(self):
         if self.test.DisablePasskeyAuth():
-            info('### Test to disable SSH password authentication: Passed ###\n'
-                 )
+            info('### Test to disable SSH password authentication: Passed '
+                 '###\n')
 
     def test_EnablePublickeyAuth(self):
         if self.test.EnablePublickeyAuth():
-            info('### Test to enable SSH public key authentication: Passed ###\n'
-                 )
+            info('### Test to enable SSH public key authentication: Passed '
+                 '###\n')
 
     def test_DisablePublickeyAuth(self):
         if self.test.DisablePublickeyAuth():
-            info('### Test to disable SSH public key authentication: Passed ###\n'
-                 )
+            info('### Test to disable SSH public key authentication: Passed '
+                 '###\n')
 
     def test_SetRadiusServerHost(self):
         if self.test.SetRadiusServerHost():
-            info('''
-### Test to configure the radius server host IP: Passed ###
-''')
+            info('### Test to configure the radius server host IP: Passed '
+                 '###\n')
 
     def test_SetRadiusServerTimeout(self):
         if self.test.SetRadiusServerTimeout():
-            info('''
-### Test to configure radius server Timeout: Passed ###
-''')
+            info('### Test to configure radius server Timeout: Passed ###\n')
 
     def test_SetRadiusServerRetries(self):
         if self.test.SetRadiusServerRetries():
-            info('''
-### Test to configure radius server Retries: Passed ###
-''')
+            info('### Test to configure radius server Retries: Passed ###\n')
 
     def test_SetRadiusAuthPort(self):
         if self.test.SetRadiusAuthPort():
-            info('''
-### Test to configure radius server Authentication port: Passed ###
-''')
+            info('### Test to configure radius server Authentication port: '
+                 'Passed ###\n')
 
     def test_SetRadiuspasskey(self):
         if self.test.SetRadiuspasskey():
-            info('''
-### Test to configure radius server Passkey: Passed ###
-''')
+            info('### Test to configure radius server Passkey: Passed ###\n')
 
     def test_NoRadiusPassky(self):
         if self.test.NoRadiusPassky():
-            info('''
-### Test to remove radius server Passkey and reset to default: Passed ###
-''')
+            info('### Test to remove radius server Passkey and reset to '
+                 'default: Passed ###\n')
 
     def test_NoRadiusAuthPort(self):
         if self.test.NoRadiusAuthPort():
-            info('''
-### Test to remove radius server Authentication port and reset to default: Passed ###
-''')
+            info('### Test to remove radius server Authentication port '
+                 'and reset to default: Passed ###\n')
 
     def test_NoRadiusTimeout(self):
         if self.test.NoRadiusTimeout():
-            info('''
-### Test to remove radius server timeout and reset to default: Passed ###
-''')
+            info('### Test to remove radius server timeout and reset to '
+                 'default: Passed ###\n')
 
     def test_NoRadiusRetries(self):
         if self.test.NoRadiusRetries():
-            info('''
-### Test to remove radius server Retries and reset to default: Passed ###
-''')
+            info('### Test to remove radius server Retries and reset to '
+                 'default: Passed ###\n')

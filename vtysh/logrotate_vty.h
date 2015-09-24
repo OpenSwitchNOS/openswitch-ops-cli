@@ -27,7 +27,8 @@
 # define LOGROTATE_CMD_STR_PERIOD        "logrotate period (hourly| weekly | monthly ) "
 # define LOGROTATE_NO_CMD_STR_PERIOD     "no logrotate period {hourly| weekly | monthly }"
 # define LOGROTATE_CMD_STR_MAXSIZE       "logrotate maxsize <1-200>"
-# define LOGROTATE_NO_CMD_STR_MAXSIZE    "no logrotate maxsize {<1-200>}"
+# define LOGROTATE_NO_CMD_STR_MAXSIZE_X  "no logrotate maxsize <1-200>"
+# define LOGROTATE_NO_CMD_STR_MAXSIZE    "no logrotate maxsize"
 
 # define LOGROTATE_CMD_STR_TARGET        "logrotate target WORD"
 # define LOGROTATE_NO_CMD_STR_TARGET     "no logrotate target {WORD}"
@@ -51,10 +52,15 @@
                                         "Maximum file size for rotation \n" \
                                         "File size in Mega Bytes (MB).Default value is 10MB \n"
 
-# define LOGROTATE_NO_HELP_STR_MAXSIZE     NO_STR \
+# define LOGROTATE_NO_HELP_STR_MAXSIZE_X   NO_STR \
                                            "Rotates, compresses, and transfers system logs \n" \
                                            "Maximum file size for rotation \n" \
                                            "File size in Mega Bytes (MB).Default value is 10MB \n"
+
+
+# define LOGROTATE_NO_HELP_STR_MAXSIZE     NO_STR \
+                                           "Rotates, compresses, and transfers system logs \n" \
+                                           "Maximum file size for rotation \n"
 
 
 # define LOGROTATE_HELP_STR_TARGET     "Rotates, compresses, and transfers system logs \n" \

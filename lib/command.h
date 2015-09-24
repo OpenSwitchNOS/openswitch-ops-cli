@@ -131,6 +131,8 @@ enum node_type
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
 #ifdef ENABLE_OVSDB
+  DHCP_SERVER_NODE,             /* DHCP server node */
+  TFTP_SERVER_NODE,             /* TFTP server node */
   VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
@@ -490,7 +492,7 @@ struct cmd_token
 /* Some macroes */
 #define CMD_OPTION(S)   ((S[0]) == '[')
 /*
- * HALON_TODO: Not sure what variable is checked in CMD_VARIABLE with '<'
+ * OPS_TODO: Not sure what variable is checked in CMD_VARIABLE with '<'
  * Token syntax verification may change accordingly
  */
 #define CMD_VARIABLE(S) (((S[0]) >= 'A' && (S[0]) <= 'Z') || ((S[0]) == '<'))
@@ -549,16 +551,16 @@ struct cmd_token
 #define RIB_STR    "Routing Information Base\n"
 
 /* Added for VRF */
-#define VRF_STR     "VRF Configuration.\n"
+#define VRF_STR     "VRF Configuration\n"
 
 /* VLAN help strings */
-#define VLAN_STR            "VLAN Configuration\n"
-#define VLAN_NAME_STR            "NAME Configuration\n"
-#define VLAN_DESCRIPTION_STR     "VLAN Description\n"
-#define TRUNK_STR           "Trunk Configuration\n"
+#define VLAN_STR            "VLAN configuration\n"
+#define VLAN_NAME_STR            "Name configuration\n"
+#define VLAN_DESCRIPTION_STR     "VLAN description\n"
+#define TRUNK_STR           "Trunk configuration\n"
 #define VLAN_INT_STR        "VLAN internal configuration\n"
 #define VLAN_INT_RANGE_STR  "VLAN internal range configuration\n"
-#define SHOW_VLAN_STR       "Show VLAN Configuration\n"
+#define SHOW_VLAN_STR       "Show VLAN configuration\n"
 #define SHOW_VLAN_INT_STR   "Show VLAN internal configuration\n"
 
 /* Help strings for show commands */

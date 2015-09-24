@@ -294,8 +294,9 @@ vtysh_ovsdb_radiusservertable_parse_options(const struct ovsrec_radius_server *r
        if (atoi(udp_port) != RADIUS_SERVER_DEFAULT_PORT) {
            vtysh_ovsdb_cli_print(p_msg, "radius-server host %s auth_port %s", ipaddr, udp_port);
        }
-
-       local_retries = *(row->retries);
+       if (row->retries != NULL){
+           local_retries = *(row->retries);
+       }
        row = ovsrec_radius_server_next(row);
     }
 
@@ -406,7 +407,7 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
   data = smap_get(ifrow_aaa, SYSTEM_AAA_RADIUS);
   if (data)
   {
-    if (!VTYSH_STR_EQ(data, HALON_FALSE_STR))
+    if (!VTYSH_STR_EQ(data, OPS_FALSE_STR))
     {
       vtysh_ovsdb_cli_print(p_msg, "aaa authentication login radius");
     }
@@ -415,7 +416,7 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
   data = smap_get(ifrow_aaa, SYSTEM_AAA_FALLBACK);
   if (data)
   {
-    if (!VTYSH_STR_EQ(data, HALON_TRUE_STR))
+    if (!VTYSH_STR_EQ(data, OPS_TRUE_STR))
     {
       vtysh_ovsdb_cli_print(p_msg, "no aaa authentication login fallback error local");
     }

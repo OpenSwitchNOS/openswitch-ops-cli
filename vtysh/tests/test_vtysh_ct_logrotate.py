@@ -18,15 +18,15 @@
 
 import time
 import pytest
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
-script_path = '/etc/cron.hourly/log_rotate'
+script_path = '/etc/cron.hourly/ops-log-rotate'
 logrotateCnfFile = '/etc/logrotate.ovs'
 shLogrotateCnfFile = 'cat /etc/logrotate.ovs'
 
 
-class LogrotateTests(HalonTest):
+class LogrotateTests(OpsVsiTest):
 
     def setupNet(self):
 
@@ -34,15 +34,12 @@ class LogrotateTests(HalonTest):
     # either pass getNodeOpts() into hopts/sopts of the topology that
     # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=1, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        logrotate_topo = SingleSwitchTopo(k=1, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(logrotate_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     @staticmethod
     def parseCLI(cliOutput):
@@ -73,25 +70,15 @@ class LogrotateTests(HalonTest):
         out = switch.cmd(shLogrotateCnfFile)
         lines = out.split('\n')
         for line in lines:
-            if 'No such file' in line:
-                print logrotateCnfFile + ' not generated\n'
-                return False
+            assert 'No such file' not in line,\
+                   logrotateCnfFile + ' not generated\n'
 
-        if not self.checkPattern(lines, value, logrotateCnfFile):
-            print 'Config file:check failed'
-            return False
-
- #       if not self.checkPattern(lines,maxsize_value,logrotateCnfFile):
- #           print("Default config file: maxsize check failed")
- #           return False
-
+        assert self.checkPattern(lines, value, logrotateCnfFile),\
+               "Configuration file check: failed"
         return True
 
     def testLogrotation(self):
         switch = self.net.switches[0]
-
-#        out = switch.cmd(script_path)
-#        lines = out.split('\n')
 
         out = switch.cmd('ls /var/log/messages*.gz')
         lines = out.split('\n')
@@ -107,8 +94,6 @@ class LogrotateTests(HalonTest):
     def confLogrotateCliGetPeriod(self, switch):
         switch.cmdCLI('end')
 
-        # out = switch.cmdCLI("show logrotate")
-        # out = switch.cmdCLI("exit")
 
         out = switch.cmd('ovs-vsctl list system')
         lines = out.split('\n')
@@ -118,10 +103,6 @@ class LogrotateTests(HalonTest):
         return False
 
     def confLogrotateCliGetMaxsize(self, switch):
-
-        # switch.cmdCLI("end")
-        # out = switch.cmdCLI("show logrotate")
-        # out = switch.cmdCLI("exit")
 
         out = switch.cmd('ovs-vsctl list system')
         lines = out.split('\n')
@@ -139,81 +120,37 @@ class LogrotateTests(HalonTest):
                 return True
         return False
 
-    def confLogrotateCliGetIP(self, switch):
-        out = switch.cmd('ovs-vsctl list system')
-        lines = out.split('\n')
-        for line in lines:
-            if 'logrotate_config' in line and 'ip="1.1.1.1"' in line:
-                return True
-        return False
-
     def LogrotateCliPeriodTest(self):
         switch = self.net.switches[0]
-        print '\n========================================='
-        print '*** Test to verify logrotate commands ***'
-        print '========================================='
         switch.cmdCLI('conf t')
         switch.cmdCLI('logrotate period hourly')
 
-        if self.confLogrotateCliGetPeriod(switch):
-            print 'Set period: test passed\n'
-            return True
-        print 'Set period: test failed\n'
-        return False
+        assert self.confLogrotateCliGetPeriod(switch),\
+            "Test to set period: failed"
+        info("### Test to set period: passed ###\n")
+        return True
 
     def LogrotateCliMaxsizeTest(self):
         switch = self.net.switches[0]
         switch.cmdCLI('conf t')
         switch.cmdCLI('logrotate maxsize 10')
 
-        if self.confLogrotateCliGetMaxsize(switch):
-            print 'Set maxsize: test passed\n'
-            return True
-        print 'Set maxsize: test failed\n'
-        return False
+        assert self.confLogrotateCliGetMaxsize(switch),\
+            "Test to set maxsize: failed"
+        info("### Test to set maxsize: passed ###\n")
+        return True
+
 
     def LogrotateCliTargetTest(self):
         switch = self.net.switches[0]
         switch.cmdCLI('conf t')
         switch.cmdCLI('logrotate target tftp://1.1.1.1')
 
-        if self.confLogrotateCliGetTarget(switch):
-            print 'Set target: test passed\n'
-            return True
-        print 'Set target: test failed\n'
-        return False
-
-    def LogrotateCliIPTest(self):
-        switch = self.net.switches[0]
-        switch.cmdCLI('conf t')
-        switch.cmdCLI('logrotate target remote ip 1.1.1.1')
-
-        if self.confLogrotateCliGetIP(switch):
-            print 'Set IP: test passed\n'
-            return True
-        print 'Set IP: test failed\n'
-        return False
-
-    def LogrotateCompleteCliTest(self):
-        switch = self.net.switches[0]
-        switch.cmdCLI('conf t')
-        switch.cmdCLI('logrotate maxsize 10K period weekly target remote ip 1.1.1.1'
-                      )
-
-        if not self.confLogrotateCliGetPeriod(switch):
-            print 'Complete CLI test: set period failed\n'
-            return False
-
-        if not self.confLogrotateCliGetMaxsize(switch):
-            print 'Complete CLI test: set maxsize failed\n'
-            return False
-
-        if not self.confLogrotateCliGetTarget(switch):
-            print 'Complete CLI test: set target failed\n'
-            return False
-
-        print 'Complete CLI test: passed\n'
+        assert self.confLogrotateCliGetTarget(switch),\
+            "Test to set target: failed"
+        info("### Test to set target: passed ###\n")
         return True
+
 
     def testLogrotationPeriod(self):
         switch = self.net.switches[0]
@@ -226,7 +163,7 @@ class LogrotateTests(HalonTest):
         self.testLogrotation()
         switch.cmd('date --set=' + '"' + now + '"')
 
-@pytest.mark.skipif(True, reason="Many test cases are failing")
+#@pytest.mark.skipif(True, reason="Many test cases are failing")
 class Test_logrotate:
 
     def setup(self):
@@ -238,11 +175,10 @@ class Test_logrotate:
     def setup_class(cls):
         Test_logrotate.test = LogrotateTests()
 
-    def teardown_class(cls):
 
     # Stop the Docker containers, and
     # mininet topology
-
+    def teardown_class(cls):
         Test_logrotate.test.net.stop()
 
     def setup_method(self, method):
@@ -257,13 +193,10 @@ class Test_logrotate:
   # Logrotate tests.
 
     def test_LogrotateDefaultConfig(self):
+        info("\n########## Test to verify logrotate commands "
+             "##########\n")
         if self.test.testLogrotateConfig('10M'):
-            print 'Test Default Config file: passed\n'
-
- # def test_LogrotationSize(self):
- #   self.test.LogrotateCliMaxsizeTest()
- #   self.test.testLogrotateConfig('10K')
- #   self.test.testLogrotation()
+            info("### Test default Config file: passed ###\n")
 
     def test_LogrotateCliPeriodTest(self):
         self.test.LogrotateCliPeriodTest()
@@ -274,15 +207,10 @@ class Test_logrotate:
     def test_LogrotateCliTargetTest(self):
         self.test.LogrotateCliTargetTest()
 
-#  def test_LogrotateCliIPTest(self):
-#    self.test.LogrotateCliIPTest()
-
- # def test_LogrotateCompleteCliTest(self):
- #   self.test.LogrotateCompleteCliTest()
-
     def test_LogrotateDBConfig(self):
         if self.test.testLogrotateConfig('hourly'):
-            print 'Test DB Config file: passed\n'
+            info("### Test config file generation from DB: passed ###\n")
+
 
 
 #  @pytest.mark.skipif(True, reason="Modifies system clock. Needs to be fixed.")

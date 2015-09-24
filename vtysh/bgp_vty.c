@@ -7148,15 +7148,49 @@ neighbor_uptime (time_t uptime2, char *buf, size_t len)
 
 }
 
+int
+calc_msg_recvd_count(struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
+{
+    return (get_statistics_from_neighbor(ovs_bgp_neighbor,
+                   "bgp-peer-open_in-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                  "bgp-peer-update_in-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                 "bgp-peer-keepalive_in-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                  "bgp-peer-notify_in-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                  "bgp-peer-refresh_in-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                "bgp-peer-dynamic_cap_in-count"));
+}
+
+int
+calc_msg_sent_count(struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
+{
+    return (get_statistics_from_neighbor(ovs_bgp_neighbor,
+                  "bgp-peer-open_out-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                 "bgp-peer-update_out-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                "bgp-peer-keepalive_out-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                 "bgp-peer-notify_out-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+                 "bgp-peer-refresh_out-count")+
+            get_statistics_from_neighbor(ovs_bgp_neighbor,
+               "bgp-peer-dynamic_cap_out-count"));
+}
+
 static int
 cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
 {
-    struct ovsrec_vrf *ovs_vrf=NULL;
-    struct ovsrec_bgp_router *bgp_router_context=NULL;
-    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor=NULL;
+    struct ovsrec_vrf *ovs_vrf = NULL;
+    struct ovsrec_bgp_router *bgp_router_context = NULL;
+    struct ovsrec_bgp_neighbor *ovs_bgp_neighbor = NULL;
     struct ovsrec_route *rib_row = NULL;
     struct ovsdb_idl_txn *txn;
-    int peer_count=0,rib_count=0,i=0,len=0,j=0;
+    int peer_count = 0, rib_count = 0, i = 0, len = 0, j = 0;
     char timebuf[BGP_UPTIME_LEN];
     static char header[] =
                 "Neighbor             AS MsgRcvd MsgSent Up/Down  State\n";
@@ -7180,37 +7214,25 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
 
     for(j=0;j<bgp_router_context->n_bgp_neighbors;j++)
     {
+        ovs_bgp_neighbor = bgp_router_context->value_bgp_neighbors[j];
         vty_out(vty,"%s",bgp_router_context->key_bgp_neighbors[j]);
         len=strlen(bgp_router_context->key_bgp_neighbors[j]);
 
         for(i=0;i<(16-len);i++)
           vty_out(vty," ");
 
-        vty_out(vty, "%7d", *bgp_router_context->value_bgp_neighbors[j]->remote_as);
-        //OPS_TODO
-        //vty_out(vty,"%8d",get_statistics_from_neighbor(bgp_router_context->value_bgp_neighbors[j],"bgp-peer-keepalive_in-count"));
+        vty_out(vty, "%7d", *ovs_bgp_neighbor->remote_as);
 
-        vty_out(vty, "%8d",
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[8]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[14]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[4]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[6]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[11]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[1]);
+        vty_out(vty, "%8d", calc_msg_recvd_count(ovs_bgp_neighbor));
 
-        vty_out(vty, "%8d",
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[9]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[15]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[5]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[7]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[12]+
-                     bgp_router_context->value_bgp_neighbors[j]->value_statistics[2]);
+        vty_out(vty, "%8d", calc_msg_sent_count(ovs_bgp_neighbor));
 
-        vty_out(vty, " %8s",
-          neighbor_uptime (bgp_router_context->value_bgp_neighbors[j]->value_statistics[16],
-               timebuf, BGP_UPTIME_LEN));
+        vty_out(vty, " %8s", neighbor_uptime
+            (get_statistics_from_neighbor(ovs_bgp_neighbor,
+             "bgp-peer-uptime"), timebuf, BGP_UPTIME_LEN));
+
         vty_out(vty, "%12s\n",
-                     smap_get(&bgp_router_context->value_bgp_neighbors[j]->status,
+                     smap_get(&ovs_bgp_neighbor->status,
                          "bgp-peer-state"));
     }
 

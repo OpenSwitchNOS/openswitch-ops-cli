@@ -32,7 +32,6 @@
 #define FAN_SET_STR "Override fan speed\n"
 #define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
 
-void
-fan_vty_init (void);
+void fan_vty_init (void);
 
 #endif /* _FAN_VTY_H */

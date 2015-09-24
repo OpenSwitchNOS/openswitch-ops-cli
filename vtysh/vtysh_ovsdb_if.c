@@ -203,6 +203,7 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_vrfs);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_bridges);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
 }
 
 static void
@@ -258,6 +259,9 @@ intf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_type);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pm_info);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
 }
 
 /***********************************************************
@@ -293,6 +297,67 @@ radius_server_ovsdb_init()
     return;
 }
 
+static void
+dhcp_tftp_ovsdb_init()
+{
+    /* Add dhcp-server config tables */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_server);
+    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_range);
+    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_static_host);
+
+    /* Add columns in  System table */
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
+
+    /* Add columns in VRF table */
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_dhcp_server);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_other_config);
+
+    /* Add columns in DHCP Server table */
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_ranges);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_static_hosts);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_dhcp_options);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_matches);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_bootp);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_other_config);
+
+    /* Add columns in DHCP server ranges table */
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_start_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_end_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_netmask);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_prefix_len);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_broadcast);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_set_tag);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_match_tags);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_is_static);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_lease_duration);
+
+    /* Add columns in DHCP server static hosts table */
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_mac_addresses);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_set_tags);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_hostname);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_id);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_lease_duration);
+
+    /* Add columns in DHCP server options table */
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_match_tags);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_name);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_number);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_value);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_ipv6);
+
+    /* Add columns in DHCP server matches table */
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_set_tag);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_name);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_number);
+    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_value);
+
+}
+
 /***********************************************************
  * @func        : system_ovsdb_init
  * @detail      : Initialise System Related OVSDB tables
@@ -310,7 +375,6 @@ system_ovsdb_init()
     ovsdb_idl_add_table(idl,&ovsrec_table_temp_sensor);
 
     /* Add Columns for System Related Tables */
-
     //Power Supply
     ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_name);
     ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_status);
@@ -418,6 +482,9 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_enable_reconnect(idl);
     latch_init(&ovsdb_latch);
 
+    /* Add switch version column */
+    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_switch_version);
+
     /* Add hostname columns */
     ovsdb_idl_add_table(idl, &ovsrec_table_system);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
@@ -468,7 +535,7 @@ ovsdb_init(const char *db_path)
 
     /* vlan table */
     vlan_ovsdb_init();
-
+    dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init();
     /* Add tables/columns needed for LACP config commands */
@@ -496,7 +563,7 @@ halon_vtysh_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
 /*
  * The init for the ovsdb integration called in vtysh main function
  */
-void vtysh_ovsdb_init(int argc, char *argv[])
+void vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
 {
     int retval;
     char *ovsdb_sock;
@@ -504,8 +571,13 @@ void vtysh_ovsdb_init(int argc, char *argv[])
     set_program_name(argv[0]);
     proctitle_init(argc, argv);
     fatal_ignore_sigpipe();
-
-    ovsdb_sock = xasprintf("unix:%s/db.sock", ovs_rundir());
+    if (db_name != NULL)
+    {
+        ovsdb_sock = xasprintf("unix:%s/%s", ovs_rundir(), db_name);
+    }
+    else {
+        ovsdb_sock = xasprintf("unix:%s/db.sock", ovs_rundir());
+    }
     ovsrec_init();
 
     retval = unixctl_server_create(appctl_path, &appctl);
@@ -562,14 +634,14 @@ void vtysh_ovsdb_hostname_set(const char* in)
  * The get command to read from the ovsdb system table
  * hostname column from the vtysh get-hostname command
  */
-char* vtysh_ovsdb_hostname_get()
+const char* vtysh_ovsdb_hostname_get()
 {
     const struct ovsrec_system *ovs;
     ovs = ovsrec_system_first(idl);
 
     if(ovs)
     {
-        return ovs->hostname;
+        return smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_HOSTNAME);
     }
     else
     {
@@ -736,11 +808,12 @@ int vtysh_ovsdb_vlan_match(const char *str)
   return 1;
 }
 
+/* Validate MAC address that will be used by MAC type tokens */
 int vtysh_ovsdb_mac_match(const char *str)
 {
   int i = 0;
   /*
-   * HALON_TODO : Checking for reserved MAC addresses if needed
+   * OPS_TODO : Checking for reserved MAC addresses if needed
    */
   if(!str)
       return 1;

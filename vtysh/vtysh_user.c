@@ -158,7 +158,7 @@ user_get (const char *name)
   return user;
 }
 
-#ifdef ENABLE_OVSDB
+#ifndef ENABLE_OVSDB
 DEFUN (username_nopassword,
        username_nopassword_cmd,
        "username WORD nopassword",
@@ -198,7 +198,7 @@ void
 vtysh_user_init ()
 {
   userlist = list_new ();
-#ifdef ENABLE_OVSDB
+#ifndef ENABLE_OVSDB
   install_element (CONFIG_NODE, &username_nopassword_cmd);
 #endif
 }

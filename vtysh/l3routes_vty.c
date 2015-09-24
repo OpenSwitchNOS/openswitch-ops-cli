@@ -154,15 +154,8 @@ struct ovsrec_nexthop * set_nexthop_entry(struct ovsdb_idl_txn *status_txn, char
 }
 
 
-DEFUN (vtysh_ip_route,
-       vtysh_ip_route_cmd,
-       "ip route A.B.C.D/M (A.B.C.D|INTERFACE) {<1-255>}",
-       IP_STR
-       "Establish static routes\n"
-       "IP destination prefix (e.g. 10.0.0.0/8)\n"
-       "Nexthop IP (eg. 10.0.0.1)\n"
-       "Outgoing interface\n"
-       "Distance for this route. Default is 1 for static routes\n")
+static int
+ip_route_common(struct vty *vty, char **argv, char *distance)
 {
     const struct ovsrec_route *row = NULL;
     struct ovsrec_nexthop *row_nh = NULL;
@@ -240,8 +233,8 @@ DEFUN (vtysh_ip_route,
 
         ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
-        row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
-                                   (char*)argv[2], row, "ipv4");
+        row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
+                                   distance, row, "ipv4");
         if (row_nh == NULL) {
             cli_do_config_abort(status_txn);
             return CMD_OVSDB_FAILURE;
@@ -266,8 +259,8 @@ DEFUN (vtysh_ip_route,
         }
 
         if (!nh_match) {
-            row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
-                                       (char*)argv[2], row, "ipv4");
+            row_nh = set_nexthop_entry(status_txn, argv[1], prefix_match, static_match,
+                                       distance, row, "ipv4");
             if (row_nh == NULL) {
                 cli_do_config_abort(status_txn);
                 return CMD_OVSDB_FAILURE;
@@ -298,6 +291,31 @@ DEFUN (vtysh_ip_route,
         return CMD_SUCCESS;
     }
 
+}
+
+DEFUN (vtysh_ip_route,
+       vtysh_ip_route_cmd,
+       "ip route A.B.C.D/M (A.B.C.D|INTERFACE)",
+       IP_STR
+       "Establish static routes\n"
+       "IP destination prefix (e.g. 10.0.0.0/8)\n"
+       "Nexthop IP (eg. 10.0.0.1)\n"
+       "Outgoing interface\n")
+{
+    return ip_route_common(vty, (char **)argv, NULL);
+}
+
+DEFUN (vtysh_ip_route_distance,
+       vtysh_ip_route_distance_cmd,
+       "ip route A.B.C.D/M (A.B.C.D|INTERFACE) <1-255>",
+       IP_STR
+       "Establish static routes\n"
+       "IP destination prefix (e.g. 10.0.0.0/8)\n"
+       "Nexthop IP (eg. 10.0.0.1)\n"
+       "Outgoing interface\n"
+       "Distance for this route. Default is 1 for static routes\n")
+{
+    return ip_route_common(vty, (char **)argv, (char *)argv[2]);
 }
 
 static int show_routes(struct vty *vty, char * ip_addr_family)
@@ -398,15 +416,8 @@ DEFUN (vtysh_show_ip_route,
     return retval;
 }
 
-DEFUN (vtysh_no_ip_route,
-       vtysh_no_ip_route_cmd,
-       "no ip route A.B.C.D/M (A.B.C.D|INTERFACE) {<1-255>}",
-       NO_STR
-       IP_STR
-       "Established static route\n"
-       "IP destination prefix (e.g. 10.0.0.0)\n"
-       "Nexthop IP (eg. 10.0.0.1)\n"
-       "Outgoing interface\n")
+static int
+no_ip_route_common(struct vty *vty, char **argv, char *distance)
 {
     int ret;
     const struct ovsrec_route *row_route = NULL;
@@ -468,8 +479,8 @@ DEFUN (vtysh_no_ip_route,
                     memset(str, 0, sizeof(str));
                     distance_match = 0;
 
-                    if (argv[2] != NULL) {
-                        (atoi(argv[2]) == *row_route->distance) ? (distance_match = 1)
+                    if (distance != NULL) {
+                        (atoi(distance) == *row_route->distance) ? (distance_match = 1)
                             : (distance_match = 0);
                     } else {
                         distance_match = 1;
@@ -536,17 +547,36 @@ DEFUN (vtysh_no_ip_route,
     }
 }
 
+DEFUN (vtysh_no_ip_route,
+       vtysh_no_ip_route_cmd,
+       "no ip route A.B.C.D/M (A.B.C.D|INTERFACE)",
+       NO_STR
+       IP_STR
+       "Established static route\n"
+       "IP destination prefix (e.g. 10.0.0.0)\n"
+       "Nexthop IP (eg. 10.0.0.1)\n"
+       "Outgoing interface\n")
+{
+    return no_ip_route_common(vty, (char **)argv, NULL);
+}
+
+DEFUN (vtysh_no_ip_route_distance,
+       vtysh_no_ip_route_distance_cmd,
+       "no ip route A.B.C.D/M (A.B.C.D|INTERFACE) <1-255>",
+       NO_STR
+       IP_STR
+       "Established static route\n"
+       "IP destination prefix (e.g. 10.0.0.0)\n"
+       "Nexthop IP (eg. 10.0.0.1)\n"
+       "Outgoing interface\n")
+{
+    return no_ip_route_common(vty, (char **)argv, (char *)argv[2]);
+}
+
 /* IPv6 CLIs*/
 
-DEFUN (vtysh_ipv6_route,
-       vtysh_ipv6_route_cmd,
-       "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) {<1-255>}",
-       IP_STR
-       "Establish static routes\n"
-       "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
-       "Nexthop IPv6 (eg. 2010:bda::)\n"
-       "Outgoing interface\n"
-       "Distance for this route. Default is 1 for static routes\n")
+static int
+ipv6_route_common(struct vty *vty, char **argv, char *distance)
 {
     const struct ovsrec_route *row = NULL;
     const struct ovsrec_nexthop *row_nh = NULL;
@@ -627,7 +657,7 @@ DEFUN (vtysh_ipv6_route,
     ovsrec_route_set_from(row, OVSREC_ROUTE_FROM_STATIC);
 
     row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
-                               (char*)argv[2], row, "ipv6");
+                               distance, row, "ipv6");
     ovsrec_route_set_nexthops(row, (struct ovsrec_nexthop**)&row_nh, row->n_nexthops + 1);
     } else {
         for (i = 0; i < row->n_nexthops; i++) {
@@ -648,7 +678,7 @@ DEFUN (vtysh_ipv6_route,
 
         if (!nh_match) {
             row_nh = set_nexthop_entry(status_txn, (char*)argv[1], prefix_match, static_match,
-                                       (char*)argv[2], row, "ipv6");
+                                       distance, row, "ipv6");
 
             if (row_nh == NULL) {
                 cli_do_config_abort(status_txn);
@@ -682,6 +712,31 @@ DEFUN (vtysh_ipv6_route,
 
 }
 
+DEFUN (vtysh_ipv6_route,
+       vtysh_ipv6_route_cmd,
+       "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE)",
+       IP_STR
+       "Establish static routes\n"
+       "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
+       "Nexthop IPv6 (eg. 2010:bda::)\n"
+       "Outgoing interface\n")
+{
+    return ipv6_route_common(vty, (char **)argv, NULL);
+}
+
+DEFUN (vtysh_ipv6_route_distance,
+       vtysh_ipv6_route_distance_cmd,
+       "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) <1-255>",
+       IP_STR
+       "Establish static routes\n"
+       "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
+       "Nexthop IPv6 (eg. 2010:bda::)\n"
+       "Outgoing interface\n"
+       "Distance for this route. Default is 1 for static routes\n")
+{
+    return ipv6_route_common(vty, (char **)argv, (char *)argv[2]);
+}
+
 
 DEFUN (vtysh_show_ipv6_route,
        vtysh_show_ipv6_route_cmd,
@@ -698,15 +753,8 @@ DEFUN (vtysh_show_ipv6_route,
     return retval;
 }
 
-DEFUN (vtysh_no_ipv6_route,
-       vtysh_no_ipv6_route_cmd,
-       "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) {<1-255>}",
-       NO_STR
-       IP_STR
-       "Established static route\n"
-       "IP destination prefix (e.g. 2010:bd9::)\n"
-       "Nexthop IP (eg. 2010:bda::)\n"
-       "Outgoing interface\n")
+static int
+no_ipv6_route_common(struct vty *vty, char **argv, char *distance)
 {
     int ret;
     const struct ovsrec_route *row_route = NULL;
@@ -768,8 +816,8 @@ DEFUN (vtysh_no_ipv6_route,
                     memset(str, 0, sizeof(str));;
                     distance_match = 0;
 
-                    if (argv[2] != NULL) {
-                        (atoi(argv[2]) == *row_route->distance) ? (distance_match = 1)
+                    if (distance != NULL) {
+                        (atoi(distance) == *row_route->distance) ? (distance_match = 1)
                             : (distance_match = 0);
                     } else {
                         distance_match = 1;
@@ -834,6 +882,32 @@ DEFUN (vtysh_no_ipv6_route,
     } else {
         return CMD_SUCCESS;
     }
+}
+
+DEFUN (vtysh_no_ipv6_route,
+       vtysh_no_ipv6_route_cmd,
+       "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE)",
+       NO_STR
+       IP_STR
+       "Established static route\n"
+       "IP destination prefix (e.g. 2010:bd9::)\n"
+       "Nexthop IP (eg. 2010:bda::)\n"
+       "Outgoing interface\n")
+{
+    return no_ipv6_route_common(vty, (char **)argv, NULL);
+}
+
+DEFUN (vtysh_no_ipv6_route_distance,
+       vtysh_no_ipv6_route_distance_cmd,
+       "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) <1-255>",
+       NO_STR
+       IP_STR
+       "Established static route\n"
+       "IP destination prefix (e.g. 2010:bd9::)\n"
+       "Nexthop IP (eg. 2010:bda::)\n"
+       "Outgoing interface\n")
+{
+    return no_ipv6_route_common(vty, (char **)argv, (char *)argv[2]);
 }
 
 static int show_rib(struct vty *vty, char * ip_addr_family)
@@ -954,12 +1028,16 @@ DEFUN (vtysh_show_rib,
 
 void l3routes_vty_init(void) {
     install_element(CONFIG_NODE, &vtysh_ip_route_cmd);
+    install_element(CONFIG_NODE, &vtysh_ip_route_distance_cmd);
     install_element(ENABLE_NODE, &vtysh_show_ip_route_cmd);
     install_element(CONFIG_NODE, &vtysh_no_ip_route_cmd);
+    install_element(CONFIG_NODE, &vtysh_no_ip_route_distance_cmd);
 
     install_element(CONFIG_NODE, &vtysh_ipv6_route_cmd);
+    install_element(CONFIG_NODE, &vtysh_ipv6_route_distance_cmd);
     install_element(ENABLE_NODE, &vtysh_show_ipv6_route_cmd);
     install_element(CONFIG_NODE, &vtysh_no_ipv6_route_cmd);
+    install_element(CONFIG_NODE, &vtysh_no_ipv6_route_distance_cmd);
 
     install_element(ENABLE_NODE, &vtysh_show_rib_cmd);
 }

@@ -1162,6 +1162,7 @@ cmd_port_match (const char *str)
   return 1;
 }
 
+/* Wrapper function to call mac validation func */
 static int
 cmd_mac_match (const char *str)
 {
@@ -1443,8 +1444,9 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
     memcpy(&temptoken,token,sizeof(struct cmd_token));
     temptoken.cmd = XSTRDUP(MTYPE_CMD_TOKENS,szToken);
 
+    /* Validate and complete the tokens present inside []*/
     word_match = cmd_word_match(&temptoken, matcher->filter, word);
-    /* .LINE cannot be an optional type toke ([]) */
+    /* .LINE cannot be an optional type token ([]) */
     if ((no_match == word_match) ||
         (vararg_match == word_match))
     {
@@ -1462,12 +1464,15 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
     }
     else
     {
+       /* if not a fixed string then push value input by user */
        if (push_argument(argc, argv, word))
        {
          XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
          return MATCHER_EXCEED_ARGC_MAX;
        }
     }
+    /* Word match should be extend_match as it is used
+       to check for matched count */
     word_match = extend_match;
     XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
   }
@@ -1523,6 +1528,8 @@ cmd_matcher_match_multiple(struct cmd_matcher *matcher,
       if (word_match > multiple_match)
         {
           multiple_match = word_match;
+          /* Push complete token instead of user input value
+             if it's a partly match */
           if(partly_match == word_match)
                 arg = word_token->cmd;
           else
@@ -1681,25 +1688,18 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
           if (keyword_args)
             {
               word_token = vector_slot(keyword_vector, 0);
-              if (match_type = cmd_word_match(word_token,FILTER_RELAXED,
-                               (const char *)matcher->vline->index[(matcher->word_index) - 1]))
-              {
-                    if(partly_match == match_type)
-                          arg = word_token->cmd;
-                    else
-                          arg = (const char *)matcher->vline->index[(matcher->word_index) - 1];
-              }
-              else
-              {
-                    rv = MATCHER_INCOMPLETE;
-              }
+              arg = word_token->cmd;
+            }
+          else
+            {
+              arg = NULL;
             }
 
             if (push_argument(argc, argv, arg))
                  rv = MATCHER_EXCEED_ARGC_MAX;
         }
       else
-        {
+      {
           /* this is a keyword with arguments */
           if (keyword_args)
             {
@@ -3222,6 +3222,8 @@ DEFUN (config_exit,
     case MGMT_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_INTERFACE_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
 #endif
     case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
@@ -3281,6 +3283,8 @@ DEFUN (config_end,
     case MGMT_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_INTERFACE_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
 #endif
     case ZEBRA_NODE:
     case RIP_NODE:
@@ -3610,16 +3614,15 @@ DEFUN (config_no_hostname,
 }
 #else
 #define MAX_HOSTNAME_LEN 32
-#define DEFAULT_HOSTNAME "openswitch"
 #define HOSTNAME_STR "Set or get hostname\n"
 extern void  vtysh_ovsdb_hostname_set(const char * in);
-extern char* vtysh_ovsdb_hostname_get();
+extern const char* vtysh_ovsdb_hostname_get();
 /* Hostname configuration */
 DEFUN (config_hostname,
        hostname_cmd,
        "hostname [HOSTNAME]",
        HOSTNAME_STR
-       "Configure hostname as alphanumeric string. First letter must be alphabet(Max Length 32)\n")
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
  char* hostname = NULL;
  int   ret = 0;
@@ -3636,56 +3639,21 @@ DEFUN (config_hostname,
         return CMD_SUCCESS;
      }
 
-     ret = sethostname(argv[0],MAX_HOSTNAME_LEN);
-     if(CMD_SUCCESS != ret)
-     {
-       if (EPERM == ret)
-       {
-          vty_out(vty,"Operation not permitted%s",VTY_NEWLINE);
-          return CMD_SUCCESS;
-       }
-       else
-       {
-          vty_out(vty,"Set hostname failed%s",VTY_NEWLINE);
-          return CMD_SUCCESS;
-       }
-     }
-
-     if (host.name)
-        XFREE (MTYPE_HOST, host.name);
-
-     host.name = XSTRDUP (MTYPE_HOST, argv[0]);
-
-     if(host.name)
-          vtysh_ovsdb_hostname_set(host.name);
+     vtysh_ovsdb_hostname_set(argv[0]);
  }
  else
  {
-    hostname = vtysh_ovsdb_hostname_get();
-    if (hostname && hostname[0])
-    {
+     hostname = vtysh_ovsdb_hostname_get();
+     if (hostname)
+     {
         vty_out (vty,"%s%s",hostname,VTY_NEWLINE);
-        /* If there is a mismatch between DB and system hostname
-           then set the system hostname to that present in DB
-           usually happens when set outside CLI say rest */
-        if(host.name && ( 0 != strcmp(host.name,hostname)))
-        {
-          /* May not need to check for error as no need
-             to show set error for a get command */
-             sethostname(hostname,MAX_HOSTNAME_LEN);
-             XFREE (MTYPE_HOST, host.name);
-             host.name = XSTRDUP (MTYPE_HOST, hostname);
-        }
-        else if (NULL == host.name)
-             host.name = XSTRDUP (MTYPE_HOST,hostname);
-    }
-    else if (host.name)
-        vty_out (vty,"%s%s",host.name,VTY_NEWLINE);
-    else
-        vty_out (vty,"%s%s"," ",VTY_NEWLINE);
-  }
-
-  return CMD_SUCCESS;
+     }
+     else
+     {
+        vty_out (vty,"%s%s","",VTY_NEWLINE);
+     }
+ }
+ return CMD_SUCCESS;
 }
 
 DEFUN (config_no_hostname,
@@ -3693,35 +3661,10 @@ DEFUN (config_no_hostname,
        "no hostname [HOSTNAME]",
        NO_STR
        HOSTNAME_STR
-       "Configure hostname as alphanumeric string. First letter must be alphabet(Max Length 32)\n")
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
-  struct utsname name;
-  int ret = 0;
-  memset(&name,0,sizeof(name));
-
-   ret = sethostname(DEFAULT_HOSTNAME,MAX_HOSTNAME_LEN);
-   if (ret != CMD_SUCCESS)
-   {
-     if (EPERM == ret)
-     {
-        vty_out(vty,"Operation not permitted%s",VTY_NEWLINE);
-        return CMD_SUCCESS;
-     }
-     else
-     {
-        vty_out(vty,"Failed to set default hostname%s",VTY_NEWLINE);
-        return CMD_SUCCESS;
-     }
-   }
-
-  if (host.name)
-    XFREE (MTYPE_HOST, host.name);
-
-  host.name = XSTRDUP (MTYPE_HOST, DEFAULT_HOSTNAME);
-
-  vtysh_ovsdb_hostname_set(host.name);
-
-  return CMD_SUCCESS;
+    vtysh_ovsdb_hostname_set("");
+    return CMD_SUCCESS;
 }
 
 #endif //ENABLE_OVSDB

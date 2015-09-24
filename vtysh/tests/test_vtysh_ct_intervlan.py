@@ -31,12 +31,12 @@ min_vlan = "0"
 class intervlanCLITest( OpsVsiTest ):
 
     def setupNet(self):
-        self.net = Mininet(topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                                 sopts=self.getSwitchOpts()),
-                           switch=VsiOpenSwitch,
-                           host=OpsVsiHost,
-                           link=OpsVsiLink, controller=None,
-                           build=True)
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        intervlan_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(intervlan_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def test_intervlan_input_test(self):
         '''

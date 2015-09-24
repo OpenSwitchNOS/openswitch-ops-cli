@@ -23,6 +23,9 @@
 #ifdef ENABLE_OVSDB
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <termios.h>
 #include <arpa/inet.h>
 #include <vty_utils.h>
 #include "vtysh/vtysh_ovsdb_if.h"
@@ -51,6 +54,8 @@
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 #include "openhalon-idl.h"
+#include <crypt.h>
+#include "vswitch-idl.h"
 
 #ifdef ENABLE_OVSDB
 #include "intf_vty.h"
@@ -67,10 +72,13 @@
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
+#include "dhcp_tftp_vty.h"
 #endif
 
 #include "aaa_vty.h"
 #include "vtysh_utils.h"
+#include <termios.h>
+
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -797,6 +805,7 @@ static struct cmd_node bgp_node =
       "%s(config-router)# ",
    };
 
+#ifndef ENABLE_OVSDB
 static struct cmd_node rip_node =
    {
       RIP_NODE,
@@ -808,6 +817,7 @@ static struct cmd_node isis_node =
       ISIS_NODE,
       "%s(config-router)# ",
    };
+#endif
 
 static struct cmd_node interface_node =
    {
@@ -878,6 +888,7 @@ static struct cmd_node bgp_ipv6m_node =
       "%s(config-router-af)# "
    };
 
+#ifndef ENABLE_OVSDB
 static struct cmd_node ospf_node =
    {
       OSPF_NODE,
@@ -901,6 +912,7 @@ static struct cmd_node babel_node =
       BABEL_NODE,
       "%s(config-babel)# "
    };
+#endif
 
 static struct cmd_node keychain_node =
    {
@@ -919,6 +931,18 @@ static struct cmd_node vlan_interface_node =
 {
   VLAN_INTERFACE_NODE,
   "%s(config-if-vlan)# ",
+};
+
+static struct cmd_node dhcp_server_node =
+{
+  DHCP_SERVER_NODE,
+  "%s(config-dhcp-server)# ",
+};
+
+static struct cmd_node tftp_server_node =
+{
+  TFTP_SERVER_NODE,
+  "%s(config-tftp-server)# ",
 };
 
 #endif
@@ -1079,6 +1103,7 @@ DEFUNSH (VTYSH_RIPD,
    return CMD_SUCCESS;
 }
 
+#ifndef ENABLE_OVSDB
 DEFUNSH (VTYSH_RIPD,
       router_rip,
       router_rip_cmd,
@@ -1145,6 +1170,7 @@ DEFUNSH (VTYSH_ISISD,
    vty->node = ISIS_NODE;
    return CMD_SUCCESS;
 }
+#endif
 
 #if 0
 DEFUNSH (VTYSH_RMAP,
@@ -1224,6 +1250,8 @@ vtysh_exit (struct vty *vty)
     case MGMT_INTERFACE_NODE:
     case VLAN_INTERFACE_NODE:
     case LINK_AGGREGATION_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
 #endif
     case ZEBRA_NODE:
     case BGP_NODE:
@@ -1414,6 +1442,54 @@ ALIAS (vtysh_exit_line_vty,
 
 
 #ifdef ENABLE_OVSDB
+DEFUN (vtysh_dhcp_server,
+      vtysh_dhcp_server_cmd,
+      "dhcp-server",
+      "DHCP Server Configuration\n")
+{
+
+   vty->node = DHCP_SERVER_NODE;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_exit_dhcp_server,
+      vtysh_exit_dhcp_server_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_dhcp_server,
+      vtysh_quit_dhcp_server_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
+DEFUN (vtysh_tftp_server,
+      vtysh_tftp_server_cmd,
+      "tftp-server",
+      "TFTP Server Configuration\n")
+{
+
+   vty->node = TFTP_SERVER_NODE;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_exit_tftp_server,
+      vtysh_exit_tftp_server_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_tftp_server,
+      vtysh_quit_tftp_server_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
 DEFUN (vtysh_interface,
       vtysh_interface_cmd,
       "interface IFNAME",
@@ -1530,7 +1606,7 @@ DEFUN(vtysh_vlan,
     vtysh_vlan_cmd,
     "vlan <1-4094>",
     VLAN_STR
-    "The VLAN identifier\n")
+    "VLAN identifier\n")
 {
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_bridge *bridge_row = NULL;
@@ -1637,7 +1713,7 @@ DEFUN(vtysh_no_vlan,
     "no vlan <1-4094>",
     NO_STR
     VLAN_STR
-    "The VLAN Identifier\n")
+    "VLAN Identifier\n")
 {
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_port *port_row = NULL;
@@ -1892,7 +1968,6 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D,
       NO_STR
       "Delete a pseudo interface's configuration\n"
       "Interface's name\n")
-#endif
 /* TODO Implement interface description commands in ripngd, ospf6d
  * and isisd. */
 DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
@@ -1906,6 +1981,7 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
       "no description",
       NO_STR
       "Interface specific description\n")
+#endif
 
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_exit_interface,
@@ -1936,6 +2012,7 @@ ALIAS (vtysh_exit_mgmt_interface,
        "Exit current mode and down to previous mode\n")
 #endif
 /* Memory */
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_memory,
       vtysh_show_memory_cmd,
       "show memory",
@@ -1957,7 +2034,7 @@ DEFUN (vtysh_show_memory,
 
    return ret;
 }
-
+#endif
 
 #ifndef ENABLE_OVSDB
 /* Logging commands. */
@@ -2221,6 +2298,7 @@ DEFUNSH (VTYSH_ALL,
    return CMD_SUCCESS;
 }
 #endif
+#ifndef ENABLE_OVSDB
 
 DEFUNSH (VTYSH_ALL,
       vtysh_service_password_encrypt,
@@ -2299,6 +2377,7 @@ DEFUNSH (VTYSH_ALL,
 {
    return CMD_SUCCESS;
 }
+#endif
 
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_write_terminal,
@@ -2554,6 +2633,7 @@ DEFUN (vtysh_terminal_no_length,
 }
 #endif
 
+#ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_daemons,
       vtysh_show_daemons_cmd,
       "show daemons",
@@ -2569,6 +2649,8 @@ DEFUN (vtysh_show_daemons,
 
    return CMD_SUCCESS;
 }
+
+#endif
 
 #ifdef ENABLE_OVSDB
 /* Execute command in child process. */
@@ -2622,10 +2704,71 @@ execute_command (const char *command, int argc, const char *arg[])
       execute_flag = 1;
       ret = wait4 (pid, &status, 0, NULL);
       execute_flag = 0;
+      if (WIFEXITED(status))
+      {
+          VLOG_ERR("Child exited normally\n");
+          return WEXITSTATUS(status);
+      }
+      else
+      {
+          VLOG_ERR("Child exited abnormally\n");
+      }
    }
-   return ret;
+   return -1;
 }
 
+int
+remove_temp_db(int initialize)
+{
+    char file_name[]= TEMPORARY_PROCESS_PID;
+    char *remove_db[] = {TEMPORARY_STARTUP_DB};
+    FILE * fp;
+    char *line = NULL;
+    size_t len = 0;
+    int file_not_present = 0;
+
+    fp = fopen(file_name,"r");
+    if (fp == NULL)
+    {
+        if (initialize == 0)
+        {
+            VLOG_ERR("Error while opening %s file\n", file_name);
+            return -1;
+        }
+        else
+        {
+            VLOG_INFO("No %s file present\n",file_name);
+            file_not_present = 1;
+        }
+    }
+
+    if (!file_not_present)
+    {
+        if (getline(&line, &len, fp) != -1) {
+            if (kill(atoi(line), SIGTERM) == -1)
+            {
+                VLOG_ERR("Failed to kill temp.pid process\n");
+                fclose(fp);
+                return -1;
+            }
+        }
+        fclose(fp);
+    }
+
+    if (access(TEMPORARY_STARTUP_DB, F_OK) == -1)
+    {
+        VLOG_INFO("No %s file present\n", TEMPORARY_STARTUP_DB);
+    }
+    else
+    {
+        if (execute_command ("rm", 1, (const char **)remove_db) == -1)
+        {
+            VLOG_ERR("Failed to remove temporary DB \n");
+            return -1;
+        }
+    }
+    return 0;
+}
 /* Write startup configuration into the terminal. */
 DEFUN (show_startup_config,
        show_startup_config_cmd,
@@ -2634,7 +2777,63 @@ DEFUN (show_startup_config,
        "Contents of startup configuration\n")
 {
   char *arguments[] = {"show", "startup-config"};
-  execute_command ("cfgdbutil", 2, (const char **)arguments);
+  char *temp_args[] = {"-D", TEMPORARY_STARTUP_SOCKET, "-c", "show running-config "};
+  char *copy_db[] = {OVSDB_PATH, TEMPORARY_STARTUP_DB};
+  char *run_server[] = {"--pidfile=/var/run/openvswitch/temp_startup.pid", "--detach", "--remote", "punix:/var/run/openvswitch/temp_startup.sock", TEMPORARY_STARTUP_DB};
+  int ret = 0;
+
+  // Check if temporary DB exists and OVSDB server running. If yes, remove it.
+  remove_temp_db(1);
+
+  // Copy current ovsdb to temporary DB.
+  if (execute_command ("cp", 2, (const char **)copy_db) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to copy OVSDB to temporary DB\n");
+      return CMD_SUCCESS;
+  }
+
+  // Run ovsdb-server for temporary DB.
+  if (execute_command ("ovsdb-server", 5, (const char **)run_server) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to run ovsdb-server for temporary DB\n");
+      remove_temp_db(1);
+      return CMD_SUCCESS;
+  }
+
+  // Copy startup config to temporary DB.
+  ret = execute_command ("cfgdbutil", 2, (const char **)arguments);
+  if (ret == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to run cfgdbutil\n");
+      remove_temp_db(1);
+      return CMD_SUCCESS;
+  }
+  else if (ret == 2)
+  {
+      VLOG_ERR("No saved configuration exists\n");
+      remove_temp_db(1);
+      return CMD_SUCCESS;
+  }
+
+  // Run a vtysh session on temporary DB.
+  if (execute_command ("vtysh", 4, (const char **)temp_args) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to invoke vtysh on Temporary DB\n");
+      remove_temp_db(1);
+      return CMD_SUCCESS;
+  }
+
+  // Remove temporary DB and kill the ovsdb-server to temporary DB.
+  if (remove_temp_db(0))
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      return CMD_SUCCESS;
+  }
+
   return CMD_SUCCESS;
 }
 
@@ -2780,7 +2979,8 @@ DEFUN (vtysh_start_bash,
 }
 
 /*Function to get the number of users under given group*/
-static int get_group_user_count(const char *group_name)
+static int
+get_group_user_count(const char *group_name)
 {
      FILE *group, *passwd;
      char groupLine[256] = {0};
@@ -2814,7 +3014,8 @@ static int get_group_user_count(const char *group_name)
 }
 
 /*Function to check whether user is member of the given group*/
-static int check_user_group( const char *user, const char *group_name)
+static int
+check_user_group( const char *user, const char *group_name)
 {
        int j, ngroups;
        gid_t *groups;
@@ -2833,6 +3034,7 @@ static int check_user_group( const char *user, const char *group_name)
        pw = getpwnam(user);
        if (pw == NULL) {
            VLOG_DBG("Invalid User. Function = %s, Line = %d", __func__,__LINE__);
+           free(groups);
            return false;
        }
 
@@ -2840,15 +3042,17 @@ static int check_user_group( const char *user, const char *group_name)
 
        if (getgrouplist(user, pw->pw_gid, groups, &ngroups) == -1) {
            VLOG_DBG("Retrieving group list failed. Function = %s, Line = %d", __func__, __LINE__);
+           free(groups);
            return false;
        }
 
        /* check user exist in ovsdb_users group*/
        for (j = 0; j < ngroups; j++) {
            gr = getgrgid(groups[j]);
-           if(gr != NULL) {
+           if (gr != NULL) {
                if (!strcmp(gr->gr_name,group_name)) {
-               return true;
+                   free(groups);
+                   return true;
                }
            }
        }
@@ -2856,37 +3060,121 @@ static int check_user_group( const char *user, const char *group_name)
        return false;
 }
 
+/* Prompt for user to enter password */
+static char*
+get_password(const char *prompt)
+{
+    struct termios oflags, nflags;
+    enum { sizeof_passwd = 128 };
+    char *ret;
+    int i;
+    /* disabling echo */
+    tcflush(fileno(stdin),TCIFLUSH);
+    tcgetattr(fileno(stdin), &oflags);
+    nflags = oflags;
+    nflags.c_iflag &= ~(IUCLC|IXON|IXOFF|IXANY);
+    nflags.c_lflag &= ~(ECHO|ECHOE|ECHOK|ECHONL);
+    if(tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0) {
+        VLOG_DBG("setattr error");
+        get_password(prompt);
+    }
+    write(STDIN_FILENO,prompt,strlen(prompt));
+
+    ret = malloc(sizeof_passwd);
+    i = 0;
+    while (1) {
+        int r = read(STDIN_FILENO, &ret[i], 1);
+        if ((i == 0 && r == 0) || r < 0 ) {                     /* EOF (^D) with no password */
+            ret  = NULL;
+            break;
+        }
+        if (r == 0 || ret[i] == '\r' || ret[i] == '\n' || ++i == sizeof_passwd-1 ) {   /* EOF EOL */ /* EOL *//* line limit */
+            ret[i] = '\0';
+            break;
+        }
+    }
+    if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
+        vty_out(vty,"tcsetattr");
+        return CMD_SUCCESS;
+    }
+    return ret;
+}
+
 /*Function to set the user passsword */
-static int set_user_passwd(const char *user)
+static int
+set_user_passwd(const char *user)
 {
     int ret;
-    const char *arg[3];
-    arg[0] = "/bin/busybox.suid";
-    arg[1] = "passwd";
-    arg[2] = user;
+    struct crypt_data data;
+    data.initialized = 0;
 
-    //cannot change the password for the user root
-    if(!strcmp(user,"root")) {
-         vty_out(vty, "Permission denied.\n");
-         return CMD_SUCCESS;
-    }
-    ret = check_user_group(user,"ovsdb_users");
+    char *password = NULL;
+    char *passwd = NULL;
+    char *cp = NULL;
+    const char *arg[4];
+    arg[0] = USERMOD;
+    arg[1] = "-p";
+    arg[3] = CONST_CAST(char*, user);
 
-    //change the passwd if user is in ovsdb_user list
-    if (ret==1) {
-         execute_command("sudo", 3,(const char **)arg);
-         return CMD_SUCCESS;
+    /* Cannot change the password for the user root */
+    if (!strcmp(user,"root"))
+    {
+        vty_out(vty, "Permission denied.\n");
+        return CMD_SUCCESS;
     }
-    else {
-         vty_out(vty, "Unknown User: %s.\n", user);
-         return CMD_SUCCESS;
+    ret = check_user_group(user, OVSDB_GROUP);
+
+    /* Change the passwd if user is in ovsdb_user list */
+    if (ret==1)
+    {
+        vty_out(vty,"Changing password for user %s %s", user, VTY_NEWLINE);
+        passwd = get_password("Enter new password: ");
+        if (!passwd)
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty, "Entered empty password.");
+        }
+
+        vty_out(vty, "%s", VTY_NEWLINE);
+        cp = get_password("Confirm new password: ");
+        if (!cp)
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty,"Entered empty password.");
+        }
+        if (strcmp(passwd,cp) != 0)
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty,"Passwords do not match. Password unchanged.%s", VTY_NEWLINE);
+            free(passwd);
+            free(cp);
+            return CMD_SUCCESS;
+        }
+        else
+        {
+            vty_out(vty, "%s", VTY_NEWLINE);
+            vty_out(vty, "Password updated successfully.%s", VTY_NEWLINE);
+        }
+        /* Encrypt the password. String 'ab' is used to perturb the */
+        /* algorithm in  one of 4096 different ways. */
+        password = crypt_r(passwd,"ab",&data);
+        arg[2]=password;
+        execute_command("sudo", 4, (const char **)arg);
+        free(passwd);
+        free(cp);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+        vty_out(vty, "Unknown User: %s.\n", user);
+        return CMD_SUCCESS;
     }
 
 }
 #ifdef ENABLE_OVSDB
 DEFUN (vtysh_passwd,
        vtysh_passwd_cmd,
-       "passwd WORD",
+       "password WORD",
        "Change user password \n"
        "User whose password is to be changed\n")
 {
@@ -3022,11 +3310,30 @@ vtysh_prompt (void)
    const char*hostname;
    extern struct host host;
 
+#ifdef ENABLE_OVSDB
+   const struct ovsrec_system *ovs = NULL;
+   const char *val;
+   ovs = ovsrec_system_first(idl);
+
+   if(ovs)
+   {
+      val = smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_HOSTNAME);
+      if (val != NULL)
+      {
+         if (host.name)
+            XFREE (MTYPE_HOST, host.name);
+
+         host.name = XSTRDUP (MTYPE_HOST, val);
+      }
+   }
+#endif
+
    hostname = host.name;
    if (!hostname)
    {
      uname (&names);
      hostname = names.nodename;
+     /* do XSTRDUP to avoid crash as it will be free'd later */
      host.name = XSTRDUP (MTYPE_HOST,hostname);
    }
 
@@ -3050,63 +3357,142 @@ vtysh_prompt (void)
 
 #ifdef ENABLE_OVSDB
 
-DEFUN(vtysh_user_add,
-       vtysh_user_add_cmd,
-       "useradd WORD",
-       "Adding a new user\n"
-       "User name to be added\n")
+/* Function to create new user with password and add it to the ovsdb_users group*/
+static int
+create_new_vtysh_user(const char *user)
 {
-       char *arg[6];
-       arg[0] = "/usr/sbin/adduser";
-       arg[1] = "-G";
-       arg[2] = "ovsdb_users";
-       arg[3] = "-s";
-       arg[4] = "/usr/bin/vtysh";
-       arg[5] = CONST_CAST(char*,argv[0]);
-       execute_command("sudo", 6,(const char **)arg);
-       return CMD_SUCCESS;
+    struct crypt_data data;
+    data.initialized = 0;
+    int ret = 0;
+    char *password = NULL;
+    char *passwd = NULL;
+    char *cp = NULL;
+    /* If user already exist then don't create new user */
+    ret = check_user_group(user, OVSDB_GROUP);
+    if ((ret ==1) || (!strcmp("root", user)))
+    {
+        vty_out(vty, "User %s already exists.%s", user, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    vty_out(vty,"Adding user %s%s", user, VTY_NEWLINE);
+    passwd = get_password("Enter password: ");
+    if (!passwd)
+    {
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, "Entered empty password");
+    }
+    vty_out(vty, "%s", VTY_NEWLINE);
+    cp = get_password("Confirm password: ");
+    if (!cp)
+    {
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty,"Entered empty password");
+    }
+    if (strcmp(passwd,cp) != 0) {
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty,"Passwords do not match.");
+        vty_out(vty,"User %s not added.%s", user, VTY_NEWLINE);
+        free(cp);
+        free(passwd);
+        return CMD_SUCCESS;
+    }
+    /* Encrypt the password. String 'ab' is used to perturb the */
+    /* algorithm in  one of 4096 different ways. */
+    password = crypt_r(passwd,"ab",&data);
+    const char *arg[8];
+    arg[0] = USERADD;
+    arg[1] = "-p";
+    arg[2]= password;
+    arg[3] = "-g";
+    arg[4] = OVSDB_GROUP;
+    arg[5] = "-s";
+    arg[6] = VTYSH_PROMPT;
+    arg[7] = CONST_CAST(char*, user);
+    execute_command("sudo", 8,(const char **)arg);
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty, "User added successfully.%s", VTY_NEWLINE);
+    free(cp);
+    free(passwd);
+    return CMD_SUCCESS;
 }
 
-static int delete_user(const char *user)
+DEFUN(vtysh_user_add,
+       vtysh_user_add_cmd,
+       "user add WORD",
+       "User account\n"
+       "Adding a new user account\n"
+       "User name to be added\n")
 {
-     int ret,n_users;
-     char *arg[2];
-     char *buf;
-     n_users = 0;
-     arg[0] = "/usr/sbin/deluser";
-     arg[1] = CONST_CAST(char*,user);
-     buf = getlogin();
+    return create_new_vtysh_user(argv[0]);
 
-     n_users = get_group_user_count("ovsdb_users");
-     ret = check_user_group(user,"ovsdb_users");
+}
 
-     // if user is not in ovsdb_users list and if not root then it is unknown user
-     if((ret == 0) && (strcmp(user,"root"))){
-          vty_out(vty, "Unknown user: %s.\n",user);
-          return CMD_SUCCESS;
-     }
+/* Delete the user account */
+static int
+delete_user(const char *user)
+{
+    int ret,n_users;
+    const char *arg[3];
+    char *buf;
+    n_users = 0;
+    arg[0] = USERDEL;
+    arg[1] = "-r";
+    arg[2] = CONST_CAST(char*, user);
+    buf = getlogin();
 
-     // cannot delete user by himself, root and last user
-     if((n_users<=1) || ((!strcmp(user,"root"))) || !(strcmp(buf,user))){
-          vty_out(vty, "Permission denied. \n");
-          return CMD_SUCCESS;
-     }
+    n_users = get_group_user_count(OVSDB_GROUP);
+    ret = check_user_group(user, OVSDB_GROUP);
 
-     //delete the user
-     if ((n_users >1) && (ret==1) ){
-          execute_command("sudo", 2,(const char **)arg);
-          return CMD_SUCCESS;
-     }
-     return CMD_SUCCESS;
+    /* If user is not in ovsdb_users list and if not root then it is unknown user*/
+    if ((ret == 0) && (strcmp(user, "root")))
+    {
+        vty_out(vty, "Unknown user: %s\n", user);
+        return CMD_SUCCESS;
+    }
+
+    /* Cannot delete user by himself, root and last user */
+    if (!strcmp(user, "root"))
+    {
+        vty_out(vty, "Permission denied. Cannot remove the root user.\n");
+        return CMD_SUCCESS;
+    }
+    if (n_users<=1)
+    {
+        vty_out(vty, "Cannot delete the last user %s.\n",user);
+        return CMD_SUCCESS;
+    }
+    if (!(strcmp(buf,user)))
+    {
+        vty_out(vty, "Permission denied. You are logged in as %s.\n",user);
+        return CMD_SUCCESS;
+    }
+
+    /* Delete the user*/
+    execute_command("sudo", 3, (const char **)arg);
+    return CMD_SUCCESS;
+
 }
 
 DEFUN(vtysh_user_del,
        vtysh_user_del_cmd,
-       "deluser WORD",
+       "user remove WORD",
+       "User account\n"
        "Delete a user account\n"
        "User name to be deleted\n")
 {
     return delete_user(argv[0]);
+}
+
+DEFUN(vtysh_reboot,
+      vtysh_reboot_cmd,
+      "reboot",
+      "Reload the switch\n")
+{
+   char *arg[1];
+   arg[0] = "/sbin/reboot";
+   execute_command("sudo", 1 ,(const char **)arg);
+   return CMD_SUCCESS;
 }
 
 DEFUN (vtysh_demo_mac_tok,
@@ -3129,58 +3515,74 @@ struct vtysh_alias_data *vtysh_aliases[VTYSH_MAX_ALIAS_SUPPORTED] = {NULL};
 char vtysh_alias_cmd_help_string[] = VTYSH_ALIAS_CMD_HELPSTRING;
 
 
-/*-----------------------------------------------------------------------------
-| Function : vtysh_alias_load_alias_table
-| Responsibility : Reloads the alias information from ovsdb
-| Parameters :   void
-| Return : success/failure
------------------------------------------------------------------------------*/
-int vty_alias_load_alias_table(void)
+/*
+  * Function       : vtysh_alias_load_alias_table
+  * Responsibility : Reloads the alias information from ovsdb
+  * Parameters     : void
+  * Return         : success/failure
+ */
+int
+vty_alias_load_alias_table(void)
 {
-   const struct ovsrec_cli_alias *alias_row = NULL;
+    const struct ovsrec_cli_alias *alias_row = NULL;
 
-   vtysh_alias_count = 0;
+    vtysh_alias_count = 0;
 
-   OVSREC_CLI_ALIAS_FOR_EACH(alias_row, idl)
-   {
-      vtysh_aliases[vtysh_alias_count] = (struct vtysh_alias_data*) malloc(sizeof(struct vtysh_alias_data));
-      memset(vtysh_aliases[vtysh_alias_count], 0, sizeof(struct vtysh_alias_data));
+    OVSREC_CLI_ALIAS_FOR_EACH(alias_row, idl)
+    {
+        vtysh_aliases[vtysh_alias_count] =
+            (struct vtysh_alias_data*) malloc(sizeof(struct vtysh_alias_data));
+        memset(vtysh_aliases[vtysh_alias_count], 0,
+                sizeof(struct vtysh_alias_data));
 
-      strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str, alias_row->alias_name, VTYSH_MAX_ALIAS_DEF_LEN);
-      strncpy(vtysh_aliases[vtysh_alias_count]->alias_list_str, alias_row->alias_definition, VTYSH_MAX_ALIAS_LIST_LEN);
+        strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str,
+                alias_row->alias_name, VTYSH_MAX_ALIAS_DEF_LEN);
+        strncpy(vtysh_aliases[vtysh_alias_count]->alias_list_str,
+                alias_row->alias_definition, VTYSH_MAX_ALIAS_LIST_LEN);
 
-      strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args, vtysh_aliases[vtysh_alias_count]->alias_def_str,
-            VTYSH_MAX_ALIAS_DEF_LEN);
-      strcat(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args, " .LINE");
+        strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args,
+                vtysh_aliases[vtysh_alias_count]->alias_def_str,
+                VTYSH_MAX_ALIAS_DEF_LEN);
+        strcat(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args,
+                " .LINE");
 
-      /* Prepare the command element and install the command in config node */
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element.string = vtysh_aliases[vtysh_alias_count]->alias_def_str;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element.func = vtysh_alias_callback;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc = vtysh_alias_cmd_help_string;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr = 0;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element.daemon = 0;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string = vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.func = vtysh_alias_callback;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc = vtysh_alias_cmd_help_string;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = 0;
-      vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
+        /* Prepare the command element & install the command in config node */
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.string =
+            vtysh_aliases[vtysh_alias_count]->alias_def_str;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.func   =
+            vtysh_alias_callback;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc    =
+            vtysh_alias_cmd_help_string;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr   = CMD_ATTR_NOLOCK;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.daemon = 0;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string =
+            vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.func =
+            vtysh_alias_callback;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
+            vtysh_alias_cmd_help_string;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
-      /* install the new commands with alias definition as token */
-      install_element(CONFIG_NODE, &vtysh_aliases[vtysh_alias_count]->alias_cmd_element);
-      install_element(CONFIG_NODE, &vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args);
-      vtysh_alias_count++;
-   }
+        /* install the new commands with alias definition as token */
+        install_element(CONFIG_NODE,
+               &vtysh_aliases[vtysh_alias_count]->alias_cmd_element);
+        install_element(CONFIG_NODE,
+               &vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args);
+        vtysh_alias_count++;
+    }
 
-   return CMD_SUCCESS;
+    return CMD_SUCCESS;
 }
 
-/*-----------------------------------------------------------------------------
-| Function : vtysh_alias_save_alias
-| Responsibility : Adds the given alias into the ovsdb
-| Parameters :   alias name, definition
-| Return : success/failure
------------------------------------------------------------------------------*/
-int vtysh_alias_save_alias(char *name, char *definition)
+/*
+ * Function       : vtysh_alias_save_alias
+ * Responsibility : Adds the given alias into the ovsdb
+ * Parameters     : alias name, definition
+ * Return         : success/failure
+ */
+int
+vtysh_alias_save_alias(char *name, char *definition)
 {
    struct ovsrec_cli_alias *alias_row = NULL;
    struct ovsdb_idl_txn *status_txn = NULL;
@@ -3208,13 +3610,14 @@ int vtysh_alias_save_alias(char *name, char *definition)
 }
 
 
-/*-----------------------------------------------------------------------------
-| Function : vtysh_alias_delete_alias
-| Responsibility : Removes the given alias from the ovsdb
-| Parameters :   alias name
-| Return : success/failure
------------------------------------------------------------------------------*/
-int vtysh_alias_delete_alias(char *name)
+/*
+ * Function       : vtysh_alias_delete_alias
+ * Responsibility : Removes the given alias from the ovsdb
+ * Parameters     : alias name
+ * Return         : success/failure
+*/
+int
+vtysh_alias_delete_alias(char *name)
 {
    const struct ovsrec_cli_alias *alias_row = NULL;
    struct ovsdb_idl_txn *status_txn = NULL;
@@ -3253,7 +3656,8 @@ DEFUN (vtysh_alias_cli,
       "Create a short name for the specified command(s)\n"
       "Alias command (Max Length 30 characters)\n"
       "Alias definition. Multiple commands should be separated by \";\". "
-      "Parameters $1, $2, etc. in the body are replaced by the corresponding argument from the command line. "
+      "Parameters $1, $2, etc. in the body are replaced by "
+      "the corresponding argument from the command line. "
       "Extra arguments are appended at the end. (Max length 400 characters)\n")
 {
    int i = 0, ret_val = 0;
@@ -3286,10 +3690,15 @@ DEFUN (vtysh_alias_cli,
             vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_HIDDEN;
             vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_NOT_ENABLED;
             vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_DISABLED;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |= CMD_ATTR_HIDDEN;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |= CMD_ATTR_NOT_ENABLED;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |= CMD_ATTR_DISABLED;
-            //TODO : free cannot be done as cmd element is still referred by cli
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_HIDDEN;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_NOT_ENABLED;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_DISABLED;
+            //TODO :
+            /* free cannot be done as cmd element is still referred by vector
+               */
             //free(vtysh_aliases[i]);
             vtysh_aliases[i] = vtysh_aliases[vtysh_alias_count-1];
             vtysh_aliases[vtysh_alias_count-1] = NULL;
@@ -3333,10 +3742,13 @@ DEFUN (vtysh_alias_cli,
       /* Data integrity failure */
       free(vtysh_aliases[vtysh_alias_count]);
    }
-   vtysh_aliases[vtysh_alias_count] = (struct vtysh_alias_data*) malloc(sizeof(struct vtysh_alias_data));
-   memset(vtysh_aliases[vtysh_alias_count], 0, sizeof(struct vtysh_alias_data));
+   vtysh_aliases[vtysh_alias_count] =
+       (struct vtysh_alias_data*) malloc(sizeof(struct vtysh_alias_data));
+   memset(vtysh_aliases[vtysh_alias_count], 0,
+           sizeof(struct vtysh_alias_data));
 
-   strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str, argv[0], VTYSH_MAX_ALIAS_DEF_LEN);
+   strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str, argv[0],
+           VTYSH_MAX_ALIAS_DEF_LEN);
    strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args, argv[0],
          VTYSH_MAX_ALIAS_DEF_LEN_WITH_ARGS);
    strcat(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args, " .LINE");
@@ -3344,9 +3756,12 @@ DEFUN (vtysh_alias_cli,
    for (i = 1; i < argc; i++)
    {
       /* Read each args, and append to the command string */
-      if(VTYSH_MAX_ALIAS_LIST_LEN <= strlen(vtysh_aliases[vtysh_alias_count]->alias_list_str) + strlen(argv[i]) + 2)
+      if(VTYSH_MAX_ALIAS_LIST_LEN <=
+              strlen(vtysh_aliases[vtysh_alias_count]->alias_list_str) +
+              strlen(argv[i]) + 2)
       {
-         free(vtysh_aliases[vtysh_alias_count]); vtysh_aliases[vtysh_alias_count] = NULL;
+         free(vtysh_aliases[vtysh_alias_count]);
+         vtysh_aliases[vtysh_alias_count] = NULL;
          vty_out(vty, VTYSH_ERROR_MAX_ALIAS_LEN_EXCEEDED);
          return CMD_SUCCESS;
       }
@@ -3355,23 +3770,31 @@ DEFUN (vtysh_alias_cli,
    }
 
    /* Prepare the command element and install the command in config node */
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.string = vtysh_aliases[vtysh_alias_count]->alias_def_str;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.func = vtysh_alias_callback;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc = vtysh_alias_cmd_help_string;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr = 0;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.string =
+       vtysh_aliases[vtysh_alias_count]->alias_def_str;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.func =
+       vtysh_alias_callback;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc =
+       vtysh_alias_cmd_help_string;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr = CMD_ATTR_NOLOCK;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element.daemon = 0;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string = vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.func = vtysh_alias_callback;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc = vtysh_alias_cmd_help_string;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = 0;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string =
+       vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.func =
+       vtysh_alias_callback;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
+       vtysh_alias_cmd_help_string;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
    vtysh_alias_save_alias(vtysh_aliases[vtysh_alias_count]->alias_def_str,
          vtysh_aliases[vtysh_alias_count]->alias_list_str);
 
    /* install the new commands with alias definition as token */
-   install_element(CONFIG_NODE, &vtysh_aliases[vtysh_alias_count]->alias_cmd_element);
-   install_element(CONFIG_NODE, &vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args);
+   install_element(CONFIG_NODE,
+           &vtysh_aliases[vtysh_alias_count]->alias_cmd_element);
+   install_element(CONFIG_NODE,
+           &vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args);
 
    vtysh_alias_count++;
 
@@ -3385,13 +3808,14 @@ DEFUN_NO_FORM (vtysh_alias_cli,
       "Alias command name\n");
 
 
-/*-----------------------------------------------------------------------------
-| Function : vtysh_alias_string_to_int
-| Responsibility : Function to convert part of string to integer
-| Parameters :   string to convert
-| Return : integer
------------------------------------------------------------------------------*/
-int vtysh_alias_string_to_int(char *str)
+/*
+ * Function       : vtysh_alias_string_to_int
+ * Responsibility : Function to convert part of string to integer
+ * Parameters     : string to convert
+ * Return         : integer
+*/
+int
+vtysh_alias_string_to_int(char *str)
 {
    int i = 0, ret = 0;
    if(NULL == str)
@@ -3415,13 +3839,14 @@ int vtysh_alias_string_to_int(char *str)
 }
 
 
-/*-----------------------------------------------------------------------------
-| Function : vtysh_alias_callback
-| Responsibility : Generic Callback function for Aliases
-| Parameters :   cmd element, vty, argc/argv, flags
-| Return : cmd error
------------------------------------------------------------------------------*/
-int vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
+/*
+ * Function       : vtysh_alias_callback
+ * Responsibility : Generic Callback function for Aliases
+ * Parameters     : cmd element, vty, argc/argv, flags
+ * Return         : cmd error
+ */
+int
+vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
       int vty_flags, int argc, const char *argv[])
 {
    char cmd_now[VTYSH_MAX_ALIAS_LIST_LEN] = {0};
@@ -3444,7 +3869,8 @@ int vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
          assert(0);
          /* Data integrity failure */
       }
-      if(strncmp(vtysh_aliases[i]->alias_def_str, cmd_now, strlen(cmd_now)) == 0)
+      if(strncmp(vtysh_aliases[i]->alias_def_str, cmd_now,
+              strlen(cmd_now)) == 0)
       {
          found_cmd = vtysh_aliases[i]->alias_list_str;
          break;
@@ -3457,7 +3883,8 @@ int vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
       return CMD_SUCCESS;
    }
 
-   for(len = 0, i = 0; len <= VTYSH_MAX_ALIAS_LIST_LEN && found_cmd[len] != '\0'; len++)
+   for(len = 0, i = 0;
+           len <= VTYSH_MAX_ALIAS_LIST_LEN && found_cmd[len] != '\0'; len++)
    {
       if(found_cmd[len] == '$')
       {
@@ -3466,7 +3893,7 @@ int vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
          {
             strcat(current_cmd, argv[arg_count-1]);
             strcat(current_cmd, " ");
-            i+= strlen(current_cmd); //argv[arg_count]+2);
+            i+= strlen(current_cmd);
             if(max_arg_count < arg_count)
             {
                max_arg_count = arg_count;
@@ -3494,7 +3921,8 @@ int vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
          }
 
          if((strncmp(cmd_now, strt, strlen(cmd_now)) == 0) &&
-               (*(strt + strlen(cmd_now) + 1) == ' ' || *(strt + strlen(cmd_now) + 1) == '\0'))
+               (*(strt + strlen(cmd_now) + 1) == ' ' ||
+                       *(strt + strlen(cmd_now) + 1) == '\0'))
          {
             vty_out(vty, VTYSH_ERROR_ALIAS_LOOP_ALIAS);
             return CMD_SUCCESS;
@@ -3532,12 +3960,13 @@ int vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
          if(*strt == '\0') break;
       }
       if((strncmp(cmd_now, strt, strlen(cmd_now)) == 0) &&
-            (*(strt + strlen(cmd_now) + 1) == ' ' || *(strt + strlen(cmd_now) + 1) == '\0'))
+            (*(strt + strlen(cmd_now) + 1) == ' ' ||
+                    *(strt + strlen(cmd_now) + 1) == '\0'))
       {
          vty_out(vty, VTYSH_ERROR_ALIAS_LOOP_ALIAS);
          return CMD_SUCCESS;
       }
-      //vty_out(vty, "Executing the command \"%s\" %s", current_cmd, VTY_NEWLINE);
+      //vty_out(vty, "Executing the command \"%s\" \n", current_cmd);
       vty->buf = strt;
       vty->length = strlen(strt);
       vty_command (vty, vty->buf);
@@ -3556,7 +3985,8 @@ DEFUN (vtysh_show_alias_cli,
    int i = 0;
 
    vty_out(vty, " %-30s %s %s", "Alias Name", "Alias Definition", VTY_NEWLINE);
-   vty_out(vty, " -------------------------------------------------------------------------------%s", VTY_NEWLINE);
+   vty_out(vty, " ----------------------------------------"
+           "---------------------------------------%s", VTY_NEWLINE);
 
    for (i = 0; i < vtysh_alias_count; i++)
    {
@@ -3565,31 +3995,7 @@ DEFUN (vtysh_show_alias_cli,
          assert(0);
          /* Data integrity failure */
       }
-#if 0 /* beautiful printing of spliting long defs at ";". TODO - bugfix */
-      if(VTYSH_CONSOLE_LENGTH < (strlen(vtysh_aliases[i]->alias_list_str)+32))
-      {
-         char cur_str[VTYSH_CONSOLE_LENGTH] = {0};
-         int cur_position = 0;
-         snprintf(cur_str, VTYSH_CONSOLE_LENGTH, " %-30s ", vtysh_aliases[i]->alias_def_str);
-         cur_position = strlen(cur_str);
 
-         for(len = 0; vtysh_aliases[i]->alias_list_str[len] != '\0'; len++)
-         {
-            cur_str[cur_position] = vtysh_aliases[i]->alias_list_str[len];
-            cur_position++;
-
-            if((';' == cur_str[cur_position]) && (cur_position >= 60))//VTYSH_CONSOLE_LENGTH))
-            {
-               /* already at 80% pof console, print and go to new line */
-               vty_out(vty, "%s \%s", cur_str, VTY_NEWLINE);
-               snprintf(cur_str, VTYSH_CONSOLE_LENGTH, " %-30s ", " ");
-               cur_position = strlen(cur_str);
-            }
-         }
-         vty_out(vty, "%s %s", cur_str, VTY_NEWLINE);
-      }
-      else
-#endif
       {
          vty_out(vty, " %-30s %s %s", vtysh_aliases[i]->alias_def_str,
                vtysh_aliases[i]->alias_list_str, VTY_NEWLINE);
@@ -3599,13 +4005,14 @@ DEFUN (vtysh_show_alias_cli,
 }
 
 
-/*-----------------------------------------------------------------------------
-| Function : alias_vty_init
-| Responsibility : install the alias commands
-| Parameters :   void
-| Return : void
------------------------------------------------------------------------------*/
-void alias_vty_init()
+/*
+ * Function : alias_vty_init
+ * Responsibility : install the alias commands
+ * Parameters :   void
+ * Return : void
+ */
+void
+alias_vty_init()
 {
    install_element(CONFIG_NODE, &vtysh_alias_cli_cmd);
    install_element(CONFIG_NODE, &no_vtysh_alias_cli_cmd);
@@ -3677,7 +4084,9 @@ vtysh_init_vty (void)
 
    /* Install nodes. */
    install_node (&bgp_node, NULL);
+#ifndef ENABLE_OVSDB
    install_node (&rip_node, NULL);
+#endif
    install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
    install_node (&vlan_node, NULL);
@@ -3694,28 +4103,38 @@ vtysh_init_vty (void)
    install_node (&bgp_ipv6_node, NULL);
    install_node (&bgp_ipv6m_node, NULL);
 /* #endif */
+#ifndef ENABLE_OVSDB
    install_node (&ospf_node, NULL);
 /* #ifdef HAVE_IPV6 */
    install_node (&ripng_node, NULL);
    install_node (&ospf6_node, NULL);
 /* #endif */
    install_node (&babel_node, NULL);
+#endif
    install_node (&keychain_node, NULL);
    install_node (&keychain_key_node, NULL);
+#ifndef ENABLE_OVSDB
    install_node (&isis_node, NULL);
+#endif
    install_node (&vty_node, NULL);
+   install_node (&dhcp_server_node, NULL);
+   install_node (&tftp_server_node, NULL);
 
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
    vtysh_install_default (CONFIG_NODE);
    vtysh_install_default (BGP_NODE);
+#ifndef ENABLE_OVSDB
    vtysh_install_default (RIP_NODE);
+#endif
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
    vtysh_install_default (VLAN_NODE);
    vtysh_install_default (MGMT_INTERFACE_NODE);
    vtysh_install_default (LINK_AGGREGATION_NODE);
    vtysh_install_default (VLAN_INTERFACE_NODE);
+   vtysh_install_default (DHCP_SERVER_NODE);
+   vtysh_install_default (TFTP_SERVER_NODE);
 #endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
@@ -3724,11 +4143,13 @@ vtysh_init_vty (void)
    vtysh_install_default (BGP_IPV4M_NODE);
    vtysh_install_default (BGP_IPV6_NODE);
    vtysh_install_default (BGP_IPV6M_NODE);
+#ifndef ENABLE_OVSDB
    vtysh_install_default (OSPF_NODE);
    vtysh_install_default (RIPNG_NODE);
    vtysh_install_default (OSPF6_NODE);
    vtysh_install_default (BABEL_NODE);
    vtysh_install_default (ISIS_NODE);
+#endif
    vtysh_install_default (KEYCHAIN_NODE);
    vtysh_install_default (KEYCHAIN_KEY_NODE);
    vtysh_install_default (VTY_NODE);
@@ -3737,6 +4158,14 @@ vtysh_init_vty (void)
   install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
   install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
+
+   install_element (CONFIG_NODE, &vtysh_dhcp_server_cmd);
+   install_element (DHCP_SERVER_NODE, &config_exit_cmd);
+   install_element (DHCP_SERVER_NODE, &config_end_cmd);
+
+   install_element (CONFIG_NODE, &vtysh_tftp_server_cmd);
+   install_element (TFTP_SERVER_NODE, &config_exit_cmd);
+   install_element (TFTP_SERVER_NODE, &config_end_cmd);
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
@@ -3750,6 +4179,7 @@ vtysh_init_vty (void)
    /* install_element (CONFIG_NODE, &vtysh_quit_all_cmd); */
    install_element (ENABLE_NODE, &vtysh_exit_all_cmd);
    install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
+#ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_exit_ripd_cmd);
    install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
    install_element (RIPNG_NODE, &vtysh_exit_ripngd_cmd);
@@ -3758,6 +4188,7 @@ vtysh_init_vty (void)
    install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (OSPF6_NODE, &vtysh_exit_ospf6d_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
+#endif
    install_element (BGP_NODE, &vtysh_exit_bgpd_cmd);
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_exit_bgpd_cmd);
@@ -3773,9 +4204,10 @@ vtysh_init_vty (void)
 
    policy_vty_init();
    bgp_vty_init();
-
+#ifndef ENABLE_OVSDB
    install_element (ISIS_NODE, &vtysh_exit_isisd_cmd);
    install_element (ISIS_NODE, &vtysh_quit_isisd_cmd);
+#endif
    install_element (KEYCHAIN_NODE, &vtysh_exit_ripd_cmd);
    install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
    install_element (KEYCHAIN_KEY_NODE, &vtysh_exit_ripd_cmd);
@@ -3788,28 +4220,34 @@ vtysh_init_vty (void)
    /* "end" command. */
    install_element (CONFIG_NODE, &vtysh_end_all_cmd);
    install_element (ENABLE_NODE, &vtysh_end_all_cmd);
+#ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_end_all_cmd);
    install_element (RIPNG_NODE, &vtysh_end_all_cmd);
    install_element (OSPF_NODE, &vtysh_end_all_cmd);
    install_element (OSPF6_NODE, &vtysh_end_all_cmd);
    install_element (BABEL_NODE, &vtysh_end_all_cmd);
+#endif
    install_element (BGP_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV4_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_end_all_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV6_NODE, &vtysh_end_all_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_end_all_cmd);
+#ifndef ENABLE_OVSDB
    install_element (ISIS_NODE, &vtysh_end_all_cmd);
+#endif
    install_element (KEYCHAIN_NODE, &vtysh_end_all_cmd);
    install_element (KEYCHAIN_KEY_NODE, &vtysh_end_all_cmd);
    install_element (RMAP_NODE, &vtysh_end_all_cmd);
    install_element (VTY_NODE, &vtysh_end_all_cmd);
-
+#ifndef ENABLE_OVSDB
    install_element (INTERFACE_NODE, &interface_desc_cmd);
    install_element (INTERFACE_NODE, &no_interface_desc_cmd);
+#endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
    install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
+#ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ripng_cmd);
@@ -3820,6 +4258,8 @@ vtysh_init_vty (void)
 #endif
    install_element (CONFIG_NODE, &router_babel_cmd);
    install_element (CONFIG_NODE, &router_isis_cmd);
+#endif /* ENABLE_OVSDB */
+
    //install_element (CONFIG_NODE, &router_bgp_cmd);
    //install_element (CONFIG_NODE, &router_bgp_view_cmd);
    install_element (BGP_NODE, &address_family_vpnv4_cmd);
@@ -3891,9 +4331,9 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_terminal_length_cmd);
   install_element (VIEW_NODE, &vtysh_terminal_no_length_cmd);
   install_element (ENABLE_NODE, &vtysh_terminal_no_length_cmd);
-#endif
   install_element (VIEW_NODE, &vtysh_show_daemons_cmd);
   install_element (ENABLE_NODE, &vtysh_show_daemons_cmd);
+#endif
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
 #endif /* ENABLE_OVSDB */
@@ -3926,9 +4366,9 @@ vtysh_init_vty (void)
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
   install_element (ENABLE_NODE, &vtysh_start_zsh_cmd);
-#endif
   install_element (VIEW_NODE, &vtysh_show_memory_cmd);
   install_element (ENABLE_NODE, &vtysh_show_memory_cmd);
+#endif
 #ifndef ENABLE_OVSDB
   /* Logging */
   install_element (ENABLE_NODE, &vtysh_show_logging_cmd);
@@ -3956,6 +4396,7 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_log_timestamp_precision_cmd);
   install_element (CONFIG_NODE, &vtysh_passwd_cmd);
 #endif
+#ifndef ENABLE_OVSDB
   install_element (CONFIG_NODE, &vtysh_service_password_encrypt_cmd);
   install_element (CONFIG_NODE, &no_vtysh_service_password_encrypt_cmd);
   install_element (CONFIG_NODE, &vtysh_password_cmd);
@@ -3963,8 +4404,12 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &vtysh_enable_password_cmd);
   install_element (CONFIG_NODE, &vtysh_enable_password_text_cmd);
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
-  install_element (CONFIG_NODE, &vtysh_user_add_cmd);
-  install_element (CONFIG_NODE, &vtysh_user_del_cmd);
+#endif
+  install_element (ENABLE_NODE, &vtysh_passwd_cmd);
+  install_element (ENABLE_NODE, &vtysh_user_add_cmd);
+  install_element (ENABLE_NODE, &vtysh_user_del_cmd);
+
+  install_element (ENABLE_NODE, &vtysh_reboot_cmd);
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
@@ -3974,7 +4419,7 @@ vtysh_init_vty (void)
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();
-
+   dhcp_tftp_vty_init();
   /* Initialise System LED cli */
   led_vty_init();
   mgmt_intf_vty_init();

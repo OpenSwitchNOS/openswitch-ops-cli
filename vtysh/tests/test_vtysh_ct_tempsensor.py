@@ -19,11 +19,11 @@
 #
 
 from time import sleep
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class TemperatureSystemTests(HalonTest):
+class TemperatureSystemTests(OpsVsiTest):
 
     uuid = ''
 
@@ -33,15 +33,12 @@ class TemperatureSystemTests(HalonTest):
         # either pass getNodeOpts() into hopts/sopts of the topology that
         # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        tempsensor_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(tempsensor_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def initTemp_sensorTable(self):
 
@@ -50,23 +47,28 @@ class TemperatureSystemTests(HalonTest):
 
         s1 = self.net.switches[0]
         print '\n'
-        out = s1.cmd('ovs-vsctl list subsystem')
+        out = s1.ovscmd('ovs-vsctl list subsystem')
         lines = out.split('\n')
         for line in lines:
             if '_uuid' in line:
                 _id = line.split(':')
                 TemperatureSystemTests.uuid = _id[1].strip()
-                out = s1.cmd('/usr/bin/ovs-vsctl -- set Subsystem '
+                out = s1.ovscmd('/usr/bin/ovs-vsctl -- set Subsystem '
                              + TemperatureSystemTests.uuid
-                             + ' temp_sensors=@fan1 -- --id=@fan1 create Temp_sensor name=base-1 location=Faceplate_side_of_switch_chip_U16 status=normal fan-state=normal min=0 max=21000 temperature=20500'
+                             + ' temp_sensors=@fan1 -- --id=@fan1 '
+                             + ' create Temp_sensor name=base-1 '
+                             + ' location=Faceplate_side_of_switch_chip_U16 '
+                             + ' status=normal fan-state=normal min=0 '
+                             + ' max=21000 temperature=20500'
                              )
 
     def deinitTemp_sensorTable(self):
         s1 = self.net.switches[0]
 
-        # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
+        # Delete dummy data from subsystem and led table to
+        # avoid clash with other CT scripts.
 
-        s1.cmd('ovs-vsctl clear subsystem '
+        s1.ovscmd('ovs-vsctl clear subsystem '
                + TemperatureSystemTests.uuid + ' temp_sensors')
 
     def showSystemTemperatureTest(self):
@@ -74,17 +76,23 @@ class TemperatureSystemTests(HalonTest):
         # Test to verify show system command
 
         s1 = self.net.switches[0]
+        counter = 0
         temperature_config_present = False
-        print '''
+        info('''
 ##########  Test to verify \'show system temperature\' command ##########
-'''
-        out = s1.cmdCLI('show system temperature')
+''')
+        out = s1.cmdCLI('show system temperature detail')
         lines = out.split('\n')
         for line in lines:
-            if 'base-1' and 'Faceplate_side_of_switch_chip_U16' \
-                and 'normal' and 'normal' in line:
-                temperature_config_present = True
-        assert temperature_config_present == True, \
+            if 'base-1' in line:
+                counter += 1
+            if 'Faceplate_side_of_switch_chip_U16' in line:
+                counter += 1
+            if 'normal' in line:
+                counter += 1
+        if counter == 3:
+            temperature_config_present = True
+        assert temperature_config_present is True, \
             'Test to verify \'show system temperature\' command - FAILED!'
         return True
 
@@ -128,6 +136,6 @@ class Test_sys:
 
     def test_show_system_temperature_command(self):
         if self.test.showSystemTemperatureTest():
-            print '''
-##########  Test to verify \'show system temperature\' command - SUCCESS! ##########
-'''
+            info('''
+######  Test to verify \'show system temperature\' command - SUCCESS! ######
+''')

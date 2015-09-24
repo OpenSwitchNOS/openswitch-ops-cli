@@ -19,11 +19,11 @@
 #
 
 from time import sleep
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class PlatformLedTests(HalonTest):
+class PlatformLedTests(OpsVsiTest):
 
     uuid = ''
 
@@ -33,15 +33,12 @@ class PlatformLedTests(HalonTest):
         # either pass getNodeOpts() into hopts/sopts of the topology that
         # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        led_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(led_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def initLedTable(self):
 
@@ -49,23 +46,25 @@ class PlatformLedTests(HalonTest):
         # Assume there would be only one entry in subsystem table
 
         s1 = self.net.switches[0]
-        out = s1.cmd('ovs-vsctl list subsystem')
+        out = s1.ovscmd('ovs-vsctl list subsystem')
         lines = out.split('\n')
         for line in lines:
             if '_uuid' in line:
                 _id = line.split(':')
                 PlatformLedTests.uuid = _id[1].strip()
-                s1.cmd('ovs-vsctl -- set Subsystem '
+                s1.ovscmd('ovs-vsctl -- set Subsystem '
                        + PlatformLedTests.uuid
-                       + ' leds=@led1 -- --id=@led1 create led id=base1 state=flashing status=ok'
+                       + ' leds=@led1 -- --id=@led1 create led '
+                       + ' id=base1 state=flashing status=ok'
                        )
 
     def deinitLedTable(self):
         s1 = self.net.switches[0]
 
-        # Delete dummy data from subsystem and led table to avoid clash with other CT scripts.
+        # Delete dummy data from subsystem and led table to avoid
+        # clash with other CT scripts.
 
-        s1.cmd('ovs-vsctl clear subsystem ' + PlatformLedTests.uuid
+        s1.ovscmd('ovs-vsctl clear subsystem ' + PlatformLedTests.uuid
                + ' leds')
 
     def setLedTest(self):
@@ -77,14 +76,14 @@ class PlatformLedTests(HalonTest):
         out = s1.cmdCLI('configure terminal')
         out = s1.cmdCLI('led base1 on')
         s1.cmdCLI('exit')
-        out = s1.cmd('ovs-vsctl list led base1')
+        out = s1.ovscmd('ovs-vsctl list led base1')
         lines = out.split('\n')
         for line in lines:
             if 'state' in line:
                 if 'on' in line:
                     is_led_set = True
                     break
-        assert is_led_set == True, \
+        assert is_led_set is True, \
             'Test to verify \'led\' command - FAILED!'
         return True
 
@@ -110,7 +109,7 @@ class PlatformLedTests(HalonTest):
                 else:
                     led_config_present = False
 
-        assert led_config_present == True, \
+        assert led_config_present is True, \
             'Test to verify \'show system led\' command - FAILED!'
         return True
 
@@ -123,14 +122,14 @@ class PlatformLedTests(HalonTest):
         out = s1.cmdCLI('configure terminal')
         out = s1.cmdCLI('no led base1')
         s1.cmdCLI('exit')
-        out = s1.cmd('ovs-vsctl list led base1')
+        out = s1.ovscmd('ovs-vsctl list led base1')
         lines = out.split('\n')
         for line in lines:
             if 'state' in line:
                 if 'off' in line:
                     led_state_off = True
                     break
-        assert led_state_off == True, \
+        assert led_state_off is True, \
             'Test to verify \'no led\' command - FAILED!'
         return True
 
@@ -148,7 +147,7 @@ class PlatformLedTests(HalonTest):
         for line in lines:
             if 'led base1 on' in line:
                 led_config_present = True
-        assert led_config_present == True, \
+        assert led_config_present is True, \
             'Test to verify show running-config command - FAILED!'
         return True
 

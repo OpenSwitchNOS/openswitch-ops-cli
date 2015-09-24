@@ -25,11 +25,11 @@
 
 #define MAX_MACADDR_LEN 17
 
-void vtysh_ovsdb_init(int argc, char *argv[]);
+void vtysh_ovsdb_init(int argc, char *argv[], char *db_name);
 
 void vtysh_ovsdb_hostname_set(const char * in);
 
-char* vtysh_ovsdb_hostname_get(void);
+const char* vtysh_ovsdb_hostname_get(void);
 
 void vtysh_ovsdb_exit(void);
 
