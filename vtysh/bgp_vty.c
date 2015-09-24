@@ -2127,7 +2127,7 @@ cli_neighbor_remote_as_cmd_execute (char *vrf_name, struct vty *vty,
 	    if (ovs_bgp_neighbor->bgp_peer_group) {
 		char error_message[128];
 		for (i = 0; i < bgp_router_context->n_bgp_neighbors + 1; i++){
-			if(0 == strcmp(bgp_router_context->value_bgp_neighbors[i], ovs_bgp_neighbor)){
+			if(bgp_router_context->value_bgp_neighbors[i] == ovs_bgp_neighbor){
 				name = bgp_router_context->key_bgp_neighbors[i];
 			}
 		}
@@ -7152,34 +7152,34 @@ int
 calc_msg_recvd_count(struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
 {
     return (get_statistics_from_neighbor(ovs_bgp_neighbor,
-                   "bgp-peer-open_in-count")+
+                   BGP_PEER_OPEN_IN_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                  "bgp-peer-update_in-count")+
+                  BGP_PEER_UPDATE_IN_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                 "bgp-peer-keepalive_in-count")+
+                 BGP_PEER_KEEPALIVE_IN_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                  "bgp-peer-notify_in-count")+
+                  BGP_PEER_NOTIFY_IN_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                  "bgp-peer-refresh_in-count")+
+                  BGP_PEER_REFRESH_IN_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                "bgp-peer-dynamic_cap_in-count"));
+                BGP_PEER_DYNAMIC_CAP_IN_COUNT));
 }
 
 int
 calc_msg_sent_count(struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
 {
     return (get_statistics_from_neighbor(ovs_bgp_neighbor,
-                  "bgp-peer-open_out-count")+
+                  BGP_PEER_OPEN_OUT_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                 "bgp-peer-update_out-count")+
+                 BGP_PEER_UPDATE_OUT_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                "bgp-peer-keepalive_out-count")+
+                BGP_PEER_KEEPALIVE_OUT_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                 "bgp-peer-notify_out-count")+
+                 BGP_PEER_NOTIFY_OUT_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-                 "bgp-peer-refresh_out-count")+
+                 BGP_PEER_REFRESH_OUT_COUNT)+
             get_statistics_from_neighbor(ovs_bgp_neighbor,
-               "bgp-peer-dynamic_cap_out-count"));
+               BGP_PEER_DYNAMIC_CAP_OUT_COUNT));
 }
 
 static int
@@ -7202,24 +7202,34 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
     ovs_vrf = ovsrec_vrf_first(idl);
 
     if(ovs_vrf->value_bgp_routers[0])
-       vty_out(vty,"BGP router identifier %s, local AS number %ld\n",
+       vty_out(vty, "BGP router identifier %s, local AS number %ld\n",
                ovs_vrf->value_bgp_routers[0]->router_id,
                ovs_vrf->key_bgp_routers[0]);
 
-    vty_out(vty,"RIB entries %d\n",bgp_get_rib_count());
+    vty_out(vty, "RIB entries %d\n", bgp_get_rib_count());
 
-    vty_out(vty,"Peers %d\n\n",bgp_router_context->n_bgp_neighbors);
-
-    vty_out(vty,header);
-
-    for(j=0;j<bgp_router_context->n_bgp_neighbors;j++)
-    {
+    for (j = 0; j < bgp_router_context->n_bgp_neighbors; j++) {
         ovs_bgp_neighbor = bgp_router_context->value_bgp_neighbors[j];
-        vty_out(vty,"%s",bgp_router_context->key_bgp_neighbors[j]);
-        len=strlen(bgp_router_context->key_bgp_neighbors[j]);
 
-        for(i=0;i<(16-len);i++)
-          vty_out(vty," ");
+        if (object_is_peer_group(ovs_bgp_neighbor))
+            continue;
+        peer_count++;
+    }
+    vty_out(vty, "Peers %d\n\n", peer_count);
+
+    vty_out(vty, header);
+
+    for (j = 0; j < bgp_router_context->n_bgp_neighbors; j++) {
+        ovs_bgp_neighbor = bgp_router_context->value_bgp_neighbors[j];
+
+        if (object_is_peer_group(ovs_bgp_neighbor))
+            continue;
+
+        vty_out(vty, "%s", bgp_router_context->key_bgp_neighbors[j]);
+        len = strlen(bgp_router_context->key_bgp_neighbors[j]);
+
+        for (i=0; i < (16-len); i++)
+          vty_out(vty, " ");
 
         vty_out(vty, "%7d", *ovs_bgp_neighbor->remote_as);
 
@@ -7229,11 +7239,11 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
 
         vty_out(vty, " %8s", neighbor_uptime
             (get_statistics_from_neighbor(ovs_bgp_neighbor,
-             "bgp-peer-uptime"), timebuf, BGP_UPTIME_LEN));
+             BGP_PEER_UPTIME), timebuf, BGP_UPTIME_LEN));
 
         vty_out(vty, "%12s\n",
                      smap_get(&ovs_bgp_neighbor->status,
-                         "bgp-peer-state"));
+                         BGP_PEER_STATE));
     }
 
     END_DB_TXN(txn);
@@ -7449,45 +7459,81 @@ DEFUN (show_ipv6_mbgp_summary,
 #endif /* HAVE_IPV6 */
 
 static void
-show_one_bgp_neighbor (struct vty *vty, char **name,
+show_one_bgp_neighbor (struct vty *vty, char *name,
                        const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
 {
     int i = 0;
-    vty_out(vty, "  name: %s, remote-as: %s\n",
-	safe_print_string(1, name),
-	safe_print_integer(ovs_bgp_neighbor->n_remote_as,
-	    ovs_bgp_neighbor->remote_as));
-    vty_out(vty, "    state: %s\n",
-	safe_print_smap_value(&ovs_bgp_neighbor->status, BGP_PEER_STATE));
-    vty_out(vty, "    shutdown: %s\n",
-	safe_print_bool(ovs_bgp_neighbor->n_shutdown,
-	    ovs_bgp_neighbor->shutdown));
-    vty_out(vty, "    description: %s\n",
-	safe_print_string(1, ovs_bgp_neighbor->description));
-    vty_out(vty, "    capability: %s\n",
-	safe_print_string(1, ovs_bgp_neighbor->capability));
-    vty_out(vty, "    local_as: %s\n",
-	safe_print_integer(ovs_bgp_neighbor->n_local_as,
-	    ovs_bgp_neighbor->local_as));
-    vty_out(vty, "    local_interface: %s\n",
-	ovs_bgp_neighbor->local_interface ?
-	    safe_print_string(1, ovs_bgp_neighbor->local_interface->name) :
-	    _undefined);
-    vty_out(vty, "    inbound_soft_reconfiguration: %s\n",
-	safe_print_bool(ovs_bgp_neighbor->n_inbound_soft_reconfiguration,
+
+    if (object_is_peer_group(ovs_bgp_neighbor))
+        return;
+
+    if (name)
+        vty_out(vty, "  name: %s, remote-as: %s\n",
+	  safe_print_string(1, name),
+	  safe_print_integer(ovs_bgp_neighbor->n_remote_as,
+	      ovs_bgp_neighbor->remote_as));
+
+    if (smap_get(&ovs_bgp_neighbor->status,BGP_PEER_STATE))
+        vty_out(vty, "    state: %s\n",
+	  safe_print_smap_value(&ovs_bgp_neighbor->status, BGP_PEER_STATE));
+
+    if (ovs_bgp_neighbor->n_shutdown)
+       if(*ovs_bgp_neighbor->shutdown)
+          vty_out(vty, "    shutdown: %s\n",
+	     safe_print_bool(ovs_bgp_neighbor->n_shutdown,
+	            ovs_bgp_neighbor->shutdown));
+
+    if (ovs_bgp_neighbor->description)
+        vty_out(vty, "    description: %s\n",
+	    safe_print_string(1, ovs_bgp_neighbor->description));
+
+    if (ovs_bgp_neighbor->password)
+        vty_out(vty, "    password: %s\n",
+	    safe_print_string(1, ovs_bgp_neighbor->password));
+
+
+    if (ovs_bgp_neighbor->capability)
+        vty_out(vty, "    capability: %s\n",
+	    safe_print_string(1, ovs_bgp_neighbor->capability));
+
+    if (ovs_bgp_neighbor->n_local_as)
+        vty_out(vty, "    local_as: %s\n",
+	    safe_print_integer(ovs_bgp_neighbor->n_local_as,
+	        ovs_bgp_neighbor->local_as));
+
+    if (ovs_bgp_neighbor->local_interface)
+        if (ovs_bgp_neighbor->local_interface->name)
+            vty_out(vty, "    local_interface: %s\n",
+	    ovs_bgp_neighbor->local_interface ?
+	      safe_print_string(1, ovs_bgp_neighbor->local_interface->name) :
+	          _undefined);
+
+    if (ovs_bgp_neighbor->n_inbound_soft_reconfiguration)
+        vty_out(vty, "    inbound_soft_reconfiguration: %s\n",
+	  safe_print_bool(ovs_bgp_neighbor->n_inbound_soft_reconfiguration,
 	    ovs_bgp_neighbor->inbound_soft_reconfiguration));
-    vty_out(vty, "    maximum_prefix_limit: %s\n",
-	safe_print_integer(ovs_bgp_neighbor->n_maximum_prefix_limit,
+
+    if (ovs_bgp_neighbor->n_maximum_prefix_limit)
+        vty_out(vty, "    maximum_prefix_limit: %s\n",
+	  safe_print_integer(ovs_bgp_neighbor->n_maximum_prefix_limit,
 	    ovs_bgp_neighbor->maximum_prefix_limit));
-    vty_out(vty, "    tcp_port_number: %s\n",
-	safe_print_integer(ovs_bgp_neighbor->n_tcp_port_number,
+
+    if (ovs_bgp_neighbor->n_tcp_port_number)
+        vty_out(vty, "    tcp_port_number: %s\n\n",
+	  safe_print_integer(ovs_bgp_neighbor->n_tcp_port_number,
 	    ovs_bgp_neighbor->tcp_port_number));
-    vty_out(vty, "    statistics:\n");
-    for (i = 0; i < ovs_bgp_neighbor->n_statistics; i++) {
-	vty_out(vty, "       %s: %ld\n",
-	    ovs_bgp_neighbor->key_statistics[i],
-	    ovs_bgp_neighbor->value_statistics[i]);
+
+    if (ovs_bgp_neighbor->n_statistics)
+    {
+       vty_out(vty, "    statistics:\n");
+       for (i = 0; i < ovs_bgp_neighbor->n_statistics; i++) {
+           vty_out(vty, "       %s: %ld\n",
+              ovs_bgp_neighbor->key_statistics[i],
+	      ovs_bgp_neighbor->value_statistics[i]);
+       }
     }
+
+    vty_out(vty,"\n");
 }
 
 /*
