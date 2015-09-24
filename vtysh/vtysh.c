@@ -2703,7 +2703,12 @@ execute_command (const char *command, int argc, const char *arg[])
       ret = wait4 (pid, &status, 0, NULL);
       execute_flag = 0;
    }
-   return ret;
+   if (WIFEXITED(status))
+   {
+       VLOG_ERR("Child exited a abnormally\n");
+       return WEXITSTATUS(status);
+   }
+   return -1;
 }
 
 int
@@ -2769,6 +2774,7 @@ DEFUN (show_startup_config,
   char *temp_args[] = {"-D", TEMPORARY_STARTUP_SOCKET, "-c", "show running-config "};
   char *copy_db[] = {OVSDB_PATH, TEMPORARY_STARTUP_DB};
   char *run_server[] = {"--pidfile=/var/run/openvswitch/temp_startup.pid", "--detach", "--remote", "punix:/var/run/openvswitch/temp_startup.sock", TEMPORARY_STARTUP_DB};
+  int ret = 0;
 
   // Check if temporary DB exists and OVSDB server running. If yes, remove it.
   remove_temp_db(1);
@@ -2790,14 +2796,20 @@ DEFUN (show_startup_config,
   }
 
   // Copy startup config to temporary DB.
-  if (execute_command ("cfgdbutil", 2, (const char **)arguments) == -1)
+  ret = execute_command ("cfgdbutil", 2, (const char **)arguments);
+  if (ret == -1)
   {
       vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
       VLOG_ERR("Failed to run cfgdbutil\n");
       return CMD_SUCCESS;
   }
+  else if (ret == 1)
+  {
+      VLOG_ERR("No saved configuration exists\n");
+      return CMD_SUCCESS;
+  }
 
-  // Run one vtysh session on temporary DB.
+  // Run a vtysh session on temporary DB.
   if (execute_command ("vtysh", 4, (const char **)temp_args) == -1)
   {
       vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
