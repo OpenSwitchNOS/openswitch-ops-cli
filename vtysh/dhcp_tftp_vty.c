@@ -69,7 +69,7 @@ bool is_tags_valid ( char *tags_list)
 
     while (token != NULL) {
         if (!is_tag_or_name_valid(token)) {
-            vty_out(vty,"%s IS INVALID %s", token, VTY_NEWLINE);
+            vty_out(vty,"%s is invalid %s", token, VTY_NEWLINE);
             free(list);
             return false;
         } else {
@@ -137,7 +137,7 @@ bool  is_mac_addresses_valid (char *mac_addresses_list)
 
     while (token != NULL) {
         if (!is_valid_mac_address(token)) {
-            vty_out(vty, "%s IS INVALID%s", token, VTY_NEWLINE);
+            vty_out(vty, "%s is invalid%s", token, VTY_NEWLINE);
             free(list);
             return false;
 
@@ -215,7 +215,7 @@ bool is_valid_broadcast_addr(char *start_ip,char *netmask,char *broadcast_ip)
     }
 }
 
-static int show_dhcp_leases()
+static int show_dhcp_leases(voidn)
 {
     char cmd_buff[256];
     char time[256], mac_addr[256], ip_addr[256];
@@ -287,7 +287,7 @@ static int show_dhcp_leases()
 }
 
 
-static int show_dhcp_range()
+static int show_dhcp_range(void)
 {
     const struct ovsrec_dhcpsrv_range *row = NULL;
     size_t i;
@@ -327,18 +327,18 @@ static int show_dhcp_range()
             vty_out(vty, "Name              Start IP Address                 "
                          "             End IP Address                        "
                          "        Netmask          Broadcast        Prefix-len"
-                         "  Lease time  Static  Set tag          Match tags%s",
-                          VTY_NEWLINE);
+                         "  Lease time(min)  Static  Set tag          Match "
+                         "tags%s",  VTY_NEWLINE);
             vty_out(vty, "----------------------------------------------------"
                          "----------------------------------------------------"
                          "----------------------------------------------------"
-                         "-----------------------------------------------%s",
-                          VTY_NEWLINE);
+                         "----------------------------------------------------"
+                         "%s", VTY_NEWLINE);
 
             print_header = 0;
         }
 
-        vty_out(vty, "%-17s %-45s %-45s %-16s %-16s %-11s %-11s %-7s %-16s ",
+        vty_out(vty, "%-17s %-45s %-45s %-16s %-16s %-11s %-16s %-7s %-16s ",
                      row->name, row->start_ip_address,
                      row->end_ip_address ? row->end_ip_address : "*",
                      row->netmask ? row->netmask : "*",
@@ -367,7 +367,7 @@ static int show_dhcp_range()
 }
 
 
-static int show_dhcp_host()
+static int show_dhcp_host(void)
 {
     const struct ovsrec_dhcpsrv_static_host *row = NULL;
     size_t i;
@@ -398,16 +398,16 @@ static int show_dhcp_host()
 
         if (print_header) {
             vty_out(vty, "IP Address                                     "
-                         "Hostname          Client-id         Lease time "
+                         "Hostname          Client-id         Lease time(min) "
                          " MAC-Address        Set tags%s", VTY_NEWLINE);
             vty_out(vty, "-----------------------------------------------"
-                         "-----------------------------------------------"
+                         "----------------------------------------------------"
                          "----------------------------%s", VTY_NEWLINE);
 
             print_header = 0;
         }
 
-        vty_out(vty, "%-46s %-17s %-17s %-11s ",
+        vty_out(vty, "%-46s %-17s %-17s %-16s ",
                      row->ip_address,
                      row->client_hostname ? row->client_hostname : "*",
                      row->client_id ? row->client_id : "*",
@@ -445,7 +445,7 @@ static int show_dhcp_host()
 }
 
 
-static int show_dhcp_options()
+static int show_dhcp_options(void)
 {
     const struct ovsrec_dhcpsrv_option *row = NULL;
     size_t i;
@@ -510,7 +510,7 @@ static int show_dhcp_options()
 }
 
 
-static int show_dhcp_match()
+static int show_dhcp_match(void)
 {
     const struct ovsrec_dhcpsrv_match *row = NULL;
     char option_number[8];
@@ -564,7 +564,7 @@ static int show_dhcp_match()
 }
 
 
-static int show_dhcp_bootp()
+static int show_dhcp_bootp(void)
 {
     const struct ovsrec_dhcp_server *row = NULL;
     const struct smap_node *node;
@@ -612,7 +612,7 @@ static int show_dhcp_bootp()
 }
 
 
-static int show_dhcp_server()
+static int show_dhcp_server(void)
 {
     show_dhcp_range();
     show_dhcp_host();
@@ -622,7 +622,7 @@ static int show_dhcp_server()
     return CMD_SUCCESS;
 }
 
-static int show_tftp_server()
+static int show_tftp_server(void)
 {
     const struct ovsrec_system *row = NULL;
     char *buff = NULL;
@@ -2341,7 +2341,7 @@ DEFUN (cli_dhcp_server_bootp_delete,
         bootp_params.match_tag = (char *)argv[1];
     } else {
         if (!is_tag_or_name_valid((char *)argv[1])) {
-            vty_out(vty,"%s IS INVALID%s", argv[1], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[1], VTY_NEWLINE);
             return CMD_SUCCESS; /* check CMD_SUCCESS */
         } else {
             bootp_params.match_tag = (char *)argv[1];
@@ -2372,7 +2372,7 @@ DEFUN (cli_dhcp_server_bootp_add,
         bootp_params.match_tag = (char *)argv[1];
     } else {
         if (!is_tag_or_name_valid((char *)argv[1])) {
-            vty_out(vty,"%s IS INVALID%s", argv[1], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[1], VTY_NEWLINE);
             return CMD_SUCCESS; /* check CMD_SUCCESS */
         } else {
             bootp_params.match_tag = (char *)argv[1];
@@ -2406,7 +2406,7 @@ DEFUN (cli_dhcp_server_match_name_delete,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[0])) {
-            vty_out(vty,"%s IS INVALID%s", argv[0], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[0], VTY_NEWLINE);
             return CMD_SUCCESS;
         } else {
             match_params.set_tag = (char *)argv[0];
@@ -2418,7 +2418,7 @@ DEFUN (cli_dhcp_server_match_name_delete,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[1])) {
-            vty_out(vty,"%s IS INVALID%s", argv[1], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[1], VTY_NEWLINE);
             return CMD_SUCCESS;
         } else {
              match_params.option_name = (char *)argv[1];
@@ -2454,7 +2454,7 @@ DEFUN (cli_dhcp_server_match_number_delete,
         match_params.set_tag = (char *)argv[0];
     } else {
         if (!is_tag_or_name_valid((char *)argv[0])) {
-            vty_out(vty,"%s IS INVALID%s", argv[0], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[0], VTY_NEWLINE);
             /* check message */
             return CMD_SUCCESS;
         } else {
@@ -2465,7 +2465,7 @@ DEFUN (cli_dhcp_server_match_number_delete,
    if (atoi(argv[1]) < 255) {
         match_params.option_number = atoi(argv[1]);
     } else {
-        vty_out(vty,"%s IS INVALID%s",argv[1],VTY_NEWLINE);
+        vty_out(vty,"%s is invalid%s",argv[1],VTY_NEWLINE);
     }
 
     match_params.option_name = NULL;
@@ -2496,7 +2496,7 @@ DEFUN (cli_dhcp_server_match_name_add,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[0])) {
-            vty_out(vty,"%s IS INVALID%s", argv[0], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[0], VTY_NEWLINE);
             return CMD_SUCCESS;
         } else {
             match_params.set_tag = (char *)argv[0];
@@ -2508,7 +2508,7 @@ DEFUN (cli_dhcp_server_match_name_add,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[1])) {
-            vty_out(vty,"%s IS INVALID%s", argv[1], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[1], VTY_NEWLINE);
             return CMD_SUCCESS;
         } else {
              match_params.option_name = (char *)argv[1];
@@ -2544,7 +2544,7 @@ DEFUN (cli_dhcp_server_match_number_add,
         match_params.set_tag = (char *)argv[0];
     } else {
         if (!is_tag_or_name_valid((char *)argv[0])) {
-            vty_out(vty,"%s IS INVALID%s", argv[0], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[0], VTY_NEWLINE);
             /* check message */
             return CMD_SUCCESS;
         } else {
@@ -2555,7 +2555,7 @@ DEFUN (cli_dhcp_server_match_number_add,
     if (atoi(argv[1]) < 255) {
         match_params.option_number = atoi(argv[1]);
     } else {
-        vty_out(vty,"%s IS INVALID%s",argv[1],VTY_NEWLINE);
+        vty_out(vty,"%s is invalid%s",argv[1],VTY_NEWLINE);
     }
 
 
@@ -2592,7 +2592,7 @@ DEFUN (cli_dhcp_server_option_name_delete,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[0])) {
-            vty_out(vty,"%s IS INVALID%s", argv[0], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[0], VTY_NEWLINE);
             return CMD_SUCCESS; /* check */
 
         } else {
@@ -2644,7 +2644,7 @@ DEFUN (cli_dhcp_server_option_number_delete,
     if (atoi(argv[0]) < 255) {
         option_params.option_number = atoi(argv[0]);
     } else {
-        vty_out(vty,"%s IS INVALID%s",argv[0],VTY_NEWLINE);
+        vty_out(vty,"%s is invalid%s",argv[0],VTY_NEWLINE);
     }
 
     option_params.option_name = NULL;
@@ -2696,7 +2696,7 @@ DEFUN (cli_dhcp_server_option_name_add,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[0])) {
-            vty_out(vty,"%s IS INVALID%s", argv[0], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[0], VTY_NEWLINE);
             return CMD_SUCCESS; /* check */
 
         } else {
@@ -2749,7 +2749,7 @@ DEFUN (cli_dhcp_server_option_number_add,
     if (atoi(argv[0]) < 255) {
         option_params.option_number = atoi(argv[0]);
     } else {
-        vty_out(vty,"%s IS INVALID%s",argv[0],VTY_NEWLINE);
+        vty_out(vty,"%s is invalid%s",argv[0],VTY_NEWLINE);
     }
 
     option_params.option_name = NULL;
@@ -2808,7 +2808,7 @@ DEFUN (cli_dhcp_server_static_host_delete,
 
     /* validating ip address */
     if (!is_valid_ip_address((char *)argv[0])) {
-        vty_out(vty, "%s IS INVALID%s",argv[0],VTY_NEWLINE);
+        vty_out(vty, "%s is invalid%s",argv[0],VTY_NEWLINE);
         return CMD_SUCCESS;  /* check */
 
     } else {
@@ -2843,7 +2843,7 @@ DEFUN (cli_dhcp_server_static_host_delete,
         static_host_params.client_hostname = (char *)argv[3];
     } else {
         if (!is_tag_or_name_valid((char *)argv[3])) {
-                vty_out(vty,"%s IS INVALID%s", argv[3], VTY_NEWLINE);
+                vty_out(vty,"%s is invalid%s", argv[3], VTY_NEWLINE);
                 return CMD_SUCCESS; /* check */
         } else {
                 static_host_params.client_hostname = (char *)argv[3];
@@ -2857,7 +2857,7 @@ DEFUN (cli_dhcp_server_static_host_delete,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[4])) {
-                vty_out(vty,"%s IS INVALID%s", argv[4], VTY_NEWLINE);
+                vty_out(vty,"%s is invalid%s", argv[4], VTY_NEWLINE);
                 return CMD_SUCCESS;
 
         } else {
@@ -2904,7 +2904,7 @@ DEFUN (cli_dhcp_server_static_host_add,
 
     /* validating ip address */
     if (!is_valid_ip_address((char *)argv[0])) {
-        vty_out(vty, "%s IS INVALID%s",argv[0],VTY_NEWLINE);
+        vty_out(vty, "%s is invalid%s",argv[0],VTY_NEWLINE);
         return CMD_SUCCESS;  /* check */
     } else {
         static_host_params.ip_address = (char *)argv[0];
@@ -2938,7 +2938,7 @@ DEFUN (cli_dhcp_server_static_host_add,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[3])) {
-            vty_out(vty,"%s IS INVALID%s", argv[3], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[3], VTY_NEWLINE);
             return CMD_SUCCESS; /* check */
         } else {
             static_host_params.client_hostname = (char *)argv[3];
@@ -2951,7 +2951,7 @@ DEFUN (cli_dhcp_server_static_host_add,
         static_host_params.client_id = (char *)argv[4];
     } else {
         if (!is_tag_or_name_valid((char *)argv[4])) {
-            vty_out(vty,"%s IS INVALID%s", argv[4], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[4], VTY_NEWLINE);
             return CMD_SUCCESS;
         } else {
             static_host_params.client_id = (char *)argv[4];
@@ -2974,19 +2974,20 @@ DEFUN (cli_dhcp_server_static_host_add,
 DEFUN (cli_dhcp_server_range_delete,
        cli_dhcp_server_range_delete_cmd,
        "no range WORD start-ip-address (A.B.C.D|X:X::X:X)"
-       "{static | end-ip-address (A.B.C.D|X:X::X:X)"
+       " end-ip-address (A.B.C.D|X:X::X:X) {static "
        "| set tag TAG-NAME | match tags TAGS "
        "| netmask A.B.C.D | broadcast A.B.C.D | prefix-len <64-128> | "
        "lease-duration <0-65535>}",
+       "Remove DHCP server configuration\n"
        "DHCP server IP address range configuration\n"
        "Enter DHCP server IP address range name\n"
        "Start IP address\n"
        "Enter start IPv4 address\n"
        "Enter start IPv6 address\n"
-       "Static IP address configuration for the IP address range\n"
        "End IP address\n"
        "Enter end IPv4 address\n"
        "Enter end IPv6 address\n"
+       "Static IP address configuration for the IP address range\n"
        "Set tag for the IP address range\n"
        "Set tag configuration\n"
        "Enter tag name\n"
@@ -3015,16 +3016,9 @@ DEFUN (cli_dhcp_server_range_delete,
         return CMD_ERR_INCOMPLETE;
     }
 
-    if (argv[3] == NULL && argv[6] == NULL) {
-        vty_out(vty, "Error: Both end-ip-address and netmask are not "
-                     "configured. At least one should be configured%s",
-                      VTY_NEWLINE);
-        return CMD_ERR_INCOMPLETE;
-    }
-
     /* validating range name */
     if (strlen(argv[0]) > MAX_DHCP_CONFIG_NAME_LENGTH) {
-        vty_out(vty,"%s IS INVALID%s",argv[0],VTY_NEWLINE);
+        vty_out(vty,"%s is invalid%s",argv[0],VTY_NEWLINE);
         return CMD_SUCCESS;
 
     } else {
@@ -3033,7 +3027,7 @@ DEFUN (cli_dhcp_server_range_delete,
 
     /* validating start ip address */
     if (!is_valid_ip_address((char *)argv[1])) {
-        vty_out (vty, "%s IS INVALID%s",argv[1],VTY_NEWLINE);
+        vty_out (vty, "%s is invalid%s",argv[1],VTY_NEWLINE);
         return CMD_SUCCESS; /* check this */
 
     } else {
@@ -3045,39 +3039,41 @@ DEFUN (cli_dhcp_server_range_delete,
             start_ip_ipv6 = true;
         }
     }
-    /* validating static */
-    if (argv[2] == NULL) {
-        range_params.is_static = 0;
-    } else {
-        range_params.is_static = 1;
-    }
+
     /* end ip address */
-    if(argv[3] != NULL) {
-        if (!is_valid_ip_address((char *)argv[3])) {
-            vty_out (vty, "%s IS INVALID%s", argv[3],VTY_NEWLINE);
+    if(argv[2] != NULL) {
+        if (!is_valid_ip_address((char *)argv[2])) {
+            vty_out (vty, "%s is invalid%s", argv[2],VTY_NEWLINE);
             return CMD_SUCCESS;
 
         } else {
-            if (ip_type((char *)argv[3]) == 0) {
+            if (ip_type((char *)argv[2]) == 0) {
                 end_ip_ipv4=true;
 
-            } else if (ip_type((char *)argv[3]) == 1) {
+            } else if (ip_type((char *)argv[2]) == 1) {
                 end_ip_ipv6=true;
             }
 
             if (start_ip_ipv4 && end_ip_ipv4) {
-                range_params.end_ip_address = (char *)argv[3];
+                range_params.end_ip_address = (char *)argv[2];
             } else if (start_ip_ipv6 && end_ip_ipv6) {
-                range_params.end_ip_address = (char *)argv[3];
+                range_params.end_ip_address = (char *)argv[2];
             }
             else {
-                vty_out(vty, "INVALID IP ADDRESS RANGE%s",VTY_NEWLINE);
+                vty_out(vty, "Invalid IP address range%s",VTY_NEWLINE);
                 return CMD_SUCCESS;
             }
        }
     }
     else {
-        range_params.end_ip_address = (char *)argv[3];
+        range_params.end_ip_address = (char *)argv[2];
+    }
+
+    /* validating static */
+    if (argv[3] == NULL) {
+        range_params.is_static = 0;
+    } else {
+        range_params.is_static = 1;
     }
 
     /* validating set tag */
@@ -3086,7 +3082,7 @@ DEFUN (cli_dhcp_server_range_delete,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[4])) {
-            vty_out(vty,"%s IS INVALID%s",argv[4],VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s",argv[4],VTY_NEWLINE);
             return CMD_SUCCESS;       /* check */
 
         } else {
@@ -3114,7 +3110,7 @@ DEFUN (cli_dhcp_server_range_delete,
 
     } else {
         if (!is_valid_netmask((char *)argv[6])) {
-            vty_out(vty, "%s IS INVALID%s",argv[6],VTY_NEWLINE);
+            vty_out(vty, "%s is invalid%s",argv[6],VTY_NEWLINE);
             return CMD_SUCCESS; /* check */
 
         } else {
@@ -3122,9 +3118,9 @@ DEFUN (cli_dhcp_server_range_delete,
                 range_params.netmask = (char *)argv[6];
                 if (range_params.start_ip_address != NULL \
                      && range_params.end_ip_address != NULL ) {
-                    if (!is_valid_net((char *)argv[1],(char *)argv[3],\
+                    if (!is_valid_net((char *)argv[1],(char *)argv[2],\
                        (char *)argv[6])) {
-                        vty_out(vty,"INVALID IP ADDRESS RANGE%s",VTY_NEWLINE);
+                        vty_out(vty,"Invalid IP address range%s",VTY_NEWLINE);
                         return CMD_SUCCESS;
                     }
                 }
@@ -3147,7 +3143,7 @@ DEFUN (cli_dhcp_server_range_delete,
                range_params.netmask,(char *)argv[7])) {
                 range_params.broadcast = (char *)argv[7];
             } else {
-                vty_out(vty, "%s IS INVALID%s",argv[7], \
+                vty_out(vty, "%s is invalid%s",argv[7], \
                          VTY_NEWLINE);
                 return CMD_SUCCESS; /* check */
             }
@@ -3193,7 +3189,7 @@ DEFUN (cli_dhcp_server_range_delete,
 DEFUN (cli_dhcp_server_range_add,
        cli_dhcp_server_range_add_cmd,
        "range WORD start-ip-address (A.B.C.D|X:X::X:X)"
-       "{static | end-ip-address (A.B.C.D|X:X::X:X)"
+       " end-ip-address (A.B.C.D|X:X::X:X) {static "
        "| set tag TAG-NAME | match tags TAGS "
        "| netmask A.B.C.D | broadcast A.B.C.D | prefix-len <64-128> | "
        "lease-duration <0-65535>}",
@@ -3202,10 +3198,10 @@ DEFUN (cli_dhcp_server_range_add,
        "Start IP address\n"
        "Enter start IPv4 address\n"
        "Enter start IPv6 address\n"
-       "Static IP address configuration for the IP address range\n"
        "End IP address\n"
        "Enter end IPv4 address\n"
        "Enter end IPv6 address\n"
+       "Static IP address configuration for the IP address range\n"
        "Set tag for the IP address range\n"
        "Set tag configuration\n"
        "Enter tag name\n"
@@ -3233,16 +3229,9 @@ DEFUN (cli_dhcp_server_range_add,
         return CMD_ERR_INCOMPLETE;
     }
 
-    if (argv[3] == NULL && argv[6] == NULL) {
-        vty_out(vty, "Error: Both end-ip-address and netmask are not "
-                     "configured. At least one should be configured%s",
-                      VTY_NEWLINE);
-        return CMD_ERR_INCOMPLETE;
-    }
-
     /* validating range name */
     if (strlen(argv[0]) > MAX_DHCP_CONFIG_NAME_LENGTH) {
-        vty_out(vty,"%s IS INVALID%s ",argv[0],VTY_NEWLINE);
+        vty_out(vty,"%s is invalid%s ",argv[0],VTY_NEWLINE);
         return CMD_SUCCESS;
     } else {
         range_params.name = (char *) argv[0];
@@ -3250,7 +3239,7 @@ DEFUN (cli_dhcp_server_range_add,
 
     /* validating start ip address */
     if (!is_valid_ip_address((char *)argv[1])) {
-        vty_out (vty, "%s IS INVALID%s",argv[1],VTY_NEWLINE);
+        vty_out (vty, "%s is invalid%s",argv[1],VTY_NEWLINE);
         return CMD_SUCCESS; /* check this */
 
     } else {
@@ -3263,40 +3252,40 @@ DEFUN (cli_dhcp_server_range_add,
         }
     }
 
-    /* validating static */
-    if (argv[2] == NULL) {
-        range_params.is_static = 0;
-    } else {
-        range_params.is_static = 1;
-    }
-
     /* end ip address */
-    if(argv[3] != NULL) {
-        if (!is_valid_ip_address((char *)argv[3])) {
-            vty_out (vty, "%s IS INVALID%s", argv[3],VTY_NEWLINE);
+    if(argv[2] != NULL) {
+        if (!is_valid_ip_address((char *)argv[2])) {
+            vty_out (vty, "%s is invalid%s", argv[2],VTY_NEWLINE);
             return CMD_SUCCESS;
 
         } else {
-            if (ip_type((char *)argv[3]) == 0) {
+            if (ip_type((char *)argv[2]) == 0) {
               end_ip_ipv4=true;
 
-            } else if (ip_type((char *)argv[3]) == 1) {
+            } else if (ip_type((char *)argv[2]) == 1) {
               end_ip_ipv6=true;
             }
             if (start_ip_ipv4 && end_ip_ipv4) {
-              range_params.end_ip_address = (char *)argv[3];
+              range_params.end_ip_address = (char *)argv[2];
 
             } else if (start_ip_ipv6 && end_ip_ipv6) {
-              range_params.end_ip_address = (char *)argv[3];
+              range_params.end_ip_address = (char *)argv[2];
             }
             else {
-              vty_out(vty, "INVALID IP ADDRESS RANGE%s", VTY_NEWLINE);
+              vty_out(vty, "Invalid IP address range%s", VTY_NEWLINE);
               return CMD_SUCCESS;
             }
        }
     }
     else {
-        range_params.end_ip_address = (char *)argv[3];
+        range_params.end_ip_address = (char *)argv[2];
+    }
+
+    /* validating static */
+    if (argv[3] == NULL) {
+        range_params.is_static = 0;
+    } else {
+        range_params.is_static = 1;
     }
 
     /* validating set tag */
@@ -3305,7 +3294,7 @@ DEFUN (cli_dhcp_server_range_add,
 
     } else {
         if (!is_tag_or_name_valid((char *)argv[4])) {
-            vty_out(vty,"%s IS INVALID%s", argv[4], VTY_NEWLINE);
+            vty_out(vty,"%s is invalid%s", argv[4], VTY_NEWLINE);
             return CMD_SUCCESS; /* check */
 
         } else {
@@ -3333,7 +3322,7 @@ DEFUN (cli_dhcp_server_range_add,
 
     } else {
         if (!is_valid_netmask((char *)argv[6])) {
-            vty_out(vty, "%s IS INVALID%s", argv[6], VTY_NEWLINE);
+            vty_out(vty, "%s is invalid%s", argv[6], VTY_NEWLINE);
             return CMD_SUCCESS; /* check */
 
         } else {
@@ -3341,9 +3330,9 @@ DEFUN (cli_dhcp_server_range_add,
                 range_params.netmask = (char *)argv[6];
                 if (range_params.start_ip_address != NULL \
                      && range_params.end_ip_address != NULL ) {
-                    if (!is_valid_net((char *)argv[1],(char *)argv[3],\
+                    if (!is_valid_net((char *)argv[1],(char *)argv[2],\
                        (char *)argv[6])) {
-                        vty_out(vty,"INVALID IP ADDRESS RANGE%s",\
+                        vty_out(vty,"Invalid IP address range%s",\
                                      VTY_NEWLINE);
                         return CMD_SUCCESS;
                     }
@@ -3367,7 +3356,7 @@ DEFUN (cli_dhcp_server_range_add,
                range_params.netmask,(char *)argv[7])) {
                 range_params.broadcast = (char *)argv[7];
             } else {
-                vty_out(vty, "%s IS INVALID%s", argv[7], \
+                vty_out(vty, "%s is invalid%s", argv[7], \
                          VTY_NEWLINE);
                 return CMD_SUCCESS; /* check */
             }

@@ -18,8 +18,8 @@
 #    under the License.
 #
 
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
 class LACPCliTest(HalonTest):
