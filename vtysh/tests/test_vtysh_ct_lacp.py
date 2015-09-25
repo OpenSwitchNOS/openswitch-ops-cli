@@ -18,11 +18,11 @@
 #    under the License.
 #
 
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
-class LACPCliTest(HalonTest):
+class LACPCliTest(OpsVsiTest):
 
     def setupNet(self):
 
@@ -30,15 +30,12 @@ class LACPCliTest(HalonTest):
         # either pass getNodeOpts() into hopts/sopts of the topology that
         # you build or into addHost/addSwitch calls
 
-        self.net = Mininet(
-            topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
-                                  sopts=self.getSwitchOpts()),
-            switch=HalonSwitch,
-            host=HalonHost,
-            link=HalonLink,
-            controller=None,
-            build=True,
-            )
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        infra_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(infra_topo, switch=VsiOpenSwitch,
+                       host=Host, link=OpsVsiLink,
+                       controller=None, build=True)
 
     def createLagPort(self):
         info('''
