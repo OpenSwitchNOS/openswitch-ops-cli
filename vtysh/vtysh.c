@@ -2714,7 +2714,7 @@ execute_command (const char *command, int argc, const char *arg[])
           VLOG_ERR("Child exited abnormally\n");
       }
    }
-   return -1;
+   return ret;
 }
 
 int

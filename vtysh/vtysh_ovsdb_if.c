@@ -1,22 +1,18 @@
 /* Vtysh daemon ovsdb integration.
  *
- * Copyright (C) 1997, 98 Kunihiro Ishiguro
  * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
- * GNU Zebra is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2, or (at your option) any
- * later version.
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
  *
- * GNU Zebra is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with GNU Zebra; see the file COPYING.  If not, write to the Free
- * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  *
  * File: vtysh_ovsdb_if.c
  *
@@ -40,18 +36,19 @@
 #include "timeval.h"
 #include "openvswitch/vlog.h"
 #include "coverage.h"
-
 #include "openhalon-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "assert.h"
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
+
 #ifdef HAVE_GNU_REGEX
 #include <regex.h>
 #else
 #include "lib/regex-gnu.h"
 #endif /* HAVE_GNU_REGEX */
+
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
@@ -59,7 +56,7 @@
 
 typedef unsigned char boolean;
 
-VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_if);
+VLOG_DEFINE_THIS_MODULE (vtysh_ovsdb_if);
 
 struct ovsdb_idl *idl;
 static unsigned int idl_seqno;
@@ -71,26 +68,24 @@ boolean exiting = false;
 volatile boolean vtysh_exit = false;
 extern struct vty *vty;
 
-/*
- * Running idl run and wait to fetch the data from the DB
- */
+/* Running idl run and wait to fetch the data from the DB. */
 static void
 vtysh_run()
 {
-    ovsdb_idl_run(idl);
+    ovsdb_idl_run (idl);
 }
 
 static void
 vtysh_wait(void)
 {
-    ovsdb_idl_wait(idl);
-    latch_wait(&ovsdb_latch);
+    ovsdb_idl_wait (idl);
+    latch_wait (&ovsdb_latch);
 }
 
 static void
-bgp_ovsdb_init ()
+bgp_ovsdb_init()
 {
-    /* BGP router table */
+    /* BGP router table. */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_router);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_router_id);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_networks);
@@ -105,7 +100,7 @@ bgp_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_external_ids);
 
-    /* BGP neighbor table */
+    /* BGP neighbor table. */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_is_peer_group);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_description);
@@ -121,7 +116,8 @@ bgp_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_maximum_prefix_limit);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_capability);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_override_capability);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_inbound_soft_reconfiguration);
+    ovsdb_idl_add_column(idl,
+                         &ovsrec_bgp_neighbor_col_inbound_soft_reconfiguration);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_remove_private_as);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_passive);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_password);
@@ -133,7 +129,7 @@ bgp_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_external_ids);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_other_config);
 
-    /* RIB */
+    /* RIB. */
     ovsdb_idl_add_table(idl, &ovsrec_table_route);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_prefix);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_from);
@@ -145,7 +141,7 @@ bgp_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_route_col_metric);
     ovsdb_idl_add_column(idl, &ovsrec_route_col_vrf);
 
-    /* BGP RIB table */
+    /* BGP RIB table. */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_route);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_prefix);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_bgp_nexthops);
@@ -157,7 +153,7 @@ bgp_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_path_attributes);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_route_col_peer);
 
-    /* BGP Nexthop table */
+    /* BGP Nexthop table. */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_nexthop);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_nexthop_col_ip_address);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_nexthop_col_type);
@@ -166,17 +162,16 @@ bgp_ovsdb_init ()
 static void
 l3routes_ovsdb_init()
 {
-  ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-  ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
-
-  ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ports);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
-  ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
+    ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
 }
 
 static void
@@ -197,7 +192,6 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_bgp_routers);
-
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
@@ -207,23 +201,20 @@ vrf_ovsdb_init()
 }
 
 static void
-policy_ovsdb_init()
+policy_ovsdb_init ()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_prefix_list_entries);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_description);
-
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list_entry);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entry_col_action);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entry_col_prefix);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entry_col_le);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_entry_col_ge);
-
     ovsdb_idl_add_table(idl, &ovsrec_table_route_map);
     ovsdb_idl_add_column(idl, &ovsrec_route_map_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_route_map_col_route_map_entries);
-
     ovsdb_idl_add_table(idl, &ovsrec_table_route_map_entry);
     ovsdb_idl_add_column(idl, &ovsrec_route_map_entry_col_description);
     ovsdb_idl_add_column(idl, &ovsrec_route_map_entry_col_action);
@@ -284,7 +275,7 @@ static void
 radius_server_ovsdb_init()
 {
 
-    /* Add radius-server columns */
+    /* Add radius-server columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_radius_servers);
     ovsdb_idl_add_table(idl, &ovsrec_table_radius_server);
     ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_retries);
@@ -367,62 +358,63 @@ dhcp_tftp_ovsdb_init()
 static void
 system_ovsdb_init()
 {
-    /* Add Platform Related Tables */
-    ovsdb_idl_add_table(idl,&ovsrec_table_fan);
-    ovsdb_idl_add_table(idl,&ovsrec_table_power_supply);
-    ovsdb_idl_add_table(idl,&ovsrec_table_led);
-    ovsdb_idl_add_table(idl,&ovsrec_table_subsystem);
-    ovsdb_idl_add_table(idl,&ovsrec_table_temp_sensor);
+    /* Add Platform Related Tables. */
+    ovsdb_idl_add_table(idl, &ovsrec_table_fan);
+    ovsdb_idl_add_table(idl, &ovsrec_table_power_supply);
+    ovsdb_idl_add_table(idl, &ovsrec_table_led);
+    ovsdb_idl_add_table(idl, &ovsrec_table_subsystem);
+    ovsdb_idl_add_table(idl, &ovsrec_table_temp_sensor);
 
-    /* Add Columns for System Related Tables */
-    //Power Supply
-    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_name);
-    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_status);
-    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_other_config);
-    ovsdb_idl_add_column(idl,&ovsrec_power_supply_col_external_ids);
+    /* Add Columns for System Related Tables. */
 
-    //LED
-    ovsdb_idl_add_column(idl,&ovsrec_led_col_id);
-    ovsdb_idl_add_column(idl,&ovsrec_led_col_state);
-    ovsdb_idl_add_column(idl,&ovsrec_led_col_status);
-    ovsdb_idl_add_column(idl,&ovsrec_led_col_other_config);
-    ovsdb_idl_add_column(idl,&ovsrec_led_col_external_ids);
+    /* Power Supply. */
+    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_external_ids);
 
-    //Subsystem
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_interfaces);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_leds);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_fans);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_temp_sensors);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_power_supplies);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_asset_tag_number);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_name);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_type);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_hw_desc_dir);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_other_info);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_other_config);
-    ovsdb_idl_add_column(idl,&ovsrec_subsystem_col_external_ids);
+    /* LED. */
+    ovsdb_idl_add_column(idl, &ovsrec_led_col_id);
+    ovsdb_idl_add_column(idl, &ovsrec_led_col_state);
+    ovsdb_idl_add_column(idl, &ovsrec_led_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_led_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_led_col_external_ids);
 
-    //Fan
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_status);
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_direction);
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_name);
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_rpm);
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_other_config);
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_hw_config);
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_external_ids);
-    ovsdb_idl_add_column(idl,&ovsrec_fan_col_speed);
+    /* Subsystem .*/
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_interfaces);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_leds);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_fans);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_temp_sensors);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_power_supplies);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_asset_tag_number);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_type);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_hw_desc_dir);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_other_info);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_external_ids);
 
-    //Temp
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_external_ids);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_fan_state);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_hw_config);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_location);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_max);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_min);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_name);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_other_config);;
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_status);
-    ovsdb_idl_add_column(idl,&ovsrec_temp_sensor_col_temperature);
+    /* Fan. */
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_direction);
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_rpm);
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_hw_config);
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_external_ids);
+    ovsdb_idl_add_column(idl, &ovsrec_fan_col_speed);
+
+    /* Temp. */
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_external_ids);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_fan_state);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_hw_config);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_location);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_max);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_min);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_other_config);;
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_temperature);
 
 }
 
@@ -458,9 +450,9 @@ mgmt_intf_ovsdb_init()
 static void
 lacp_ovsdb_init()
 {
-   ovsdb_idl_add_column(idl, &ovsrec_system_col_lacp_config);
-   ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
-   ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_lacp_config);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
 }
 
 /*
@@ -475,7 +467,7 @@ ovsdb_init(const char *db_path)
 
     idl = ovsdb_idl_create(db_path, &ovsrec_idl_class, false, true);
     pid = getpid();
-    idl_lock = xasprintf("halon_vtysh_%ld", pid);
+    idl_lock = xasprintf("ops_cli_%ld", pid);
     ovsdb_idl_set_lock(idl, idl_lock);
     free(idl_lock);
     idl_seqno = ovsdb_idl_get_seqno(idl);
@@ -485,17 +477,17 @@ ovsdb_init(const char *db_path)
     /* Add switch version column */
     ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_switch_version);
 
-    /* Add hostname columns */
+    /* Add hostname columns. */
     ovsdb_idl_add_table(idl, &ovsrec_table_system);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
-    /* Add AAA columns */
+    /* Add AAA columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_aaa);
 
-    /* Add Auto Provision Column */
+    /* Add Auto Provision Column. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_auto_provisioning_status);
 
-    /* Add tables and columns for LLDP configuration */
+    /* Add tables and columns for LLDP configuration. */
     ovsdb_idl_add_table(idl, &ovsrec_table_system);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_cur_cfg);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
@@ -503,45 +495,45 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_system_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_system_mac);
 
-    /* Add columns for ECMP configuration */
+    /* Add columns for ECMP configuration. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
 
-    /* Interface tables */
+    /* Interface tables. */
     intf_ovsdb_init();
 
-   /* Management interface columns */
+   /* Management interface columns. */
     mgmt_intf_ovsdb_init();
 
     alias_ovsdb_init();
 
-    /* BGP tables */
+    /* BGP tables. */
     bgp_ovsdb_init();
     l3routes_ovsdb_init();
 
-    /* VRF tables */
+    /* VRF tables. */
     vrf_ovsdb_init();
 
-    /* Radius server table */
+    /* Radius server table. */
     radius_server_ovsdb_init();
 
-    /* Policy tables */
+    /* Policy tables. */
     policy_ovsdb_init();
 
-    /* System tables */
+    /* System tables. */
     system_ovsdb_init();
-    /* VLAN internal commands */
+    /* VLAN internal commands. */
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
 
-    /* vlan table */
+    /* vlan table. */
     vlan_ovsdb_init();
     dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init();
-    /* Add tables/columns needed for LACP config commands */
+    /* Add tables/columns needed for LACP config commands. */
     lacp_ovsdb_init();
 
-    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands */
+    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands. */
     ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
@@ -552,18 +544,17 @@ ovsdb_init(const char *db_path)
 }
 
 static void
-halon_vtysh_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
-                    const char *argv[] OVS_UNUSED, void *exiting_)
+ops_vtysh_exit(struct unixctl_conn *conn, int argc OVS_UNUSED,
+               const char *argv[] OVS_UNUSED, void *exiting_)
 {
     boolean *exiting = exiting_;
     *exiting = true;
     unixctl_command_reply(conn, NULL);
 }
 
-/*
- * The init for the ovsdb integration called in vtysh main function
- */
-void vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
+/* The init for the ovsdb integration called in vtysh main function. */
+void
+vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
 {
     int retval;
     char *ovsdb_sock;
@@ -581,70 +572,63 @@ void vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
     ovsrec_init();
 
     retval = unixctl_server_create(appctl_path, &appctl);
-    if(retval)
-    {
+    if (retval) {
         exit(EXIT_FAILURE);
     }
 
-    unixctl_command_register("exit", "", 0, 0, halon_vtysh_exit, &exiting);
+    unixctl_command_register("exit", "", 0, 0, ops_vtysh_exit, &exiting);
 
     ovsdb_init(ovsdb_sock);
     vtysh_ovsdb_lib_init();
     free(ovsdb_sock);
 
-    VLOG_DBG("Halon Vtysh OVSDB Integration has been initialized");
+    VLOG_DBG("OPS Vtysh OVSDB Integration has been initialized");
 
     return;
 }
 
 /*
  * The set command to set the hostname column in the
- * system table from the set-hotname command
+ * system table from the set-hotname command.
  */
-void vtysh_ovsdb_hostname_set(const char* in)
+void
+vtysh_ovsdb_hostname_set(const char* in)
 {
     const struct ovsrec_system *ovs= NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status = TXN_ERROR;
 
     ovs = ovsrec_system_first(idl);
-    if(ovs)
-    {
+    if (ovs) {
         status_txn = cli_do_config_start();
-        if(status_txn == NULL)
-        {
-          cli_do_config_abort(status_txn);
-          VLOG_ERR("Couldn't create the OVSDB transaction.");
-        }
-        else
-        {
-          ovsrec_system_set_hostname(ovs, in);
-          status = cli_do_config_finish(status_txn);
+        if(status_txn == NULL) {
+            cli_do_config_abort(status_txn);
+            VLOG_ERR("Couldn't create the OVSDB transaction.");
+        } else {
+            ovsrec_system_set_hostname(ovs, in);
+            status = cli_do_config_finish(status_txn);
         }
         if(!(status == TXN_SUCCESS || status == TXN_UNCHANGED))
-          VLOG_ERR("Committing transaction to DB failed.");
-    }
-    else
-    {
+            VLOG_ERR("Committing transaction to DB failed.");
+    } else {
         VLOG_ERR("unable to retrieve any system table rows");
     }
 }
 
 /*
  * The get command to read from the ovsdb system table
- * hostname column from the vtysh get-hostname command
+ * hostname column from the vtysh get-hostname command.
  */
-const char* vtysh_ovsdb_hostname_get()
+
+const char*
+vtysh_ovsdb_hostname_get()
 {
     const struct ovsrec_system *ovs;
     ovs = ovsrec_system_first(idl);
 
-    if(ovs)
-    {
+    if (ovs) {
         return smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_HOSTNAME);
-    }
-    else
-    {
+    } else {
         VLOG_ERR("unable to  retrieve any system table rows");
     }
 
@@ -652,236 +636,220 @@ const char* vtysh_ovsdb_hostname_get()
 }
 
 /* Wait for database sysnchronization in case *
- * of command execution outside of vtysh */
-bool vtysh_ovsdb_is_loaded()
+ * of command execution outside of vtysh. */
+bool
+vtysh_ovsdb_is_loaded()
 {
    return (ovsdb_idl_has_ever_connected(idl));
 }
 
-/*
- * When exiting vtysh destroy the idl cache
- */
-void vtysh_ovsdb_exit(void)
+
+/* When exiting vtysh destroy the idl cache. */
+
+void
+vtysh_ovsdb_exit(void)
 {
     ovsdb_idl_destroy(idl);
 }
 
-/*
- * Check whether config is initialized by subsystem
- */
-bool ovsdb_cfg_initialized()
+/* Check whether config is initialized by subsystem. */
+
+bool
+ovsdb_cfg_initialized()
 {
-  if(cur_cfg_no < 1)
-  {
-    const struct ovsrec_system* ovs = ovsrec_system_first(idl);
-    if(ovs != NULL)
-    {
-      cur_cfg_no = ovs->cur_cfg;
-      if(cur_cfg_no < 1)
-      {
-        return false;
-      }
+    if (cur_cfg_no < 1) {
+        const struct ovsrec_system* ovs = ovsrec_system_first(idl);
+        if (ovs != NULL) {
+            cur_cfg_no = ovs->cur_cfg;
+            if (cur_cfg_no < 1) {
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
-    else
-    {
-      return false;
-    }
-  }
-  return true;
+    return true;
 }
 
 /* Take the lock and create a transaction if
    DB connection is available and return the
-   transaction pointer */
+   transaction pointer. */
 struct ovsdb_idl_txn* cli_do_config_start()
 {
-  if(!ovsdb_cfg_initialized())
-  {
-    return NULL;
-  }
+    if (!ovsdb_cfg_initialized()) {
+        return NULL;
+    }
 
   struct ovsdb_idl_txn *status_txn = ovsdb_idl_txn_create(idl);
 
-  if(status_txn  == NULL)
-  {
-     assert(0);
-     return NULL;
-  }
-  return status_txn;
+    if (status_txn  == NULL) {
+        assert(0);
+        return NULL;
+    }
+    return status_txn;
 }
 
-/* Commit the transaction to DB and relase the lock */
-enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* status_txn)
+/* Commit the transaction to DB and relase the lock. */
+enum
+ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* status_txn)
 {
-  if(status_txn == NULL)
-  {
-    assert(0);
-    return TXN_ERROR;
-  }
+    if (status_txn == NULL) {
+        assert(0);
+        return TXN_ERROR;
+    }
 
-  enum ovsdb_idl_txn_status status;
+    enum ovsdb_idl_txn_status status;
 
-  status = ovsdb_idl_txn_commit_block(status_txn);
-  ovsdb_idl_txn_destroy(status_txn);
-  status_txn = NULL;
+    status = ovsdb_idl_txn_commit_block(status_txn);
+    ovsdb_idl_txn_destroy(status_txn);
+    status_txn = NULL;
 
-  return status;
+    return status;
 }
 
-/* Destroy the transaction in case of an error */
-void cli_do_config_abort(struct ovsdb_idl_txn* status_txn)
+/* Destroy the transaction in case of an error. */
+void
+cli_do_config_abort(struct ovsdb_idl_txn* status_txn)
 {
-  if(status_txn == NULL)
-  {
-    return;
-  }
-  ovsdb_idl_txn_destroy(status_txn);
-  status_txn = NULL;
+    if (status_txn == NULL) {
+        return;
+    }
+    ovsdb_idl_txn_destroy(status_txn);
+    status_txn = NULL;
 }
 
 /*
- * check if the input string is a valid interface in the
- * ovsdb table
+ * Check if the input string is a valid interface in the
+ * ovsdb table.
  */
-int vtysh_ovsdb_interface_match(const char *str)
+int
+vtysh_ovsdb_interface_match(const char *str)
 {
 
-  const struct ovsrec_interface *row, *next;
+    const struct ovsrec_interface *row, *next;
 
-  if(!str)
-  {
+    if (!str) {
+        return 1;
+    }
+
+    OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
+    {
+        if ( strcmp(str,row->name) == 0) {
+            return 0;
+        }
+    }
+
     return 1;
-  }
-
-  OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
-  {
-      if( strcmp(str,row->name) == 0) {
-          return 0;
-      }
-  }
-
-  return 1;
 }
 
 /*
  * Check if the input string is a valid port in the
- * OVSDB table
+ * OVSDB table.
  */
-int vtysh_ovsdb_port_match(const char *str)
+int
+vtysh_ovsdb_port_match(const char *str)
 {
-  const struct ovsrec_port *row, *next;
+    const struct ovsrec_port *row, *next;
 
-  if(!str)
-  {
+    if (!str) {
+        return 1;
+    }
+
+    OVSREC_PORT_FOR_EACH_SAFE(row, next, idl)
+    {
+        if (strcmp(str, row->name) == 0)
+            return 0;
+    }
     return 1;
-  }
-
-  OVSREC_PORT_FOR_EACH_SAFE(row, next, idl)
-  {
-    if (strcmp(str, row->name) == 0)
-      return 0;
-  }
-
-  return 1;
 }
 
 /*
  * Check if the input string is a valid vlan in the
- * OVSDB table
+ * OVSDB table.
  */
-int vtysh_ovsdb_vlan_match(const char *str)
+int
+vtysh_ovsdb_vlan_match(const char *str)
 {
 
-  const struct ovsrec_vlan *row, *next;
+    const struct ovsrec_vlan *row, *next;
 
-  if(!str)
-  {
+    if (!str ){
+        return 1;
+    }
+
+    OVSREC_VLAN_FOR_EACH_SAFE(row, next, idl)
+    {
+        if (strcmp(str, row->name) == 0)
+            return 0;
+    }
     return 1;
-  }
-
-  OVSREC_VLAN_FOR_EACH_SAFE(row, next, idl)
-  {
-    if (strcmp(str, row->name) == 0)
-      return 0;
-  }
-
-  return 1;
 }
 
 /* Validate MAC address that will be used by MAC type tokens */
-int vtysh_ovsdb_mac_match(const char *str)
+int
+vtysh_ovsdb_mac_match(const char *str)
 {
-  int i = 0;
-  /*
-   * OPS_TODO : Checking for reserved MAC addresses if needed
-   */
-  if(!str)
-      return 1;
+    int i = 0;
 
-  while(i < MAX_MACADDR_LEN)
-  {
-     if (!str[i])
+/* OPS_TODO : Checking for reserved MAC addresses if needed. */
+    if (!str)
         return 1;
 
-     switch (i % 3)
-     {
+    while (i < MAX_MACADDR_LEN) {
+        if (!str[i])
+            return 1;
+
+        switch (i % 3)
+        {
         case 0:
         case 1: if (!isxdigit(str[i]))
                     return 1;
-                break;
+            break;
         case 2: if (str[i] != ':')
                     return 1;
-                break;
-     }
-     i++;
-  }
-  if('\0' != str[MAX_MACADDR_LEN])
-     return 1;
+            break;
+        }
+        i++;
+    }
+    if('\0' != str[MAX_MACADDR_LEN])
+        return 1;
 
-  return 0;
+    return 0;
 }
 
-/*
- * Check if the input string matches the given regex
- */
-int vtysh_regex_match(const char *regString, const char *inp)
+/* Check if the input string matches the given regex. */
+int
+vtysh_regex_match(const char *regString, const char *inp)
 {
-  if(!inp || !regString)
-  {
+    if (!inp || !regString) {
+        return 1;
+    }
+
+    regex_t regex;
+    int ret;
+    char msgbuf[100];
+
+    ret = regcomp(&regex, regString, 0);
+    if (ret) {
+        VLOG_ERR("Could not compile regex\n");
+        return 1;
+    }
+
+    ret = regexec(&regex, inp, 0, NULL, 0);
+    if (!ret) {
+        return 0;
+    } else if (ret == REG_NOMATCH) {
+        return REG_NOMATCH;
+    } else {
+        regerror(ret, &regex, msgbuf, sizeof(msgbuf));
+        VLOG_ERR("Regex match failed: %s\n", msgbuf);
+    }
+
     return 1;
-  }
-
-  regex_t regex;
-  int ret;
-  char msgbuf[100];
-
-  ret = regcomp(&regex, regString, 0);
-  if(ret)
-  {
-    VLOG_ERR("Could not compile regex\n");
-    return 1;
-  }
-
-  ret = regexec(&regex, inp, 0, NULL, 0);
-  if (!ret)
-  {
-    return 0;
-  }
-  else if(ret == REG_NOMATCH)
-  {
-    return REG_NOMATCH;
-  }
-  else
-  {
-    regerror(ret, &regex, msgbuf, sizeof(msgbuf));
-    VLOG_ERR("Regex match failed: %s\n", msgbuf);
-  }
-
-  return 1;
 }
 
 /* The main thread routine which keeps polling on the
-   OVSDB idl socket */
+   OVSDB idl socket. */
 void *
 vtysh_ovsdb_main_thread(void *arg)
 {
@@ -893,72 +861,72 @@ vtysh_ovsdb_main_thread(void *arg)
         VTYSH_OVSDB_LOCK;
 
         /* This function updates the Cache by running
-           ovsdb_idl_run */
+           ovsdb_idl_run. */
         vtysh_run();
 
         /* This function adds the file descriptor for the
-           DB to monitor using poll_fd_wait */
+           DB to monitor using poll_fd_wait. */
         vtysh_wait();
 
         VTYSH_OVSDB_UNLOCK;
         if (vtysh_exit) {
             poll_immediate_wake();
         } else {
-            /* The poll function polls on the OVSDB socket
-               and the latch fd set in vtysh_wait. The latch
-               is set in command.c whenever user calls a
-               function so that this thread releases the lock
-               and vtysh thread holds the lock to avoid race
-               conditions while commiting the transaction */
+        /* The poll function polls on the OVSDB socket
+         * and the latch fd set in vtysh_wait.  The latch
+         * is set in command.c whenever user calls a
+         * function so that this thread releases the lock
+         * and vtysh thread holds the lock to avoid race
+         * conditions while commiting the transaction.
+         */
             poll_block();
         }
-        /* Resets the latch */
+        /* Resets the latch. */
         latch_poll(&ovsdb_latch);
     }
     return NULL;
 }
 
-/*
- * Checks if interface is already part of bridge.
- */
-bool check_iface_in_bridge(const char *if_name)
+/* Checks if interface is already part of bridge. */
+
+bool
+check_iface_in_bridge(const char *if_name)
 {
-  const struct ovsrec_system *ovs_row = NULL;
-  struct ovsrec_bridge *br_cfg = NULL;
-  struct ovsrec_port *port_cfg = NULL;
-  struct ovsrec_interface *iface_cfg = NULL;
-  size_t i, j, k;
-  ovs_row = ovsrec_system_first(idl);
-  for (i = 0; i < ovs_row->n_bridges; i++) {
-    br_cfg = ovs_row->bridges[i];
-    for (j = 0; j < br_cfg->n_ports; j++) {
-      port_cfg = br_cfg->ports[j];
-      if (strcmp(if_name, port_cfg->name) == 0) {
-        return true;
-      }
-      for (k = 0; k < port_cfg->n_interfaces; k++) {
-        iface_cfg = port_cfg->interfaces[k];
-        if (strcmp(if_name, iface_cfg->name) == 0) {
-          return true;
+    const struct ovsrec_system *ovs_row = NULL;
+    struct ovsrec_bridge *br_cfg = NULL;
+    struct ovsrec_port *port_cfg = NULL;
+    struct ovsrec_interface *iface_cfg = NULL;
+    size_t i, j, k;
+    ovs_row = ovsrec_system_first(idl);
+    for (i = 0; i < ovs_row->n_bridges; i++) {
+        br_cfg = ovs_row->bridges[i];
+        for (j = 0; j < br_cfg->n_ports; j++) {
+            port_cfg = br_cfg->ports[j];
+            if (strcmp(if_name, port_cfg->name) == 0) {
+                return true;
+            }
+            for (k = 0; k < port_cfg->n_interfaces; k++) {
+                iface_cfg = port_cfg->interfaces[k];
+                if (strcmp(if_name, iface_cfg->name) == 0) {
+                    return true;
+                }
+            }
         }
-      }
     }
-  }
-  return false;
+    return false;
 }
 
-/*
-* Checks if port is already part of bridge.
-*/
-bool check_port_in_bridge(const char *port_name)
+/* Checks if port is already part of bridge. */
+
+bool
+check_port_in_bridge(const char *port_name)
 {
     const struct ovsrec_system *ovs_row = NULL;
     struct ovsrec_bridge *br_cfg = NULL;
     struct ovsrec_port *port_cfg = NULL;
     size_t i, j;
     ovs_row = ovsrec_system_first(idl);
-    if (ovs_row == NULL)
-    {
+    if (ovs_row == NULL) {
         return false;
     }
     for (i = 0; i < ovs_row->n_bridges; i++) {
@@ -973,39 +941,38 @@ bool check_port_in_bridge(const char *port_name)
     return false;
 }
 
-/*
- * Checks if interface is already part of a VRF.
- */
-bool check_iface_in_vrf(const char *if_name)
+/* Checks if interface is already part of a VRF. */
+bool
+check_iface_in_vrf(const char *if_name)
 {
-  const struct ovsrec_system *ovs_row = NULL;
-  struct ovsrec_vrf *vrf_cfg = NULL;
-  struct ovsrec_port *port_cfg = NULL;
-  struct ovsrec_interface *iface_cfg = NULL;
-  size_t i, j, k;
-  ovs_row = ovsrec_system_first(idl);
-  for (i = 0; i < ovs_row->n_vrfs; i++) {
-    vrf_cfg = ovs_row->vrfs[i];
-    for (j = 0; j < vrf_cfg->n_ports; j++) {
-      port_cfg = vrf_cfg->ports[j];
-      if (strcmp(if_name, port_cfg->name) == 0) {
-        return true;
-      }
-      for (k = 0; k < port_cfg->n_interfaces; k++) {
-        iface_cfg = port_cfg->interfaces[k];
-        if (strcmp(if_name, iface_cfg->name) == 0) {
-          return true;
+    const struct ovsrec_system *ovs_row = NULL;
+    struct ovsrec_vrf *vrf_cfg = NULL;
+    struct ovsrec_port *port_cfg = NULL;
+    struct ovsrec_interface *iface_cfg = NULL;
+    size_t i, j, k;
+    ovs_row = ovsrec_system_first(idl);
+    for (i = 0; i < ovs_row->n_vrfs; i++) {
+        vrf_cfg = ovs_row->vrfs[i];
+        for (j = 0; j < vrf_cfg->n_ports; j++) {
+            port_cfg = vrf_cfg->ports[j];
+            if (strcmp(if_name, port_cfg->name) == 0) {
+                return true;
+            }
+            for (k = 0; k < port_cfg->n_interfaces; k++) {
+                iface_cfg = port_cfg->interfaces[k];
+                if (strcmp(if_name, iface_cfg->name) == 0) {
+                    return true;
+                }
+            }
         }
-      }
     }
-  }
-  return false;
+    return false;
 }
 
-/*
-* Checks if interface is already part of a VRF.
-*/
-bool check_port_in_vrf(const char *port_name)
+
+/* Checks if interface is already part of a VRF. */
+bool
+check_port_in_vrf(const char *port_name)
 {
     const struct ovsrec_system *ovs_row = NULL;
     struct ovsrec_vrf *vrf_cfg = NULL;
@@ -1013,8 +980,7 @@ bool check_port_in_vrf(const char *port_name)
     size_t i, j;
     ovs_row = ovsrec_system_first(idl);
 
-    if (ovs_row == NULL)
-    {
+    if (ovs_row == NULL) {
         return false;
     }
     for (i = 0; i < ovs_row->n_vrfs; i++) {
@@ -1028,39 +994,35 @@ bool check_port_in_vrf(const char *port_name)
     }
     return false;
 }
-/*
- * init the vtysh lib routines
- */
-void vtysh_ovsdb_lib_init()
+
+/* Init the vtysh lib routines. */
+void
+vtysh_ovsdb_lib_init()
 {
-   lib_vtysh_ovsdb_interface_match = &vtysh_ovsdb_interface_match;
-   lib_vtysh_ovsdb_port_match = &vtysh_ovsdb_port_match;
-   lib_vtysh_ovsdb_vlan_match = &vtysh_ovsdb_vlan_match;
-   lib_vtysh_ovsdb_mac_match = &vtysh_ovsdb_mac_match;
+    lib_vtysh_ovsdb_interface_match = &vtysh_ovsdb_interface_match;
+    lib_vtysh_ovsdb_port_match = &vtysh_ovsdb_port_match;
+    lib_vtysh_ovsdb_vlan_match = &vtysh_ovsdb_vlan_match;
+    lib_vtysh_ovsdb_mac_match = &vtysh_ovsdb_mac_match;
 }
 
-/*
- * Wrapper for changing the help text for commands
- */
-void utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
+/* Wrapper for changing the help text for commands. */
+void
+utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
 {
-  struct cmd_token *token;
-  int i;
-  for (i = 0; i < vector_active (describe); i++)
-  {
-    if ((token = vector_slot (describe, i)) != NULL)
-      {
-        if (token->cmd == NULL || token->cmd[0] == '\0')
-          continue;
+    struct cmd_token *token;
+    int i;
+    for (i = 0; i < vector_active (describe); i++) {
+        if ((token = vector_slot (describe, i)) != NULL) {
+            if (token->cmd == NULL || token->cmd[0] == '\0')
+                continue;
 
-        if (! token->desc)
-          fprintf (stdout,"  %-s\n",
-                   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd);
-        else
-          fprintf (stdout,"  %-*s  %s\n",
-                   width,
-                   token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
-                   token->desc);
-      }
-  }
+            if (! token->desc)
+                fprintf (stdout,"  %-s\n",
+                         token->cmd[0] == '.' ? token->cmd + 1 : token->cmd);
+            else
+                fprintf (stdout,"  %-*s  %s\n", width,
+                         token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                         token->desc);
+        }
+    }
 }
