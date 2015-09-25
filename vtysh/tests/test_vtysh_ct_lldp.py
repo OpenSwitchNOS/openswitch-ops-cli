@@ -19,8 +19,8 @@
 #
 
 from time import sleep
-from halonvsi.docker import *
-from halonvsi.halon import *
+from opsvsi.docker import *
+from opsvsi.opsvsitest import *
 
 
 class LLDPCliTest(HalonTest):
