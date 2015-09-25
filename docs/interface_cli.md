@@ -387,12 +387,32 @@ ops-as5712(config)# interface 1
 ops-as5712(config-if)# no ipv6 address 2001:0db8:85a3:0000:0000:8a2e:0370:7334/24
 ops-as5712(config-if)# no ipv6 address 2001:0db8:85a3:0000:0000:8a2e:0370:733/24 secondary
 ```
+### Spilt a QSPF interface that support splitter cables <a id="intfsplit"></a> ###
+#### Syntax ####
+`[no] split`
+#### Description ####
+The `split` command, splits a QSPF interface to work as 4 x 10Gb interfaces. Where as `no split` command combines the splitted QSPF interface to work as 1 x 40Gb interface.
+The splitted interface names are append with '-1','-2','-3' and '-4'. For example, if the QSPF interface name is 54 then the splitted interface names are 54-1, 54-2, 54-3 and 54-4.
+#### Authority ####
+All users.
+#### Parameters ####
+No parameters.
+#### Examples ####
+```
+ops-as5712# configure terminal
+ops-as5712(config)# interface 54
+ops-as5712(config)# split
+
+ops-as5712# configure terminal
+ops-as5712(config)# interface 54
+ops-as5712(config)# no split
+```
 ## Interface Show Commands <a id="showintfmain"></a> ##
 ### Show all interfaces <a id="showallintf"></a> ###
 #### Syntax ####
 `show interface [brief]`
 #### Description ####
-This commands displays various switch interfaces with their configurations and statuses.
+This command displays various switch interfaces with their configurations and statuses.
 #### Authority ####
 All users.
 #### Parameters ####
@@ -403,8 +423,9 @@ All users.
 ```
 ops-as5712# show interface
 
-Interface 45 is down (Administratively down)
+Interface 1 is down (Administratively down)
 Admin state is down
+State information: admin_down
 Hardware: Ethernet, MAC Address: 70:72:cf:fd:e7:b4
 MTU 9388
 Half-duplex
@@ -414,15 +435,15 @@ Input flow-control is on, output flow-control is on
 RX
    0 input packets 0 bytes
    0 input error   0 dropped
-   0 short frame   0 overrun
    0 CRC/FCS
 TX
    0 output packets 0 bytes
    0 input error    4 dropped
    0 collision
 
-Interface 36 is down (Administratively down)
+Interface 10 is down (Administratively down)
 Admin state is down
+State information: admin_down
 Hardware: Ethernet, MAC Address: 70:72:cf:fd:e7:b4
 MTU 9388
 Half-duplex
@@ -432,7 +453,6 @@ Input flow-control is on, output flow-control is on
 RX
    0 input packets 0 bytes
    0 input error   0 dropped
-   0 short frame   0 overrun
    0 CRC/FCS
 TX
    0 output packets 0 bytes
@@ -445,9 +465,9 @@ ops-as5712# show interface brief
 Ethernet      VLAN     Type    Mode    Status         Reason             Speed   Port
 Interface                                                                (Mb/s)   Ch#
 ....................................................................................................
- 45            ..       eth     ..      down     Administratively down    auto    ..
- 36            ..       eth     ..      down     Administratively down    auto    ..
- 9             ..       eth     ..      down     Administratively down    auto    ..
+ 1             ..       eth     ..      down     Administratively down    auto    ..
+ 10            ..       eth     ..      down     Administratively down    auto    ..
+ 11            ..       eth     ..      down     Administratively down    auto    ..
 ...............
 ...............
 ```
@@ -470,6 +490,7 @@ ops-as5712# show interface 1
 
 Interface 1 is up
  Admin state is up
+ State information: admin_down
  Hardware: Ethernet, MAC Address: 70:72:cf:fd:e7:b4
  MTU 1500
  Full-duplex
@@ -477,13 +498,12 @@ Interface 1 is up
  Auto-Negotiation is turned on
  Input flow-control is off, output flow-control is off
  RX
-      50 input packets     14462 bytes
-      0 input error        7 dropped
-      0 short frame        0 overrun
+      0 input packets     0 bytes
+      0 input error       0 dropped
       0 CRC/FCS
  TX
-      213 output packets  34506 bytes
-      0 input error       4 dropped
+      0 output packets  0 bytes
+      0 input error     0 dropped
       0 collision
 ops-as5712# show interface 1 brief
 ....................................................................................................
@@ -491,6 +511,88 @@ Ethernet    VLAN   Type   Mode    Status   Reason                    Speed     P
 Interface                                                            (Mb/s)    Ch#
 ....................................................................................................
   1          ..    eth     ..     down    Administratively down       auto     ..
+```
+### Show transceiver information of all interfaces <a id="showalltransintf"></a> ###
+#### Syntax ####
+`show interface transceiver [brief]`
+#### Description ####
+This command displays information about various pluggable modules (or fixed interfaces) present in the switch.
+#### Authority ####
+All users.
+#### Parameters ####
+| Parameter | Status   | Syntax         | Description                           |
+|:-----------|:----------|:----------------:|:---------------------------------------|
+| **brief** | Optional| Literal  | Select this for format the output in tabular format.
+#### Examples ####
+```
+ops-as5712# show interface transceiver
+
+Interface 1:
+ Connector: SFP+
+ Transceiver module: SFP_RJ45
+ Connector status: supported
+ Vendor name: AVAGO
+ Part number: ABCU-5710RZ-HP8
+ Part revision:
+ Serial number: MY36G2C52D
+ Supported speeds: 1000
+
+Interface 10:
+ Connector: SFP+
+ Transceiver module: not present
+
+Interface 11:
+ Connector: SFP+
+ Transceiver module: not present
+ -------
+ -------
+ops-as5712# show interface transceiver brief
+
+-----------------------------------------------
+Ethernet      Connector    Module     Module
+Interface                  Type       Status
+-----------------------------------------------
+ 1              SFP+       SFP_RJ45   supported
+ 10             SFP+       --         --
+ 11             SFP+       --         --
+ 12             SFP+       --         --
+ 13             SFP+       --         --
+ -------
+ -------
+ ```
+### Show transceiver information of an interface <a id="showtransintf"></a> ###
+#### Syntax ####
+`show interface <interface> transceiver [brief]`
+#### Description ####
+This command displays transceiver information about a particular interface of the switch.
+#### Authority ####
+All users.
+#### Parameters ####
+| Parameter | Status   | Syntax         | Description                           |
+|:-----------|:----------|:----------------:|:---------------------------------------|
+| *interface* | Required | System defined | Name of the interface. System defined. |
+| **brief** | Optional| Literal  | Select this for format the output in tabular format.
+#### Examples ####
+```
+ops-as5712# show interface 1 transceiver
+
+Interface 1:
+ Connector: SFP+
+ Transceiver module: SFP_RJ45
+ Connector status: supported
+ Vendor name: AVAGO
+ Part number: ABCU-5710RZ-HP8
+ Part revision:
+ Serial number: MY36G2C52D
+ Supported speeds: 1000
+
+ops-as5712# show interface 1 transceiver brief
+
+-----------------------------------------------
+Ethernet      Connector    Module     Module
+Interface                  Type       Status
+-----------------------------------------------
+ 1              SFP+       SFP_RJ45   supported
 ```
 ### Show all interfaces running configuration <a id="showallintfrun"></a> ###
 #### Syntax ####
