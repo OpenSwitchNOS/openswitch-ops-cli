@@ -237,7 +237,7 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
             {
               if (row->n_nexthops > MAX_NEXTHOPS_PER_ROUTE - 1)
                 {
-                  vty_out (vty, "Maximum %s nexthops per route",
+                  vty_out (vty, "Maximum %d nexthops per route",
                            MAX_NEXTHOPS_PER_ROUTE);
                   cli_do_config_abort (status_txn);
                   return CMD_OVSDB_FAILURE;
@@ -721,7 +721,7 @@ ipv6_route_common (struct vty *vty, char **argv, char *distance)
                 {
                   if (row->n_nexthops > MAX_NEXTHOPS_PER_ROUTE - 1)
                     {
-                      vty_out (vty, "Maximum %s nexthops per route",
+                      vty_out (vty, "Maximum %d nexthops per route",
                                MAX_NEXTHOPS_PER_ROUTE);
                       cli_do_config_abort (status_txn);
                       return CMD_OVSDB_FAILURE;
