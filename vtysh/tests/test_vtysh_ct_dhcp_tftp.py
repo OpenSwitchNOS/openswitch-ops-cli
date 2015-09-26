@@ -30,10 +30,9 @@ class dhcp_tftpCLItest(OpsVsiTest):
                        controller=None, build=True)
 
     def test_dhcp_tftp_add_range(self):
-        info("\n##########  Test to add DHCP dynamic configurations ##########\n")
+        info("\n##########  Test to add DHCP dynamic configurations"\
+             " ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         range_created = False
         s1 = self.net.switches[0];
@@ -55,17 +54,15 @@ class dhcp_tftpCLItest(OpsVsiTest):
                 and "10.255.255.255" in line and "60" in line:
                 range_created = True
 
-        assert range_created == True, 'Test to add DHCP Dynamic configuration \
-        -FAILED!'
+        assert range_created == True, 'Test to add DHCP Dynamic configuration' \
+               '-FAILED!'
 
         return True
 
     def test_dhcp_tftp_add_range_ipv6(self):
-        info("\n##########  Test to add DHCP dynamic ipv6 configurations\
-##########\n")
+        info("\n##########  Test to add DHCP dynamic ipv6 configurations"\
+             "##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         range_created = False
         s1 = self.net.switches[0];
@@ -88,8 +85,8 @@ class dhcp_tftpCLItest(OpsVsiTest):
                 and "60" in line:
                 range_created = True
 
-        assert range_created == True, 'Test to add DHCP Dynamic ipv6  \
-                                      configuration -FAILED!'
+        assert range_created == True, 'Test to add DHCP Dynamic ipv6  '\
+               'configuration -FAILED!'
 
         return True
 
@@ -99,7 +96,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
         s1.cmdCLI("configure terminal")
         s1.cmdCLI("dhcp-server")
 
-        #testing  start ip address validation
+        # Testing  start ip address validation
 
         ret = s1.cmdCLI("range test-range start-ip-address 300.300.300.300 \
                          end-ip-address 192.168.0.254 \
@@ -109,7 +106,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
         assert '% Unknown command.' in ret, 'Start IP address validation failed'
         info('\n### Start IP address validation passed ###\n')
 
-        #testing end ip address validation
+        # Testing end ip address validation
 
         ret = s1.cmdCLI("range test-range start-ip-address 192.168.0.1  \
                          end-ip-address 300.300.300.300 \
@@ -119,19 +116,19 @@ class dhcp_tftpCLItest(OpsVsiTest):
         assert '% Unknown command.' in ret, 'End IP address validation failed'
         info('\n### End IP address validation passed ###\n')
 
-        #testing netmask validation
+        # Testing netmask validation
 
         ret = s1.cmdCLI("range test-range start-ip-address 192.168.0.1  \
                          end-ip-address 192.168.0.254 \
                          netmask 127.0.0.1 match tags tag1,tag2,tag3 \
                          set tag test-tag broadcast 192.168.0.255 \
                          lease-duration 60")
-        assert '127.0.0.1 IS INVALID' in ret, 'Netmask validation failed'
+        assert '127.0.0.1 is invalid' in ret, 'Netmask validation failed'
         info('\n### Netmask validation passed ###\n')
 
-        #testing netmask ipv6 validation
+        # Testing netmask ipv6 validation
 
-        ret = s1.cmdCLI("range test-range start-ip-address 2001:cdba::3257:9642 \
+        ret = s1.cmdCLI("range testrange start-ip-address 2001:cdba::3257:9642 \
                          end-ip-address 2001:cdba::3257:9648 \
                          netmask 255.255.255.0 match tags tag1,tag2,tag3 \
                          set tag test-tag broadcast 192.168.0.255 \
@@ -141,17 +138,18 @@ class dhcp_tftpCLItest(OpsVsiTest):
         info('\n### Netmask ipv6 validation passed ###\n')
 
 
-        #testing ip address range validation
+        # Testing ip address range validation
 
         ret = s1.cmdCLI("range test-range start-ip-address 192.168.0.1 \
                          end-ip-address 10.0.0.1 \
                          netmask 255.255.255.0 match tags tag1,tag2,tag3 \
                          set tag test-tag broadcast 192.168.0.255 \
                          lease-duration 60")
-        assert 'INVALID IP ADDRESS RANGE' in ret, 'ip address range validation failed'
+        assert 'Invalid IP address range' in ret, 'ip address range'\
+                                                  ' validation failed'
         info('\n### IP address range validation passed ###\n')
 
-        #testing broadcast address validation
+        # Testing broadcast address validation
 
         ret=s1.cmdCLI("range test-range start-ip-address 192.168.0.1 \
                          end-ip-address 192.168.0.254 \
@@ -162,7 +160,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
         info('\n### Broadcast address validation passed ###\n')
 
 
-        #testing broadcast address ipv6 validation
+        # Testing broadcast address ipv6 validation
 
         ret=s1.cmdCLI("range test-range start-ip-address 192.168.0.1 \
                          end-ip-address 192.168.0.254 \
@@ -170,31 +168,35 @@ class dhcp_tftpCLItest(OpsVsiTest):
                          match tags tag1,tag2,tag3 \
                          set tag test-tag broadcast 10.0.0.255 \
                          lease-duration 60")
-        assert '10.0.0.255 IS INVALID' in ret, 'broadcast address ipv6 validation failed'
+        assert '10.0.0.255 is invalid' in ret, 'broadcast address'\
+                                               ' ipv6 validation failed'
         info('\n### Broadcast address ipv6 validation passed ###\n')
 
 
-        #testing match tags validation
+        # Testing match tags validation
 
         ret = s1.cmdCLI("range test-range start-ip-address 192.168.0.1 \
                          end-ip-address 192.168.0.254 \
-                         match tags tag1,taggggggggggggggggggggggggggggggg2,tag3 \
+                         match tags tag1,this-tag-length-greater-than-15,tag3 \
                          set tag test-tag broadcast 192.168.0.255 \
                          lease-duration 60")
-        assert 'taggggggggggggggggggggggggggggggg2' in ret, 'match tags validation failed'
+        assert 'this-tag-length-greater-than-15' in ret, 'match tags'\
+                                                         ' validation failed'
         info('\n### Match tags validation passed ###\n')
 
-        #testing set tag validation
+        # Testing set tag validation
 
         ret=s1.cmdCLI("range test-range start-ip-address 192.168.0.1 \
                          end-ip-address 192.168.0.254 \
                          match tags tag1,tag2,tag3 \
-                         set tag test-taggggggggggggggg broadcast 192.168.0.1 \
+                         set tag test-this-tag-greater-than-15 \
+                         broadcast 192.168.0.1 \
                          lease-duration 60")
-        assert ' ' in ret, 'set tag validation failed'
+        assert 'test-this-tag-greater-than-15' in ret,'set tag '\
+                                                      'validation failed'
         info('\n### Set tag validation passed ###\n')
 
-        #testing lease duration  validation
+        # Testing lease duration  validation
 
         ret=s1.cmdCLI("range test-range start-ip-address 192.168.0.1 \
                          end-ip-address 192.168.0.254 \
@@ -210,8 +212,6 @@ class dhcp_tftpCLItest(OpsVsiTest):
     def test_dhcp_tftp_add_static(self):
         info("\n##########  Test to add DHCP static configuration ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         static_created = False
         s1 = self.net.switches[0];
@@ -240,11 +240,9 @@ class dhcp_tftpCLItest(OpsVsiTest):
         return True
 
     def test_dhcp_tftp_add_static_ipv6(self):
-        info("\n##########  Test to add DHCP static ipv6 configuration \
-##########\n")
+        info("\n##########  Test to add DHCP static ipv6 configuration" \
+             "##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         static_created = False
         s1 = self.net.switches[0];
@@ -279,7 +277,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
         s1.cmdCLI("configure terminal")
         s1.cmdCLI("dhcp-server")
 
-        #testing static ip address validation
+        # Testing static ip address validation
 
         ret=s1.cmdCLI("static 300.300.300.300 \
                        match-mac-addresses aa:bb:cc:dd:ee:ff \
@@ -290,7 +288,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
         assert '% Unknown command.' in ret, 'static ip address validation failed'
         info('\n### Static IP address validation passed ###\n')
 
-        #testing mac address validation
+        # Testing mac address validation
 
         ret=s1.cmdCLI("static 150.0.0.1 \
                        match-mac-addresses aabbccddeeff \
@@ -298,46 +296,49 @@ class dhcp_tftpCLItest(OpsVsiTest):
                        match-client-id testid \
                        match-client-hostname testname \
                        lease-duration 60")
-        assert 'aabbccddeeff IS INVALID' in ret, 'MAC address validation failed'
+        assert 'aabbccddeeff is invalid' in ret, 'MAC address validation failed'
         info('\n### MAC address validation passed ###\n')
 
 
-        #testing set tags validation
+        # Testing set tags validation
 
         ret=s1.cmdCLI("static 150.0.0.1 \
                        match-mac-addresses aa:bb:cc:dd:ee:ff \
-                       set tags taggggggggggggggggggggggg1,tag2,tag3 \
+                       set tags t1-tag-this-tag-length-greater-than-15,tag2,tag3 \
                        match-client-id testid \
                        match-client-hostname testname \
                        lease-duration 60")
-        assert 'taggggggggggggggggggggggg1 IS INVALID' in ret, 'set tags validation failed'
+        assert 't1-tag-this-tag-length-greater-than-15 is invalid' in ret, \
+               'set tags validation failed'
         info('\n### set tags  validation passed ###\n')
 
 
-        #testing client-id validation
+        # Testing client-id validation
 
         ret=s1.cmdCLI("static 150.0.0.1 \
                        match-mac-addresses aa:bb:cc:dd:ee:ff \
                        set tags tag1,tag2,tag3 \
-                       match-client-id testttttttttttttttttid  \
+                       match-client-id this-client-id-length-greater-than-15  \
                        match-client-hostname testname \
                        lease-duration 60")
-        assert 'testttttttttttttttttid IS INVALID' in ret, 'client-id validation failed'
+        assert 'this-client-id-length-greater-than-15 is invalid' in ret, \
+               'client-id validation failed'
         info('\n### Client-id  validation passed ###\n')
 
 
-        #testing client-hostname validation
+        # Testing client-hostname validation
 
         ret=s1.cmdCLI("static 150.0.0.1 \
                        match-mac-addresses aa:bb:cc:dd:ee:ff \
                        set tags tag1,tag2,tag3 \
                        match-client-id testid \
-                       match-client-hostname testttttttttttttttttname \
+                       match-client-hostname this-hostname-greater-than-15 \
                        lease-duration 60")
-        assert 'testttttttttttttttttname IS INVALID' in ret, 'client-hostname validation failed'
+        assert 'this-hostname-greater-than-15 is invalid' in ret, \
+               'client-hostname validation failed'
         info('\n### Client-hostname  validation passed ###\n')
 
-        #testing lease duration validation
+        # Testing lease duration validation
 
         return True
 
@@ -346,8 +347,6 @@ class dhcp_tftpCLItest(OpsVsiTest):
     def test_dhcp_tftp_add_option_name(self):
         info("\n##########  Test to add DHCP Option-name ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         option_created = False
         s1 = self.net.switches[0];
@@ -374,9 +373,6 @@ class dhcp_tftpCLItest(OpsVsiTest):
     def test_dhcp_tftp_add_option_number(self):
         info("\n##########  Test to add DHCP Option-number ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
-
         option_created = False
         s1 = self.net.switches[0];
         s1.cmdCLI("configure terminal")
@@ -400,13 +396,13 @@ class dhcp_tftpCLItest(OpsVsiTest):
         return True
 
     def test_dhcp_tftp_option_number_validation(self):
-        info("\n########## Test to check DHCP Options using option number \
-validation ##########\n")
+        info("\n########## Test to check DHCP Options using option number" \
+             "validation ##########\n")
         s1 = self.net.switches[0]
         s1.cmdCLI("configure terminal")
         s1.cmdCLI("dhcp-server")
 
-        #testing option number validation
+        # Testing option number validation
 
         ret=s1.cmdCLI("option \
                        set option-number 300 \
@@ -415,40 +411,43 @@ validation ##########\n")
         assert '% Unknown command.' in ret, 'option-number validation failed'
         info('\n### option-number validation passed ###\n')
 
-        #testing match tags validation
+        # Testing match tags validation
 
         ret=s1.cmdCLI("option \
                        set option-number 3 \
                        option-value 10.0.0.1 \
-                       match tags tag1,tagggggggggggggggggggggggggggggg2,tag3");
-        assert 'tagggggggggggggggggggggggggggggg2 IS INVALID' in ret, 'match tag validation failed'
+                       match tags tag1,option-name-greater-than-15,tag3");
+        assert 'option-name-greater-than-15 is invalid' in ret, \
+               'match tag validation failed'
         info('\n### Match tag validation passed ###\n')
 
         return True
 
     def test_dhcp_tftp_option_name_validation(self):
-        info("\n########## Test to check DHCP Options using option name \
-validation ##########\n")
+        info("\n########## Test to check DHCP Options using option name "\
+             "validation ##########\n")
         s1 = self.net.switches[0]
         s1.cmdCLI("configure terminal")
         s1.cmdCLI("dhcp-server")
 
-        #testing option-name validation
+        # Testing option-name validation
 
         ret=s1.cmdCLI("option \
-                       set option-name testnameeeeeeeeeeeeeeeeeeeeeeeeeee \
+                       set option-name set-option-name-greater-than-15 \
                        option-value 10.0.0.1 \
                        match tags tag1,tag2,tag3");
-        assert 'testnameeeeeeeeeeeeeeeeeeeeeeeeeee IS INVALID' in ret, 'option-name validation failed'
+        assert 'set-option-name-greater-than-15 is invalid' in ret, \
+               'option-name validation failed'
         info('\n### option-name validation passed ###\n')
 
-        #testing match tags validation
+        # Testing match tags validation
 
         ret=s1.cmdCLI("option \
                        set option-name Router \
                        option-value 10.0.0.1 \
-                       match tags tagggggggggggggggggggggggggggg1,tag2,tag3");
-        assert 'tagggggggggggggggggggggggggggg1 IS INVALID' in ret, 'match tag validation failed'
+                       match tags match-option-name-greater-than-15,tag2,tag3");
+        assert 'match-option-name-greater-than-15 is invalid' in ret, \
+               'match tag validation failed'
         info('\n### Match tag validation passed ###\n')
 
         return True
@@ -457,8 +456,6 @@ validation ##########\n")
     def test_dhcp_tftp_add_match_number(self):
         info("\n##########  Test to add DHCP match number ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         match_created = False
         s1 = self.net.switches[0]
@@ -482,27 +479,29 @@ validation ##########\n")
         return True
 
     def test_dhcp_tftp_match_number_validation(self):
-        info("\n########## Test to check DHCP Match using option number \
-validation ##########\n")
+        info("\n########## Test to check DHCP Match using option number "\
+             "validation ##########\n")
         s1 = self.net.switches[0]
         s1.cmdCLI("configure terminal")
         s1.cmdCLI("dhcp-server")
 
-        #testing set tag validation
+        # Testing set tag validation
         ret=s1.cmdCLI("match \
-                       set tag testaaaaaaaaaaaaaaaaaaaaaag \
+                       set tag name-greater-than-15 \
                        match-option-number 3 \
                        match-option-value 10.0.0.1")
 
-        assert 'testaaaaaaaaaaaaaaaaaaaaaag IS INVALID' in ret, 'match set tag validation failed'
+        assert 'name-greater-than-15 is invalid' in ret, \
+               'match set tag validation failed'
         info('\n### Match set tag  validation passed ###i\n')
 
-        #testing option number validation
+        # Testing option number validation
         ret=s1.cmdCLI("match \
                        set tag test-tag \
                        match-option-number 300 \
                        match-option-value 10.0.0.1")
-        assert '% Unknown command.' in ret, 'match option number validation failed'
+        assert '% Unknown command.' in ret, \
+               'match option number validation failed'
         info('\n### Match option number validation passed ###\n')
 
         return True
@@ -511,8 +510,6 @@ validation ##########\n")
     def test_dhcp_tftp_add_match_name(self):
         info("\n##########  Test to add DHCP match name ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         match_created = False
         s1 = self.net.switches[0]
@@ -536,26 +533,28 @@ validation ##########\n")
         return True
 
     def test_dhcp_tftp_match_name_validation(self):
-        info("\n########## Test to check DHCP Match using option name \
-validation ##########\n")
+        info("\n########## Test to check DHCP Match using option name "\
+             "validation ##########\n")
         s1 = self.net.switches[0]
         s1.cmdCLI("configure terminal")
         s1.cmdCLI("dhcp-server")
 
-        #testing set tag validation
+        # Testing set tag validation
         ret=s1.cmdCLI("match \
-                       set tag temptaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag \
+                       set tag tag-greater-than-15 \
                        match-option-name tempname \
                        match-option-value 10.0.0.1")
-        assert 'temptaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag IS INVALID' in ret, 'match set tag validation failed'
+        assert 'tag-greater-than-15 is invalid' in ret, \
+               'match set tag validation failed'
         info('\n### match set tag  validation passed ###\n')
 
-        #testing option number validation
+        # Testing option number validation
         ret=s1.cmdCLI("match \
                        set tag test-tag \
-                       match-option-name temppppppppnaaaaaaaaaaaaaaaaaaaaaame \
+                       match-option-name tag-name-greater-than-15 \
                        match-option-value 10.0.0.1")
-        assert 'temppppppppnaaaaaaaaaaaaaaaaaaaaaame IS INVALID' in ret, 'match option name validation failed'
+        assert 'tag-name-greater-than-15 is invalid' in ret, \
+               'match option name validation failed'
         info('\n### Match option name validation passed ###\n')
 
         return True
@@ -563,8 +562,6 @@ validation ##########\n")
     def test_dhcp_tftp_add_boot(self):
         info("\n##########  Test to add DHCP bootp ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         boot_created = False
         s1 = self.net.switches[0]
@@ -591,11 +588,12 @@ validation ##########\n")
         s1.cmdCLI("configure terminal")
         s1.cmdCLI("dhcp-server")
 
-        #testing set tag validation
+        # Testing set tag validation
         ret=s1.cmdCLI("boot \
                        set file /tmp/tmpfile \
-                       match tag taaaaaaaaaaaaaaaaaagnmeeeeeeee")
-        assert 'taaaaaaaaaaaaaaaaaagnmeeeeeeee IS INVALID' in ret, 'Bootp match tag validation failed'
+                       match tag boot-tag-name-greater-than-15")
+        assert 'boot-tag-name-greater-than-15 is invalid' in ret, \
+               'Bootp match tag validation failed'
         info('\n### Bootp tag validation passed ###\n')
 
         return True
@@ -605,8 +603,6 @@ validation ##########\n")
     def test_tftp_server_enable(self):
         info("\n##########  Test to enable tftp server ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         tftp_enabled = False
         s1 = self.net.switches[0]
@@ -628,8 +624,6 @@ validation ##########\n")
     def test_tftp_secure_enable(self):
         info("\n##########  Test to enable tftp server ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         tftp_secure_enabled = False
         s1 = self.net.switches[0]
@@ -651,8 +645,6 @@ validation ##########\n")
     def test_tftp_server_add_path(self):
         info("\n##########  Test to add tftp path ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         tftp_path = False
         s1 = self.net.switches[0]
@@ -671,10 +663,9 @@ validation ##########\n")
         return True
 
     def test_dhcp_server_show(self):
-        info("\n##########  Test to show dhcp server confguration  ##########\n")
+        info("\n##########  Test to show dhcp server confguration  "\
+             "##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
         range_present = False
         static_present = False
         option_name = False
@@ -745,8 +736,6 @@ validation ##########\n")
     def test_tftp_server_show(self):
         info("\n##########  Test to show dhcp server confguration ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
         tftp_server = False
         tftp_secure = False
         tftp_path = False
@@ -774,8 +763,6 @@ validation ##########\n")
     def test_tftp_server_disable(self):
         info("\n##########  Test to disable tftp server ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         tftp_disabled = False
         s1 = self.net.switches[0]
@@ -794,10 +781,9 @@ validation ##########\n")
         return True
 
     def test_tftp_secure_disable(self):
-        info("\n##########  Test to disable tftp server secure mode  ##########\n")
+        info("\n##########  Test to disable tftp server secure mode  "\
+             "##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         tftp_secure_disabled = False
         s1 = self.net.switches[0]
@@ -811,17 +797,16 @@ validation ##########\n")
             if "TFTP server secure mode : Disabled" in line :
                 tftp_secure_disabled = True
 
-        assert tftp_secure_disabled == True, 'Test to disable tftp server secure \
-                mode  -FAILED!'
+        assert tftp_secure_disabled == True, 'Test to disable tftp server '\
+               'secure mode  -FAILED!'
 
         return True
 
 
     def test_dhcp_tftp_del_range(self):
-        info("\n##########  Test to delete DHCP dynamic configurations ##########\n")
+        info("\n##########  Test to delete DHCP dynamic configurations "\
+             "##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         range_deleted = True
         s1 = self.net.switches[0]
@@ -843,17 +828,15 @@ validation ##########\n")
                 and "10.0.0.255"  in line and "60" in line:
                 range_deleted = False
 
-        assert range_deleted == True, 'Test to delete DHCP Dynamic configuration \
-        -FAILED!'
+        assert range_deleted == True, \
+               'Test to delete DHCP Dynamic configuration -FAILED!'
 
         return True
 
     def test_dhcp_tftp_del_range_ipv6(self):
-        info("\n##########  Test to delete DHCP dynamic ipv6 configurations \
- ############\n")
+        info("\n##########  Test to delete DHCP dynamic ipv6 configurations "\
+             "############\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         range_created = True
         s1 = self.net.switches[0];
@@ -884,10 +867,9 @@ validation ##########\n")
 
 
     def test_dhcp_tftp_del_static(self):
-        info("\n##########  Test to delete DHCP static configuration ##########\n")
+        info("\n##########  Test to delete DHCP static configuration "\
+             "##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         static_created = True
         s1 = self.net.switches[0];
@@ -911,16 +893,15 @@ validation ##########\n")
                 and "60" in line:
                 static_created = False
 
-        assert static_created == True, 'Test to delete DHCP static configuration -FAILED!'
+        assert static_created == True, \
+               'Test to delete DHCP static configuration -FAILED!'
 
         return True
 
     def test_dhcp_tftp_del_static_ipv6(self):
-        info("\n##########  Test to add DHCP static ipv6 configuration \
-###########\n")
+        info("\n##########  Test to add DHCP static ipv6 configuration "\
+             "###########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         static_created = True
         s1 = self.net.switches[0];
@@ -944,8 +925,8 @@ validation ##########\n")
                 and "60" in line:
                 static_created = False
 
-        assert static_created == True, 'Test to add DHCP static ipv6 \
-                                      configuration -FAILED!'
+        assert static_created == True, 'Test to add DHCP static ipv6 '\
+               'configuration -FAILED!'
 
         return True
 
@@ -953,8 +934,6 @@ validation ##########\n")
     def test_dhcp_tftp_del_option_name(self):
         info("\n##########  Test to delete DHCP Option-name ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         option_created = True
         s1 = self.net.switches[0];
@@ -974,15 +953,14 @@ validation ##########\n")
                 and "mtag1,mtag2,mtag3" in line :
                 option_created = False
 
-        assert option_created == True, 'Test to delete DHCP Option-name -FAILED!'
+        assert option_created == True, \
+               'Test to delete DHCP Option-name -FAILED!'
 
         return True
 
     def test_dhcp_tftp_del_option_number(self):
         info("\n##########  Test to delete DHCP Option-number ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         option_created = True
         s1 = self.net.switches[0];
@@ -1002,15 +980,14 @@ validation ##########\n")
                 and "mtag4,mtag5,mtag6" in line :
                 option_created = False
 
-        assert option_created == True, 'Test to delete DHCP Option-name -FAILED!'
+        assert option_created == True, \
+               'Test to delete DHCP Option-name -FAILED!'
         return True
 
 
     def test_dhcp_tftp_del_match_number(self):
         info("\n##########  Test to delete DHCP match number ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         match_created = True
         s1 = self.net.switches[0];
@@ -1029,14 +1006,13 @@ validation ##########\n")
                 and "stag" in line :
                 match_created = False
 
-        assert match_created == True, 'Test to delete DHCP match number -FAILED!'
+        assert match_created == True, \
+               'Test to delete DHCP match number -FAILED!'
 
         return True
     def test_dhcp_tftp_del_match_name(self):
         info("\n##########  Test to delete DHCP match number ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         match_created = True
         s1 = self.net.switches[0];
@@ -1055,15 +1031,14 @@ validation ##########\n")
                 and "test-mtag" in line :
                 match_created = False
 
-        assert match_created == True, 'Test to delete DHCP match number -FAILED!'
+        assert match_created == True, \
+               'Test to delete DHCP match number -FAILED!'
 
         return True
 
     def test_dhcp_tftp_del_boot(self):
         info("\n##########  Test to delete DHCP bootp ##########\n")
 
-        # OPS_TODO: Include validations when validations are added to the
-        # dhcp_tftp_vty.c
 
         boot_created = True
         s1 = self.net.switches[0];
@@ -1080,7 +1055,8 @@ validation ##########\n")
                 and "boottag" in line :
                 boot_created = False
 
-        assert boot_created == True, 'Test to delete DHCP bootp -FAILED!'
+        assert boot_created == True, \
+               'Test to delete DHCP bootp -FAILED!'
 
         return True
 
@@ -1104,172 +1080,153 @@ class Test_vtysh_dhcp_tftp:
 
     def test_dhcp_tftp_add_range(self):
         if self.test.test_dhcp_tftp_add_range():
-            info('''
-###  Test to add DHCP dynamic configurations - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP dynamic configurations'''\
+                 ''' - SUCCESS! ###\n''')
 
 
     def test_dhcp_tftp_add_range_ipv6(self):
         if self.test.test_dhcp_tftp_add_range_ipv6():
-            info('''
-###  Test to add DHCP dynamic ipv6 configurations - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP dynamic ipv6 configurations'''\
+                 ''' - SUCCESS! ###\n''')
 
     def  test_dhcp_tftp_check_range_validation(self):
         if self.test.test_dhcp_tftp_check_range_validation():
-            info('''
-###  Test to validate DHCP dynamic configuration - SUCCESS! ###\n''')
+            info('''\n###  Test to validate DHCP dynamic configuration'''\
+                 ''' - SUCCESS! ###\n''')
 
 
     def test_dhcp_tftp_add_static(self):
         if self.test.test_dhcp_tftp_add_static():
-            info('''
-###  Test to add DHCP static configurations - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP static configurations'''\
+                 ''' - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_add_static_ipv6(self):
         if self.test.test_dhcp_tftp_add_static_ipv6():
-            info('''
-###  Test to add DHCP static ipv6 configurations - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP static ipv6 configurations'''\
+                 ''' - SUCCESS! ###\n''')
 
     def  test_dhcp_tftp_check_static_validation(self):
         if self.test.test_dhcp_tftp_check_static_validation():
-            info('''
-###  Test to validate DHCP static configuration - SUCCESS! ###\n''')
+            info('''\n###  Test to validate DHCP static configuration'''\
+                 ''' - SUCCESS! ###\n''')
 
 
     def test_dhcp_tftp_add_option_name(self):
         if self.test.test_dhcp_tftp_add_option_name():
-            info('''
-###  Test to add DHCP Option-name  - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP Option-name  - SUCCESS! ###\n''')
 
     def  test_dhcp_tftp_option_name_validation(self):
         if self.test.test_dhcp_tftp_option_name_validation():
-            info('''
-###  Test to validate DHCP Options using option name configuration - \
-SUCCESS! ###\n''')
+            info('''\n###  Test to validate DHCP Options using option'''\
+                 ''' name configuration - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_add_option_number(self):
         if self.test.test_dhcp_tftp_add_option_number():
-            info('''
-###  Test to add DHCP Option-number  - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP Option-number  - SUCCESS! ###\n''')
 
     def  test_dhcp_tftp_option_number_validation(self):
         if self.test.test_dhcp_tftp_option_number_validation():
-            info('''
-###  Test to validate DHCP Options using option number configuration - \
-SUCCESS! ### \n''')
+            info('''\n###  Test to validate DHCP Options using option number'''\
+                 ''' configuration - SUCCESS! ### \n''')
 
     def test_dhcp_tftp_add_match_name(self):
         if self.test.test_dhcp_tftp_add_match_name():
-            info('''
-###  Test to add DHCP Match-name  - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP Match-name  - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_add_match_number(self):
         if self.test.test_dhcp_tftp_add_match_number():
-            info('''
-###  Test to add DHCP Match-number  - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP Match-number  - SUCCESS! ###\n''')
 
 
     def  test_dhcp_tftp_match_number_validation(self):
         if self.test.test_dhcp_tftp_match_number_validation():
-            info('''
-###  Test to validate DHCP Match using option number configuration - \
-SUCCESS! ###\n''')
+            info('''\n###  Test to validate DHCP Match using option'''\
+                 ''' number configuration - SUCCESS! ###\n''')
 
     def  test_dhcp_tftp_match_name_validation(self):
         if self.test.test_dhcp_tftp_match_name_validation():
-            info('''
-###  Test to validate DHCP Match using option name configuration - \
-SUCCESS! ###\n''')
+            info('''\n###  Test to validate DHCP Match using option name'''\
+                 ''' configuration - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_add_boot(self):
         if self.test.test_dhcp_tftp_add_boot():
-            info('''
-###  Test to add DHCP Boot  - SUCCESS! ###\n''')
+            info('''\n###  Test to add DHCP Boot  - SUCCESS! ###\n''')
 
     def  test_dhcp_tftp_boot_validation(self):
         if self.test.test_dhcp_tftp_boot_validation():
-            info('''
-###  Test to validate DHCP Bootp using configuration - \
-SUCCESS! ###\n''')
+            info('''\n###  Test to validate DHCP Bootp using configuration'''
+                 ''' - SUCCESS! ###\n''')
 
     def test_dhcp_server_show(self):
         if self.test.test_dhcp_server_show():
-            info('''
-###  Test to show dhcp server confguration - SUCCESS! ###\n''')
+            info('''\n###  Test to show dhcp server confguration'''\
+                 ''' - SUCCESS! ###\n''')
     def test_dhcp_tftp_del_range(self):
         if self.test.test_dhcp_tftp_del_range():
-            info('''
-###  Test to delete dhcp dynamic confguration - SUCCESS! ###\n''')
+            info('''\n###  Test to delete dhcp dynamic confguration'''\
+                 ''' - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_del_static(self):
         if self.test.test_dhcp_tftp_del_static():
-            info('''
-###  Test to delete DHCP static configurations - SUCCESS! ###\n''')
+            info('''\n###  Test to delete DHCP static configurations'''\
+                 ''' - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_del_range_ipv6(self):
         if self.test.test_dhcp_tftp_del_range_ipv6():
-            info('''
-###  Test to delete dhcp dynamic ipv6 confguration - SUCCESS! ###\n''')
+            info('''\n###  Test to delete dhcp dynamic ipv6 confguration'''\
+                 ''' - SUCCESS! ###\n''')
 
 
 
     def test_dhcp_tftp_del_static_ipv6(self):
         if self.test.test_dhcp_tftp_del_static():
-            info('''
-###  Test to delete DHCP static ipv6 configurations - SUCCESS! ###\n''')
+            info('''\n###  Test to delete DHCP static ipv6 configurations'''\
+                 ''' - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_del_option_name(self):
         if self.test.test_dhcp_tftp_del_option_name():
-            info('''
-###  Test to delete DHCP Option-name  - SUCCESS! ###\n''')
+            info('''\n###  Test to delete DHCP Option-name - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_del_option_number(self):
         if self.test.test_dhcp_tftp_del_option_number():
-            info('''
-###  Test to delete DHCP Option-number  - SUCCESS! ###\n''')
+            info('''\n###  Test to delete DHCP Option-number'''\
+                 ''' - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_del_match_name(self):
         if self.test.test_dhcp_tftp_del_match_name():
-            info('''
-###  Test to delete DHCP Match-name  - SUCCESS! ###\n''')
+            info('''\n###  Test to delete DHCP Match-name  - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_del_match_number(self):
         if self.test.test_dhcp_tftp_del_match_number():
-            info('''
-###  Test to add delete Match-number  - SUCCESS! ###\n''')
+            info('''\n###  Test to add delete Match-number  - SUCCESS! ###\n''')
 
     def test_dhcp_tftp_del_boot(self):
         if self.test.test_dhcp_tftp_del_boot():
-            info('''
-###  Test to delete DHCP Boot  - SUCCESS! ###\n''')
+            info('''\n###  Test to delete DHCP Boot  - SUCCESS! ###\n''')
 
 
 
     def test_tftp_server_enable(self):
         if self.test.test_tftp_server_enable():
-            info('''
-###  Test to enable TFTP server  - SUCCESS! ###\n''')
+            info('''\n###  Test to enable TFTP server  - SUCCESS! ###\n''')
 
     def test_tftp_secure_enable(self):
         if self.test.test_tftp_secure_enable():
-            info('''
-###  Test to enable TFTP secure mode  - SUCCESS! ###\n''')
+            info('''\n###  Test to enable TFTP secure mode  - SUCCESS! ###\n''')
 
     def test_tftp_server_add_path(self):
         if self.test.test_tftp_server_add_path():
-            info('''
-###  Test to add  TFTP path - SUCCESS! ###\n''')
+            info('''\n###  Test to add  TFTP path - SUCCESS! ###\n''')
 
     def test_tftp_server_show(self):
         if self.test.test_tftp_server_show():
-            info('''
-###  Test to show tftp server confguration - SUCCESS! ###\n''')
+            info('''\n###  Test to show tftp server confguration'''\
+                 ''' - SUCCESS! ###\n''')
 
     def test_tftp_server_disable(self):
         if self.test.test_tftp_server_disable():
-            info('''
-###  Test to disable TFTP server  - SUCCESS! ###\n''')
+            info('''\n###  Test to disable TFTP server  - SUCCESS! ###\n''')
 
     def test_tftp_secure_disable(self):
         if self.test.test_tftp_secure_disable():
-            info('''
-###  Test to disable TFTP secure mode- SUCCESS! ###\n''')
+            info('''\n###  Test to disable TFTP secure mode- SUCCESS! ###\n''')
