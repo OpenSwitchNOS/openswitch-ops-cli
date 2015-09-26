@@ -126,7 +126,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
                          netmask 127.0.0.1 match tags tag1,tag2,tag3 \
                          set tag test-tag broadcast 192.168.0.255 \
                          lease-duration 60")
-        assert '127.0.0.1 IS INVALID' in ret, 'Netmask validation failed'
+        assert '127.0.0.1 is invalid' in ret, 'Netmask validation failed'
         info('\n### Netmask validation passed ###\n')
 
         #testing netmask ipv6 validation
@@ -148,7 +148,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
                          netmask 255.255.255.0 match tags tag1,tag2,tag3 \
                          set tag test-tag broadcast 192.168.0.255 \
                          lease-duration 60")
-        assert 'INVALID IP ADDRESS RANGE' in ret, 'ip address range validation failed'
+        assert 'Invalid IP address range' in ret, 'ip address range validation failed'
         info('\n### IP address range validation passed ###\n')
 
         #testing broadcast address validation
@@ -170,7 +170,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
                          match tags tag1,tag2,tag3 \
                          set tag test-tag broadcast 10.0.0.255 \
                          lease-duration 60")
-        assert '10.0.0.255 IS INVALID' in ret, 'broadcast address ipv6 validation failed'
+        assert '10.0.0.255 is invalid' in ret, 'broadcast address ipv6 validation failed'
         info('\n### Broadcast address ipv6 validation passed ###\n')
 
 
@@ -298,7 +298,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
                        match-client-id testid \
                        match-client-hostname testname \
                        lease-duration 60")
-        assert 'aabbccddeeff IS INVALID' in ret, 'MAC address validation failed'
+        assert 'aabbccddeeff is invalid' in ret, 'MAC address validation failed'
         info('\n### MAC address validation passed ###\n')
 
 
@@ -310,7 +310,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
                        match-client-id testid \
                        match-client-hostname testname \
                        lease-duration 60")
-        assert 'taggggggggggggggggggggggg1 IS INVALID' in ret, 'set tags validation failed'
+        assert 'taggggggggggggggggggggggg1 is invalid' in ret, 'set tags validation failed'
         info('\n### set tags  validation passed ###\n')
 
 
@@ -322,7 +322,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
                        match-client-id testttttttttttttttttid  \
                        match-client-hostname testname \
                        lease-duration 60")
-        assert 'testttttttttttttttttid IS INVALID' in ret, 'client-id validation failed'
+        assert 'testttttttttttttttttid is invalid' in ret, 'client-id validation failed'
         info('\n### Client-id  validation passed ###\n')
 
 
@@ -334,7 +334,7 @@ class dhcp_tftpCLItest(OpsVsiTest):
                        match-client-id testid \
                        match-client-hostname testttttttttttttttttname \
                        lease-duration 60")
-        assert 'testttttttttttttttttname IS INVALID' in ret, 'client-hostname validation failed'
+        assert 'testttttttttttttttttname is invalid' in ret, 'client-hostname validation failed'
         info('\n### Client-hostname  validation passed ###\n')
 
         #testing lease duration validation
@@ -421,7 +421,7 @@ validation ##########\n")
                        set option-number 3 \
                        option-value 10.0.0.1 \
                        match tags tag1,tagggggggggggggggggggggggggggggg2,tag3");
-        assert 'tagggggggggggggggggggggggggggggg2 IS INVALID' in ret, 'match tag validation failed'
+        assert 'tagggggggggggggggggggggggggggggg2 is invalid' in ret, 'match tag validation failed'
         info('\n### Match tag validation passed ###\n')
 
         return True
@@ -439,7 +439,7 @@ validation ##########\n")
                        set option-name testnameeeeeeeeeeeeeeeeeeeeeeeeeee \
                        option-value 10.0.0.1 \
                        match tags tag1,tag2,tag3");
-        assert 'testnameeeeeeeeeeeeeeeeeeeeeeeeeee IS INVALID' in ret, 'option-name validation failed'
+        assert 'testnameeeeeeeeeeeeeeeeeeeeeeeeeee is invalid' in ret, 'option-name validation failed'
         info('\n### option-name validation passed ###\n')
 
         #testing match tags validation
@@ -448,7 +448,7 @@ validation ##########\n")
                        set option-name Router \
                        option-value 10.0.0.1 \
                        match tags tagggggggggggggggggggggggggggg1,tag2,tag3");
-        assert 'tagggggggggggggggggggggggggggg1 IS INVALID' in ret, 'match tag validation failed'
+        assert 'tagggggggggggggggggggggggggggg1 is invalid' in ret, 'match tag validation failed'
         info('\n### Match tag validation passed ###\n')
 
         return True
@@ -494,7 +494,7 @@ validation ##########\n")
                        match-option-number 3 \
                        match-option-value 10.0.0.1")
 
-        assert 'testaaaaaaaaaaaaaaaaaaaaaag IS INVALID' in ret, 'match set tag validation failed'
+        assert 'testaaaaaaaaaaaaaaaaaaaaaag is invalid' in ret, 'match set tag validation failed'
         info('\n### Match set tag  validation passed ###i\n')
 
         #testing option number validation
@@ -547,7 +547,7 @@ validation ##########\n")
                        set tag temptaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag \
                        match-option-name tempname \
                        match-option-value 10.0.0.1")
-        assert 'temptaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag IS INVALID' in ret, 'match set tag validation failed'
+        assert 'temptaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag is invalid' in ret, 'match set tag validation failed'
         info('\n### match set tag  validation passed ###\n')
 
         #testing option number validation
@@ -555,7 +555,7 @@ validation ##########\n")
                        set tag test-tag \
                        match-option-name temppppppppnaaaaaaaaaaaaaaaaaaaaaame \
                        match-option-value 10.0.0.1")
-        assert 'temppppppppnaaaaaaaaaaaaaaaaaaaaaame IS INVALID' in ret, 'match option name validation failed'
+        assert 'temppppppppnaaaaaaaaaaaaaaaaaaaaaame is invalid' in ret, 'match option name validation failed'
         info('\n### Match option name validation passed ###\n')
 
         return True
@@ -595,7 +595,7 @@ validation ##########\n")
         ret=s1.cmdCLI("boot \
                        set file /tmp/tmpfile \
                        match tag taaaaaaaaaaaaaaaaaagnmeeeeeeee")
-        assert 'taaaaaaaaaaaaaaaaaagnmeeeeeeee IS INVALID' in ret, 'Bootp match tag validation failed'
+        assert 'taaaaaaaaaaaaaaaaaagnmeeeeeeee is invalid' in ret, 'Bootp match tag validation failed'
         info('\n### Bootp tag validation passed ###\n')
 
         return True
