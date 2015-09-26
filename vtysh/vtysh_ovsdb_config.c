@@ -52,6 +52,7 @@ vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_conte
 vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {{NULL}};
 vtysh_context_client vtysh_interface_lag_context_client_list[e_vtysh_interface_lag_context_client_id_max] = {{NULL}};
 vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_dhcp_tftp_context_client_list[e_vtysh_dhcp_tftp_context_client_id_max] = {{NULL}};
 
 /* static array of vtysh context lists
    context traversal order as shown below.
@@ -66,6 +67,7 @@ vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
   { "Mgmt Interface Context",  e_vtysh_mgmt_interface_context, &vtysh_mgmt_interface_context_client_list},
   { "Interface LAG Context",  e_vtysh_interface_lag_context, &vtysh_interface_lag_context_client_list},
   { "Dependent Config",   e_vtysh_dependent_config,  &vtysh_dependent_config_client_list},
+  { "dhcp tftp Config",   e_vtysh_dhcp_tftp_context,  &vtysh_dhcp_tftp_context_client_list},
 };
 
 /*-----------------------------------------------------------------------------
@@ -107,6 +109,9 @@ vtysh_context_get_maxclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_dependent_config:
          ret_val = e_vtysh_dependent_config_client_id_max;
+         break;
+    case e_vtysh_dhcp_tftp_context:
+         ret_val = e_vtysh_dhcp_tftp_context_client_id_max;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -156,6 +161,9 @@ vtysh_context_get_minclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_dependent_config:
          ret_val = e_vtysh_dependent_config_client_id_first;
+         break;
+    case e_vtysh_dhcp_tftp_context:
+         ret_val = e_vtysh_dhcp_tftp_context_client_id_first;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -492,7 +500,7 @@ vtysh_ovsdb_config_logmsg(int loglevel, char *fmt, ...)
 | Return: void
 -----------------------------------------------------------------------------*/
 void
-vtysh_ovsdb_init_clients()
+vtysh_ovsdb_init_clients(void)
 {
   /* register vtysh context table client callbacks */
   vtysh_init_config_context_clients();
@@ -501,4 +509,5 @@ vtysh_ovsdb_init_clients()
   vtysh_init_intf_context_clients();
   vtysh_init_mgmt_intf_context_clients();
   vtysh_init_intf_lag_context_clients();
+  vtysh_init_dhcp_tftp_context_clients();
 }

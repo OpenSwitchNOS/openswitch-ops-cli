@@ -48,6 +48,7 @@ typedef enum vtysh_context_idenum
   e_vtysh_mgmt_interface_context,
   e_vtysh_interface_lag_context,
   e_vtysh_dependent_config,
+  e_vtysh_dhcp_tftp_context,
   e_vtysh_context_id_max
 } vtysh_contextid;
 
@@ -121,6 +122,16 @@ typedef enum vtysh_dependent_config_client_idenum
   e_vtysh_dependent_config_client_id_max
 } vtysh_dependent_config_clientid;
 
+/* Dependent Config Client ID type */
+typedef enum vtysh_dhcp_tftp_config_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_dhcp_tftp_context_client_id_first = 0,
+  e_vtysh_dhcp_tftp_context_dhcp,
+  e_vtysh_dhcp_tftp_context_tftp,
+  e_vtysh_dhcp_tftp_context_client_id_max,
+} vtysh_dhcp_tftp_context_clientid;
+
 typedef struct vtysh_ovsdb_cbmsg_struct
 {
   FILE *fp;
@@ -178,7 +189,7 @@ int vtysh_context_get_minclientid(vtysh_contextid contextid);
 void vtysh_ovsdb_config_init(const char *db_path);
 void vtysh_ovsdb_read_config(FILE *fp);
 void vtysh_context_table_list_clients(struct vty *vty);
-void vtysh_ovsdb_init_clients();
+void vtysh_ovsdb_init_clients(void);
 
 vtysh_ret_val vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, ...);
 
