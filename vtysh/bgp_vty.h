@@ -25,7 +25,7 @@
 #ifndef _BGP_VTY_H
 #define _BGP_VTY_H
 
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "ovsdb-idl.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "vtysh/vtysh_ovsdb_if.h"

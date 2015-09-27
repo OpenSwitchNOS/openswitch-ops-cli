@@ -29,7 +29,7 @@
 #include "vty.h"
 #include <vector.h>
 #include "vswitch-idl.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_vlan_context.h"

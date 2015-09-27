@@ -29,7 +29,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh.h"
 #include "vtysh_utils.h"
 

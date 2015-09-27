@@ -47,7 +47,7 @@
 #include "lib/plist.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "util.h"
 
 extern struct ovsdb_idl *idl;

@@ -29,14 +29,14 @@
 #include "vty.h"
 #include <vector.h>
 #include "vswitch-idl.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_config_context.h"
 #include "fan_vty.h"
 #include "aaa_vty.h"
 #include "logrotate_vty.h"
-#include "openhalon-dflt.h"
+#include "openswitch-dflt.h"
 #include "ecmp_vty.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF

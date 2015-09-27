@@ -39,7 +39,7 @@
 #include "mgmt_intf_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include <arpa/inet.h>
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"

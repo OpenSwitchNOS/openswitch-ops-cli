@@ -40,7 +40,7 @@
 #include "lldp_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 
