@@ -42,10 +42,10 @@
 #include "lacp_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "openhalon-dflt.h"
+#include "openswitch-dflt.h"
 #include "vrf_vty.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lacp_cli);

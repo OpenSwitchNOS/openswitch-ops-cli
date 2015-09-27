@@ -36,7 +36,7 @@
 #include "timeval.h"
 #include "openvswitch/vlog.h"
 #include "coverage.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "assert.h"

@@ -32,7 +32,7 @@
 #include "smap.h"
 #include "memory.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_powersupply_cli);
 

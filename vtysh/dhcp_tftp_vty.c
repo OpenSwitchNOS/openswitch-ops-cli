@@ -38,7 +38,7 @@
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "prefix.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"

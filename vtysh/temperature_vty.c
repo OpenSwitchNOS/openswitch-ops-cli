@@ -33,7 +33,7 @@
 #include "temperature_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_temperature_cli);
 extern struct ovsdb_idl *idl;

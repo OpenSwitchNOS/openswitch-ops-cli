@@ -35,7 +35,7 @@
 #include "openvswitch/vlog.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "util.h"
 #include "prefix.h"
 #include "sockunion.h"

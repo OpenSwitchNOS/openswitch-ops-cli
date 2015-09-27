@@ -39,7 +39,7 @@
 #include "ovsdb-idl.h"
 #include "neighbor_vty.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "smap.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_neighbor_cli);
