@@ -1,24 +1,27 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
-# All Rights Reserved.
+# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
+# GNU Zebra is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2, or (at your option) any
+# later version.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# GNU Zebra is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# You should have received a copy of the GNU General Public License
+# along with GNU Zebra; see the file COPYING.  If not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
 
-class ecmpCLITest( OpsVsiTest ):
+
+class ecmpCLITest(OpsVsiTest):
 
     def setupNet(self):
         self.net = Mininet(topo=SingleSwitchTopo(k=0, hopts=self.getHostOpts(),
@@ -34,15 +37,20 @@ class ecmpCLITest( OpsVsiTest ):
             Test ECMP enable disable validations
         '''
         info('\n########## ECMP enable/disable validations ##########\n')
-        s1 = self.net.switches[ 0 ]
+        s1 = self.net.switches[0]
 
         # Verify default state of ECMP is enabled
         ret = s1.cmdCLI("show ip ecmp")
-        assert 'ECMP Status        : Enabled' in ret, 'ECMP is not enabled by default'
-        assert 'Source IP          : Enabled' in ret, 'Hashing using source IP not enabled by default'
-        assert 'Destination IP     : Enabled' in ret, 'Hashing using destination IP not enabled by default'
-        assert 'Source Port        : Enabled' in ret, 'Hashing using source IP not enabled by default'
-        assert 'Destination Port   : Enabled' in ret, 'Hashing using destination port enabled by default'
+        assert 'ECMP Status        : Enabled' in ret, \
+            'ECMP is not enabled by default'
+        assert 'Source IP          : Enabled' in ret, \
+            'Hashing using source IP not enabled by default'
+        assert 'Destination IP     : Enabled' in ret, \
+            'Hashing using destination IP not enabled by default'
+        assert 'Source Port        : Enabled' in ret, \
+            'Hashing using source IP not enabled by default'
+        assert 'Destination Port   : Enabled' in ret, \
+            'Hashing using destination port enabled by default'
         info('### ECMP enabled by default validation passed ###\n')
 
         # Verify ecmp disable operation, multiple hash disable/enable
@@ -52,14 +60,19 @@ class ecmpCLITest( OpsVsiTest ):
         s1.cmdCLI("ip ecmp load-balance dst-ip disable")
         s1.cmdCLI("ip ecmp load-balance src-port disable")
         ret = s1.cmdCLI("do show ip ecmp")
-        assert 'ECMP Status        : Disabled' in ret, 'ECMP is enabled even after disabling it'
-        assert 'Source IP          : Enabled' in ret, 'Hashing using source ip disabled unexpectedly'
-        assert 'Destination IP     : Disabled' in ret, 'Hashing using destination ip enabled even after it is disabled'
-        assert 'Source Port        : Disabled' in ret, 'Hashing using source IP is enabled even after it is disabled'
-        assert 'Destination Port   : Enabled' in ret, 'Hashing using destination port has disabled unexpectedly'
+        assert 'ECMP Status        : Disabled' in ret, \
+            'ECMP is enabled even after disabling it'
+        assert 'Source IP          : Enabled' in ret, \
+            'Hashing using source ip disabled unexpectedly'
+        assert 'Destination IP     : Disabled' in ret, \
+            'Hashing using destination ip enabled even after it is disabled'
+        assert 'Source Port        : Disabled' in ret, \
+            'Hashing using source IP is enabled even after it is disabled'
+        assert 'Destination Port   : Enabled' in ret, \
+            'Hashing using destination port has disabled unexpectedly'
         info('### ECMP configuration validation passed ###\n')
 
-        #Cleanup
+        # Cleanup
         s1.cmdCLI("exit")
 
     def test_show_running_config(self):
@@ -67,15 +80,18 @@ class ecmpCLITest( OpsVsiTest ):
             Test show running-config for ecmp changes
         '''
         info('\n########## Testing show running-config output ##########\n')
-        s1 = self.net.switches[ 0 ]
+        s1 = self.net.switches[0]
 
         # Modifying interface data to test show running-config
         ret = s1.cmdCLI("show running-config")
-        #CLI(self.net)
+        # CLI(self.net)
         assert 'ip ecmp disable' in ret and \
                'ip ecmp load-balance src-port disable' in ret and \
-               'ip ecmp load-balance dst-ip disable' in ret, 'show running-config does not show ecmp configuration'
-        info('### ECMP configuration validation in running configuration passed ###\n')
+               'ip ecmp load-balance dst-ip disable' in ret, \
+               'show running-config does not show ecmp configuration'
+        info('### ECMP configuration validation in '
+             'running configuration passed ###\n')
+
 
 class Test_vtysh_ecmp:
 

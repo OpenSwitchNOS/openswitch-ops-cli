@@ -1,20 +1,21 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
-# All Rights Reserved.
+# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
+# GNU Zebra is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2, or (at your option) any
+# later version.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# GNU Zebra is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# You should have received a copy of the GNU General Public License
+# along with GNU Zebra; see the file COPYING.  If not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
@@ -27,8 +28,8 @@ class vlanInternalCT(OpsVsiTest):
         switch_opts = self.getSwitchOpts()
         vlan_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
         self.net = Mininet(vlan_topo, switch=VsiOpenSwitch,
-                       host=Host, link=OpsVsiLink,
-                       controller=None, build=True)
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     def test_vlan_internal_cli(self):
         '''
@@ -59,9 +60,9 @@ class vlanInternalCT(OpsVsiTest):
         info('### Checking Internal VLAN range with (start > end) ###\n'
              )
         ret = s1.cmdCLI('vlan internal range 100 10 ascending')
-        assert 'Invalid VLAN range. End VLAN must be greater or equal to start VLAN' \
-            in ret, \
-            'Internal VLAN range (start > end) validation failed'
+        assert 'Invalid VLAN range. End VLAN must be greater ' \
+               'or equal to start VLAN' in ret, \
+               'Internal VLAN range (start > end) validation failed'
         info('''### Internal VLAN range (start > end) validation passed ###
 
 ''')
