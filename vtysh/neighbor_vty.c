@@ -68,7 +68,7 @@ show_arp_info (void)
   vty_out (vty, "%-16s %-18s %-16s %-10s%s", "IPv4 Address", "MAC", "Port",
            "State", VTY_NEWLINE);
 
-  /* HALON_TODO: Sort the output on Port (or other attribute) */
+  /* OPS_TODO: Sort the output on Port (or other attribute) */
   OVSREC_NEIGHBOR_FOR_EACH (row, idl)
     {
       /* non-IPv4 entries, ignore and move to next record */
@@ -106,7 +106,7 @@ show_ipv6_neighbors (void)
   vty_out (vty, "%-46s %-18s %-16s %-10s%s", "IPv6 Address", "MAC", "Port",
            "State", VTY_NEWLINE);
 
-  /* HALON_TODO: Sort the output on Port (or other attribute) */
+  /* OPS_TODO: Sort the output on Port (or other attribute) */
   OVSREC_NEIGHBOR_FOR_EACH (row, idl)
     {
       /* non-IPv6 entries, ignore and move to next record */
