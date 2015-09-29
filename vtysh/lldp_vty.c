@@ -196,8 +196,8 @@ DEFUN (cli_lldp_set_hold_time,
        lldp_set_global_hold_time_cmd,
        "lldp holdtime <2-10>",
        CONFIG_LLDP_STR
-       "The amount of time a receiving device should hold the information before discarding it\n"
-       "Hold time multiplier, total hold time is calculated by multiplying it with transmission interval(Default:4)\n")
+       "Set hold time multiplier, total hold time is calculated by multiplying it with LLDP timer\n"
+       "Hold time multiplier(Default:4)\n")
 {
   return set_global_hold_time(argv[0]);
 }
@@ -207,8 +207,8 @@ DEFUN (cli_lldp_no_set_hold_time,
        "no lldp holdtime [<2-10>]",
         NO_STR
        CONFIG_LLDP_STR
-       "The amount of time a receiving device should hold the information before discarding it\n"
-       "Hold time multiplier, total hold time is calculated by multiplying it with transmission interval(Default:4)\n")
+       "Set hold time multiplier, total hold time is calculated by multiplying it with LLDP timer\n"
+       "Hold time multiplier(Default:4)\n")
 {
   char def_holdtime[LLDP_TIMER_MAX_STRING_LENGTH]={0};
   snprintf(def_holdtime,LLDP_TIMER_MAX_STRING_LENGTH, "%d",SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
