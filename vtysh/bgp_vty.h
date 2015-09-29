@@ -1,4 +1,4 @@
-/* BGP CLI implementation with Halon vtysh.
+/* BGP CLI implementation with openswitch vtysh.
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
  * Copyright (C) 2015 Hewlett Packard Enterprise Development LP

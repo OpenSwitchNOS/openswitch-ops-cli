@@ -34,7 +34,7 @@ class LLDPCliTest(OpsVsiTest):
                + 'Bridge,Router \n '
                )
         s1.cmd('ovs-vsctl  set interface ' + LLDPCliTest.uuid
-               + ' lldp_neighbor_info:chassis_description=Halon_0.1.0'
+               + ' lldp_neighbor_info:chassis_description=OpenSwitch_0.1.0'
                + '_basil_Linux_3.9.11_#1_SMP_Mon_Aug_24_14:38:01'
                + '_UTC_2015_x86_64'
                )
@@ -296,8 +296,8 @@ class LLDPCliTest(OpsVsiTest):
                 for line in lines:
                     if 'Neighbor Chassis-Name          : as5712' in line:
                         counter += 1
-                    if 'Neighbor Chassis-Description   : Halon_0.1.0_basil'\
-                       '_Linux_3.9.11_#1_SMP_Mon_Aug_24_14:38:01_'\
+                    if 'Neighbor Chassis-Description   : OpenSwitch_0.1.0'\
+                       '_basil_Linux_3.9.11_#1_SMP_Mon_Aug_24_14:38:01_'\
                        'UTC_2015_x86_64' in line:
                         counter += 1
                     if 'Neighbor Chassis-ID            : '\
