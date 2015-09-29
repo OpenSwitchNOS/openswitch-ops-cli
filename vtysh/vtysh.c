@@ -3570,10 +3570,38 @@ DEFUN(vtysh_reboot,
       "reboot",
       "Reload the switch\n")
 {
-   char *arg[1];
-   arg[0] = "/sbin/reboot";
-   execute_command("sudo", 1 ,(const char **)arg);
-   return CMD_SUCCESS;
+    char flag = '0';
+    static struct termios oldt, newt;
+    tcgetattr( STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON);
+    tcsetattr( STDIN_FILENO, TCSANOW, &newt);
+    printf("\rSystem will be rebooted. All the unsaved configurations will be lost.\n\nDo you want to continue [y/n]?");
+    while(1)
+    {
+        flag=getchar();
+        if (flag == 'y')
+        {
+           vty_out(vty,"%s",VTY_NEWLINE);
+           char *arg[1];
+           arg[0] = "/sbin/reboot";
+           execute_command("sudo", 1 ,(const char **)arg);
+           break;
+        }
+        else if (flag == 'n')
+        {
+           vty_out(vty,"%s",VTY_NEWLINE);
+           break;
+        }
+        else
+        {
+           printf("\r                                 ");
+           printf("\rDo you want to continue [y/n]?");
+        }
+    }
+    /*restore the old settings*/
+    tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
+    return CMD_SUCCESS;
 }
 
 DEFUN (vtysh_demo_mac_tok,
