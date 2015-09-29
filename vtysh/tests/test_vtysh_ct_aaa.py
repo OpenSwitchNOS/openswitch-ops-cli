@@ -53,7 +53,7 @@ class AutoProvisioning(OpsVsiTest):
 
     def setupNet(self):
 
-        # Create a topology with single Halon switch and
+        # Create a topology with single Open switch and
         # one host.
 
         host_opts = self.getHostOpts()
@@ -261,17 +261,17 @@ class AutoProvisioning(OpsVsiTest):
         assert 'Unknown command' not in out, \
             'Failed to enter configuration terminal'
 
-        out = s1.cmdCLI('radius-server host 192.168.1.5 key halonhost')
+        out = s1.cmdCLI('radius-server host 192.168.1.5 key myhost')
         assert 'Command failed' not in out, \
             'Failed to configure radius-server host passkey'
         s1.cmdCLI('exit')
         out = s1.cmdCLI('show radius-server')
         lines = out.split('\n')
         for line in lines:
-            if "Shared secret		: halonhost" in line:
+            if "Shared secret		: myhost" in line:
                 return True
 
-        assert 'Shared secret           : halonhost' not in out, \
+        assert 'Shared secret           : myhost' not in out, \
             'Test to configure radius server Passkey: Failed'
 
     def NoRadiusPassky(self):
@@ -283,9 +283,9 @@ class AutoProvisioning(OpsVsiTest):
         assert 'Unknown command' not in out, \
             'Failed to enter configuration terminal'
 
-        out = s1.cmdCLI('radius-server host 192.168.1.5 key halonhost')
+        out = s1.cmdCLI('radius-server host 192.168.1.5 key myhost')
         out = \
-            s1.cmdCLI('no radius-server host 192.168.1.5 key halonhost')
+            s1.cmdCLI('no radius-server host 192.168.1.5 key myhost')
         assert 'Command failed' not in out, \
             'Failed to configure no radius-server passkey'
         s1.cmdCLI('exit')

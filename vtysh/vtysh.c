@@ -2780,6 +2780,7 @@ DEFUN (show_startup_config,
   char *temp_args[] = {"-D", TEMPORARY_STARTUP_SOCKET, "-c", "show running-config "};
   char *copy_db[] = {OVSDB_PATH, TEMPORARY_STARTUP_DB};
   char *run_server[] = {"--pidfile=/var/run/openvswitch/temp_startup.pid", "--detach", "--remote", "punix:/var/run/openvswitch/temp_startup.sock", TEMPORARY_STARTUP_DB};
+  char *remove_tempstartup_db[] = {"rm", "-f", TEMPORARY_STARTUP_DB_LOCK};
   int ret = 0;
 
   // Check if temporary DB exists and OVSDB server running. If yes, remove it.
@@ -2832,6 +2833,12 @@ DEFUN (show_startup_config,
   {
       vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
       return CMD_SUCCESS;
+  }
+
+  if (execute_command ("sudo", 3, (const char **)remove_tempstartup_db)  == -1)
+  {
+      VLOG_ERR("Failed to remove temporary DB lock\n");
+      return -1;
   }
 
   return CMD_SUCCESS;

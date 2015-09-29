@@ -102,6 +102,7 @@ struct vtysh_alias_data {
 #define TEMPORARY_STARTUP_DB "/var/run/openvswitch/temp_startup.db"
 #define TEMPORARY_PROCESS_PID "/var/run/openvswitch/temp_startup.pid"
 #define STARTUP_CONFIG_ERR "Internal error occured. Please try again"
+#define TEMPORARY_STARTUP_DB_LOCK "/var/run/openvswitch/.temp_startup.db.~lock~"
 
 enum ip_type {
     IPV4=0,
