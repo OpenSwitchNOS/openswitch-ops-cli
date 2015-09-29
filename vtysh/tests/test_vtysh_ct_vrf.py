@@ -1,20 +1,21 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
-# All Rights Reserved.
+# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
+# GNU Zebra is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2, or (at your option) any
+# later version.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# GNU Zebra is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# You should have received a copy of the GNU General Public License
+# along with GNU Zebra; see the file COPYING.  If not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
@@ -23,6 +24,7 @@ first_interface = '12'
 second_interface = '13'
 third_interface = '14'
 
+
 class vrfCLITest(OpsVsiTest):
 
     def setupNet(self):
@@ -30,8 +32,8 @@ class vrfCLITest(OpsVsiTest):
         switch_opts = self.getSwitchOpts()
         infra_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
         self.net = Mininet(infra_topo, switch=VsiOpenSwitch,
-                          host=Host, link=OpsVsiLink,
-                          controller=None, build=True)
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     def test_vrf_add_delete(self):
         '''
@@ -90,7 +92,7 @@ class vrfCLITest(OpsVsiTest):
             Test attaching/detaching interface to/from VRF
         '''
 
-        info("\n########## Attaching/detaching interface " \
+        info("\n########## Attaching/detaching interface "
              "to/from vrf ##########\n")
         s1 = self.net.switches[0]
 
@@ -187,7 +189,7 @@ class vrfCLITest(OpsVsiTest):
             Test configuration of IP address for port
         '''
 
-        info("\n########## Assign/remove IP address " \
+        info("\n########## Assign/remove IP address "
              "to/from interface ##########\n")
         s1 = self.net.switches[0]
 
@@ -237,7 +239,7 @@ class vrfCLITest(OpsVsiTest):
         ret = s1.cmdCLI("ip address 10.0.20.3/24")
         expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as primary."
-        assert expected_output in ret , 'IP address duplicate check failed'
+        assert expected_output in ret, 'IP address duplicate check failed'
 
         # Assigning existing secondary IP address as primary
 
@@ -295,7 +297,7 @@ class vrfCLITest(OpsVsiTest):
         expected_output = "No secondary IP address configured " \
                           "on interface " + first_interface
         assert expected_output in ret, \
-               'Secondary IP address presence validation failed'
+            'Secondary IP address presence validation failed'
         info('### Secondary IP address presence validation passed ###\n')
 
         # Configuring multiple secondary IP addresses on L3 interface
@@ -336,7 +338,7 @@ class vrfCLITest(OpsVsiTest):
             Test configuration of IPv6 address for port
         '''
 
-        info("\n########## Assign/remove IPv6 address " \
+        info("\n########## Assign/remove IPv6 address "
              "to/from interface ##########\n")
         s1 = self.net.switches[0]
 
@@ -387,8 +389,8 @@ class vrfCLITest(OpsVsiTest):
         ret = s1.cmdCLI("ipv6 address 2001::1/128")
         expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as primary."
-        assert expected_output in ret , \
-               'IPv6 address duplicate check failed'
+        assert expected_output in ret, \
+            'IPv6 address duplicate check failed'
 
         # Assigning existing secondary IPv6 address as primary
 
@@ -397,7 +399,7 @@ class vrfCLITest(OpsVsiTest):
         expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as secondary."
         assert expected_output in ret, \
-               'IPv6 address duplicate check failed'
+            'IPv6 address duplicate check failed'
 
         # Assigning existing primary IPv6 address as secondary
 
@@ -405,7 +407,7 @@ class vrfCLITest(OpsVsiTest):
         expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as primary."
         assert expected_output in ret, \
-               'IPv6 address duplicate check failed'
+            'IPv6 address duplicate check failed'
 
         # Assigning existing secondary IPv6 address as secondary
 
@@ -413,7 +415,7 @@ class vrfCLITest(OpsVsiTest):
         expected_output = "IP address is already assigned to " \
                           "interface " + first_interface + " as secondary."
         assert expected_output in ret, \
-               'IPv6 address duplicate check failed'
+            'IPv6 address duplicate check failed'
         info('### IPv6 address duplicate checked successfully ###\n')
 
         # Remove primary IPv6 address before deleting secondary IP addresses
@@ -442,7 +444,6 @@ class vrfCLITest(OpsVsiTest):
         assert ipv6 == '[]', 'IPv6 address remove failed'
         info('### IPv6 address removed successfully ###\n')
 
-
         # Deleting secondary IPv6 address on an L3 interface which does not
         # have any secondary IPv6 address
 
@@ -450,7 +451,7 @@ class vrfCLITest(OpsVsiTest):
         expected_output = "No secondary IPv6 address configured on " \
                           "interface " + first_interface
         assert expected_output in ret, \
-               'Secondary IPv6 address presence validation failed'
+            'Secondary IPv6 address presence validation failed'
         info('### Secondary IPv6 address presence validation passed ###\n')
 
         # Configuring multiple secondary IPv6 addresses on L3 interface
@@ -461,7 +462,7 @@ class vrfCLITest(OpsVsiTest):
                    + " ip6_address_secondary"
         ipv6 = s1.ovscmd(intf_cmd).strip()
         assert ipv6 == '[2001::2/128, 2001::3/128]', \
-               'Secondary IPv6 address add failed'
+            'Secondary IPv6 address add failed'
         info('### Secondary IPv6 address added successfully ###\n')
 
         # Deleting multiple secondary IPv6 addresses on L3 interface
@@ -471,7 +472,7 @@ class vrfCLITest(OpsVsiTest):
                    + " ip6_address_secondary"
         ipv6 = s1.ovscmd(intf_cmd).strip()
         assert ipv6 == '[2001::3/128]', \
-               'Secondary IPv6 address delete failed'
+            'Secondary IPv6 address delete failed'
         info('### Secondary IPv6 address deleted successfully ###\n')
 
         s1.cmdCLI("no ipv6 address 2001::3/128 secondary")
@@ -492,7 +493,7 @@ class vrfCLITest(OpsVsiTest):
             Test routing / no routing commands for port
         '''
 
-        info("\n########## Testing routing/ no routing " \
+        info("\n########## Testing routing/ no routing "
              "working ##########\n")
         s1 = self.net.switches[0]
 
@@ -551,7 +552,7 @@ class vrfCLITest(OpsVsiTest):
             Test show running-config for vrf changes
         '''
 
-        info("\n########## Testing show running-config " \
+        info("\n########## Testing show running-config "
              "output ##########\n")
         s1 = self.net.switches[0]
 

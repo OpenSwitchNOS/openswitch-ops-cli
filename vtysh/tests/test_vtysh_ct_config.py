@@ -1,22 +1,21 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
+# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
 #
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
-# All Rights Reserved.
+# GNU Zebra is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2, or (at your option) any
+# later version.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
+# GNU Zebra is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
-#
+# You should have received a copy of the GNU General Public License
+# along with GNU Zebra; see the file COPYING.  If not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 from time import sleep
 from opsvsi.docker import *
@@ -27,16 +26,16 @@ class ShowRunningConfigTests(OpsVsiTest):
 
     def setupNet(self):
 
-    # if you override this function, make sure to
-    # either pass getNodeOpts() into hopts/sopts of the topology that
-    # you build or into addHost/addSwitch calls
+        # if you override this function, make sure to
+        # either pass getNodeOpts() into hopts/sopts of the topology that
+        # you build or into addHost/addSwitch calls
 
         host_opts = self.getHostOpts()
         switch_opts = self.getSwitchOpts()
         config_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
         self.net = Mininet(config_topo, switch=VsiOpenSwitch,
-                       host=Host, link=OpsVsiLink,
-                       controller=None, build=True)
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     def enablelldpTest(self):
         print '''
@@ -52,7 +51,7 @@ class ShowRunningConfigTests(OpsVsiTest):
         for line in lines:
             if 'feature lldp' in line:
                 enable_lldp = True
-        assert enable_lldp == True, \
+        assert enable_lldp is True, \
             'Test to verify show running-config for feature lldp - FAILED!'
         return True
 
@@ -70,7 +69,7 @@ class ShowRunningConfigTests(OpsVsiTest):
         for line in lines:
             if 'lldp holdtime 5' in line:
                 set_lldp_hold_time = True
-        assert set_lldp_hold_time == True, \
+        assert set_lldp_hold_time is True, \
             'Test to verify show running-config for lldp holdtime - FAILED!'
         return True
 
@@ -91,8 +90,9 @@ class ShowRunningConfigTests(OpsVsiTest):
         for line in lines:
             if 'no lldp transmission' in line:
                 lldp_txrx_disabled = True
-        assert lldp_txrx_disabled == True, \
-            'Test to verify show running-config for lldp transmission - FAILED!'
+        assert lldp_txrx_disabled is True, \
+            'Test to verify show running-config for ' \
+            'lldp transmission - FAILED!'
         return True
 
     def setLogrotatePeriodTest(self):
@@ -107,7 +107,8 @@ class ShowRunningConfigTests(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             assert 'logrotate period' not in line, \
-                'Default behavior: logrotate period should not be part of running config'
+                'Default behavior: logrotate period should ' \
+                'not be part of running config'
 
         s1.cmdCLI('logrotate period none')
         s1.cmdCLI(' ')
@@ -116,7 +117,8 @@ class ShowRunningConfigTests(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             assert 'logrotate period none' not in line, \
-                'Default behavior: logrotate period none should not be part of running config'
+                'Default behavior: logrotate period none should ' \
+                'not be part of running config'
 
         s1.cmdCLI('logrotate period hourly')
         s1.cmdCLI(' ')
@@ -127,7 +129,7 @@ class ShowRunningConfigTests(OpsVsiTest):
         for line in lines:
             if 'logrotate period hourly' in line:
                 logrotate_period_set = True
-        assert logrotate_period_set == True, \
+        assert logrotate_period_set is True, \
             'Test to verify show running-config for logrotate period'
         return True
 
@@ -142,7 +144,8 @@ class ShowRunningConfigTests(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             assert 'logrotate maxsize' not in line, \
-                'Default behavior: logrotate maxsize should not be part of running config'
+                'Default behavior: logrotate maxsize should ' \
+                'not be part of running config'
 
         s1.cmdCLI('logrotate maxsize 10')
         s1.cmdCLI(' ')
@@ -151,7 +154,8 @@ class ShowRunningConfigTests(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             assert 'logrotate maxsize 10' not in line, \
-                'Default behavior: logrotate maxsize 10 should not be part of running config'
+                'Default behavior: logrotate maxsize 10 should ' \
+                'not be part of running config'
 
         s1.cmdCLI('logrotate maxsize 20')
         s1.cmdCLI(' ')
@@ -162,8 +166,9 @@ class ShowRunningConfigTests(OpsVsiTest):
         for line in lines:
             if 'logrotate maxsize 20' in line:
                 logrotate_max_size_set = True
-        assert logrotate_max_size_set == True, \
-            'Test to verify show running-config for logrotate maxsize - FAILED!'
+        assert logrotate_max_size_set is True, \
+            'Test to verify show running-config for ' \
+            'logrotate maxsize - FAILED!'
         return True
 
     def setLogrotateTargetTest(self):
@@ -177,7 +182,8 @@ class ShowRunningConfigTests(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             assert 'logrotate target' not in line, \
-                'Default behavior: logrotate target should not be part of running config'
+                'Default behavior: logrotate target should ' \
+                'not be part of running config'
 
         s1.cmdCLI('logrotate target local')
         s1.cmdCLI(' ')
@@ -186,7 +192,8 @@ class ShowRunningConfigTests(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             assert 'logrotate target local' not in line, \
-                'Default behavior: logrotate target local should not be part of running config'
+                'Default behavior: logrotate target local should ' \
+                'not be part of running config'
 
         s1.cmdCLI('logrotate target tftp://1.1.1.1')
         s1.cmdCLI(' ')
@@ -197,7 +204,7 @@ class ShowRunningConfigTests(OpsVsiTest):
         for line in lines:
             if 'logrotate target tftp://1.1.1.1' in line:
                 logrotate_target_set = True
-        assert logrotate_target_set == True, \
+        assert logrotate_target_set is True, \
             'Test to verify show running-config for logrotate target - FAILED!'
         return True
 
@@ -217,44 +224,38 @@ class Test_showrunningconfig:
 
     def test_enable_lldp_commands(self):
         if self.test.enablelldpTest():
-            print '''
-########## Test to verify show running-config for feature lldp - SUCCESS! ##########
-'''
+            print '########## Test to verify show running-config ' \
+                  'for feature lldp - SUCCESS! ##########'
 
     def test_set_lldpholdtime_commands(self):
         if self.test.setlldpholdtimeTest():
-            print '''
-########## Test to verify show running-config for lldp holdtime - SUCCESS! ##########
-'''
+            print '########## Test to verify show running-config ' \
+                  'for lldp holdtime - SUCCESS! ##########'
 
     def test_disable_lldptxdir_commands(self):
         if self.test.disablelldptxdirTest():
-            print '''
-########## Test to verify show running-config for lldp transmission - SUCCESS! ##########
-'''
+            print '########## Test to verify show running-config ' \
+                  'for lldp transmission - SUCCESS! ##########'
 
     def test_set_logrotatePeriod(self):
         if self.test.setLogrotatePeriodTest():
-            print '''
-########## Test to verify show running-config for logrotate period - SUCCESS! ##########
-'''
+            print '########## Test to verify show running-config ' \
+                  'for logrotate period - SUCCESS! ##########'
 
     def test_set_logrotateMaxsize(self):
         if self.test.setLogrotateMaxsizeTest():
-            print '''
-########## Test to verify show running-config for logrotate maxsize - SUCCESS! ##########
-'''
+            print '########## Test to verify show running-config ' \
+                  'for logrotate maxsize - SUCCESS! ##########'
 
     def test_set_logrotateTarget(self):
         if self.test.setLogrotateTargetTest():
-            print '''
-########## Test to verify show running-config for logrotate target - SUCCESS! ##########
-'''
+            print '########## Test to verify show running-config ' \
+                  'for logrotate target - SUCCESS! ##########'
 
     def teardown_class(cls):
 
-    # Stop the Docker containers, and
-    # mininet topology
+        # Stop the Docker containers, and
+        # mininet topology
 
         Test_showrunningconfig.test.net.stop()
 
