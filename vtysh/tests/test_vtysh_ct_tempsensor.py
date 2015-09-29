@@ -1,22 +1,21 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
+# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
 #
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
-# All Rights Reserved.
+# GNU Zebra is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2, or (at your option) any
+# later version.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
+# GNU Zebra is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
-#
+# You should have received a copy of the GNU General Public License
+# along with GNU Zebra; see the file COPYING.  If not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 from time import sleep
 from opsvsi.docker import *
@@ -35,10 +34,11 @@ class TemperatureSystemTests(OpsVsiTest):
 
         host_opts = self.getHostOpts()
         switch_opts = self.getSwitchOpts()
-        tempsensor_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        tempsensor_topo = SingleSwitchTopo(
+            k=0, hopts=host_opts, sopts=switch_opts)
         self.net = Mininet(tempsensor_topo, switch=VsiOpenSwitch,
-                       host=Host, link=OpsVsiLink,
-                       controller=None, build=True)
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     def initTemp_sensorTable(self):
 
@@ -53,14 +53,14 @@ class TemperatureSystemTests(OpsVsiTest):
             if '_uuid' in line:
                 _id = line.split(':')
                 TemperatureSystemTests.uuid = _id[1].strip()
-                out = s1.ovscmd('/usr/bin/ovs-vsctl -- set Subsystem '
-                             + TemperatureSystemTests.uuid
-                             + ' temp_sensors=@fan1 -- --id=@fan1 '
-                             + ' create Temp_sensor name=base-1 '
-                             + ' location=Faceplate_side_of_switch_chip_U16 '
-                             + ' status=normal fan-state=normal min=0 '
-                             + ' max=21000 temperature=20500'
-                             )
+                out = s1.ovscmd('/usr/bin/ovs-vsctl -- set Subsystem ' +
+                                TemperatureSystemTests.uuid +
+                                ' temp_sensors=@fan1 -- --id=@fan1 ' +
+                                ' create Temp_sensor name=base-1 ' +
+                                ' location=Faceplate_side_of_switch_chip_U16 '
+                                + ' status=normal fan-state=normal min=0 '
+                                + ' max=21000 temperature=20500'
+                                )
 
     def deinitTemp_sensorTable(self):
         s1 = self.net.switches[0]
@@ -69,7 +69,7 @@ class TemperatureSystemTests(OpsVsiTest):
         # avoid clash with other CT scripts.
 
         s1.ovscmd('ovs-vsctl clear subsystem '
-               + TemperatureSystemTests.uuid + ' temp_sensors')
+                  + TemperatureSystemTests.uuid + ' temp_sensors')
 
     def showSystemTemperatureTest(self):
 

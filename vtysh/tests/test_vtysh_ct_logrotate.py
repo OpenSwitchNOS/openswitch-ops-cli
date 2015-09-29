@@ -1,20 +1,21 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
-# All Rights Reserved.
+# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
+# GNU Zebra is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2, or (at your option) any
+# later version.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# GNU Zebra is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# You should have received a copy of the GNU General Public License
+# along with GNU Zebra; see the file COPYING.  If not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 import time
 import pytest
@@ -30,16 +31,17 @@ class LogrotateTests(OpsVsiTest):
 
     def setupNet(self):
 
-    # if you override this function, make sure to
-    # either pass getNodeOpts() into hopts/sopts of the topology that
-    # you build or into addHost/addSwitch calls
+        # if you override this function, make sure to
+        # either pass getNodeOpts() into hopts/sopts of the topology that
+        # you build or into addHost/addSwitch calls
 
         host_opts = self.getHostOpts()
         switch_opts = self.getSwitchOpts()
-        logrotate_topo = SingleSwitchTopo(k=1, hopts=host_opts, sopts=switch_opts)
+        logrotate_topo = SingleSwitchTopo(
+            k=1, hopts=host_opts, sopts=switch_opts)
         self.net = Mininet(logrotate_topo, switch=VsiOpenSwitch,
-                       host=Host, link=OpsVsiLink,
-                       controller=None, build=True)
+                           host=Host, link=OpsVsiLink,
+                           controller=None, build=True)
 
     @staticmethod
     def parseCLI(cliOutput):
@@ -50,7 +52,7 @@ class LogrotateTests(OpsVsiTest):
         lines,
         value,
         fileName,
-        ):
+    ):
         for line in lines:
             if value in line:
                 return True
@@ -74,7 +76,7 @@ class LogrotateTests(OpsVsiTest):
                    logrotateCnfFile + ' not generated\n'
 
         assert self.checkPattern(lines, value, logrotateCnfFile),\
-               "Configuration file check: failed"
+            "Configuration file check: failed"
         return True
 
     def testLogrotation(self):
@@ -93,7 +95,6 @@ class LogrotateTests(OpsVsiTest):
 
     def confLogrotateCliGetPeriod(self, switch):
         switch.cmdCLI('end')
-
 
         out = switch.cmd('ovs-vsctl list system')
         lines = out.split('\n')
@@ -116,7 +117,7 @@ class LogrotateTests(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             if 'logrotate_config' in line and 'target="tftp://1.1.1.1"' \
-                in line:
+                    in line:
                 return True
         return False
 
@@ -140,7 +141,6 @@ class LogrotateTests(OpsVsiTest):
         info("### Test to set maxsize: passed ###\n")
         return True
 
-
     def LogrotateCliTargetTest(self):
         switch = self.net.switches[0]
         switch.cmdCLI('conf t')
@@ -150,7 +150,6 @@ class LogrotateTests(OpsVsiTest):
             "Test to set target: failed"
         info("### Test to set target: passed ###\n")
         return True
-
 
     def testLogrotationPeriod(self):
         switch = self.net.switches[0]
@@ -163,7 +162,7 @@ class LogrotateTests(OpsVsiTest):
         self.testLogrotation()
         switch.cmd('date --set=' + '"' + now + '"')
 
-#@pytest.mark.skipif(True, reason="Many test cases are failing")
+
 class Test_logrotate:
 
     def setup(self):
@@ -174,7 +173,6 @@ class Test_logrotate:
 
     def setup_class(cls):
         Test_logrotate.test = LogrotateTests()
-
 
     # Stop the Docker containers, and
     # mininet topology
@@ -212,7 +210,7 @@ class Test_logrotate:
             info("### Test config file generation from DB: passed ###\n")
 
 
-
-#  @pytest.mark.skipif(True, reason="Modifies system clock. Needs to be fixed.")
+#  @pytest.mark.skipif(True, \
+#  reason="Modifies system clock. Needs to be fixed.")
 #  def test_LogrotationPeriod(self):
 #    self.test.testLogrotationPeriod()
