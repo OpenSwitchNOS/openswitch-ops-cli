@@ -2776,7 +2776,7 @@ DEFUN (show_startup_config,
        SHOW_STR
        "Contents of startup configuration\n")
 {
-  char *arguments[] = {"show", "startup-config"};
+  char *arguments[] = {"show", "startup-config", "cli"};
   char *temp_args[] = {"-D", TEMPORARY_STARTUP_SOCKET, "-c", "show running-config "};
   char *copy_db[] = {OVSDB_PATH, TEMPORARY_STARTUP_DB};
   char *run_server[] = {"--pidfile=/var/run/openvswitch/temp_startup.pid", "--detach", "--remote", "punix:/var/run/openvswitch/temp_startup.sock", TEMPORARY_STARTUP_DB};
@@ -2804,7 +2804,7 @@ DEFUN (show_startup_config,
   }
 
   // Copy startup config to temporary DB.
-  ret = execute_command ("cfgdbutil", 2, (const char **)arguments);
+  ret = execute_command ("cfgdbutil", 3, (const char **)arguments);
   if (ret == -1)
   {
       vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
@@ -2841,6 +2841,25 @@ DEFUN (show_startup_config,
       return -1;
   }
 
+  return CMD_SUCCESS;
+}
+
+/* Write startup configuration into the terminal in jason format. */
+DEFUN (show_startup_config_jason,
+       show_startup_config_jason_cmd,
+       "show startup-config jason",
+       SHOW_STR
+       "Contents of startup configuration\n"
+       "JASON format\n")
+{
+  char *arguments[] = {"show", "startup-config", "jason"};
+  if (execute_command ("cfgdbutil", 3, (const char **)arguments) == -1)
+  {
+      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
+      VLOG_ERR("Failed to run cfgdbutil\n");
+      remove_temp_db(1);
+      return CMD_SUCCESS;
+  }
   return CMD_SUCCESS;
 }
 
@@ -4343,6 +4362,7 @@ vtysh_init_vty (void)
 #endif
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
+  install_element (ENABLE_NODE, &show_startup_config_jason_cmd);
 #endif /* ENABLE_OVSDB */
 
 #ifndef ENABLE_OVSDB
