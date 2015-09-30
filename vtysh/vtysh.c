@@ -3364,18 +3364,57 @@ vtysh_prompt (void)
 
 #ifdef ENABLE_OVSDB
 
+/* Function to validate user.*/
+static int
+validate_user(const char *user)
+{
+
+    /* User names must match [a-z_][a-z0-9_-]*[$] */
+    if (('\0' == *user) ||
+         !((('a' <= *user) && ('z' >= *user)) || ('_' == *user)))
+    {
+        return false;
+    }
+
+    /* Maximum allowed length of user name is 32 character.*/
+    if (strlen (user) > USER_NAME_MAX_LENGTH)
+    {
+        return false;
+    }
+
+    while ('\0' != *++user)
+    {
+        if (!(( ('a' <= *user) && ('z' >= *user)) ||
+            ( ('0' <= *user) && ('9' >= *user) ) ||
+            ('_' == *user) ||
+            ('-' == *user) ||
+            ( ('$' == *user) && ('\0' == *(user + 1)) )
+            ))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /* Function to create new user with password and add it to the ovsdb_users group*/
 static int
 create_new_vtysh_user(const char *user)
 {
     struct crypt_data data;
     data.initialized = 0;
-    int ret = 0;
+    int ret = 0, cmd_ret = 0;
     char *password = NULL;
     char *passwd = NULL;
     char *cp = NULL;
     /* If user already exist then don't create new user */
     ret = check_user_group(user, OVSDB_GROUP);
+    if (!validate_user(user))
+    {
+        vty_out(vty, "useradd: Invalid user '%s'.%s", user, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
     if ((ret ==1) || (!strcmp("root", user)))
     {
         vty_out(vty, "User %s already exists.%s", user, VTY_NEWLINE);
@@ -3398,7 +3437,7 @@ create_new_vtysh_user(const char *user)
     }
     if (strcmp(passwd,cp) != 0) {
         vty_out(vty, "%s", VTY_NEWLINE);
-        vty_out(vty,"Passwords do not match.");
+        vty_out(vty,"Passwords do not match. ");
         vty_out(vty,"User %s not added.%s", user, VTY_NEWLINE);
         free(cp);
         free(passwd);
@@ -3416,9 +3455,15 @@ create_new_vtysh_user(const char *user)
     arg[5] = "-s";
     arg[6] = VTYSH_PROMPT;
     arg[7] = CONST_CAST(char*, user);
-    execute_command("sudo", 8,(const char **)arg);
     vty_out(vty, "%s", VTY_NEWLINE);
-    vty_out(vty, "User added successfully.%s", VTY_NEWLINE);
+    cmd_ret = execute_command("sudo", 8,(const char **)arg);
+    if(cmd_ret == 0)
+    {
+        vty_out(vty, "User added successfully.%s", VTY_NEWLINE);
+        free(cp);
+        free(passwd);
+        return CMD_SUCCESS;
+    }
     free(cp);
     free(passwd);
     return CMD_SUCCESS;
