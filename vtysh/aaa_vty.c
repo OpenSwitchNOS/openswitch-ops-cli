@@ -1071,7 +1071,7 @@ show_radius_server_info()
         vty_out(vty, " Host IP address\t: %s%s", pp, VTY_NEWLINE);
         vty_out(vty, " Shared secret\t\t: %s%s", passkey, VTY_NEWLINE);
         vty_out(vty, " Auth port\t\t: %s%s", udp, VTY_NEWLINE);
-        if (row->retries == NULL)
+        if (row->retries != NULL)
         {
             vty_out(vty, " Retries\t\t: %ld%s", *(row->retries), VTY_NEWLINE);
         }
