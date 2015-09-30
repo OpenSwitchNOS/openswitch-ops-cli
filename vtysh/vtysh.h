@@ -96,6 +96,7 @@ struct vtysh_alias_data {
 #define OVSDB_GROUP "ovsdb_users"
 #define VTYSH_PROMPT "/usr/bin/vtysh"
 #define USERDEL "/usr/sbin/userdel"
+#define USER_NAME_MAX_LENGTH 32
 
 #define TEMPORARY_STARTUP_SOCKET "temp_startup.sock"
 #define OVSDB_PATH "/var/run/openvswitch/ovsdb.db"
