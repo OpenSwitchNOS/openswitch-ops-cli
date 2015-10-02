@@ -28,12 +28,12 @@
 #include "vty.h"
 #include <vector.h>
 #include "vswitch-idl.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh_ovsdb_dhcp_tftp_context.h"
-#include "openhalon-dflt.h"
+#include "openswitch-dflt.h"
 
 char dhcpclientname[] = "vtysh_dhcp_tftp_context_dhcp_clientcallback";
 char tftpclientname[] = "vtysh_dhcp_tftp_context_tftp_clientcallback";
