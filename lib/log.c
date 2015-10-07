@@ -472,7 +472,7 @@ zlog_backtrace_sigsafe(int priority, void *program_counter)
 #ifdef HAVE_STACK_TRACE
   static const char pclabel[] = "Program counter: ";
   void *array[64];
-  int size;
+  int size=0;
   char buf[100];
   char *s, **bt = NULL;
 #define LOC s,buf+sizeof(buf)-s

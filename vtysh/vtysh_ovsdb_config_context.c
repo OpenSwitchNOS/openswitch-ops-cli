@@ -270,6 +270,7 @@ vtysh_ovsdb_radiusservertable_parse_options(const struct ovsrec_radius_server *r
     fp = fopen(file_name,"r");
     if (fp == NULL) {
         vtysh_ovsdb_cli_print(p_msg, "Unable to open radius server configuration file");
+        return e_vtysh_error;
     }
 
     while (fgets(ip,100 ,fp) != NULL)
@@ -308,6 +309,7 @@ vtysh_ovsdb_radiusservertable_parse_options(const struct ovsrec_radius_server *r
         vtysh_ovsdb_cli_print(p_msg, "radius-server timeout %d", atoi(timeout));
     }
 
+    fclose(fp);
     return e_vtysh_ok;
 }
 
