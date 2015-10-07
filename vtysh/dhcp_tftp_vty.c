@@ -66,6 +66,7 @@ bool is_tags_valid ( char *tags_list)
     char *list=(char *)malloc(strlen(tags_list));
     char *token = NULL;
 
+    /* TODO: Use strncpy instead */
     strcpy(list,tags_list);
     token = strtok(list,",");
 
@@ -134,6 +135,7 @@ bool  is_mac_addresses_valid (char *mac_addresses_list)
     char *list=(char *)malloc(strlen(mac_addresses_list));
     char *token = NULL;
 
+    /* TODO: Use strncpy instead */
     strcpy(list, mac_addresses_list);
     token = strtok(list,",");
 
