@@ -263,7 +263,16 @@ static vtysh_ret_val
 vtysh_ovsdb_radiusservertable_parse_options(char **temp, int count, vtysh_ovsdb_cbmsg *p_msg)
 {
     int64_t local_count = 0;
-    char *ipaddr, *udp_port, *timeout, *passkey, *retries;
+    char *retries=NULL;
+    char ip[1000]={0}, *ipaddr=NULL,*udp_port=NULL,*timeout=NULL,*passkey=NULL;
+    char file_name[]="/etc/raddb/server";
+    FILE *fp=NULL;
+
+    fp = fopen(file_name,"r");
+    if (fp == NULL) {
+        vtysh_ovsdb_cli_print(p_msg, "Unable to open radius server configuration file");
+        return e_vtysh_error;
+    }
 
     while (count--)
     {
@@ -295,6 +304,7 @@ vtysh_ovsdb_radiusservertable_parse_options(char **temp, int count, vtysh_ovsdb_
         vtysh_ovsdb_cli_print(p_msg, "radius-server timeout %d", atoi(timeout));
     }
 
+    fclose(fp);
     return e_vtysh_ok;
 }
 
