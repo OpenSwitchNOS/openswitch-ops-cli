@@ -862,6 +862,129 @@ DEFUN (cli_lldp_show_config,
   return CMD_SUCCESS;
 }
 
+DEFUN (cli_lldp_show_config_if,
+       lldp_show_config_cmd_if,
+       "show lldp configuration IFNAME",
+       SHOW_STR
+       SHOW_LLDP_STR
+       "Show LLDP configuration\n"
+       "Specify the interface name\n")
+{
+  const struct ovsrec_interface *ifrow = NULL;
+  const struct ovsrec_system *row = NULL;
+  bool lldp_enabled = false;
+  int tx_interval = 0;
+  int hold_time = 0;
+  lldp_intf_stats *new_intf_stats = NULL;
+
+  row = ovsrec_system_first(idl);
+
+  if(!row)
+  {
+     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+     return CMD_OVSDB_FAILURE;
+  }
+
+  vty_out(vty, "%sLLDP Global Configuration:%s", VTY_NEWLINE,VTY_NEWLINE);
+  vty_out(vty,"--------------------------%s",VTY_NEWLINE);
+
+  lldp_enabled = smap_get_bool(&row->other_config,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_ENABLE,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_ENABLE_DEFAULT);
+
+  tx_interval = smap_get_int(&row->other_config,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
+
+  hold_time = smap_get_int(&row->other_config,
+                             SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD,
+                             SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
+
+  vty_out(vty, "LLDP Enabled :%s%s", lldp_enabled?"Yes":"No",VTY_NEWLINE);
+
+  vty_out(vty, "LLDP Transmit Interval :%d%s", tx_interval, VTY_NEWLINE);
+
+  vty_out(vty, "LLDP Hold time Multiplier :%d%s", hold_time, VTY_NEWLINE);
+
+
+  vty_out(vty, "%sLLDP Port Configuration:%s", VTY_NEWLINE, VTY_NEWLINE);
+  vty_out(vty,"--------------------------%s",VTY_NEWLINE);
+  vty_out(vty, "%-6s","Port");
+  vty_out(vty, "%-25s","Transmission-enabled");
+  vty_out(vty, "%-25s","Receive-enabled");
+  vty_out(vty, "%s", VTY_NEWLINE);
+
+  OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
+  {
+    if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
+    {
+       /* Skipping internal interfaces */
+       continue;
+    }
+
+    if (0 == strcmp(ifrow->name, argv[0]))
+    {
+      new_intf_stats = xcalloc(1, sizeof *new_intf_stats);
+      if(new_intf_stats)
+      {
+            const char *lldp_enable_dir = smap_get(&ifrow->other_config , INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
+
+            memset(new_intf_stats->name, '\0', INTF_NAME_SIZE);
+            strncpy(new_intf_stats->name, ifrow->name, INTF_NAME_SIZE);
+            if(!lldp_enable_dir)
+            {
+              new_intf_stats->lldp_dir = LLDP_TXRX;
+            }
+            else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF) == 0)
+            {
+              new_intf_stats->lldp_dir = LLDP_OFF;
+            }
+            else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
+            {
+              new_intf_stats->lldp_dir = LLDP_TX;
+            }
+            else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
+            {
+              new_intf_stats->lldp_dir = LLDP_RX;
+            }
+            else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0)
+            {
+              new_intf_stats->lldp_dir = LLDP_TXRX;
+            }
+      }
+      break;
+    }
+  }
+  vty_out (vty, "%-6s", new_intf_stats->name);
+  if(new_intf_stats->lldp_dir == LLDP_OFF)
+  {
+    vty_out(vty, "%-25s", "No");
+    vty_out(vty, "%-25s", "No");
+  }
+  else if(new_intf_stats->lldp_dir == LLDP_TX)
+  {
+    vty_out(vty, "%-25s", "Yes");
+    vty_out(vty, "%-25s", "No");
+  }
+  else if(new_intf_stats->lldp_dir == LLDP_RX)
+  {
+    vty_out(vty, "%-25s", "No");
+    vty_out(vty, "%-25s", "Yes");
+  }
+  else if(new_intf_stats->lldp_dir == LLDP_TXRX)
+  {
+    vty_out(vty, "%-25s", "Yes");
+    vty_out(vty, "%-25s", "Yes");
+  }
+  vty_out(vty, "%s%s", VTY_NEWLINE,VTY_NEWLINE);
+
+  if(new_intf_stats)
+    free(new_intf_stats);
+
+  return CMD_SUCCESS;
+}
+
+
 DEFUN (cli_lldp_show_statistics,
        lldp_show_statistics_cmd,
        "show lldp statistics",
@@ -1509,6 +1632,7 @@ lldp_vty_init (void)
   install_element (ENABLE_NODE, &lldp_show_intf_statistics_cmd);
   install_element (ENABLE_NODE, &lldp_show_intf_neighbor_info_cmd);
   install_element (ENABLE_NODE, &lldp_show_config_cmd);
+  install_element (ENABLE_NODE, &lldp_show_config_cmd_if);
   install_element (ENABLE_NODE, &lldp_show_statistics_cmd);
   install_element (INTERFACE_NODE, &lldp_if_lldp_tx_cmd);
   install_element (INTERFACE_NODE, &lldp_if_lldp_rx_cmd);
