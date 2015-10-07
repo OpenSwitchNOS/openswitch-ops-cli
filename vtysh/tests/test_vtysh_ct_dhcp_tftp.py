@@ -56,8 +56,26 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "10.255.255.255" in line and "60" in line:
                 range_created = True
 
-        assert range_created is True, \
-            'Test to add DHCP Dynamic configuration-FAILED!'
+        assert range_created == True, \
+        'Test to add DHCP Dynamic configuration' \
+        ' failed for "show dhcp-server" output' \
+        ' -FAILED!'
+
+        range_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "test-range" in line \
+                and "10.0.0.1" in line \
+                and "10.255.255.254" in line and "255.0.0.0" in line \
+                and "tag1,tag2,tag3" in line and "test-tag" in line \
+                and "10.255.255.255" in line:
+                range_created = True
+
+        assert range_created == True, \
+        'Test to add DHCP Dynamic configuration' \
+        ' failed for "show running" output' \
+        ' -FAILED!'
 
         return True
 
@@ -86,8 +104,23 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "60" in line:
                 range_created = True
 
-        assert range_created is True, 'Test to add DHCP Dynamic ipv6  '\
-            'configuration -FAILED!'
+        assert range_created == True, 'Test to add DHCP Dynamic ipv6 ' \
+                                      'configuration failed for ' \
+                                      '"show dhcp-server" output -FAILED!'
+
+        range_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "range-ipv6" in line \
+                and "2001:cdba::3257:9652" in line \
+                and "2001:cdba::3257:9655" in line and "64" in line \
+                and "v6tag1,v6tag2,v6tag3" in line and "v6-stag" in line:
+                range_created = True
+
+        assert range_created == True, 'Test to add DHCP Dynamic ipv6 '\
+                                      'configuration failed for ' \
+                                      '"show running-config" output- FAILED!'
 
         return True
 
@@ -234,9 +267,26 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "60" in line:
                 static_created = True
 
-        assert static_created is True, \
-            'Test to add DHCP static configuration -FAILED!'
+        assert static_created == True, \
+        'Test to add DHCP static configuration ' \
+        'failed for "show dhcp-server" output ' \
+        '-FAILED!'
 
+        static_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "192.168.0.2" in line \
+                and "aa:bb:cc:dd:ee:ff" in line \
+                and "testid" in line \
+                and "tag4,tag5,tag6" in line \
+                and "testname" in line:
+                static_created = True
+
+        assert static_created == True, \
+        'Test to add DHCP static configuration ' \
+        'failed for "show running-config" output ' \
+        '-FAILED!'
         return True
 
     def test_dhcp_tftp_add_static_ipv6(self):
@@ -258,16 +308,32 @@ class dhcp_tftpCLItest(OpsVsiTest):
         lines = dump.split('\n')
         for line in lines:
             if "2001:cdba::3257:9680" in line \
-                    and "ae:bb:cc:dd:ee:ff" in line \
-                    and "v6testid" in line \
-                    and "v6-stag1,v6-stag2,v6-stag3" in line \
-                    and "v6testname" in line \
-                    and "60" in line:
+                and "ae:bb:cc:dd:ee:ff" in line \
+                and "v6testid" in line \
+                and "v6-stag1,v6-stag2,v6-stag3" in line \
+                and "v6testname" in line:
                 static_created = True
 
-        assert static_created is True, 'Test to add DHCP static ipv6 \
-                                      configuration -FAILED!'
+        assert static_created == True, 'Test to add DHCP static ipv6 ' \
+                                       'configuration failed for ' \
+                                       '"show dhcp-server" output ' \
+                                       '-FAILED!'
 
+        static_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "2001:cdba::3257:9680" in line \
+                and "ae:bb:cc:dd:ee:ff" in line \
+                and "v6testid" in line \
+                and "v6-stag1,v6-stag2,v6-stag3" in line \
+                and "v6testname" in line:
+                static_created = True
+
+        assert static_created == True, 'Test to add DHCP static ipv6 ' \
+                                       'configuration failed for ' \
+                                       '"show running-config" output ' \
+                                       '-FAILED!'
         return True
 
     def test_dhcp_tftp_check_static_validation(self):
@@ -362,7 +428,22 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "mtag1,mtag2,mtag3" in line:
                 option_created = True
 
-        assert option_created is True, 'Test to add DHCP Option-name -FAILED!'
+        assert option_created == True, 'Test to add DHCP Option-name ' \
+                                       'failed for "show dhcp-server" ' \
+                                       'output -FAILED!'
+
+        option_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "opt-name" in line \
+                and "192.168.0.1" in line \
+                and "mtag1,mtag2,mtag3" in line :
+                option_created = True
+
+        assert option_created == True, 'Test to add DHCP Option-name ' \
+                                       'failed for "show running-config" ' \
+                                       'output -FAILED!'
 
         return True
 
@@ -387,9 +468,22 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "mtag4,mtag5,mtag6" in line:
                 option_created = True
 
-        assert option_created is True, \
-            'Test to add DHCP Option-number -FAILED!'
+        assert option_created == True, 'Test to add DHCP Option-number ' \
+                                       'failed for "show dhcp-server" ' \
+                                       'output -FAILED!'
 
+        option_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "3" in line \
+                and "192.168.0.3" in line \
+                and "mtag4,mtag5,mtag6" in line :
+                option_created = True
+
+        assert option_created == True, 'Test to add DHCP Option-number ' \
+                                       'failed for "show running-config" ' \
+                                       'output -FAILED!'
         return True
 
     def test_dhcp_tftp_option_number_validation(self):
@@ -469,8 +563,22 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "stag" in line:
                 match_created = True
 
-        assert match_created is True, 'Test to add DHCP match number -FAILED!'
+        assert match_created == True, 'Test to add DHCP match number ' \
+                                      'failed for "show dhcp-server" ' \
+                                      'output -FAILED!'
 
+        match_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "4" in line \
+                and "192.168.0.4" in line \
+                and "stag" in line :
+                match_created = True
+
+        assert match_created == True, 'Test to add DHCP match number ' \
+                                      'failed for "show running-config" ' \
+                                      'output -FAILED!'
         return True
 
     def test_dhcp_tftp_match_number_validation(self):
@@ -521,7 +629,22 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "temp-mtag" in line:
                 match_created = True
 
-        assert match_created is True, 'Test to add DHCP match number -FAILED!'
+        assert match_created == True, 'Test to add DHCP match number ' \
+                                      'failed for "show dhcp-server" ' \
+                                      'output -FAILED!'
+
+        match_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "temp-mname" in line \
+                and "192.168.0.5" in line \
+                and "temp-mtag" in line :
+                match_created = True
+
+        assert match_created == True, 'Test to add DHCP match number ' \
+                                      'failed for "show running-config" ' \
+                                      'output -FAILED!'
 
         return True
 
@@ -570,7 +693,21 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "boottag" in line:
                 boot_created = True
 
-        assert boot_created is True, 'Test to add DHCP bootp -FAILED!'
+        assert boot_created == True, 'Test to add DHCP bootp ' \
+                                     'failed for "show dhcp-server" ' \
+                                     'output -FAILED!'
+
+        boot_created = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "/tmp/testfile" in line \
+                and "boottag" in line :
+                boot_created = True
+
+        assert boot_created == True, 'Test to add DHCP bootp ' \
+                                     'failed for "show running-config" ' \
+                                     'output -FAILED!'
 
         return True
 
@@ -605,7 +742,27 @@ class dhcp_tftpCLItest(OpsVsiTest):
             if "TFTP server : Enabled" in line:
                 tftp_enabled = True
 
-        assert tftp_enabled is True, 'Test to enable tftp server -FAILED!'
+        assert tftp_enabled == True, 'Test to enable tftp server ' \
+                                     'failed for "show tftp-server" ' \
+                                     'output -FAILED!'
+
+        tftp_server_present = False
+        prev_line = 0
+        enable_present = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        i = 0
+        for i,line in enumerate(lines):
+            if "tftp-server" in line :
+                tftp_server_present = True
+                prev_line = i
+            elif (prev_line + 1 == i) and (tftp_server_present == True):
+                 if "enable" in line:
+                    enable_present = True
+
+        assert enable_present == True, 'Test to enable tftp server ' \
+                                       'failed for "show running-config" ' \
+                                       'output -FAILED!'
 
         return True
 
@@ -624,8 +781,37 @@ class dhcp_tftpCLItest(OpsVsiTest):
             if "TFTP server secure mode : Enabled" in line:
                 tftp_secure_enabled = True
 
-        assert tftp_secure_enabled is True, 'Test to enable tftp server \
-                secure  mode -FAILED!'
+        assert tftp_secure_enabled == True, 'Test to enable tftp server ' \
+                                            'secure  mode failed for ' \
+                                            '"show tftp-server" output ' \
+                                            '-FAILED!'
+
+        tftp_server_present = False
+        prev_line = 0
+        prev_line2 = 0
+        prev_line3 = 0
+        enable_present = False
+        secure_mode_present = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for i,line in enumerate(lines):
+            if "tftp-server" in line :
+                tftp_server_present = True
+                prev_line = i
+            elif (prev_line + 1 == i) and (tftp_server_present == True):
+                 if "enable" in line:
+                    enable_present = True
+                    prev_line2 = i
+            elif (prev_line2 + 1 == i) and (tftp_server_present == True) \
+                and (enable_present == True):
+                if "secure-mode" in line:
+                    secure_mode_present = True
+
+        assert secure_mode_present == True, 'Test to enable tftp server ' \
+                                            'secure  mode failed for ' \
+                                            '"show running-config" output ' \
+                                            '-FAILED!'
+
         return True
 
     def test_tftp_server_add_path(self):
@@ -643,12 +829,46 @@ class dhcp_tftpCLItest(OpsVsiTest):
             if "TFTP server file path : /etc/testfile" in line:
                 tftp_path = True
 
-        assert tftp_path is True, 'Test to add tftp path -FAILED!'
+        assert tftp_path == True, 'Test to add tftp path ' \
+                                  'failed for "show tftp-server" ' \
+                                  'output -FAILED!'
+
+        tftp_server_present = False
+        prev_line = 0
+        prev_line2 = 0
+        prev_line3 = 0
+        enable_present = False
+        secure_mode_present = False
+        tftp_path_present = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for i,line in enumerate(lines):
+            if "tftp-server" in line :
+                tftp_server_present = True
+                prev_line = i
+            elif (prev_line + 1 == i) and (tftp_server_present == True):
+                 if "enable" in line:
+                    enable_present = True
+                    prev_line2 = i
+            elif (prev_line2 + 1 == i) and (tftp_server_present == True) \
+                and (enable_present == True):
+                if "secure-mode" in line:
+                    secure_mode_present = True
+                    prev_line3 = i
+            elif (prev_line3 + 1 == i) and (tftp_server_present == True) \
+                and (enable_present == True) \
+                and (secure_mode_present == True):
+                if "path /etc/testfile" in line:
+                    tftp_path_present = True
+
+        assert tftp_path_present == True, 'Test to add tftp path ' \
+                                          'failed for "show running-config" ' \
+                                          'output -FAILED!'
 
         return True
 
     def test_dhcp_server_show(self):
-        info("\n##########  Test to show dhcp server confguration  "
+        info("\n##########  Test to show dhcp server configuration  "\
              "##########\n")
 
         range_present = False
@@ -712,15 +932,82 @@ class dhcp_tftpCLItest(OpsVsiTest):
            and match_number is True \
            and match_created is True \
            and boot_created is True:
-            show_success = True
+               show_success = True
 
-        assert show_success is True, 'Test to show dhcp \
-             server confguration -FAILED!'
+        assert show_success == True, 'Test to show dhcp server ' \
+                                     'server configuration failed ' \
+                                     'for "show dhcp-server" output ' \
+                                     '-FAILED'
+
+        range_present = False
+        static_present = False
+        option_name = False
+        option_number = False
+        match_created = False
+        boot_created = False
+        show_success = False
+        match_number = False
+
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "test-range" in line \
+               and "10.0.0.1" in line \
+               and "10.255.255.254" in line and "255.0.0.0" in line \
+               and "tag1,tag2,tag3" in line and "test-tag" in line \
+               and "10.255.255.255" in line:
+                range_present = True
+
+            if "192.168.0.2" in line \
+               and "aa:bb:cc:dd:ee:ff" in line \
+               and "testid" in line \
+               and "tag4,tag5,tag6" in line \
+               and "testname" in line:
+                static_present = True
+
+            if "opt-name" in line \
+               and "192.168.0.1" in line \
+               and "mtag1,mtag2,mtag3" in line :
+                option_name = True
+
+            if "3" in line \
+               and "192.168.0.3" in line \
+               and "mtag4,mtag5,mtag6" in line :
+                option_number = True
+
+            if "4" in line \
+               and "192.168.0.4" in line \
+               and "stag" in line :
+                match_number = True
+
+            if "temp-mname" in line \
+               and "192.168.0.5" in line \
+               and "temp-mtag" in line :
+                match_created = True
+
+            if "/tmp/testfile" in line \
+               and "boottag" in line :
+               boot_created = True
+
+        if range_present is True \
+           and static_present is True \
+           and option_name is True \
+           and option_number is True \
+           and match_number is True \
+           and match_created is True \
+           and boot_created is True :
+               show_success = True
+
+        assert show_success == True, 'Test to show dhcp server ' \
+                                     'configuration failed for ' \
+                                     '"show running-config" output ' \
+                                     '-FAILED!'
+
         return True
 
     def test_tftp_server_show(self):
-        info("\n##########  Test to show dhcp server "
-             "confguration ##########\n")
+        info("\n##########  Test to show tftp server configuration " \
+            "##########\n")
 
         tftp_server = False
         tftp_secure = False
@@ -738,12 +1025,56 @@ class dhcp_tftpCLItest(OpsVsiTest):
             if "TFTP server file path : /etc/testfile" in line:
                 tftp_path = True
         if tftp_server is True \
-           and tftp_secure is True \
-           and tftp_path is True:
-            show_tftp = True
+            and tftp_secure is True \
+            and tftp_path is True:
+                show_tftp = True
 
-        assert show_tftp is True, 'Test to show Test to show tftp server \
-             confguration -FAILED!'
+        assert show_tftp == True, 'Test to show tftp server ' \
+                                  'configuration failed for ' \
+                                  '"show tftp-server" output ' \
+                                  '-FAILED'
+
+        tftp_server_present = False
+        prev_line = 0
+        prev_line2 = 0
+        prev_line3 = 0
+        enable_present = False
+        secure_mode_present = False
+        tftp_path_present = False
+        show_tftp = False
+        i = 0
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for i,line in enumerate(lines):
+            if "tftp-server" in line :
+                tftp_server_present = True
+                prev_line = i
+            elif (prev_line + 1 == i) and (tftp_server_present == True):
+                 if "enable" in line:
+                    enable_present = True
+                    prev_line2 = i
+            elif (prev_line2 + 1 == i) and (tftp_server_present == True) \
+                and (enable_present == True):
+                if "secure-mode" in line:
+                    secure_mode_present = True
+                    prev_line3 = i
+            elif (prev_line3 + 1 == i) and (tftp_server_present == True) \
+                and (enable_present == True) \
+                and (secure_mode_present == True):
+                if "path /etc/testfile" in line:
+                    tftp_path_present = True
+
+        if tftp_server_present is True \
+           and enable_present is True \
+           and secure_mode_present is True \
+           and tftp_path_present is True:
+               show_tftp=True
+
+        assert show_tftp == True, 'Test to tftp server ' \
+                                  'configuration failed for ' \
+                                  '"show running-config" output ' \
+                                  '-FAILED!'
+
         return True
 
     def test_tftp_server_disable(self):
@@ -761,8 +1092,26 @@ class dhcp_tftpCLItest(OpsVsiTest):
             if "TFTP server : Disabled" in line:
                 tftp_disabled = True
 
-        assert tftp_disabled is True, 'Test to disable tftp server -FAILED!'
+        assert tftp_disabled == True, 'Test to disable tftp server ' \
+                                      'failed for "show tftp-server" ' \
+                                      'output -FAILED!'
 
+        tftp_server_present = False
+        enable_mode_present = False
+        prev_line = 0
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for i, line in enumerate(lines):
+            if "tftp-server" in line :
+                tftp_server_present = True
+                prev_line = i
+            elif (i == prev_line+1) and (tftp_server_present == True):
+                if "enable" in line:
+                    enable_mode_present = True
+
+        assert enable_mode_present == False, 'Test to disable tftp server ' \
+                                             'failed for "show running-"' \
+                                             'config output -FAILED!'
         return True
 
     def test_tftp_secure_disable(self):
@@ -781,8 +1130,26 @@ class dhcp_tftpCLItest(OpsVsiTest):
             if "TFTP server secure mode : Disabled" in line:
                 tftp_secure_disabled = True
 
-        assert tftp_secure_disabled is True, 'Test to disable tftp server '\
-            'secure mode  -FAILED!'
+        assert tftp_secure_disabled == True, 'Test to disable tftp server '\
+                                             'secure mode failed for ' \
+                                             '"show tftp-server" output ' \
+                                             ' -FAILED!'
+
+
+        tftp_server_present = False
+        secure_mode_present = False
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "tftp-server" in line:
+                tftp_server_present = True
+            elif tftp_server_present == True:
+                if "secure-mode" in line:
+                    secure_mode_present = True
+        assert secure_mode_present == False, 'Test to disable tftp server '\
+                                             'secure mode failed for ' \
+                                             '"show running-config" output ' \
+                                             ' -FAILED!'
 
         return True
 
@@ -810,8 +1177,24 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "10.0.0.255" in line and "60" in line:
                 range_deleted = False
 
-        assert range_deleted is True, \
-            'Test to delete DHCP Dynamic configuration -FAILED!'
+        assert range_deleted == True, \
+               'Test to delete DHCP Dynamic configuration failed ' \
+               'for "show dhcp-server" output -FAILED!'
+
+        range_deleted = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "test-range" in line \
+                and "10.0.0.1"  in line \
+                and "10.0.0.254"  in line and "255.0.0.0" in line \
+                and "tag1,tag2,tag3"  in line and "test-tag" in line \
+                and "10.0.0.255"  in line and "60" in line:
+                range_deleted = False
+
+        assert range_deleted == True, \
+               'Test to delete DHCP Dynamic configuration failed ' \
+               'for "show running-config" output -FAILED!'
 
         return True
 
@@ -841,8 +1224,26 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "60" in line:
                 range_created = False
 
-        assert range_created is True, 'Test to delete DHCP Dynamic ipv6  \
-                                      configuration -FAILED!'
+        assert range_created == True, 'Test to delete DHCP Dynamic ipv6 ' \
+                                      'configuration failed for ' \
+                                      '"show dhcp-server" output ' \
+                                      '-FAILED!'
+
+        range_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "range-ipv6" in line \
+                and "2001:cdba::3257:9652" in line \
+                and "2001:cdba::3257:9655" in line and "64" in line \
+                and "v6tag1,v6tag2,v6tag3" in line and "v6-stag" in line \
+                and "60" in line:
+                range_created = False
+
+        assert range_created == True, 'Test to delete DHCP Dynamic ipv6 ' \
+                                      'configuration failed for ' \
+                                      '"show running-config" output ' \
+                                      '-FAILED!'
 
         return True
 
@@ -872,8 +1273,25 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "60" in line:
                 static_created = False
 
-        assert static_created is True, \
-            'Test to delete DHCP static configuration -FAILED!'
+        assert static_created == True, \
+               'Test to delete DHCP static configuration ' \
+               'failed for "show dhcp-server" output -FAILED!'
+
+        static_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "192.168.0.2" in line \
+                and "aa:bb:cc:dd:ee:ff" in line \
+                and "testid" in line \
+                and "tag4,tag5,tag6" in line \
+                and "testname" in line \
+                and "60" in line:
+                static_created = False
+
+        assert static_created == True, \
+               'Test to delete DHCP static configuration ' \
+               'failed for "show running-config" output -FAILED!'
 
         return True
 
@@ -903,8 +1321,25 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "60" in line:
                 static_created = False
 
-        assert static_created is True, 'Test to add DHCP static ipv6 '\
-            'configuration -FAILED!'
+        assert static_created == True, 'Test to delete DHCP static ipv6 ' \
+                                       'configuration failed for ' \
+                                       '"show dhcp-server" output -FAILED!'
+
+        static_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "2001:cdba::3257:9680" in line \
+                and "ae:bb:cc:dd:ee:ff" in line \
+                and "v6testid" in line \
+                and "v6-stag1,v6-stag2,v6-stag3" in line \
+                and "v6testname" in line \
+                and "60" in line:
+                static_created = False
+
+        assert static_created == True, 'Test to delete DHCP static ipv6 ' \
+                                       'configuration failed for ' \
+                                       '"show running-config" output -FAILED!'
 
         return True
 
@@ -929,8 +1364,25 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "mtag1,mtag2,mtag3" in line:
                 option_created = False
 
-        assert option_created is True, \
-            'Test to delete DHCP Option-name -FAILED!'
+        assert option_created == True, \
+               'Test to delete DHCP Option-name ' \
+               'failed for "show dhcp-server" ' \
+               'output-FAILED!'
+
+        option_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "opt-name" in line \
+                and "192.168.0.1" in line \
+                and "False" in line \
+                and "mtag1,mtag2,mtag3" in line :
+                option_created = False
+
+        assert option_created == True, \
+               'Test to delete DHCP Option-name ' \
+               'failed for "show running-config" ' \
+               'output -FAILED!'
 
         return True
 
@@ -955,8 +1407,28 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "mtag4,mtag5,mtag6" in line:
                 option_created = False
 
-        assert option_created is True, \
-            'Test to delete DHCP Option-name -FAILED!'
+        assert option_created == True, \
+               'Test to delete DHCP Option-name ' \
+               'with tag matches ' \
+               'failed for "show dhcp-server" ' \
+               'output -FAILED!'
+
+        option_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "3" in line \
+                and "192.168.0.3" in line \
+                and "False" in line \
+                and "mtag4,mtag5,mtag6" in line :
+                option_created = False
+
+        assert option_created == True, \
+               'Test to delete DHCP Option-name ' \
+               'with tag matches ' \
+               'failed for "show running-config" ' \
+               'output -FAILED!'
+
         return True
 
     def test_dhcp_tftp_del_match_number(self):
@@ -979,13 +1451,29 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "stag" in line:
                 match_created = False
 
-        assert match_created is True, \
-            'Test to delete DHCP match number -FAILED!'
+        assert match_created == True, \
+               'Test to delete DHCP match number ' \
+               'failed for "show dhcp-server" ' \
+               'output -FAILED!'
+
+        match_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "4" in line \
+                and "192.168.0.4" in line \
+                and "stag" in line :
+                match_created = False
+
+        assert match_created == True, \
+               'Test to delete DHCP match number ' \
+               'failed for "show running-config" ' \
+               'output -FAILED!'
 
         return True
 
     def test_dhcp_tftp_del_match_name(self):
-        info("\n##########  Test to delete DHCP match number ##########\n")
+        info("\n##########  Test to delete DHCP match name ##########\n")
 
         match_created = True
         s1 = self.net.switches[0]
@@ -1004,8 +1492,24 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "test-mtag" in line:
                 match_created = False
 
-        assert match_created is True, \
-            'Test to delete DHCP match number -FAILED!'
+        assert match_created == True, \
+               'Test to delete DHCP match name ' \
+               'failed for "show dhcp-server" ' \
+               'output -FAILED!'
+
+        match_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "test-mname" in line \
+                and "192.168.0.5" in line \
+                and "test-mtag" in line :
+                match_created = False
+
+        assert match_created == True, \
+               'Test to delete DHCP match name ' \
+               'failed for "show running-config" ' \
+               'output -FAILED!'
 
         return True
 
@@ -1027,11 +1531,25 @@ class dhcp_tftpCLItest(OpsVsiTest):
                     and "boottag" in line:
                 boot_created = False
 
-        assert boot_created is True, \
-            'Test to delete DHCP bootp -FAILED!'
+        assert boot_created == True, \
+               'Test to delete DHCP bootp ' \
+               'failed for "show dhcp-server" ' \
+               'output -FAILED!'
+
+        boot_created = True
+        dump = s1.cmdCLI("do show running-config")
+        lines = dump.split('\n')
+        for line in lines:
+            if "/tmp/testfile" in line \
+                and "boottag" in line :
+                boot_created = False
+
+        assert boot_created == True, \
+               'Test to delete DHCP bootp ' \
+               'failed for "show running-config" ' \
+               'output -FAILED!'
 
         return True
-
 
 class Test_vtysh_dhcp_tftp:
 
