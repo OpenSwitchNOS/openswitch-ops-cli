@@ -1927,7 +1927,8 @@ cmd_is_complete(struct cmd_element *cmd_element,
                          vline, -1,
                          NULL, NULL,
                          NULL, NULL);
-  return (rv == MATCHER_COMPLETE);
+
+  return rv;
 }
 
 /**
@@ -2417,7 +2418,8 @@ cmd_describe_command_real (vector vline, struct vty *vty, int *status)
             vline_trimmed = vector_copy(vline);
             vector_unset(vline_trimmed, vector_active(vline_trimmed) - 1);
 
-            if (cmd_is_complete(cmd_element, vline_trimmed)
+            ret = cmd_is_complete(cmd_element, vline_trimmed);
+            if ((MATCHER_COMPLETE == ret)
                 && desc_unique_string(matchvec, command_cr))
               {
                 if (match != vararg_match)
@@ -2849,21 +2851,22 @@ cmd_execute_command_real (vector vline,
 
   for (i = 0; i < vector_active (cmd_vector); i++)
     if ((cmd_element = vector_slot (cmd_vector, i)))
-      {
+    {
         if(cmd_element->attr & CMD_ATTR_NOT_ENABLED)
         {
           continue;
         }
-	if (cmd_is_complete(cmd_element, vline))
-	  {
-	    matched_element = cmd_element;
-	    matched_count++;
-	  }
-	else
-	  {
-	    incomplete_count++;
-	  }
-      }
+        ret = cmd_is_complete(cmd_element, vline);
+        if (MATCHER_COMPLETE == ret)
+        {
+          matched_element = cmd_element;
+          matched_count++;
+        }
+        else if (MATCHER_INCOMPLETE == ret)
+        {
+          incomplete_count++;
+        }
+    }
 
   /* Finish of using cmd_vector. */
   vector_free (cmd_vector);
@@ -3037,14 +3040,6 @@ config_from_file (struct vty *vty, FILE *fp, unsigned int *line_num)
 }
 
 
-
-
-
-
-
-
-
-
 int cmd_try_execute_command (struct vty *vty, char *buf)
 {
   int ret;
@@ -3119,12 +3114,13 @@ int cmd_try_execute_command (struct vty *vty, char *buf)
         {
            continue;
         }
-        if (cmd_is_complete(cmd_element, vline))
+        ret = cmd_is_complete(cmd_element, vline);
+        if (MATCHER_COMPLETE == ret)
         {
            matched_element = cmd_element;
            matched_count++;
         }
-        else
+        else if (MATCHER_INCOMPLETE == ret)
         {
            incomplete_count++;
         }
