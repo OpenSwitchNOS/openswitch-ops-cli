@@ -368,7 +368,9 @@ DEFUN(cli_vlan_description,
 
     if (strlen(description) > VLAN_DESCRIPTION_LENGTH)
     {
+        cli_do_config_abort(status_txn);
         vty_out(vty, VLAN_DESCRIPTION_LENGTH_ERROR, VTY_NEWLINE);
+        return CMD_SUCCESS;
     }
 
     ovsrec_vlan_set_description(vlan_row, description);
