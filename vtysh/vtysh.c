@@ -1294,10 +1294,12 @@ DEFUNSH (VTYSH_ALL,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_all,
       vtysh_quit_all_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_BGPD,
       exit_address_family,
@@ -1323,10 +1325,12 @@ DEFUNSH (VTYSH_ZEBRA,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_zebra,
       vtysh_quit_zebra_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_RIPD,
       vtysh_exit_ripd,
@@ -1336,11 +1340,12 @@ DEFUNSH (VTYSH_RIPD,
 {
    return vtysh_exit (vty);
 }
-
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ripd,
       vtysh_quit_ripd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_RIPNGD,
       vtysh_exit_ripngd,
@@ -1350,11 +1355,12 @@ DEFUNSH (VTYSH_RIPNGD,
 {
    return vtysh_exit (vty);
 }
-
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ripngd,
       vtysh_quit_ripngd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_RMAP,
       vtysh_exit_rmap,
@@ -1365,10 +1371,12 @@ DEFUNSH (VTYSH_RMAP,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_rmap,
       vtysh_quit_rmap_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_BGPD,
       vtysh_exit_bgpd,
@@ -1379,10 +1387,12 @@ DEFUNSH (VTYSH_BGPD,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_bgpd,
       vtysh_quit_bgpd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_OSPFD,
       vtysh_exit_ospfd,
@@ -1393,10 +1403,12 @@ DEFUNSH (VTYSH_OSPFD,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ospfd,
       vtysh_quit_ospfd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_OSPF6D,
       vtysh_exit_ospf6d,
@@ -1407,10 +1419,12 @@ DEFUNSH (VTYSH_OSPF6D,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ospf6d,
       vtysh_quit_ospf6d_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_ISISD,
       vtysh_exit_isisd,
@@ -1421,10 +1435,12 @@ DEFUNSH (VTYSH_ISISD,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_isisd,
       vtysh_quit_isisd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_ALL,
       vtysh_exit_line_vty,
@@ -1435,10 +1451,12 @@ DEFUNSH (VTYSH_ALL,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_line_vty,
       vtysh_quit_line_vty_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 
 #ifdef ENABLE_OVSDB
@@ -1461,10 +1479,12 @@ DEFUN (vtysh_exit_dhcp_server,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_dhcp_server,
       vtysh_quit_dhcp_server_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUN (vtysh_tftp_server,
       vtysh_tftp_server_cmd,
@@ -1485,11 +1505,12 @@ DEFUN (vtysh_exit_tftp_server,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_tftp_server,
       vtysh_quit_tftp_server_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-
+#endif
 DEFUN (vtysh_interface,
       vtysh_interface_cmd,
       "interface IFNAME",
@@ -1992,10 +2013,12 @@ DEFUNSH (VTYSH_INTERFACE,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_interface,
       vtysh_quit_interface_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 #ifdef ENABLE_OVSDB
 DEFUNSH (VTYSH_MGMT_INTF,
@@ -2006,10 +2029,12 @@ DEFUNSH (VTYSH_MGMT_INTF,
 {
   return vtysh_exit (vty);
 }
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_mgmt_interface,
        vtysh_quit_mgmt_interface_cmd,
        "quit",
        "Exit current mode and down to previous mode\n")
+#endif /* ifndef ENABLE_OVSDB */
 #endif
 /* Memory */
 #ifndef ENABLE_OVSDB
@@ -4223,51 +4248,56 @@ vtysh_init_vty (void)
    install_element (VIEW_NODE, &vtysh_enable_cmd);
    install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
-
+#ifndef ENABLE_OVSDB
+   install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
+   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
+   install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
+   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
+   install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
+   install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
+   install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
+   install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
+   install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
+   install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
+   install_element (BGP_IPV6_NODE, &vtysh_quit_bgpd_cmd);
+   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
+   install_element (BGP_VPNV4_NODE, &vtysh_quit_bgpd_cmd);
+   install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
+   install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
+   install_element (ISIS_NODE, &vtysh_quit_isisd_cmd);
+   install_element (KEYCHAIN_KEY_NODE, &vtysh_quit_ripd_cmd);
+   install_element (VIEW_NODE, &vtysh_quit_all_cmd);
+   install_element (RMAP_NODE, &vtysh_quit_rmap_cmd);
+   install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
+   install_element (VTY_NODE, &vtysh_quit_line_vty_cmd);
+#endif
    /* "exit" command. */
    install_element (VIEW_NODE, &vtysh_exit_all_cmd);
-   install_element (VIEW_NODE, &vtysh_quit_all_cmd);
    install_element (CONFIG_NODE, &vtysh_exit_all_cmd);
    /* install_element (CONFIG_NODE, &vtysh_quit_all_cmd); */
    install_element (ENABLE_NODE, &vtysh_exit_all_cmd);
-   install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_exit_ripd_cmd);
-   install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
    install_element (RIPNG_NODE, &vtysh_exit_ripngd_cmd);
-   install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
-   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (OSPF6_NODE, &vtysh_exit_ospf6d_cmd);
-   install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
 #endif
    install_element (BGP_NODE, &vtysh_exit_bgpd_cmd);
-   install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_exit_bgpd_cmd);
-   install_element (BGP_VPNV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV4_NODE, &vtysh_exit_bgpd_cmd);
-   install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_exit_bgpd_cmd);
-   install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV6_NODE, &vtysh_exit_bgpd_cmd);
-   install_element (BGP_IPV6_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_exit_bgpd_cmd);
-   install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
 
    policy_vty_init();
    bgp_vty_init();
 #ifndef ENABLE_OVSDB
    install_element (ISIS_NODE, &vtysh_exit_isisd_cmd);
-   install_element (ISIS_NODE, &vtysh_quit_isisd_cmd);
 #endif
    install_element (KEYCHAIN_NODE, &vtysh_exit_ripd_cmd);
-   install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
    install_element (KEYCHAIN_KEY_NODE, &vtysh_exit_ripd_cmd);
-   install_element (KEYCHAIN_KEY_NODE, &vtysh_quit_ripd_cmd);
    install_element (RMAP_NODE, &vtysh_exit_rmap_cmd);
-   install_element (RMAP_NODE, &vtysh_quit_rmap_cmd);
    install_element (VTY_NODE, &vtysh_exit_line_vty_cmd);
-   install_element (VTY_NODE, &vtysh_quit_line_vty_cmd);
 
    /* "end" command. */
    install_element (CONFIG_NODE, &vtysh_end_all_cmd);
@@ -4298,7 +4328,6 @@ vtysh_init_vty (void)
 #endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
-   install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
 #ifdef HAVE_IPV6
@@ -4345,7 +4374,6 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &no_vtysh_interface_cmd);
    install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
-   install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
 #endif
 
@@ -4355,11 +4383,9 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_interface_mgmt_cmd);
    install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);
    install_element (MGMT_INTERFACE_NODE, &vtysh_exit_mgmt_interface_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (MGMT_INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (CONFIG_NODE, &vtysh_intf_link_aggregation_cmd);
    install_element (LINK_AGGREGATION_NODE, &vtysh_exit_mgmt_interface_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
