@@ -1551,7 +1551,7 @@ DEFUN (no_vtysh_interface,
       no_vtysh_interface_cmd,
       "no interface IFNAME",
       NO_STR
-      "Delete a pseudo interface's configuration\n"
+      "Select an interface to configure\n"
       "Interface's name\n")
 {
   vty->node = CONFIG_NODE;
@@ -1579,7 +1579,7 @@ DEFUN (no_vtysh_interface_vlan,
        no_vtysh_interface_vlan_cmd,
        "no interface vlan VLANID",
        NO_STR
-       "Delete a pseudo interface's configuration\n"
+       "Select an interface to configure\n"
        "VLAN interface\n"
        "Vlan id within <1-4094> and should not be an internal vlan\n")
 {
@@ -1841,9 +1841,9 @@ DEFUN(vtysh_no_vlan,
 DEFUN (vtysh_intf_link_aggregation,
        vtysh_intf_link_aggregation_cmd,
        "interface lag <1-2000>",
-       "Select an interface to configure.\n"
-       "Configure link-aggregation parameters.\n"
-       "LAG number ranges from 1 to 2000.\n")
+       "Select an interface to configure\n"
+       "Configure link-aggregation parameters\n"
+       "LAG number ranges from 1 to 2000\n")
 {
   const struct ovsrec_port *port_row = NULL;
   bool port_found = false;
