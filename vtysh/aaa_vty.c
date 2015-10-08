@@ -1039,48 +1039,47 @@ static int
 show_radius_server_info()
 {
     const struct ovsrec_radius_server *row = NULL;
-    int count = 1;
-    char ip[1000], *pp, *udp, *timeout, *passkey;
-    char file_name[] = "/etc/raddb/server";
-    FILE *fp;
-
-    fp = fopen(file_name, "r");
-    if (fp == NULL)
-    {
-        vty_out(vty, "Error while opening the file:%s", VTY_NEWLINE);
-        fclose(fp);
-        return CMD_SUCCESS;
-    }
+    char *temp[64];
+    int count = 0, temp_count = 0;
 
     row = ovsrec_radius_server_first(idl);
     if (row == NULL)
     {
         vty_out(vty, "No Radius Servers configured%s", VTY_NEWLINE);
-        fclose(fp);
         return CMD_SUCCESS;
     }
 
-    vty_out(vty, "***** Radius Server information ****** :%s", VTY_NEWLINE);
-    while (fgets(ip, 100, fp) != NULL)
+    OVSREC_RADIUS_SERVER_FOR_EACH(row, idl)
     {
-        vty_out(vty, "Radius-server:%d%s", count++, VTY_NEWLINE);
-        pp = strtok(ip, ":");
-        udp = strtok(NULL, " ");
-        passkey = strtok(NULL, " ");
-        timeout = strtok(NULL, " ");
-        vty_out(vty, " Host IP address\t: %s%s", pp, VTY_NEWLINE);
-        vty_out(vty, " Shared secret\t\t: %s%s", passkey, VTY_NEWLINE);
-        vty_out(vty, " Auth port\t\t: %s%s", udp, VTY_NEWLINE);
-        if (row->retries == NULL)
-        {
-            vty_out(vty, " Retries\t\t: %ld%s", *(row->retries), VTY_NEWLINE);
-        }
-        vty_out(vty, " Timeout\t\t: %s%s", timeout, VTY_NEWLINE);
+      /* Array buff max size is 60, since it should accomodate a string
+       * in below format, where IP address max lenght is 15, port max
+       * length is 5, passkey/shared secret max length is 32, retries
+       * max length is 1 and timeout max length is 2.
+       * {"<ipaddress>:<port> <passkey> <retries> <timeout> "}
+       */
+      char buff[60]= {0};
+
+      sprintf(buff, "%s:%ld %s %d %d ", row->ip_address, *(row->udp_port), \
+                             row->passkey, *(row->retries), *(row->timeout));
+      temp[row->priority - 1] = (char *)malloc(strlen(buff));
+      strncpy(temp[row->priority - 1], buff, strlen(buff));
+      temp_count += 1;
     }
 
-    fclose(fp);
-    return CMD_SUCCESS;
+    vty_out(vty, "***** Radius Server information ******%s", VTY_NEWLINE);
+    while( temp_count-- )
+    {
+        vty_out(vty, "Radius-server:%d%s", count + 1, VTY_NEWLINE);
+        vty_out(vty, " Host IP address\t: %s%s",strtok(temp[count], ":"), VTY_NEWLINE);
+        vty_out(vty, " Auth port\t\t: %s%s", strtok(NULL, " "), VTY_NEWLINE);
+        vty_out(vty, " Shared secret\t\t: %s%s", strtok(NULL, " "), VTY_NEWLINE);
+        vty_out(vty, " Retries\t\t: %s%s", strtok(NULL, " "), VTY_NEWLINE);
+        vty_out(vty, " Timeout\t\t: %s%s", strtok(NULL, " "), VTY_NEWLINE);
+        free(temp[count]);
+        count++;
+    }
 
+    return CMD_SUCCESS;
 }
 
 DEFUN(cli_show_radius_server,
