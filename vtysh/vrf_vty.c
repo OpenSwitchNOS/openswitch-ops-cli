@@ -65,6 +65,89 @@ vrf_lookup (const char *vrf_name)
 }
 
 /*
+ * Check for split validations on a specific interface.
+ * 1. If interface has split capability(split parent interface)
+ *    - Check if split.
+ *      Dont allow layer 3 configurations if split.
+ * 2. If interface is a split child interface
+ *    - Check if parent is split.
+ *      Allow layer 3 configurations if split.
+ */
+bool
+check_split_iface_conditions (const char *ifname)
+{
+  const struct ovsrec_interface *if_row, *next, *parent_iface;
+  char *lanes_split_value = NULL;
+  char *split_value = NULL;
+  struct smap smap_user_config, smap_hw_intf_info;
+  bool allowed = true;
+
+  OVSREC_INTERFACE_FOR_EACH_SAFE(if_row, next, idl)
+    {
+      if (strcmp(ifname, if_row->name) == 0)
+        break;
+    }
+
+  if (!if_row)
+    {
+      /* Interface row is not present */
+      return false;
+    }
+
+  smap_clone(&smap_user_config, &if_row->user_config);
+  smap_clone(&smap_hw_intf_info, &if_row->hw_intf_info);
+
+  split_value = smap_get(&smap_hw_intf_info,
+          INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
+  lanes_split_value = smap_get(&smap_user_config,
+          INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+  /* Check for split_4 attribute */
+  if ((split_value != NULL) &&
+      (strcmp(split_value,
+               INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) == 0))
+    {
+      /* Must be a split parent interface */
+      if ((lanes_split_value != NULL) &&
+          (strcmp(lanes_split_value,
+                   INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT) == 0))
+        {
+          vty_out(vty,
+                  "This interface has been split. Operation"
+                  " not allowed%s", VTY_NEWLINE);
+          allowed = false;
+        }
+    }
+  else
+    {
+      parent_iface = if_row->split_parent;
+      if (parent_iface != NULL)
+        {
+          struct smap smap_parent_user_config;
+          smap_clone(&smap_parent_user_config, &parent_iface->user_config);
+          lanes_split_value = smap_get(&smap_parent_user_config,
+                                       INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+          if ((lanes_split_value == NULL) ||
+              (strcmp(lanes_split_value,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT) != 0))
+            {
+              /* Parent interface is not split.*/
+              vty_out(vty,
+                      "This is a QSFP child interface whose"
+                      " parent interface has not been split."
+                      " Operation not allowed%s", VTY_NEWLINE);
+              allowed = false;
+            }
+          smap_destroy(&smap_parent_user_config);
+        }
+    }
+
+  smap_destroy(&smap_user_config);
+  smap_destroy(&smap_hw_intf_info);
+
+  return allowed;
+}
+
+/*
  * This functions is used to check if port row exists.
  *
  * Variables:
@@ -449,6 +532,12 @@ vrf_add_port (const char *if_name, const char *vrf_name)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, true, status_txn);
   if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
     {
@@ -705,6 +794,12 @@ vrf_routing (const char *if_name)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, false, false, status_txn);
   if (!port_row)
     {
@@ -784,6 +879,12 @@ vrf_no_routing (const char *if_name)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, false, status_txn);
   if (check_iface_in_bridge (if_name))
     {
@@ -864,6 +965,12 @@ vrf_config_ip (const char *if_name, const char *ip4, bool secondary)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, true, status_txn);
 
   if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
@@ -1095,6 +1202,12 @@ vrf_config_ipv6 (const char *if_name, const char *ipv6, bool secondary)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, true, status_txn);
 
   if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))

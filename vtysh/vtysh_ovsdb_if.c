@@ -184,6 +184,7 @@ vrf_ovsdb_init()
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_table(idl, &ovsrec_table_bridge);
+    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_interfaces);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip4_address);
@@ -202,6 +203,12 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_system_col_vrfs);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_bridges);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_parent);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_children);
 }
 
 static void
@@ -257,6 +264,10 @@ intf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pm_info);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
+    ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
 }
 
 /***********************************************************

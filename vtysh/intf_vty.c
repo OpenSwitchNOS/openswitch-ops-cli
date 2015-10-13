@@ -609,126 +609,6 @@ DEFUN_NO_FORM (cli_intf_autoneg,
         "Configure autonegotiation process\n");
 
 /*
- * CLI "split"
- * default : no split
- */
-DEFUN (cli_intf_split,
-        cli_intf_split_cmd,
-        "split",
-        "Configure QSFP interface for 4x 10Gb operation "
-        "or 1x 40Gb operation.\n")
-{
-    const struct ovsrec_interface * row = NULL;
-    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
-    enum ovsdb_idl_txn_status status;
-
-    if (status_txn == NULL)
-    {
-        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
-        cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
-    }
-
-    row = ovsrec_interface_first(idl);
-    if (!row)
-    {
-        cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
-    }
-
-    OVSREC_INTERFACE_FOR_EACH(row, idl)
-    {
-        if (strcmp(row->name, (char*)vty->index) == 0)
-        {
-            /* if not splittable, warn */
-            const char *split_value = NULL;
-            struct smap smap_user_config;
-
-            smap_clone(&smap_user_config,&row->user_config);
-
-            split_value = smap_get(&row->hw_intf_info,
-                    INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
-            if ((split_value == NULL) ||
-                    (strcmp(split_value,
-                            INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) != 0))
-            {
-                if ((vty_flags & CMD_FLAG_NO_CMD) == 0)
-                {
-                    vty_out(vty, "Warning: split operation only applies to"
-                            " QSFP interfaces with split capability%s",
-                            VTY_NEWLINE);
-                }
-            }
-            if (vty_flags & CMD_FLAG_NO_CMD)
-            {
-                smap_remove(&smap_user_config,
-                        INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
-            }
-            else
-            {
-                smap_replace(&smap_user_config,
-                        INTERFACE_USER_CONFIG_MAP_LANE_SPLIT,
-                        INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT);
-            }
-            ovsrec_interface_set_user_config(row, &smap_user_config);
-
-            smap_destroy(&smap_user_config);
-            break;
-        }
-    }
-
-    status = cli_do_config_finish(status_txn);
-
-    if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
-    {
-        return CMD_SUCCESS;
-    }
-    else
-    {
-        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
-    }
-
-    return CMD_OVSDB_FAILURE;
-}
-
-DEFUN_NO_FORM (cli_intf_split,
-        cli_intf_split_cmd,
-        "split",
-        "Configure QSFP interface for 4x 10Gb "
-        "operation or 1x 40Gb operation\n");
-
-#define PRINT_INT_HEADER_IN_SHOW_RUN if (!bPrinted) \
-{ \
-bPrinted = true;\
-vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
-}
-
-
-/*
- * Function : port_match_in_vrf
- * Responsibility : Lookup VRF to which interface is connected
- * Parameters :
- *   const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
- * Return : pointer to VRF row
- */
-const struct ovsrec_vrf*
-port_match_in_vrf(const struct ovsrec_port *port_row)
-{
-    const struct ovsrec_vrf *vrf_row = NULL;
-    size_t i;
-    OVSREC_VRF_FOR_EACH(vrf_row, idl)
-    {
-        for (i = 0; i < vrf_row->n_ports; i++) {
-            if (vrf_row->ports[i] == port_row) {
-                return vrf_row;
-            }
-        }
-    }
-    return NULL;
-}
-
-
-/*
  *  Function : port_find
  *  Responsibility : Lookup port table entry for interface name
  *  Parameters :
@@ -748,6 +628,249 @@ port_find(const char *if_name)
     return NULL;
 }
 
+/*
+ * Function : port_match_in_vrf
+ * Responsibility : Lookup VRF to which interface is connected
+ * Parameters :
+ *   const struct ovsrec_port *port_row: pointer to port_row
+ *                                       for looking up VRF
+ * Return : pointer to VRF row
+ */
+const struct ovsrec_vrf*
+port_match_in_vrf (const struct ovsrec_port *port_row)
+{
+  const struct ovsrec_vrf *vrf_row = NULL;
+  size_t i;
+  OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+      for (i = 0; i < vrf_row->n_ports; i++)
+        {
+          if (vrf_row->ports[i] == port_row)
+            return vrf_row;
+        }
+    }
+  return NULL;
+}
+
+/*
+ * Function : remove_port_reference
+ * Responsibility : Remove port reference from VRF / bridge
+ *
+ * Parameters :
+ *   const struct ovsrec_port *port_row: port to be deleted
+ */
+static void
+remove_port_reference (const struct ovsrec_port *port_row)
+{
+  struct ovsrec_port **ports;
+  const struct ovsrec_vrf *vrf_row = NULL;
+  const struct ovsrec_bridge *default_bridge_row = NULL;
+  int i,n;
+
+  if (check_port_in_vrf(port_row->name))
+    {
+      vrf_row = port_match_in_vrf (port_row);
+      ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
+      for (i = n = 0; i < vrf_row->n_ports; i++)
+        {
+          if (vrf_row->ports[i] != port_row)
+            ports[n++] = vrf_row->ports[i];
+        }
+      ovsrec_vrf_set_ports (vrf_row, ports, n);
+    }
+
+  if (check_port_in_bridge(port_row->name))
+    {
+      default_bridge_row = ovsrec_bridge_first (idl);
+      ports = xmalloc (
+          sizeof *default_bridge_row->ports *
+          (default_bridge_row->n_ports - 1));
+      for (i = n = 0; i < default_bridge_row->n_ports; i++)
+        {
+          if (default_bridge_row->ports[i] != port_row)
+            ports[n++] = default_bridge_row->ports[i];
+        }
+      ovsrec_bridge_set_ports (default_bridge_row, ports, n);
+    }
+  free (ports);
+}
+
+/*
+ * Function : handle_port_config
+ * Responsibility : Handle deletion of all configuration
+ *                  for split/no split cases
+ * Parameters :
+ *   const struct ovsrec_port *if_row: pointer to interface row
+ *   bool split: Boolean to identify if parent interface is split or not
+ */
+static void
+handle_port_config (const struct ovsrec_interface *if_row, bool split)
+{
+  const struct ovsrec_port *port_row = NULL;
+  int i;
+  if (split)
+    {
+      port_row = port_find (if_row->name);
+      if (port_row)
+        {
+          remove_port_reference (port_row);
+          ovsrec_port_delete (port_row);
+        }
+    }
+  else
+    {
+      for (i = 0; i < if_row->n_split_children; i++)
+        {
+          port_row = port_find (if_row->split_children[i]->name);
+          if (port_row)
+            {
+              remove_port_reference (port_row);
+              ovsrec_port_delete (port_row);
+            }
+        }
+    }
+}
+
+/*
+ * CLI "split"
+ * default : no split
+ */
+DEFUN (cli_intf_split,
+        cli_intf_split_cmd,
+        "split",
+        "Configure QSFP interface for 4x 10Gb operation "
+        "or 1x 40Gb operation.\n")
+{
+  const struct ovsrec_interface * row = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  enum ovsdb_idl_txn_status status;
+  char flag = '0';
+  bool proceed = false;
+
+  if (status_txn == NULL)
+    {
+      VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  row = ovsrec_interface_first (idl);
+  if (!row)
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+      if (strcmp(row->name, (char*)vty->index) == 0)
+        {
+          /* if not splittable, warn */
+          const char *split_value = NULL;
+          struct smap smap_user_config;
+
+          smap_clone(&smap_user_config,&row->user_config);
+
+          split_value = smap_get(&row->hw_intf_info,
+                  INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
+          if ((split_value == NULL) ||
+                  (strcmp(split_value,
+                          INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) != 0))
+            {
+              if ((vty_flags & CMD_FLAG_NO_CMD) == 0)
+                {
+                  vty_out(vty, "Warning: split operation only applies to"
+                          " QSFP interfaces with split capability%s",
+                          VTY_NEWLINE);
+                }
+            }
+          if (vty_flags & CMD_FLAG_NO_CMD)
+            {
+              smap_remove(&smap_user_config,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+            }
+          else
+            {
+              smap_replace(&smap_user_config,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT);
+            }
+          ovsrec_interface_set_user_config (row, &smap_user_config);
+          /* Reconfiguration should only be done when split/no split commands
+           * are entered on split parent interfaces */
+          if ((split_value != NULL) &&
+              (strcmp(split_value,
+                      INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) == 0))
+            {
+              if (vty_flags & CMD_FLAG_NO_CMD)
+                {
+                  vty_out (vty, "Warning: This will remove all L2/L3 configuration"
+                           " on child interfaces.\nDo you want to continue [y/n]?");
+                }
+              else
+                {
+                  vty_out (vty, "Warning: This will remove all L2/L3 configuration"
+                           " on parent interface.\nDo you want to continue [y/n]?");
+                }
+              while (1)
+                {
+                  scanf (" %c", &flag);
+                  if (flag == 'y')
+                    {
+                      handle_port_config (row,
+                                          (vty_flags & CMD_FLAG_NO_CMD) ? false : true);
+                      proceed = true;
+                      break;
+                    }
+                  else if (flag == 'n')
+                    {
+                      vty_out (vty,"%s",VTY_NEWLINE);
+                      proceed = false;
+                      break;
+                    }
+                  else
+                    {
+                      vty_out (vty, "\r                                 ");
+                      vty_out (vty, "\rDo you wish to continue [y/n]?");
+                    }
+                }
+            }
+          smap_destroy(&smap_user_config);
+          break;
+        }
+    }
+
+  if (!proceed)
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  status = cli_do_config_finish (status_txn);
+
+  if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+      return CMD_SUCCESS;
+    }
+  else
+    {
+      VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+    }
+
+  return CMD_OVSDB_FAILURE;
+}
+
+DEFUN_NO_FORM (cli_intf_split,
+        cli_intf_split_cmd,
+        "split",
+        "Configure QSFP interface for 4x 10Gb "
+        "operation or 1x 40Gb operation\n");
+
+#define PRINT_INT_HEADER_IN_SHOW_RUN if (!bPrinted) \
+{ \
+bPrinted = true;\
+vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
+}
 
 /*
  *  Function : parse_vlan
