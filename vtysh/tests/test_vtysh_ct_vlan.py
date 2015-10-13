@@ -157,6 +157,11 @@ class VLANCliTest(OpsVsiTest):
         s1.cmdCLI('exit')
         s1.cmdCLI('vlan 12')
         s1.cmdCLI('exit')
+        # Split the parent interface to enable L2/L3 configurations
+        # on child interfaces
+        s1.cmdCLI('interface 52')
+        s1.cmdCLI('split', False)
+        s1.cmdCLI('y')
         s1.cmdCLI('interface 52-1')
         out = s1.cmdCLI('vlan trunk allowed 1')
         success = 0

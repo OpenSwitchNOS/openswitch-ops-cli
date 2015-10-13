@@ -81,7 +81,8 @@ class InterfaceCommandsTests(OpsVsiTest):
             'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('interface 49')
-        s1.cmdCLI('split')
+        s1.cmdCLI('split', False)
+        s1.cmdCLI('y')
         out = s1.cmdCLI('do show running-config interface 49')
         assert 'split' in out, \
             'Test to verify interface configuration clis - FAILED!'
