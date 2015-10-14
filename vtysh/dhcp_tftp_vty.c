@@ -250,10 +250,12 @@ static int show_dhcp_leases(void)
             }
 
             if (print_header) {
-                vty_out(vty, "Expiry Time                MAC Address         "
-                             "IP Address       Hostname and Client-id%s",
+                vty_out(vty, "Expiry Time                MAC Address   "
+                             "      IP Address                   "
+                             "                 Hostname and Client-id%s",
                               VTY_NEWLINE);
-                vty_out(vty, "-----------------------------------------------"
+                vty_out(vty, "-----------------------------------------"
+                             "-----------------------------------"
                              "---------------------------------------%s",
                               VTY_NEWLINE);
                 print_header = 0;
@@ -268,7 +270,7 @@ static int show_dhcp_leases(void)
                 expiry_str[length] = '\0';
             }
 
-            vty_out(vty, "%-26s %-19s %-16s %s       %s%s",
+            vty_out(vty, "%-26s %-19s %-45s %s       %s%s",
                           expiry_str, mac_addr, ip_addr,
                           hostname, client_id,
                           VTY_NEWLINE);
@@ -2867,6 +2869,13 @@ DEFUN (cli_dhcp_server_static_host_delete,
 
         }
     }
+    if (static_host_params.mac_addresses == NULL
+        && static_host_params.client_hostname == NULL
+        && static_host_params.client_id == NULL) {
+        vty_out(vty,"Any one of MAC address or hostname or client-id"
+                " must be specified.%s",VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
 
     /* validating lease duration */
     if (argv[5] == NULL) {
@@ -2960,6 +2969,13 @@ DEFUN (cli_dhcp_server_static_host_add,
         }
     }
 
+    if (static_host_params.mac_addresses == NULL
+        && static_host_params.client_hostname == NULL
+        && static_host_params.client_id == NULL) {
+        vty_out(vty,"Any one of MAC address or hostname or client-id"
+                " must be specified.%s",VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
     /* validating lease duration */
     if (argv[5] == NULL) {
         static_host_params.lease_duration = 60;
