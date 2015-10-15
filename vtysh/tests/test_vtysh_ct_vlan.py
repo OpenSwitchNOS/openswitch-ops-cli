@@ -89,7 +89,7 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan99' in line:
+            if 'VLAN99' in line:
                 vlan_deleted = False
         assert (vlan_deleted is True), 'Test to delete VLAN - FAILED!'
         return True
@@ -119,7 +119,7 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan1' in line and '21' in line:
+            if 'VLAN1' in line and '21' in line:
                 success += 1
 
         assert 'success == 2', 'Test "vlan access" command - FAILED!'
@@ -180,7 +180,7 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan1' in line and '52-1' in line:
+            if 'VLAN1' in line and '52-1' in line:
                 success += 1
         assert success == 2, 'Test to add VLAN to interface - FAILED!'
 
@@ -244,9 +244,9 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan1' in line and '52-2' in line:
+            if 'VLAN1' in line and '52-2' in line:
                 success += 1
-            if 'vlan77' in line and '52-2' in line:
+            if 'VLAN77' in line and '52-2' in line:
                 success += 1
 
         assert success == 4, \
@@ -314,9 +314,9 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan1789' in line and '52-3' in line:
+            if 'VLAN1789' in line and '52-3' in line:
                 success += 1
-            if 'vlan88' in line and '52-3' in line:
+            if 'VLAN88' in line and '52-3' in line:
                 success += 1
 
         assert success == 5, \
@@ -370,7 +370,7 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan1' in line and 'lag21' in line:
+            if 'VLAN1' in line and 'lag21' in line:
                 success += 1
 
         assert success == 2, 'Test to add access vlan to LAG - FAILED!'
@@ -419,7 +419,7 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan55' in line and 'lag31' in line:
+            if 'VLAN55' in line and 'lag31' in line:
                 success += 1
         assert success == 2, 'Test to add trunk vlan to LAG - FAILED!'
         vlan_trunk_allowed_cmd_present = False
@@ -469,9 +469,9 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan1234' in line and 'lag41' in line:
+            if 'VLAN1234' in line and 'lag41' in line:
                 success += 1
-            if 'vlan66' in line and 'lag41' in line:
+            if 'VLAN66' in line and 'lag41' in line:
                 success += 1
 
         s1.cmdCLI('no vlan trunk native')
@@ -520,9 +520,9 @@ class VLANCliTest(OpsVsiTest):
         out = s1.cmdCLI('do show vlan')
         lines = out.split('\n')
         for line in lines:
-            if 'vlan1567' in line and 'lag51' in line:
+            if 'VLAN1567' in line and 'lag51' in line:
                 success += 1
-            if 'vlan44' in line and 'lag51' in line:
+            if 'VLAN44' in line and 'lag51' in line:
                 success += 1
         assert success == 5, \
             'Test to add trunk native tag vlan to LAG - FAILED!'
@@ -546,7 +546,7 @@ class VLANCliTest(OpsVsiTest):
         s1.cmdCLI('conf t')
         s1.cmdCLI('vlan 1')
         s1.cmdCLI('no shutdown')
-        out = s1.cmd('ovs-vsctl list vlan vlan1')
+        out = s1.cmd('ovs-vsctl list vlan VLAN1')
         lines = out.split('\n')
         success = 0
         for line in lines:
@@ -562,6 +562,34 @@ class VLANCliTest(OpsVsiTest):
                 success += 1
 
         assert success == 2, 'Test to check VLAN commands - FAILED!'
+        return True
+
+    def internalVlanChecks(self):
+        info('\n########## Test to check internal '
+             'vlan validations ##########\n')
+        s1 = self.net.switches[0]
+        # Internal VLANs are not assigned in VSI by default.
+        # To test functionality, we use below command
+        # to generate internal VLANs for L3 interfaces.
+        s1.ovscmd('/usr/bin/ovs-vsctl set Subsystem '
+                  'base other_info:l3_port_requires_internal_vlan=1')
+
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('ip address 1.1.1.1/8')
+        s1.cmdCLI('exit')
+
+        ret = s1.cmdCLI('vlan 1024')
+        assert 'VLAN1024 is used as an internal VLAN. ' \
+               'No further configuration allowed.' in ret, \
+               'Test to prevent internal vlan configuration - FAILED!'
+        info('### Test to prevent internal vlan configuration - PASSED ###\n')
+
+        ret = s1.cmdCLI('no vlan 1024')
+        assert 'VLAN1024 is used as an internal VLAN. ' \
+               'Deletion not allowed.' in ret, \
+               'Test to prevent internal vlan deletion - FAILED!'
+        info('### Test to prevent internal vlan deletion - PASSED ###\n')
         return True
 
 
@@ -646,6 +674,12 @@ class Test_vlan_cli:
         if self.test.vlanCommands():
             info('''
 ########## Test to add trunk native tag vlan to LAG - SUCCESS! ##########
+''')
+
+    def test_internalVlanChecks(self):
+        if self.test.internalVlanChecks():
+            info('''
+########## Test to check internal vlan validations - SUCCESS! ##########
 ''')
 
     def teardown_class(cls):
