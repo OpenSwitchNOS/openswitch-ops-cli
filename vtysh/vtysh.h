@@ -115,6 +115,7 @@ int is_valid_ip_address(const char *ip_value);
 extern int vtysh_alias_callback(struct cmd_element *self, struct vty *vty, int vty_flags, int argc, const char *argv[]);
 
 extern int enable_mininet_test_prompt;
+extern int vtysh_show_startup;
 #endif
 
 void vtysh_init_vty (void);
