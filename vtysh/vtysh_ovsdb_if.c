@@ -1000,6 +1000,16 @@ check_port_in_vrf(const char *port_name)
     return false;
 }
 
+/* Checks if the VLAN is used as an internal VLAN */
+bool
+check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
+{
+    char *l3port = NULL;
+    l3port = smap_get(&vlan_row->internal_usage,
+                                 VLAN_INTERNAL_USAGE_L3PORT);
+    return (l3port != NULL) ? true : false;
+}
+
 /* Init the vtysh lib routines. */
 void
 vtysh_ovsdb_lib_init()
