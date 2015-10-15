@@ -1602,6 +1602,22 @@ DEFUN (no_vtysh_interface_vlan,
    return CMD_SUCCESS;
 }
 
+static bool
+check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
+{
+    char *l3port = NULL;
+    struct smap vlan_internal_smap;
+    bool is_internal_vlan = false;
+    smap_clone(&vlan_internal_smap, &vlan_row->internal_usage);
+    l3port = smap_get(&vlan_internal_smap,
+                                 VLAN_INTERNAL_USAGE_L3PORT);
+    if (l3port != NULL)
+        is_internal_vlan = true;
+
+    smap_destroy(&vlan_internal_smap);
+    return is_internal_vlan;
+}
+
 DEFUN(vtysh_vlan,
     vtysh_vlan_cmd,
     "vlan <1-4094>",
@@ -1620,7 +1636,7 @@ DEFUN(vtysh_vlan,
     static char vlan[5] = { 0 };
     static char vlan_name[9] = { 0 };
     snprintf(vlan, 5, "%s", argv[0]);
-    snprintf(vlan_name, 9, "%s%s", "vlan", argv[0]);
+    snprintf(vlan_name, 9, "%s%s", "VLAN", argv[0]);
 
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row != NULL)
@@ -1633,6 +1649,15 @@ DEFUN(vtysh_vlan,
                 break;
             }
         }
+    }
+
+    if (vlan_found && check_if_internal_vlan(vlan_row))
+    {
+        /* Check for internal VLAN.
+         * No configuration is allowed on internal VLANs. */
+        vty_out(vty, "VLAN%d is used as an internal VLAN. "
+                "No further configuration allowed.%s", vlan_row->id, VTY_NEWLINE);
+        return CMD_SUCCESS;
     }
 
     if (!vlan_found)
@@ -1725,9 +1750,6 @@ DEFUN(vtysh_no_vlan,
     struct ovsrec_vlan **vlans = NULL;
     int i = 0, n = 0;
     int vlan_id = atoi(argv[0]);
-    static char vlan_name[9] = { 0 };
-
-    snprintf(vlan_name, 9, "%s%s", "vlan", argv[0]);
 
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row != NULL)
@@ -1744,6 +1766,15 @@ DEFUN(vtysh_no_vlan,
 
     if (vlan_found)
     {
+        if (check_if_internal_vlan(vlan_row))
+        {
+            /* Check for internal VLAN.
+             * No deletion is allowed on internal VLANs. */
+            vty_out(vty, "VLAN%d is used as an internal VLAN. "
+                    "Deletion not allowed.%s", vlan_row->id, VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+
         status_txn = cli_do_config_start();
 
         if (status_txn == NULL)
