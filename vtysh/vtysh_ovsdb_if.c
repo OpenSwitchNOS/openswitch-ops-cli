@@ -457,6 +457,7 @@ lacp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_system_col_lacp_config);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_lacp);
 }
 
 /*

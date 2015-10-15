@@ -922,6 +922,7 @@ exit_loop:
    }
    interfaces[lag_port->n_interfaces] = (struct ovsrec_interface *)interface_row;
    ovsrec_port_set_interfaces(lag_port, interfaces, lag_port->n_interfaces + 1);
+   ovsrec_port_set_lacp(lag_port, "active");
    free(interfaces);
 
    status = cli_do_config_finish(status_txn);
