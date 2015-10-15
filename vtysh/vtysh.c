@@ -1620,7 +1620,7 @@ DEFUN(vtysh_vlan,
     static char vlan[5] = { 0 };
     static char vlan_name[9] = { 0 };
     snprintf(vlan, 5, "%s", argv[0]);
-    snprintf(vlan_name, 9, "%s%s", "vlan", argv[0]);
+    snprintf(vlan_name, 9, "%s%s", "VLAN", argv[0]);
 
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row != NULL)
@@ -1633,6 +1633,15 @@ DEFUN(vtysh_vlan,
                 break;
             }
         }
+    }
+
+    if (vlan_found && check_if_internal_vlan(vlan_row))
+    {
+        /* Check for internal VLAN.
+         * No configuration is allowed on internal VLANs. */
+        vty_out(vty, "VLAN%d is used as an internal VLAN. "
+                "No further configuration allowed.%s", vlan_row->id, VTY_NEWLINE);
+        return CMD_SUCCESS;
     }
 
     if (!vlan_found)
@@ -1725,9 +1734,6 @@ DEFUN(vtysh_no_vlan,
     struct ovsrec_vlan **vlans = NULL;
     int i = 0, n = 0;
     int vlan_id = atoi(argv[0]);
-    static char vlan_name[9] = { 0 };
-
-    snprintf(vlan_name, 9, "%s%s", "vlan", argv[0]);
 
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row != NULL)
@@ -1744,6 +1750,15 @@ DEFUN(vtysh_no_vlan,
 
     if (vlan_found)
     {
+        if (check_if_internal_vlan(vlan_row))
+        {
+            /* Check for internal VLAN.
+             * No deletion is allowed on internal VLANs. */
+            vty_out(vty, "VLAN%d is used as an internal VLAN. "
+                    "Deletion not allowed.%s", vlan_row->id, VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+
         status_txn = cli_do_config_start();
 
         if (status_txn == NULL)
