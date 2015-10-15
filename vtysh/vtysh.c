@@ -85,6 +85,7 @@ VLOG_DEFINE_THIS_MODULE(vtysh);
 #ifdef ENABLE_OVSDB
 int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
+int vtysh_show_startup = 0;
 
 #endif
 
@@ -2556,6 +2557,10 @@ DEFUN (vtysh_show_running_config,
    FILE *fp = NULL;
 
    fp = stdout;
+   if (!vtysh_show_startup)
+   {
+       fprintf(fp, "Current configuration:\n");
+   }
 
    vtysh_ovsdb_read_config(fp);
    return CMD_SUCCESS;
@@ -2825,8 +2830,10 @@ DEFUN (show_startup_config,
       vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
       VLOG_ERR("Failed to invoke vtysh on Temporary DB\n");
       remove_temp_db(1);
+      vtysh_show_startup = 0;
       return CMD_SUCCESS;
   }
+  vtysh_show_startup = 0;
 
   // Remove temporary DB and kill the ovsdb-server to temporary DB.
   if (remove_temp_db(0))

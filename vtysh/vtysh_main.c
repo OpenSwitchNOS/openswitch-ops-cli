@@ -322,6 +322,7 @@ main (int argc, char **argv, char **env)
           break;
         case 'D':
           temp_db = optarg;
+          vtysh_show_startup = 1;
           break;
 #endif
 	default:
