@@ -53,10 +53,6 @@
 
 #define INTERNAL_VLAN_ID_INVALID    -1
 
-#define VLAN_DESCRIPTION_LENGTH 256
-#define VLAN_DESCRIPTION_LENGTH_ERROR "The input description must be less than 250 characters.%s"
-#define OVSDB_VLAN_SET_DESCRIPTION_ERROR "Failed to set VLAN description%s"
-#define OVSDB_VLAN_REMOVE_DESCRIPTION_ERROR "Failed to remove VLAN description%s"
 #define OVSDB_VLAN_SHUTDOWN_ERROR "Failed to shutdown VLAN%s"
 #define OVSDB_VLAN_NO_SHUTDOWN_ERROR "Failed to enable VLAN%s"
 #define OVSDB_INTF_VLAN_ACCESS_ERROR "Failed to set access VLAN %d%s"

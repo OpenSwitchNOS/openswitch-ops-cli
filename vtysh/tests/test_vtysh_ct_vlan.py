@@ -554,14 +554,7 @@ class VLANCliTest(OpsVsiTest):
                 if 'up' in line:
                     success += 1
 
-        s1.cmdCLI('description asdf')
-        out = s1.cmdCLI('do show running-config')
-        lines = out.split('\n')
-        for line in lines:
-            if 'description asdf' in line:
-                success += 1
-
-        assert success == 2, 'Test to check VLAN commands - FAILED!'
+        assert success == 1, 'Test to check VLAN commands - FAILED!'
         return True
 
 
