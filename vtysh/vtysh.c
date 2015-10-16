@@ -3486,12 +3486,15 @@ delete_user(const char *user)
 {
     int ret,n_users;
     const char *arg[3];
-    char *buf;
+    char *login_name;
+    struct passwd *pass;
+    pass = getpwuid(getuid());
+    login_name = pass->pw_name;
+
     n_users = 0;
     arg[0] = USERDEL;
     arg[1] = "-r";
     arg[2] = CONST_CAST(char*, user);
-    buf = getlogin();
 
     n_users = get_group_user_count(OVSDB_GROUP);
     ret = check_user_group(user, OVSDB_GROUP);
@@ -3511,12 +3514,12 @@ delete_user(const char *user)
     }
     if (n_users<=1)
     {
-        vty_out(vty, "Cannot delete the last user %s.\n",user);
+        vty_out(vty, "Cannot delete the last user %s.\n", user);
         return CMD_SUCCESS;
     }
-    if (!(strcmp(buf,user)))
+    if (!(strcmp(login_name, user)))
     {
-        vty_out(vty, "Permission denied. You are logged in as %s.\n",user);
+        vty_out(vty, "Permission denied. You are logged in as %s.\n", user);
         return CMD_SUCCESS;
     }
 
