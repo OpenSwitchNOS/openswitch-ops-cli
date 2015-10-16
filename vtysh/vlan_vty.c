@@ -338,95 +338,6 @@ DEFUN  (cli_show_vlan_int_range,
     return show_vlan_int_range();
 }
 
-DEFUN(cli_vlan_description,
-    cli_vlan_description_cmd,
-    "description WORD",
-    VLAN_DESCRIPTION_STR
-    "VLAN description\n")
-{
-    const struct ovsrec_vlan *vlan_row = NULL;
-    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
-    enum ovsdb_idl_txn_status status;
-    char *description = CONST_CAST(char*,argv[0]);
-    int vlan_id = atoi((char *) vty->index);
-
-    if (NULL == status_txn)
-    {
-        VLOG_ERR("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
-        cli_do_config_abort(status_txn);
-        vty_out(vty, OVSDB_VLAN_SET_DESCRIPTION_ERROR, VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-
-    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
-    {
-        if (vlan_row->id == vlan_id)
-        {
-            break;
-        }
-    }
-
-    if (strlen(description) > VLAN_DESCRIPTION_LENGTH)
-    {
-        vty_out(vty, VLAN_DESCRIPTION_LENGTH_ERROR, VTY_NEWLINE);
-    }
-
-    ovsrec_vlan_set_description(vlan_row, description);
-    status = cli_do_config_finish(status_txn);
-
-    if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
-    {
-        return CMD_SUCCESS;
-    }
-    else
-    {
-        VLOG_DBG("Transaction failed to set description. Function:%s, Line:%d", __func__, __LINE__);
-        vty_out(vty, OVSDB_VLAN_SET_DESCRIPTION_ERROR, VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-}
-
-DEFUN(cli_no_vlan_description,
-    cli_no_vlan_description_cmd,
-    "no description [WORD]",
-    NO_STR
-    VLAN_DESCRIPTION_STR
-    "VLAN description\n")
-{
-    const struct ovsrec_vlan *vlan_row = NULL;
-    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
-    enum ovsdb_idl_txn_status status;
-    int vlan_id = atoi((char *) vty->index);
-
-    if (NULL == status_txn)
-    {
-        VLOG_ERR("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
-        cli_do_config_abort(status_txn);
-        vty_out(vty, OVSDB_VLAN_REMOVE_DESCRIPTION_ERROR, VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-
-    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
-    {
-        if (vlan_row->id == vlan_id)
-        {
-            break;
-        }
-    }
-
-    ovsrec_vlan_set_description(vlan_row, NULL);
-    status = cli_do_config_finish(status_txn);
-    if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
-    {
-        return CMD_SUCCESS;
-    }
-    else
-    {
-        VLOG_DBG("Transaction failed to remove description. Function:%s, Line:%d", __func__, __LINE__);
-        vty_out(vty, OVSDB_VLAN_REMOVE_DESCRIPTION_ERROR, VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-}
 
 DEFUN(cli_vlan_admin,
     cli_vlan_admin_cmd,
@@ -2334,8 +2245,6 @@ void vlan_vty_init(void)
 
     install_element(VLAN_NODE, &config_exit_cmd);
     install_element(VLAN_NODE, &config_end_cmd);
-    install_element(VLAN_NODE, &cli_vlan_description_cmd);
-    install_element(VLAN_NODE, &cli_no_vlan_description_cmd);
     install_element(VLAN_NODE, &cli_vlan_admin_cmd);
     install_element(VLAN_NODE, &cli_no_vlan_admin_cmd);
 
