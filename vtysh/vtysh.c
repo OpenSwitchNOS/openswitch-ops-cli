@@ -3512,50 +3512,47 @@ DEFUN(vtysh_user_add,
 
 }
 
-/* Delete the user account */
+/* Delete user account. */
 static int
 delete_user(const char *user)
 {
-    int ret,n_users;
+    struct passwd *pw;
+    int ret;
     const char *arg[3];
-    char *buf;
-    n_users = 0;
+
+    if (!strcmp(user, "root")) {
+        vty_out(vty, "Permission denied. Cannot remove the root user.%s",
+                VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    /* Avoid system users. */
+    if (!check_user_group(user, OVSDB_GROUP)) {
+        vty_out(vty, "Unknown user.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    pw = getpwuid(geteuid());
+    if (pw && !(strcmp(pw->pw_name, user))) {
+        vty_out(vty, "Permission denied. You are logged in as %s.%s", user,
+                VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    if (get_group_user_count(OVSDB_GROUP) <= 1) {
+        vty_out(vty, "Cannot delete the last user %s.%s", user, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    /* Call out to external command to delete the user. */
     arg[0] = USERDEL;
     arg[1] = "-r";
     arg[2] = CONST_CAST(char*, user);
-    buf = getlogin();
+    ret = execute_command("sudo", 3, (const char **)arg);
+    if (ret == 0)
+        vty_out(vty, "User removed successfully.%s", VTY_NEWLINE);
 
-    n_users = get_group_user_count(OVSDB_GROUP);
-    ret = check_user_group(user, OVSDB_GROUP);
-
-    /* If user is not in ovsdb_users list and if not root then it is unknown user*/
-    if ((ret == 0) && (strcmp(user, "root")))
-    {
-        vty_out(vty, "Unknown user: %s\n", user);
-        return CMD_SUCCESS;
-    }
-
-    /* Cannot delete user by himself, root and last user */
-    if (!strcmp(user, "root"))
-    {
-        vty_out(vty, "Permission denied. Cannot remove the root user.\n");
-        return CMD_SUCCESS;
-    }
-    if (n_users<=1)
-    {
-        vty_out(vty, "Cannot delete the last user %s.\n",user);
-        return CMD_SUCCESS;
-    }
-    if (!(strcmp(buf,user)))
-    {
-        vty_out(vty, "Permission denied. You are logged in as %s.\n",user);
-        return CMD_SUCCESS;
-    }
-
-    /* Delete the user*/
-    execute_command("sudo", 3, (const char **)arg);
     return CMD_SUCCESS;
-
 }
 
 DEFUN(vtysh_user_del,
