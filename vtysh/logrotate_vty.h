@@ -25,7 +25,7 @@
 
 #include "command.h"
 
-# define LOGROTATE_CMD_STR_PERIOD        "logrotate period (hourly| weekly | monthly ) "
+# define LOGROTATE_CMD_STR_PERIOD        "logrotate period (daily | hourly | weekly | monthly ) "
 # define LOGROTATE_NO_CMD_STR_PERIOD     "no logrotate period {hourly| weekly | monthly }"
 # define LOGROTATE_CMD_STR_MAXSIZE       "logrotate maxsize <1-200>"
 # define LOGROTATE_NO_CMD_STR_MAXSIZE_X  "no logrotate maxsize <1-200>"
@@ -36,13 +36,14 @@
 
 # define LOGROTATE_HELP_STR_PERIOD      "Rotates, compresses, and transfers system logs \n" \
                                         "Logrotation period \n" \
+                                        "(Default) \n" \
                                         "Rotates log files every hour \n" \
                                         "Rotates log files every week \n" \
                                         "Rotates log files every month \n"
 
 # define LOGROTATE_NO_HELP_STR_PERIOD      NO_STR \
                                            "Rotates, compresses, and transfers system logs \n" \
-                                           "Logrotation period \n" \
+                                           "Logrotation period (Default: daily)\n" \
                                            "Rotates log files every hour \n" \
                                            "Rotates log files every week \n" \
                                            "Rotates log files every month \n"
