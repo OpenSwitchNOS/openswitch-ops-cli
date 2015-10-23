@@ -1351,7 +1351,7 @@ DEFUN(bgp_maxpaths,
       bgp_maxpaths_cmd,
       "maximum-paths <1-255>",
       "Forward packets over multiple paths\n"
-      "Number of paths\n")
+      "Number of paths (Default: 1)\n")
 {
     return cli_bgp_maxpaths_cmd_execute(NULL, atoi(argv[0]));
 }
@@ -1372,7 +1372,7 @@ DEFUN(no_bgp_maxpaths,
       "no maximum-paths",
       NO_STR
       "Forward packets over multiple paths\n"
-      "Number of paths\n")
+      "Number of paths (Default: 1)\n")
 {
     return cli_bgp_maxpaths_cmd_execute(NULL, 0);
 }
@@ -1501,8 +1501,8 @@ DEFUN(bgp_timers,
       "timers bgp <0-65535> <0-65535>",
       "Adjust routing timers\n"
       "BGP timers\n"
-      "Keepalive interval\n"
-      "Holdtime\n")
+      "Keepalive interval (Default: 60 seconds)\n"
+      "Holdtime (Default: 180 seconds)\n")
 {
     return ((argc==2)
             ? cli_bgp_timers_cmd_execute(NULL, atoi(argv[0]), atoi(argv[1]))
@@ -1525,8 +1525,8 @@ ALIAS(no_bgp_timers,
       NO_STR
       "Adjust routing timers\n"
       "BGP timers\n"
-      "Keepalive interval\n"
-      "Holdtime\n")
+      "Keepalive interval (Default: 60 seconds)\n"
+      "Holdtime (Default: 180 seconds)\n")
 
 DEFUN(bgp_client_to_client_reflection,
       bgp_client_to_client_reflection_cmd,
@@ -4172,8 +4172,8 @@ DEFUN(neighbor_timers,
       NEIGHBOR_STR
       NEIGHBOR_ADDR_STR2
       "BGP per neighbor timers\n"
-      "Keepalive interval\n"
-      "Holdtime\n")
+      "Keepalive interval (Default: 60 seconds)\n"
+      "Holdtime (Default: 180 seconds)\n")
 {
     if (argc != 3) {
         vty_out(vty, "\n%%Insufficient parameters, neighbor <ipaddr>"

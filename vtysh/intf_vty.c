@@ -584,9 +584,9 @@ DEFUN_NO_FORM (cli_intf_flowcontrol,
  */
 DEFUN (cli_intf_autoneg,
         cli_intf_autoneg_cmd,
-        "autonegotiation (on|off)",
+        "autonegotiation (off|on)",
         "Configure auto-negotiation process for the interface\n"
-        "Turn on autonegotiation\nTurn off autonegotiation\n")
+        "Turn off autonegotiation (Default)\nTurn on autonegotiation\n")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
@@ -656,7 +656,7 @@ DEFUN (cli_intf_autoneg,
 DEFUN_NO_FORM (cli_intf_autoneg,
         cli_intf_autoneg_cmd,
         "autonegotiation",
-        "Configure autonegotiation process\n");
+        "Configure autonegotiation process (Default: off)\n");
 
 /*
  *  Function : port_find

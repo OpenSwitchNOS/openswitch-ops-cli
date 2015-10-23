@@ -131,7 +131,8 @@ DEFUN(cli_aaa_set_global_status,
         "aaa authentication login (radius | local)",
         AAA_STR
         "User authentication\n"
-        "Switch login\n" "Radius authentication\n" "Local authentication\n")
+        "Switch login\n" "Radius authentication\n \
+         Local authentication (Default)\n")
 {
     return aaa_set_global_status(argv[0]);
 }

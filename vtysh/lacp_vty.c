@@ -497,12 +497,17 @@ lacp_set_heartbeat_rate(const char *lag_name, const char *rate)
 
 DEFUN (cli_lacp_set_heartbeat_rate,
        lacp_set_heartbeat_rate_cmd,
-       "lacp rate fast",
+       "lacp rate (slow|fast)",
        LACP_STR
-       "Set LACP heartbeat request time. Default is slow which is once every 30 seconds\n"
-       "LACP heartbeats are requested at the rate of one per second\n")
+       "Set LACP heartbeat request time\n"
+       "Default heartbeats rate, which is once every 30 seconds\nLACP \
+        heartbeats are requested at the rate of one per second\n")
 {
-  return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_FAST);
+  if (strcmp(argv[0],PORT_OTHER_CONFIG_LACP_TIME_FAST) == 0) {
+      return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_FAST);
+  } else if (strcmp(argv[0],PORT_OTHER_CONFIG_LACP_TIME_SLOW) == 0) {
+      return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_SLOW);
+  }
 }
 DEFUN (cli_lacp_set_no_heartbeat_rate,
        lacp_set_no_heartbeat_rate_cmd,
