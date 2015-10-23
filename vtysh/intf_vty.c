@@ -53,6 +53,66 @@ extern struct ovsdb_idl *idl;
 
 #define INTF_NAME_SIZE 50
 
+/* qsort comparator function.
+ * This may need to be modified depending on the format of interface name
+ * Currently interface name format is[interface_number-split interface_number]
+ */
+static int
+compare_nodes_by_interface_in_numerical(const void *a_, const void *b_)
+{
+    const struct shash_node *const *a = a_;
+    const struct shash_node *const *b = b_;
+    uint i1=0,i2=0,i3=0,i4=0;
+
+    sscanf((*a)->name,"%d-%d",&i1,&i2);
+    sscanf((*b)->name,"%d-%d",&i3,&i4);
+
+    if(i1 == i3)
+    {
+        if(i2 == i4)
+            return 0;
+        else if(i2 < i4)
+            return -1;
+        else
+            return 1;
+    }
+    else if (i1 < i3)
+        return -1;
+    else
+        return 1;
+
+    return 0;
+}
+
+/*
+ * Sorting function for interface
+ * on success, returns sorted interface list.
+ */
+
+static const struct shash_node **
+sort_interface(const struct shash *sh)
+{
+    if (shash_is_empty(sh)) {
+        return NULL;
+    } else {
+        const struct shash_node **nodes;
+        struct shash_node *node;
+
+        size_t i, n;
+
+        n = shash_count(sh);
+        nodes = xmalloc(n * sizeof *nodes);
+        i = 0;
+        SHASH_FOR_EACH (node, sh) {
+            nodes[i++] = node;
+        }
+        ovs_assert(i == n);
+
+        qsort(nodes, n, sizeof *nodes, compare_nodes_by_interface_in_numerical);
+        return nodes;
+    }
+}
+
 /*
  * CLI "shutdown"
  * default : enabled
@@ -1145,10 +1205,9 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
         shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
     }
 
-    nodes = shash_sort(&sorted_interfaces);
-
     count = shash_count(&sorted_interfaces);
 
+    nodes = sort_interface(&sorted_interfaces);
     for (idx = 0; idx < count; idx++)
     {
         ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
@@ -1433,8 +1492,7 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
         shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
     }
 
-    nodes = shash_sort(&sorted_interfaces);
-
+    nodes = sort_interface(&sorted_interfaces);
     count = shash_count(&sorted_interfaces);
 
     for (idx = 0; idx < count; idx++)
