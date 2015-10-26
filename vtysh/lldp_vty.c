@@ -129,19 +129,19 @@ static int lldp_set_global_status(const char *status)
 
 DEFUN (cli_lldp_set_global_status,
        lldp_set_global_status_cmd,
-       "feature lldp",
-       "Enables or disables the selected feature\n"
-       CONFIG_LLDP_STR)
+       "lldp enable",
+       CONFIG_LLDP_STR
+       "Enables or disables the lldp\n")
 {
   return lldp_set_global_status("true");
 }
 
 DEFUN (cli_lldp_no_set_global_status,
        lldp_no_set_global_status_cmd,
-       "no feature lldp",
+       "no lldp enable",
         NO_STR
-       "Enables or disables the selected feature\n"
-       CONFIG_LLDP_STR)
+        CONFIG_LLDP_STR
+       "Enables or disables the lldp\n")
 {
   return lldp_set_global_status("false");
 }
