@@ -78,7 +78,7 @@ class LLDPCliTest(OpsVsiTest):
         lldp_feature_enabled = False
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
-        s1.cmdCLI('feature lldp')
+        s1.cmdCLI('lldp enable')
         out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
@@ -95,7 +95,7 @@ class LLDPCliTest(OpsVsiTest):
         lldp_feature_enabled = True
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
-        s1.cmdCLI('no feature lldp')
+        s1.cmdCLI('no lldp enable')
         out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
@@ -282,7 +282,7 @@ class LLDPCliTest(OpsVsiTest):
 ''')
         counter = 0
         s1.cmdCLI('conf t')
-        s1.cmdCLI('feature lldp')
+        s1.cmdCLI('lldp enable')
         out = s1.cmd('ovs-vsctl list interface 1')
         lines = out.split('\n')
         for line in lines:
