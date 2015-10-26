@@ -1126,7 +1126,7 @@ lacp_show_aggregates(const char *lag_name)
          else
             vty_out(vty, "%s%s%s", "Hash                  : ","l3-src-dst", VTY_NEWLINE);
 
-         aggregate_mode = smap_get(&lag_port->other_config, "lacp");
+         aggregate_mode = lag_port->lacp;
          if(aggregate_mode)
             vty_out(vty, "%s%s%s", "Aggregate mode        : ",aggregate_mode, VTY_NEWLINE);
          else
