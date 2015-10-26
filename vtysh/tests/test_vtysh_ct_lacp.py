@@ -19,6 +19,7 @@
 
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
+import re
 
 
 class LACPCliTest(OpsVsiTest):
@@ -158,7 +159,7 @@ class LACPCliTest(OpsVsiTest):
         out = s1.cmd('ovs-vsctl list port')
         lines = out.split('\n')
         for line in lines:
-            if 'lacp=active' in line:
+            if re.search('lacp * : active', line) is not None:
                 success += 1
                 break
         out = s1.cmd('ovs-vsctl list port')
