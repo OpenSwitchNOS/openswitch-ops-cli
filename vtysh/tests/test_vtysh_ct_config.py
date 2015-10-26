@@ -39,20 +39,20 @@ class ShowRunningConfigTests(OpsVsiTest):
 
     def enablelldpTest(self):
         print '''
-########## Test to verify show running-config for feature lldp ##########
+########## Test to verify show running-config for lldp enable ##########
 '''
         enable_lldp = False
         s1 = self.net.switches[0]
         out = s1.cmdCLI('configure terminal')
-        out = s1.cmdCLI('feature lldp')
+        out = s1.cmdCLI('lldp enable')
         out = s1.cmdCLI('do show running-config')
         s1.cmdCLI('exit')
         lines = out.split('\n')
         for line in lines:
-            if 'feature lldp' in line:
+            if 'lldp enable' in line:
                 enable_lldp = True
         assert enable_lldp is True, \
-            'Test to verify show running-config for feature lldp - FAILED!'
+            'Test to verify show running-config for lldp enable - FAILED!'
         return True
 
     def setlldpholdtimeTest(self):
@@ -225,7 +225,7 @@ class Test_showrunningconfig:
     def test_enable_lldp_commands(self):
         if self.test.enablelldpTest():
             print '########## Test to verify show running-config ' \
-                  'for feature lldp - SUCCESS! ##########'
+                  'for lldp enable - SUCCESS! ##########'
 
     def test_set_lldpholdtime_commands(self):
         if self.test.setlldpholdtimeTest():
