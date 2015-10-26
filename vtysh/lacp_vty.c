@@ -195,10 +195,8 @@ lacp_set_mode(const char *lag_name, const char *mode_to_set, const char *present
 {
   const struct ovsrec_port *port_row = NULL;
   bool port_found = false;
-  struct smap smap = SMAP_INITIALIZER(&smap);
   struct ovsdb_idl_txn* txn = NULL;
   enum ovsdb_idl_txn_status status;
-  const char *mode_in_db = NULL;
 
   txn = cli_do_config_start();
   if(txn == NULL)
@@ -226,29 +224,25 @@ lacp_set_mode(const char *lag_name, const char *mode_to_set, const char *present
     return CMD_OVSDB_FAILURE;
   }
 
-  smap_clone(&smap, &port_row->other_config);
-
-  if(strcmp("off", mode_to_set) == 0)
+  if (strcmp(OVSREC_PORT_LACP_OFF, mode_to_set) == 0)
   {
-    mode_in_db = smap_get(&smap, "lacp");
-    if(strcmp(present_mode, mode_in_db) == 0)
+    if (port_row->lacp && strcmp(port_row->lacp, present_mode) == 0)
     {
-       smap_remove(&smap, "lacp");
+      ovsrec_port_set_lacp(port_row, OVSREC_PORT_LACP_OFF);
     }
     else
     {
-       vty_out(vty, "Enter the configured LACP mode.\n");
-       cli_do_config_abort(txn);
-       return CMD_SUCCESS;
+      vty_out(vty, "Enter the configured LACP mode.\n");
+      cli_do_config_abort(txn);
+      return CMD_SUCCESS;
     }
   }
-  else
+  else if (strcmp(OVSREC_PORT_LACP_ACTIVE, mode_to_set) == 0 ||
+           strcmp(OVSREC_PORT_LACP_PASSIVE, mode_to_set) == 0)
   {
-    smap_replace(&smap, "lacp", mode_to_set);
+    ovsrec_port_set_lacp(port_row, mode_to_set);
   }
 
-  ovsrec_port_set_other_config(port_row, &smap);
-  smap_destroy(&smap);
   status = cli_do_config_finish(txn);
   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
   {
@@ -922,7 +916,6 @@ exit_loop:
    }
    interfaces[lag_port->n_interfaces] = (struct ovsrec_interface *)interface_row;
    ovsrec_port_set_interfaces(lag_port, interfaces, lag_port->n_interfaces + 1);
-   ovsrec_port_set_lacp(lag_port, "active");
    free(interfaces);
 
    status = cli_do_config_finish(status_txn);
@@ -1133,7 +1126,7 @@ lacp_show_aggregates(const char *lag_name)
          else
             vty_out(vty, "%s%s%s", "Hash                  : ","l3-src-dst", VTY_NEWLINE);
 
-         aggregate_mode = smap_get(&lag_port->other_config, "lacp");
+         aggregate_mode = lag_port->lacp;
          if(aggregate_mode)
             vty_out(vty, "%s%s%s", "Aggregate mode        : ",aggregate_mode, VTY_NEWLINE);
          else
