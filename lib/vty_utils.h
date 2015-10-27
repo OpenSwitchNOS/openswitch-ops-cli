@@ -42,7 +42,7 @@ extern pthread_mutex_t vtysh_ovsdb_mutex;
                 pthread_mutex_unlock(&vtysh_ovsdb_mutex); \
 }
 
-vector utils_cmd_parse_format(const char* string, const char* desc);
+vector utils_cmd_parse_format(const char* string, const char* desc, const char *dyn_cb);
 
 void utils_format_parser_read_word(struct format_parser_state *state);
 
