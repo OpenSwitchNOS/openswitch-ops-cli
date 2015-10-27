@@ -58,7 +58,8 @@ void mgmt_intf_vty_init (void );
 #define OVSDB_NO_IP_ERROR             \
 "IP should be configured first."
 #define OVSDB_REMOVE_IPV4_STATIC_CONF  \
-"Remove all IPv4 static configurations."
+"Remove all IPv4 related info (Default gateway/DNS address)" \
+" before remove IP address from this interface."
 #define OVSDB_REMOVE_IPV6_STATIC_CONF  \
 "Remove all IPv6 static configurations."
 
