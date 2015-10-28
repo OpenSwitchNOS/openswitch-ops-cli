@@ -50,11 +50,10 @@
 
 struct vtysh_alias_data {
    char alias_def_str[VTYSH_MAX_ALIAS_DEF_LEN];
-   char alias_list_str[VTYSH_MAX_ALIAS_LIST_LEN];
    struct cmd_element alias_cmd_element;
    char alias_def_str_with_args[VTYSH_MAX_ALIAS_DEF_LEN_WITH_ARGS];
    struct cmd_element alias_cmd_element_with_args;
-
+   int  refresh_count;
 };
 
 #define VTYSH_ALIAS_CMD_HELPSTRING            "Execute \"show aliases\" to list the command list\nArguments to replace $1, $2 etc.\n"

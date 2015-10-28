@@ -3562,6 +3562,17 @@ DEFUN (vtysh_demo_mac_tok,
 
 #ifdef ENABLE_OVSDB
 
+
+void
+vtysh_periodic_refresh(void)
+{
+  /* This function is called before all command exection.
+     Keep it light for execution */
+
+  vty_refresh_aliases();
+  return;
+}
+
 int vtysh_alias_count = 0;
 struct vtysh_alias_data *vtysh_aliases[VTYSH_MAX_ALIAS_SUPPORTED] = {NULL};
 char vtysh_alias_cmd_help_string[] = VTYSH_ALIAS_CMD_HELPSTRING;
@@ -3574,14 +3585,37 @@ char vtysh_alias_cmd_help_string[] = VTYSH_ALIAS_CMD_HELPSTRING;
   * Return         : success/failure
  */
 int
-vty_alias_load_alias_table(void)
+vty_refresh_aliases(void)
 {
     const struct ovsrec_cli_alias *alias_row = NULL;
+    int i = 0;
+    bool alias_exist = false;
+    static int refresh_count = 0;
 
-    vtysh_alias_count = 0;
+    refresh_count = (refresh_count + 1) % 100;
 
     OVSREC_CLI_ALIAS_FOR_EACH(alias_row, idl)
     {
+        alias_exist = false;
+        for (i = 0; i < vtysh_alias_count; i++)
+        {
+            if (vtysh_aliases[i]->refresh_count == refresh_count)
+            {
+                continue;
+            }
+            if (strcmp(vtysh_aliases[i]->alias_def_str,
+                    alias_row->alias_name) == 0)
+            {
+                vtysh_aliases[i]->refresh_count = refresh_count;
+                alias_exist = true;
+                break;
+            }
+        }
+        if (true == alias_exist)
+        {
+            continue;
+        }
+
         vtysh_aliases[vtysh_alias_count] =
             (struct vtysh_alias_data*) malloc(sizeof(struct vtysh_alias_data));
         memset(vtysh_aliases[vtysh_alias_count], 0,
@@ -3589,8 +3623,6 @@ vty_alias_load_alias_table(void)
 
         strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str,
                 alias_row->alias_name, VTYSH_MAX_ALIAS_DEF_LEN);
-        strncpy(vtysh_aliases[vtysh_alias_count]->alias_list_str,
-                alias_row->alias_definition, VTYSH_MAX_ALIAS_LIST_LEN);
 
         strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args,
                 vtysh_aliases[vtysh_alias_count]->alias_def_str,
@@ -3605,7 +3637,8 @@ vty_alias_load_alias_table(void)
             vtysh_alias_callback;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc    =
             vtysh_alias_cmd_help_string;
-        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr   = CMD_ATTR_NOLOCK;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr   =
+            CMD_ATTR_NOLOCK;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element.daemon = 0;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string =
             vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
@@ -3613,7 +3646,8 @@ vty_alias_load_alias_table(void)
             vtysh_alias_callback;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
             vtysh_alias_cmd_help_string;
-        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr =
+            CMD_ATTR_NOLOCK;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
         /* install the new commands with alias definition as token */
@@ -3621,8 +3655,33 @@ vty_alias_load_alias_table(void)
                &vtysh_aliases[vtysh_alias_count]->alias_cmd_element);
         install_element(CONFIG_NODE,
                &vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args);
+        vtysh_aliases[vtysh_alias_count]->refresh_count = refresh_count;
         vtysh_alias_count++;
     }
+
+    for (i = 0; i < vtysh_alias_count; i++)
+    {
+        if (vtysh_aliases[i]->refresh_count != refresh_count)
+        {
+            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_HIDDEN;
+            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_NOT_ENABLED;
+            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_DISABLED;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_HIDDEN;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_NOT_ENABLED;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_DISABLED;
+            //TODO :
+            /* free cannot be done as cmd element is still referred by vector
+               */
+            //free(vtysh_aliases[i]);
+            vtysh_aliases[i] = vtysh_aliases[vtysh_alias_count-1];
+            vtysh_aliases[vtysh_alias_count-1] = NULL;
+            vtysh_alias_count--;
+        }
+    }
+
 
     return CMD_SUCCESS;
 }
@@ -3713,6 +3772,7 @@ DEFUN (vtysh_alias_cli,
       "Extra arguments are appended at the end. (Max length 400 characters)\n")
 {
    int i = 0, ret_val = 0;
+   char alias_list_str[VTYSH_MAX_ALIAS_LIST_LEN] = {0};
 
    if (argc == 0) return CMD_WARNING;
 
@@ -3809,16 +3869,15 @@ DEFUN (vtysh_alias_cli,
    {
       /* Read each args, and append to the command string */
       if(VTYSH_MAX_ALIAS_LIST_LEN <=
-              strlen(vtysh_aliases[vtysh_alias_count]->alias_list_str) +
-              strlen(argv[i]) + 2)
+              strlen(alias_list_str) + strlen(argv[i]) + 2)
       {
          free(vtysh_aliases[vtysh_alias_count]);
          vtysh_aliases[vtysh_alias_count] = NULL;
          vty_out(vty, VTYSH_ERROR_MAX_ALIAS_LEN_EXCEEDED);
          return CMD_SUCCESS;
       }
-      strcat(vtysh_aliases[vtysh_alias_count]->alias_list_str, argv[i]);
-      strcat(vtysh_aliases[vtysh_alias_count]->alias_list_str, " ");
+      strcat(alias_list_str, argv[i]);
+      strcat(alias_list_str, " ");
    }
 
    /* Prepare the command element and install the command in config node */
@@ -3836,11 +3895,12 @@ DEFUN (vtysh_alias_cli,
        vtysh_alias_callback;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
        vtysh_alias_cmd_help_string;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr =
+       CMD_ATTR_NOLOCK;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
    vtysh_alias_save_alias(vtysh_aliases[vtysh_alias_count]->alias_def_str,
-         vtysh_aliases[vtysh_alias_count]->alias_list_str);
+                           alias_list_str);
 
    /* install the new commands with alias definition as token */
    install_element(CONFIG_NODE,
@@ -3907,6 +3967,7 @@ vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
    int arg_count = 0, max_arg_count = 0;
    char current_cmd[VTYSH_MAX_ALIAS_LIST_LEN] = {0};
    char *prev_buf = vty->buf;
+   const struct ovsrec_cli_alias *alias_row = NULL;
 
    for(len = 0; len <= vty->length && vty->buf[len] != ' '; len++)
    {
@@ -3914,17 +3975,11 @@ vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
    }
    cmd_now[len] = '\0';
 
-   for (i = 0; i < vtysh_alias_count; i++)
+   OVSREC_CLI_ALIAS_FOR_EACH (alias_row, idl)
    {
-      if(NULL == vtysh_aliases[i])
+      if(strcmp(alias_row->alias_name, cmd_now) == 0)
       {
-         assert(0);
-         /* Data integrity failure */
-      }
-      if(strncmp(vtysh_aliases[i]->alias_def_str, cmd_now,
-              strlen(cmd_now)) == 0)
-      {
-         found_cmd = vtysh_aliases[i]->alias_list_str;
+         found_cmd = alias_row->alias_definition;
          break;
       }
    }
@@ -4034,25 +4089,18 @@ DEFUN (vtysh_show_alias_cli,
       SHOW_STR
       "Short names configured for a set of commands\n")
 {
-   int i = 0;
+   const struct ovsrec_cli_alias *alias_row = NULL;
 
    vty_out(vty, " %-30s %s %s", "Alias Name", "Alias Definition", VTY_NEWLINE);
    vty_out(vty, " ----------------------------------------"
            "---------------------------------------%s", VTY_NEWLINE);
 
-   for (i = 0; i < vtysh_alias_count; i++)
+   OVSREC_CLI_ALIAS_FOR_EACH (alias_row, idl)
    {
-      if(NULL == vtysh_aliases[i])
-      {
-         assert(0);
-         /* Data integrity failure */
-      }
-
-      {
-         vty_out(vty, " %-30s %s %s", vtysh_aliases[i]->alias_def_str,
-               vtysh_aliases[i]->alias_list_str, VTY_NEWLINE);
-      }
+      vty_out(vty, " %-30s %s %s", alias_row->alias_name,
+         alias_row->alias_definition, VTY_NEWLINE);
    }
+
    return CMD_SUCCESS;
 }
 
@@ -4070,7 +4118,7 @@ alias_vty_init()
    install_element(CONFIG_NODE, &no_vtysh_alias_cli_cmd);
    install_element(ENABLE_NODE, &vtysh_show_alias_cli_cmd);
 
-   vty_alias_load_alias_table();
+   vtysh_alias_count = 0;
 }
 
 int is_valid_ip_address(const char *ip_value)

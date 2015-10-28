@@ -873,6 +873,8 @@ vtysh_ovsdb_main_thread(void *arg)
            DB to monitor using poll_fd_wait. */
         vtysh_wait();
 
+        vtysh_periodic_refresh();
+
         VTYSH_OVSDB_UNLOCK;
         if (vtysh_exit) {
             poll_immediate_wake();
