@@ -564,6 +564,32 @@ class VLANCliTest(OpsVsiTest):
         assert success == 2, 'Test to check VLAN commands - FAILED!'
         return True
 
+    def display_vlan_id_in_numerical_order(self):
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('vlan 10')
+        s1.cmdCLI('vlan 1')
+        s1.cmdCLI('vlan 9')
+        s1.cmdCLI('vlan 15')
+        s1.cmdCLI('vlan 7')
+        out = s1.cmdCLI('do show vlan')
+        list_interface = out.split("\n")
+        result_sortted = []
+        result_orig = []
+        for x in list_interface:
+            test = re.match('\d+\s+vlan\d+\s+[down|up]', x)
+            if test:
+                test_number = test.group(0)
+                number = re.match('\d+', test_number).group(0)
+                result_orig.append(int(number))
+                result_sortted.append(int(number))
+
+        result_sortted.sort()
+
+        assert result_orig == result_sortted, 'Test to \
+                  display vlan-id in numerical order -FAILED'
+        return True
+
 
 class Test_vlan_cli:
 
@@ -647,6 +673,12 @@ class Test_vlan_cli:
             info('''
 ########## Test to add trunk native tag vlan to LAG - SUCCESS! ##########
 ''')
+
+    def test_display_vlan_id_in_numerical_order(self):
+        if self.test.display_vlan_id_in_numerical_order():
+            info('''
+########## Test to verify that vlan id is displaying in numerical order \
+- SUCCESS! ##########\n''')
 
     def teardown_class(cls):
         Test_vlan_cli.test.net.stop()
