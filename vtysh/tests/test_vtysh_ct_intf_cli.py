@@ -88,6 +88,42 @@ class InterfaceCommandsTests(OpsVsiTest):
         out = s1.cmdCLI('end')
         return True
 
+    def dynHelpStr_intfSpeedTest(self):
+        print '''
+########## Test to verify dynamic helpstr for interface speed cli  ##########
+'''
+
+        s1 = self.net.switches[0]
+        s1.ovscmd('ovs-vsctl set interface 1 hw_intf_info:speeds="1000"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('speed ?')
+        assert '1000   Gb/s supported' in out and \
+            '10000  Gb/s not supported' in out and \
+            '40000  Gb/s not supported' in out, \
+            'Test to verify dyn helpstr for int speeds=1000 - FAILED!'
+        out = s1.cmdCLI('end')
+
+        s1.ovscmd('ovs-vsctl set interface 1 hw_intf_info:speeds="1000,10000"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('speed ?')
+        assert '1000   Gb/s supported' in out and \
+            '10000  Gb/s supported' in out and \
+            '40000  Gb/s not supported' in out, \
+            'Test to verify dyn helpstr for int speeds="1000,10000" - FAILED!'
+        out = s1.cmdCLI('end')
+
+        s1.ovscmd('ovs-vsctl set interface 1 hw_intf_info:speeds="40000"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('speed ?')
+        assert '1000   Gb/s not supported' in out and \
+            '10000  Gb/s not supported' in out and \
+            '40000  Gb/s supported' in out, \
+            'Test to verify dynamic helpstr for interface speed cli - FAILED!'
+        out = s1.cmdCLI('end')
+        return True
 
 class Test_interfaceCommands:
 
@@ -104,6 +140,12 @@ class Test_interfaceCommands:
         if self.test.interfaceConfigCliTest():
             print '''
 ########## Test to verify interface configuration clis - SUCCESS! ##########
+'''
+
+    def test_dynHelpStr_intfSpeed(self):
+        if self.test.dynHelpStr_intfSpeedTest():
+            print '''
+########## Test to verify dyn helpstr for int speed cli - SUCCESS! ##########
 '''
 
     def teardown_class(cls):

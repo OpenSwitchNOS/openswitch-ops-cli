@@ -42,6 +42,7 @@ VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
 
 #define MAX_CMD_LEN 256
+#define MAX_DYN_HELPSTR_LEN 256
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec = NULL;
@@ -111,6 +112,23 @@ static struct cmd_node config_node =
   CONFIG_NODE,
   "%s(config)# ",
   1
+};
+
+extern void dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
+                                 char * const dyn_helpstr_ptr, int max_strlen);
+
+struct dyn_cb_func
+{
+  char * funcname;
+  void (*funcptr)(struct cmd_token *token, struct vty *vty, \
+                  char * const dyn_helpstr_ptr, int max_strlen);
+};
+/* callback func lookup table for dynamic helpstr */
+struct dyn_cb_func dyn_cb_lookup[] =
+{
+  {"dyncb_helpstr_1G", dyncb_helpstr_speeds},
+  {"dyncb_helpstr_10G", dyncb_helpstr_speeds},
+  {"dyncb_helpstr_40G", dyncb_helpstr_speeds},
 };
 
 /* Default motd string. */
@@ -314,6 +332,8 @@ struct format_parser_state
                      parsing */
   const char *dp;  /* pointer in description string, moved along while
                      parsing */
+  const char *dyn_cbp;  /* pointer in dynamic callback string, moved
+                           along while parsing */
 
   int in_keyword; /* flag to remember if we are in a keyword group */
   int in_multiple; /* flag to remember if we are in a multiple group */
@@ -365,6 +385,48 @@ format_parser_desc_str(struct format_parser_state *state)
   *(token + strlen) = '\0';
 
   state->dp = cp;
+
+  return token;
+}
+
+char *
+format_parser_dyn_cb_str(struct format_parser_state *state)
+{
+  const char *cp, *start;
+  char *token;
+  int strlen;
+
+  cp = state->dyn_cbp;
+
+  if (cp == NULL)
+    return NULL;
+
+  /* Skip white spaces. */
+  while (*cp == ' ' && *cp != '\0')
+    cp++;
+
+  /* Return if there is only white spaces */
+  if (*cp == '\0')
+    return NULL;
+
+  start = cp;
+  while (!(*cp == '\r' || *cp == '\n') && *cp != '\0')
+    cp++;
+
+  strlen = cp - start;
+  if (strlen > 0)
+  {
+    token = XMALLOC (MTYPE_CMD_TOKENS, strlen + 1);
+    memcpy (token, start, strlen);
+    *(token + strlen) = '\0';
+  }
+  else
+    token = NULL;
+
+  if (*cp == '\n')
+    cp++;
+
+  state->dyn_cbp = cp;
 
   return token;
 }
@@ -499,7 +561,7 @@ void
 format_parser_read_word(struct format_parser_state *state)
 {
   const char *start;
-  int len;
+  int len, i;
   char *cmd;
   struct cmd_token *token;
 
@@ -519,6 +581,21 @@ format_parser_read_word(struct format_parser_state *state)
   token->type = TOKEN_TERMINAL;
   token->cmd = cmd;
   token->desc = format_parser_desc_str(state);
+
+  if ((state->dyn_cbp != NULL) && (token->dyn_cb == NULL))
+  {
+    token->dyn_cb = format_parser_dyn_cb_str(state);
+
+    if (token->dyn_cb != NULL)
+    {
+      for (i = 0; i < (sizeof(dyn_cb_lookup)/sizeof(dyn_cb_lookup[0])); i++)
+      {
+        if(!strcmp(dyn_cb_lookup[i].funcname, token->dyn_cb))
+          token->dyn_cb_func = dyn_cb_lookup[i].funcptr;
+      }
+    }
+  }
+
   vector_set(state->curvect, token);
 
   if (state->in_keyword == 1)
@@ -533,11 +610,12 @@ format_parser_read_word(struct format_parser_state *state)
  *
  * @param string Command format string.
  * @param descstr Description string.
+ * @param dyn_cb_str Dynamic helpstr callback functions string
  * @return A vector of struct cmd_token representing the given command,
  *         or NULL on error.
  */
 vector
-cmd_parse_format(const char *string, const char *descstr)
+cmd_parse_format(const char *string, const char *descstr, const char *dyn_cb_str)
 {
   struct format_parser_state state;
 
@@ -548,6 +626,7 @@ cmd_parse_format(const char *string, const char *descstr)
   state.topvect = state.curvect = vector_init(VECTOR_MIN_SIZE);
   state.cp = state.string = string;
   state.dp = descstr;
+  state.dyn_cbp = dyn_cb_str;
 
   while (1)
     {
@@ -618,9 +697,9 @@ install_element (enum node_type ntype, struct cmd_element *cmd)
   vector_set (cnode->cmd_vector, cmd);
   if (cmd->tokens == NULL)
 #ifndef ENABLE_OVSDB
-    cmd->tokens = cmd_parse_format(cmd->string, cmd->doc);
+    cmd->tokens = cmd_parse_format(cmd->string, cmd->doc, cmd->dyn_cb_str);
 #else
-    cmd->tokens = utils_cmd_parse_format(cmd->string, cmd->doc);
+    cmd->tokens = utils_cmd_parse_format(cmd->string, cmd->doc, cmd->dyn_cb_str);
 #endif
 }
 
@@ -2434,9 +2513,25 @@ cmd_describe_command_real (vector vline, struct vty *vty, int *status)
           for (j = 0; j < vector_active(match_vector); j++)
             {
               struct cmd_token *token = vector_slot(match_vector, j);
-              const char *string;
+              const char *string = NULL;
+              char * const dyn_helpstr = (char *const) \
+                                    malloc(MAX_DYN_HELPSTR_LEN * sizeof(char));
+              int len = 0;
 
               string = cmd_entry_function_desc(command, token->cmd);
+
+              if (token->dyn_cb != NULL)
+              {
+                token->dyn_cb_func(token, vty, dyn_helpstr, MAX_DYN_HELPSTR_LEN);
+                len = strlen(dyn_helpstr);
+                if (len > 0)
+                {
+                  token->desc = XREALLOC(MTYPE_CMD_TOKENS, token->desc, len + 1);
+                  memcpy (token->desc, dyn_helpstr, len);
+                  *(token->desc + len) = '\0';
+                }
+              }
+
               if (string && desc_unique_string(matchvec, string))
                 vector_set(matchvec, token);
 #ifndef NDEBUG
@@ -2444,6 +2539,7 @@ cmd_describe_command_real (vector vline, struct vty *vty, int *status)
                 /* Check if there is a conflict among the helpstrings */
                 check_unique_helpstr(matchvec, token->cmd, token->desc);
 #endif
+              free(dyn_helpstr);
             }
       }
   vector_free (cmd_vector);
@@ -4589,6 +4685,7 @@ cmd_terminate_token(struct cmd_token *token)
 
   XFREE(MTYPE_CMD_TOKENS, token->cmd);
   XFREE(MTYPE_CMD_TOKENS, token->desc);
+  XFREE(MTYPE_CMD_TOKENS, token->dyn_cb);
 
   XFREE(MTYPE_CMD_TOKENS, token);
 }
