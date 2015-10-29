@@ -35,9 +35,9 @@ pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*
  * This command converts command string into a vector of cmd_tokens
  */
-vector utils_cmd_parse_format(const char* string, const char* descstr)
+vector utils_cmd_parse_format(const char* string, const char* descstr, const char *dyn_cb)
 {
-  vector temp = cmd_parse_format(string, descstr);
+  vector temp = cmd_parse_format(string, descstr, dyn_cb);
   return temp;
 }
 

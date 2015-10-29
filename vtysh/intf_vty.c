@@ -144,17 +144,62 @@ DEFUN_NO_FORM (cli_intf_shutdown,
         "Enable/disable an interface\n");
 
 
+char *
+dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty)
+{
+    const struct ovsrec_interface * row = NULL;
+    const char *speeds_list = NULL;
+    char * str;
+    char * tmp;
+    row = ovsrec_interface_first(idl);
+    if (!row)
+    {
+        vty_out(vty, "OVSDB failure\n");
+        return NULL;
+    }
+
+    OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+        if(strcmp(row->name, vty->index) != 0)
+            continue;
+
+        speeds_list = smap_get(&row->hw_intf_info, "speeds");
+        if (speeds_list != NULL)
+        {
+            char * cur_state = calloc(strlen(speeds_list) + 1, sizeof(char));
+            strcpy(cur_state, speeds_list);
+            tmp = strtok(cur_state, ",");
+            while (tmp != NULL)
+            {
+                if (strcmp(tmp, token->cmd) == 0)
+                {
+                    str = "Gb/s supported";
+                    free(cur_state);
+                    return str;
+                }
+                tmp = strtok(NULL, ",");
+            }
+            str = "Gb/s not supported";
+            free(cur_state);
+        }
+        else
+            str = "Gb/s not configured";
+    }
+    return str;
+}
+
 /*
  * CLI "speed"
  * default : auto
  * Maximum speed is consitent with maximum speed mentioned in ports.yaml.
  */
-DEFUN (cli_intf_speed,
+DEFUN_DYN_HELPSTR (cli_intf_speed,
       cli_intf_speed_cmd,
       "speed (auto|1000|10000|40000)",
       "Configure the interface speed\n"
       "Auto negotiate speed (Default)\n"
-      "1Gb/s\n10Gb/s\n40Gb/s")
+      "1Gb/s\n10Gb/s\n40Gb/s",
+      "\n\ndyncb_helpstr_1G\ndyncb_helpstr_10G\ndyncb_helpstr_40G")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();
