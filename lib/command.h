@@ -139,6 +139,7 @@ enum node_type
 #ifdef ENABLE_OVSDB
   DHCP_SERVER_NODE,             /* DHCP server node */
   TFTP_SERVER_NODE,             /* TFTP server node */
+  ACCESS_LIST_NODE,             /* Access Control List node */
   VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/

@@ -1332,6 +1332,7 @@ vtysh_exit (struct vty *vty)
     case QOS_SCHEDULE_PROFILE_NODE:
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
+    case ACCESS_LIST_NODE:
 #endif
     case ZEBRA_NODE:
     case BGP_NODE:
