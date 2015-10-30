@@ -1018,5 +1018,14 @@ vtysh_init_config_context_clients()
     return retval;
   }
 
+  retval = vtysh_init_access_list_context_clients();
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "access-list context unable to add client callbacks");
+    assert(0);
+    return retval;
+  }
+
   return e_vtysh_ok;
 }

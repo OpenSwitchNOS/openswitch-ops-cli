@@ -3592,6 +3592,7 @@ DEFUN (config_exit,
     case VLAN_INTERFACE_NODE:
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
+    case ACCESS_LIST_NODE:
 #endif
     case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
@@ -3655,6 +3656,7 @@ DEFUN (config_end,
     case VLAN_INTERFACE_NODE:
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
+    case ACCESS_LIST_NODE:
 #endif
     case ZEBRA_NODE:
     case RIP_NODE:

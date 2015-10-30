@@ -58,6 +58,7 @@ add_executable(vtysh
   ecmp_vty.c ping_vty.c
   ping_handler.c sftp_vty.c
   ospf_vty.c
+  access_list_vty.c
   vtysh_ovsdb_sftp_context.c
   utils/vlan_vtysh_utils.c
   utils/intf_vtysh_utils.c

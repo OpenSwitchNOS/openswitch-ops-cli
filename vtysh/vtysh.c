@@ -67,6 +67,7 @@
 #include "source_interface_selection_vty.h"
 #include "ping.h"
 #include "traceroute.h"
+#include "access_list_vty.h"
 
 void ospf_vty_init(void);
 #endif
@@ -1287,6 +1288,7 @@ vtysh_exit (struct vty *vty)
     case LINK_AGGREGATION_NODE:
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
+    case ACCESS_LIST_NODE:
 #endif
     case ZEBRA_NODE:
     case BGP_NODE:
@@ -4158,6 +4160,7 @@ vtysh_init_vty (void)
   system_vty_init();
   alias_vty_init();
   logrotate_vty_init();
+  access_list_vty_init();
 
   /* Initialize source interface selection CLI*/
   source_interface_selection_vty_init();

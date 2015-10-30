@@ -67,6 +67,9 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_staticroute,
   e_vtysh_config_context_ecmp,
   e_vtysh_config_context_ntp,
+  e_vtysh_config_context_access_list,
+  e_vtysh_config_context_port_access_list,
+  e_vtysh_config_context_vlan_access_list,
   e_vtysh_config_context_client_id_max
 } vtysh_config_context_clientid;
 
