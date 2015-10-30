@@ -383,7 +383,7 @@ show_routes (struct vty *vty, char * ip_addr_family)
   int flag = 0;
   int disp_flag = 1;
   char str[50];
-  int i;
+  int i, active_route_next_hops;
 
   OVSREC_ROUTE_FOR_EACH (row_route, idl)
     {
@@ -391,6 +391,9 @@ show_routes (struct vty *vty, char * ip_addr_family)
         continue;
 
       if (row_route->selected == NULL || row_route->selected[0] == false)
+        continue;
+
+      if (!(row_route->prefix))
         continue;
 
       if (disp_flag == 1)
@@ -412,16 +415,20 @@ show_routes (struct vty *vty, char * ip_addr_family)
           disp_flag = 0;
         }
 
-      if (row_route->prefix)
-        {
-          memset (str, 0, sizeof(str));
-          snprintf (str, sizeof(str), "%s", row_route->prefix);
-          vty_out (vty, "%s", str);
-        }
+      memset (str, 0, sizeof(str));
+      snprintf (str, sizeof(str), "%s", row_route->prefix);
+      vty_out (vty, "%s", str);
 
       if (row_route->n_nexthops)
         {
-          vty_out (vty, ",  %zd %s next-hops %s", row_route->n_nexthops,
+          active_route_next_hops = 0;
+          for (i = 0; i < row_route->n_nexthops; i++)
+            {
+              if (row_route->nexthops[i]->selected == NULL ||
+                  row_route->nexthops[i]->selected[0] == true)
+                active_route_next_hops++;
+            }
+          vty_out (vty, ",  %zd %s next-hops %s", active_route_next_hops,
                    row_route->sub_address_family, VTY_NEWLINE);
         }
 
