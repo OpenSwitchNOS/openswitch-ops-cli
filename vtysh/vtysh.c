@@ -1278,9 +1278,9 @@ DEFUNSH (VTYSH_ALL,
 DEFUNSH (VTYSH_ALL,
       vtysh_config_terminal,
       vtysh_config_terminal_cmd,
-      "configure terminal",
+      "configure { terminal }",
       "Configuration from vty interface\n"
-      "Configuration terminal\n")
+      "Configuration terminal (default)\n")
 {
    vty->node = CONFIG_NODE;
    return CMD_SUCCESS;
