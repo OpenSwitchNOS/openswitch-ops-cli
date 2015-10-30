@@ -57,6 +57,7 @@ typedef enum vtysh_context_idenum
   e_vtysh_qos_trust_global_context,
   e_vtysh_qos_cos_map_context,
   e_vtysh_qos_dscp_map_context,
+  e_vtysh_access_list_context,
 } vtysh_contextid;
 
 /* Config Context Client ID type */
@@ -73,6 +74,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_mstp,
   e_vtysh_config_context_syslog,
   e_vtysh_config_context_snmp,
+  e_vtysh_config_context_access_list,
 } vtysh_config_context_clientid;
 
 /* Router Context Client ID type */
@@ -98,8 +100,19 @@ typedef enum vtysh_interface_context_client_idenum
   e_vtysh_interface_context_vrf,
   e_vtysh_interface_context_mstp,
   e_vtysh_interface_context_ospf,
+  e_vtysh_interface_context_access_list,
   e_vtysh_intf_context_client_id_max
 } vtysh_interface_context_clientid;
+
+/* Vlan Context client-id type */
+typedef enum vtysh_vlan_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_vlan_context_client_id_first = 0,
+  e_vtysh_vlan_context_config,
+  e_vtysh_vlan_context_access_list,
+  e_vtysh_vlan_context_client_id_max
+} vtysh_vlan_context_clientid;
 
 /* Dependent Config Client ID type */
 typedef enum vtysh_dependent_config_client_idenum
