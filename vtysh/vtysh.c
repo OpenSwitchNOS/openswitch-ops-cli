@@ -1283,6 +1283,12 @@ DEFUNSH (VTYSH_ALL,
    return CMD_SUCCESS;
 }
 
+ALIAS_SH (VTYSH_ALL,
+      vtysh_config_terminal,
+      vtysh_config_cmd,
+      "configure",
+      "Configuration from vty interface\n")
+
 static int
 vtysh_exit (struct vty *vty)
 {
@@ -4434,6 +4440,7 @@ vtysh_init_vty (void)
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
    install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
+   install_element (ENABLE_NODE, &vtysh_config_cmd);
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
