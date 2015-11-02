@@ -1,19 +1,22 @@
 /*
- Copyright (C) 2015 Hewlett Packard Enterprise Development LP
- All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License"); you may
- not use this file except in compliance with the License. You may obtain
- a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- License for the specific language governing permissions and limitations
- under the License.
-*/
+ * Copyright (C) 1997 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ *
+ * GNU Zebra is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2, or (at your option) any
+ * later version.
+ *
+ * GNU Zebra is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Zebra; see the file COPYING.  If not, write to the Free
+ * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ */
 /************************************************************************//**
  * @ingroup quagga
  *
@@ -23,8 +26,9 @@
  ***************************************************************************/
 
 #include "openvswitch/vlog.h"
+#include <vector.h>
 #include "vswitch-idl.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_if.h"
 #include "lib/vty.h"
@@ -32,7 +36,8 @@
 #include "vtysh_ovsdb_intf_context.h"
 #include "vtysh_ovsdb_vlan_context.h"
 #include "vtysh_ovsdb_router_context.h"
-
+#include "vtysh_ovsdb_intf_lag_context.h"
+#include "vtysh_ovsdb_mgmt_intf_context.h"
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
@@ -40,12 +45,14 @@ VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 extern struct ovsdb_idl *idl;
 
 /* vtysh context client list defintions */
-vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {NULL};
-vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {NULL};
+vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_interface_lag_context_client_list[e_vtysh_interface_lag_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_dhcp_tftp_context_client_list[e_vtysh_dhcp_tftp_context_client_id_max] = {{NULL}};
 
 /* static array of vtysh context lists
    context traversal order as shown below.
@@ -55,10 +62,12 @@ vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
 {
   { "Config Context",     e_vtysh_config_context,    &vtysh_config_context_client_list},
   { "Router Context",     e_vtysh_router_context,    &vtysh_router_context_client_list},
+  { "Vlan Context",       e_vtysh_vlan_context,      &vtysh_vlan_context_client_list},
   { "Interface Context",  e_vtysh_interface_context, &vtysh_interface_context_client_list},
   { "Mgmt Interface Context",  e_vtysh_mgmt_interface_context, &vtysh_mgmt_interface_context_client_list},
-  { "Vlan Context",       e_vtysh_vlan_context,      &vtysh_vlan_context_client_list},
+  { "Interface LAG Context",  e_vtysh_interface_lag_context, &vtysh_interface_lag_context_client_list},
   { "Dependent Config",   e_vtysh_dependent_config,  &vtysh_dependent_config_client_list},
+  { "dhcp tftp Config",   e_vtysh_dhcp_tftp_context,  &vtysh_dhcp_tftp_context_client_list},
 };
 
 /*-----------------------------------------------------------------------------
@@ -86,17 +95,23 @@ vtysh_context_get_maxclientid(vtysh_contextid contextid)
     case e_vtysh_router_context:
          ret_val = e_vtysh_router_context_client_id_max;
          break;
+    case e_vtysh_vlan_context:
+         ret_val = e_vtysh_vlan_context_client_id_max;
+         break;
     case e_vtysh_interface_context:
          ret_val = e_vtysh_interface_context_client_id_max;
          break;
     case e_vtysh_mgmt_interface_context:
          ret_val = e_vtysh_mgmt_interface_context_client_id_max;
          break;
-    case e_vtysh_vlan_context:
-         ret_val = e_vtysh_vlan_context_client_id_max;
+    case e_vtysh_interface_lag_context:
+         ret_val = e_vtysh_interface_lag_context_client_id_max;
          break;
     case e_vtysh_dependent_config:
          ret_val = e_vtysh_dependent_config_client_id_max;
+         break;
+    case e_vtysh_dhcp_tftp_context:
+         ret_val = e_vtysh_dhcp_tftp_context_client_id_max;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -132,17 +147,23 @@ vtysh_context_get_minclientid(vtysh_contextid contextid)
     case e_vtysh_router_context:
          ret_val = e_vtysh_router_context_client_id_first;
          break;
+    case e_vtysh_vlan_context:
+         ret_val = e_vtysh_vlan_context_client_id_first;
+         break;
     case e_vtysh_interface_context:
          ret_val = e_vtysh_interface_context_client_id_first;
          break;
     case e_vtysh_mgmt_interface_context:
          ret_val = e_vtysh_mgmt_interface_context_client_id_first;
          break;
-    case e_vtysh_vlan_context:
-         ret_val = e_vtysh_vlan_context_client_id_first;
+    case e_vtysh_interface_lag_context:
+         ret_val = e_vtysh_interface_lag_context_client_id_first;
          break;
     case e_vtysh_dependent_config:
          ret_val = e_vtysh_dependent_config_client_id_first;
+         break;
+    case e_vtysh_dhcp_tftp_context:
+         ret_val = e_vtysh_dhcp_tftp_context_client_id_first;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -206,7 +227,7 @@ vtysh_context_addclient(vtysh_contextid contextid,
 
   if(NULL == p_client)
   {
-    VLOG_ERR("add_client: NULL Client callback for contextid %d, client id",contextid, clientid);
+    VLOG_ERR("add_client: NULL Client callback for contextid %d, client id %d",contextid, clientid);
     return e_vtysh_error;
   }
 
@@ -228,7 +249,7 @@ vtysh_context_addclient(vtysh_contextid contextid,
   else
   {
     /* client callback is already registered  */
-    VLOG_ERR("add_client: Client callback exists for client id %d in context id", clientid, contextid);
+    VLOG_ERR("add_client: Client callback exists for client id %d in context id %d", clientid, contextid);
     return e_vtysh_error;
   }
 
@@ -336,17 +357,15 @@ vtysh_ovsdb_read_config(FILE *fp)
 {
   vtysh_contextid contextid=0;
   vtysh_ovsdb_cbmsg msg;
-  int loopcnt = 0;
 
-  VLOG_DBG("readconfig:before- idl 0x%x seq no 0x%x", idl, ovsdb_idl_get_seqno(idl));
+  VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
 
   msg.fp = fp;
   msg.idl = idl;
   msg.contextid = 0;
   msg.clientid = 0;
 
-  VLOG_DBG("readconfig:after idl 0x%x seq no 0x%x", idl, ovsdb_idl_get_seqno(idl));
-  fprintf(fp, "Current configuration:\n");
+  VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
   fprintf(fp, "!\n");
 
   for(contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
@@ -435,6 +454,7 @@ vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, ...)
   fflush(p_msg->fp);
 
   va_end(args);
+  return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -479,12 +499,14 @@ vtysh_ovsdb_config_logmsg(int loglevel, char *fmt, ...)
 | Return: void
 -----------------------------------------------------------------------------*/
 void
-vtysh_ovsdb_init_clients()
+vtysh_ovsdb_init_clients(void)
 {
   /* register vtysh context table client callbacks */
   vtysh_init_config_context_clients();
   vtysh_init_router_context_clients();
+  vtysh_init_vlan_context_clients();
   vtysh_init_intf_context_clients();
   vtysh_init_mgmt_intf_context_clients();
-  vtysh_init_vlan_context_clients();
+  vtysh_init_intf_lag_context_clients();
+  vtysh_init_dhcp_tftp_context_clients();
 }

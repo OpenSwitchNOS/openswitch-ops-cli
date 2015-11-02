@@ -3,6 +3,7 @@
    Copyright (C) 1997, 98, 99 Kunihiro Ishiguro
    Copyright (C) 2013 by Open Source Routing.
    Copyright (C) 2013 by Internet Systems Consortium, Inc. ("ISC")
+   Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
 This file is part of GNU Zebra.
 
@@ -35,8 +36,12 @@ Boston, MA 02111-1307, USA.  */
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
 #include "vty_utils.h"
+#include "openvswitch/vlog.h"
+
+VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
 
+#define MAX_CMD_LEN 256
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec = NULL;
@@ -809,6 +814,7 @@ enum match_type
   ifname_match,
   port_match,
   vlan_match,
+  mac_match,
 #endif
   range_match,
   vararg_match,
@@ -1133,6 +1139,11 @@ cmd_ifname_match (const char *str)
   if(NULL == lib_vtysh_ovsdb_interface_match)
     return 1;
 
+  /* check for vlan interfaces */
+  if(verify_ifname(str)) {
+    return 0;
+  }
+
   if(((*lib_vtysh_ovsdb_interface_match)(str)) == 0)
     return 0;
 
@@ -1146,6 +1157,19 @@ cmd_port_match (const char *str)
     return 1;
 
   if(((*lib_vtysh_ovsdb_port_match)(str)) == 0)
+    return 0;
+
+  return 1;
+}
+
+/* Wrapper function to call mac validation func */
+static int
+cmd_mac_match (const char *str)
+{
+  if(NULL == lib_vtysh_ovsdb_mac_match)
+    return 1;
+
+  if(((*lib_vtysh_ovsdb_mac_match)(str)) == 0)
     return 0;
 
   return 1;
@@ -1283,6 +1307,11 @@ cmd_word_match(struct cmd_token *token,
       if(cmd_vlan_match(word) == 0)
         return vlan_match;
     }
+  else if (CMD_MAC(str))
+    {
+      if(0 == cmd_mac_match(word))
+         return mac_match;
+    }
 #endif
   else if (CMD_OPTION(str) || CMD_VARIABLE(str))
     {
@@ -1376,9 +1405,13 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
 {
   const char *word;
   enum match_type word_match;
+  static char szToken[MAX_CMD_LEN] = {0};
+  struct cmd_token temptoken;
+  char* temp = NULL;
+  int nCopysize = 0;
 
   assert(token->type == TOKEN_TERMINAL);
-
+  memset(&temptoken,0,sizeof(struct cmd_token));
   if (!cmd_matcher_words_left(matcher))
     {
       if (CMD_OPTION(token->cmd))
@@ -1395,12 +1428,54 @@ cmd_matcher_match_terminal(struct cmd_matcher *matcher,
   /* We have to record the input word as argument if it matched
    * against a variable. */
   if (CMD_VARARG(token->cmd)
-      || CMD_VARIABLE(token->cmd)
-      || CMD_OPTION(token->cmd))
+      || CMD_VARIABLE(token->cmd))
     {
       if (push_argument(argc, argv, word))
         return MATCHER_EXCEED_ARGC_MAX;
     }
+  /* For pushing complete token for '[]' tokens */
+  else if (CMD_OPTION(token->cmd))
+  {
+    /* Before pushing the token remove '[' and ']'*/
+    /* increment to point to next byte after */
+    temp = strchr(token->cmd,'[') + 1;
+    nCopysize = strlen(token->cmd)-2;
+    strncpy(szToken,temp,nCopysize);
+    memcpy(&temptoken,token,sizeof(struct cmd_token));
+    temptoken.cmd = XSTRDUP(MTYPE_CMD_TOKENS,szToken);
+
+    /* Validate and complete the tokens present inside []*/
+    word_match = cmd_word_match(&temptoken, matcher->filter, word);
+    /* .LINE cannot be an optional type token ([]) */
+    if ((no_match == word_match) ||
+        (vararg_match == word_match))
+    {
+       XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
+       return MATCHER_NO_MATCH;
+    }
+    else if ((partly_match == word_match) ||
+         (exact_match == word_match))
+    {
+       if (push_argument(argc, argv, szToken))
+       {
+         XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
+         return MATCHER_EXCEED_ARGC_MAX;
+       }
+    }
+    else
+    {
+       /* if not a fixed string then push value input by user */
+       if (push_argument(argc, argv, word))
+       {
+         XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
+         return MATCHER_EXCEED_ARGC_MAX;
+       }
+    }
+    /* Word match should be extend_match as it is used
+       to check for matched count */
+    word_match = extend_match;
+    XFREE(MTYPE_CMD_TOKENS,temptoken.cmd);
+  }
 
   cmd_matcher_record_match(matcher, word_match, token);
 
@@ -1430,7 +1505,6 @@ cmd_matcher_match_multiple(struct cmd_matcher *matcher,
   const char *arg;
   struct cmd_token *word_token;
   enum match_type word_match;
-
   assert(token->type == TOKEN_MULTIPLE);
 
   multiple_match = no_match;
@@ -1454,7 +1528,12 @@ cmd_matcher_match_multiple(struct cmd_matcher *matcher,
       if (word_match > multiple_match)
         {
           multiple_match = word_match;
-          arg = word;
+          /* Push complete token instead of user input value
+             if it's a partly match */
+          if(partly_match == word_match)
+                arg = word_token->cmd;
+          else
+                arg = word;
         }
       /* To mimic the behavior of the old command implementation, we
        * tolerate any ambiguities here :/ */
@@ -1487,7 +1566,6 @@ cmd_matcher_read_keywords(struct cmd_matcher *matcher,
   int keyword_argc;
   const char **keyword_argv;
   enum matcher_rv rv = MATCHER_NO_MATCH;
-
   keyword_mask = 0;
   while (1)
     {
@@ -1587,11 +1665,12 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
                                vector keyword_args_vector)
 {
   unsigned int i, j;
-  const char **keyword_args;
+  const char **keyword_args = NULL;
   vector keyword_vector;
   struct cmd_token *word_token;
-  const char *arg;
+  const char *arg = NULL;
   enum matcher_rv rv;
+  enum match_type match_type = no_match;
 
   rv = MATCHER_OK;
 
@@ -1616,11 +1695,11 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
               arg = NULL;
             }
 
-          if (push_argument(argc, argv, arg))
-            rv = MATCHER_EXCEED_ARGC_MAX;
+            if (push_argument(argc, argv, arg))
+                 rv = MATCHER_EXCEED_ARGC_MAX;
         }
       else
-        {
+      {
           /* this is a keyword with arguments */
           if (keyword_args)
             {
@@ -1662,7 +1741,6 @@ cmd_matcher_match_keyword(struct cmd_matcher *matcher,
   vector keyword_args_vector;
   enum matcher_rv reader_rv;
   enum matcher_rv builder_rv;
-
   assert(token->type == TOKEN_KEYWORD);
 
   if (argc && argv)
@@ -1849,7 +1927,8 @@ cmd_is_complete(struct cmd_element *cmd_element,
                          vline, -1,
                          NULL, NULL,
                          NULL, NULL);
-  return (rv == MATCHER_COMPLETE);
+
+  return rv;
 }
 
 /**
@@ -1994,6 +2073,10 @@ is_cmd_ambiguous (vector cmd_vector,
 		  if (CMD_VLAN(str))
 		    match++;
 		  break;
+                case mac_match:
+		  if (CMD_MAC(str))
+		    match++;
+		  break;
 #endif
 		case extend_match:
 		  if (CMD_OPTION (str) || CMD_VARIABLE (str))
@@ -2089,6 +2172,8 @@ cmd_entry_function_desc (const char *src, const char *dst)
     return dst;
 
   if (CMD_VLAN(dst))
+    return dst;
+  if (CMD_MAC(dst))
     return dst;
 #endif
 
@@ -2333,7 +2418,8 @@ cmd_describe_command_real (vector vline, struct vty *vty, int *status)
             vline_trimmed = vector_copy(vline);
             vector_unset(vline_trimmed, vector_active(vline_trimmed) - 1);
 
-            if (cmd_is_complete(cmd_element, vline_trimmed)
+            ret = cmd_is_complete(cmd_element, vline_trimmed);
+            if ((MATCHER_COMPLETE == ret)
                 && desc_unique_string(matchvec, command_cr))
               {
                 if (match != vararg_match)
@@ -2765,21 +2851,22 @@ cmd_execute_command_real (vector vline,
 
   for (i = 0; i < vector_active (cmd_vector); i++)
     if ((cmd_element = vector_slot (cmd_vector, i)))
-      {
+    {
         if(cmd_element->attr & CMD_ATTR_NOT_ENABLED)
         {
           continue;
         }
-	if (cmd_is_complete(cmd_element, vline))
-	  {
-	    matched_element = cmd_element;
-	    matched_count++;
-	  }
-	else
-	  {
-	    incomplete_count++;
-	  }
-      }
+        ret = cmd_is_complete(cmd_element, vline);
+        if (MATCHER_COMPLETE == ret)
+        {
+          matched_element = cmd_element;
+          matched_count++;
+        }
+        else if (MATCHER_INCOMPLETE == ret)
+        {
+          incomplete_count++;
+        }
+    }
 
   /* Finish of using cmd_vector. */
   vector_free (cmd_vector);
@@ -2809,7 +2896,19 @@ cmd_execute_command_real (vector vline,
   vty->buf = matched_element->string;
   vty->length = strlen(matched_element->string);
   /* Execute matched command. */
-  return (*matched_element->func) (matched_element, vty, 0, argc, argv);
+  if(((matched_element->attr) & CMD_ATTR_NOLOCK) == 0)
+  {
+    VTYSH_OVSDB_LOCK;
+    VLOG_DBG("Setting the latch");
+    latch_set(&ovsdb_latch);
+    ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+    VTYSH_OVSDB_UNLOCK;
+  }
+  else
+  {
+    ret = (*matched_element->func)(matched_element, vty, 0, argc, argv);
+  }
+  return ret;
 }
 
 /**
@@ -2941,14 +3040,6 @@ config_from_file (struct vty *vty, FILE *fp, unsigned int *line_num)
 }
 
 
-
-
-
-
-
-
-
-
 int cmd_try_execute_command (struct vty *vty, char *buf)
 {
   int ret;
@@ -3023,12 +3114,13 @@ int cmd_try_execute_command (struct vty *vty, char *buf)
         {
            continue;
         }
-        if (cmd_is_complete(cmd_element, vline))
+        ret = cmd_is_complete(cmd_element, vline);
+        if (MATCHER_COMPLETE == ret)
         {
            matched_element = cmd_element;
            matched_count++;
         }
-        else
+        else if (MATCHER_INCOMPLETE == ret)
         {
            incomplete_count++;
         }
@@ -3122,7 +3214,14 @@ DEFUN (config_exit,
       vty_config_unlock (vty);
       break;
     case INTERFACE_NODE:
+    case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
+#ifdef ENABLE_OVSDB
+    case VLAN_INTERFACE_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
+#endif
+    case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
     case BGP_NODE:
     case RIP_NODE:
@@ -3175,7 +3274,14 @@ DEFUN (config_end,
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case VLAN_NODE:
+    case LINK_AGGREGATION_NODE:
     case MGMT_INTERFACE_NODE:
+#ifdef ENABLE_OVSDB
+    case VLAN_INTERFACE_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
+#endif
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
@@ -3469,6 +3575,7 @@ DEFUN (show_startup_config,
 }
 #endif
 
+#ifndef ENABLE_OVSDB
 /* Hostname configuration */
 DEFUN (config_hostname,
        hostname_cmd,
@@ -3501,6 +3608,62 @@ DEFUN (config_no_hostname,
   host.name = NULL;
   return CMD_SUCCESS;
 }
+#else
+#define MAX_HOSTNAME_LEN 32
+#define HOSTNAME_STR "Set or get hostname\n"
+extern void  vtysh_ovsdb_hostname_set(const char * in);
+extern const char* vtysh_ovsdb_hostname_get();
+/* Hostname configuration */
+DEFUN (config_hostname,
+       hostname_cmd,
+       "hostname [HOSTNAME]",
+       HOSTNAME_STR
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
+{
+ char* hostname = NULL;
+ int   ret = 0;
+ if (argv[0])
+ {
+     if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
+     {
+        vty_out (vty, "Please specify string of maximum %d character%s",MAX_HOSTNAME_LEN, VTY_NEWLINE);
+        return CMD_SUCCESS;
+     }
+     if (!isalpha((int) *argv[0]))
+     {
+        vty_out (vty, "Please specify string starting with alphabet%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+     }
+
+     vtysh_ovsdb_hostname_set(argv[0]);
+ }
+ else
+ {
+     hostname = vtysh_ovsdb_hostname_get();
+     if (hostname)
+     {
+        vty_out (vty,"%s%s",hostname,VTY_NEWLINE);
+     }
+     else
+     {
+        vty_out (vty,"%s%s","",VTY_NEWLINE);
+     }
+ }
+ return CMD_SUCCESS;
+}
+
+DEFUN (config_no_hostname,
+       no_hostname_cmd,
+       "no hostname [HOSTNAME]",
+       NO_STR
+       HOSTNAME_STR
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
+{
+    vtysh_ovsdb_hostname_set("");
+    return CMD_SUCCESS;
+}
+
+#endif //ENABLE_OVSDB
 
 /* VTY interface password set. */
 DEFUN (config_password, password_cmd,

@@ -1,5 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -41,6 +42,7 @@
 
 #ifdef ENABLE_OVSDB
 
+#define LAG_NAME_LENGTH 8
 #define VTYSH_MAX_ALIAS_SUPPORTED 50
 #define VTYSH_MAX_ALIAS_DEF_LEN   30
 #define VTYSH_MAX_ALIAS_DEF_LEN_WITH_ARGS   40
@@ -68,7 +70,9 @@ struct vtysh_alias_data {
 #define OVSDB_ROW_FETCH_ERROR  "Couldn't fetch row from the DB."
 #define OVSDB_TXN_COMMIT_ERROR "Committing transaction to DB failed."
 
-#define OVSDB_INVALID_IPV4_ERROR      "Invalid IPv4 address"
+#define MAX_TIMEOUT_FOR_IDL_CHANGE 10
+
+#define OVSDB_INVALID_IPV4_IPV6_ERROR      "Invalid IPv4 or IPv6 address"
 #define OVSDB_INVALID_SUBNET_ERROR    "Invalid subnet address"
 #define OVSDB_INVALID_VALUE_ERROR     "Address entered is not present"
 #define OVSDB_DUPLICATE_VALUE_ERROR   "Duplicate value entered"
@@ -80,19 +84,38 @@ struct vtysh_alias_data {
 #define  IS_MULTICAST_IPV4(i)      (((long)(i) & 0xf0000000) == 0xe0000000)
 #define  IS_EXPERIMENTAL_IPV4(i)   (((long)(i) & 0xf0000000) == 0xf0000000)
 #define  IS_INVALID_IPV4(i)         ((long)(i) == 0)
+#define  IS_INVALID_IPV4_SUBNET(i) ((i <= 0) || (i >= 32))
+#define  IS_INVALID_IPV6_SUBNET(i) ((i <= 0) || (i >= 128))
 
 #define IS_VALID_IPV4(i) !(IS_BROADCAST_IPV4(i) | IS_LOOPBACK_IPV4(i) | \
                           IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
                                                     IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
                                                                               IS_NETWORK_ADDRESS(i))
+#define USERADD "/usr/sbin/useradd"
+#define USERMOD "/usr/sbin/usermod"
+#define OVSDB_GROUP "ovsdb_users"
+#define VTYSH_PROMPT "/usr/bin/vtysh"
+#define USERDEL "/usr/sbin/userdel"
+#define USER_NAME_MAX_LENGTH 32
+
+#define TEMPORARY_STARTUP_SOCKET "temp_startup.sock"
+#define OVSDB_PATH "/var/run/openvswitch/ovsdb.db"
+#define TEMPORARY_STARTUP_DB "/var/run/openvswitch/temp_startup.db"
+#define TEMPORARY_PROCESS_PID "/var/run/openvswitch/temp_startup.pid"
+#define STARTUP_CONFIG_ERR "Internal error occured. Please try again"
+#define TEMPORARY_STARTUP_DB_LOCK "/var/run/openvswitch/.temp_startup.db.~lock~"
+
+enum ip_type {
+    IPV4=0,
+    IPV6
+};
 
 int is_valid_ip_address(const char *ip_value);
-
-int is_valid_ip_subnet_mask(const char *subnet_value);
 
 extern int vtysh_alias_callback(struct cmd_element *self, struct vty *vty, int vty_flags, int argc, const char *argv[]);
 
 extern int enable_mininet_test_prompt;
+extern int vtysh_show_startup;
 #endif
 
 void vtysh_init_vty (void);
@@ -122,7 +145,7 @@ void vtysh_pager_init (void);
 
 int execute_command (const char *, int, const char *arg[]);
 
-
+int remove_temp_db(int initialize);
 /* Child process execution flag. */
 extern int execute_flag;
 

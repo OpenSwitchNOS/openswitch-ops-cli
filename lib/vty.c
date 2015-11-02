@@ -1,6 +1,7 @@
 /*
  * Virtual terminal [aka TeletYpe] interface routine.
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -272,6 +273,7 @@ vty_prompt (struct vty *vty)
 	{
 	  uname (&names);
 	  hostname = names.nodename;
+          host.name = XSTRDUP (MTYPE_HOST, hostname);
 	}
       vty_out (vty, cmd_prompt (vty->node), hostname);
     }
@@ -701,7 +703,9 @@ vty_end_config (struct vty *vty)
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
+    case LINK_AGGREGATION_NODE:
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
@@ -721,6 +725,10 @@ vty_end_config (struct vty *vty)
     case MASC_NODE:
     case PIM_NODE:
     case VTY_NODE:
+#ifdef ENABLE_OVSDB
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
+#endif
       vty_config_unlock (vty);
       vty->node = ENABLE_NODE;
       break;
@@ -1112,7 +1120,14 @@ vty_stop_input (struct vty *vty)
       break;
     case CONFIG_NODE:
     case INTERFACE_NODE:
+    case VLAN_NODE:
+    case LINK_AGGREGATION_NODE:
     case MGMT_INTERFACE_NODE:
+#ifdef ENABLE_OVSDB
+    case VLAN_INTERFACE_NODE:
+    case DHCP_SERVER_NODE:
+    case TFTP_SERVER_NODE:
+#endif
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
@@ -1690,8 +1705,10 @@ vty_create (int vty_sock, union sockunion *su)
 	}
     }
 
+#ifndef ENABLE_OVSDB
   /* Say hello to the world. */
   vty_hello (vty);
+#endif
   if (! no_password_check)
     vty_out (vty, "%sUser Access Verification%s%s", VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 

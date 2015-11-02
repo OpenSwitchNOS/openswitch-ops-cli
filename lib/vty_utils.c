@@ -1,4 +1,6 @@
-/* Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+/* vtysh utils
+ * Copyright (C) 1997, 98, 99 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,7 +24,13 @@
 #include "vector.h"
 #include "vty.h"
 #include "command.h"
+#include <pthread.h>
 #include "vty_utils.h"
+#include "latch.h"
+
+struct latch ovsdb_latch;
+
+pthread_mutex_t vtysh_ovsdb_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * This command converts command string into a vector of cmd_tokens

@@ -1,5 +1,9 @@
-/*
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+/* configuration command interface routine
+ *
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ *
+ * This file is part of GNU Zebra.
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -127,7 +131,12 @@ enum node_type
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
 #ifdef ENABLE_OVSDB
+  DHCP_SERVER_NODE,             /* DHCP server node */
+  TFTP_SERVER_NODE,             /* TFTP server node */
+  VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
+  LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
+  VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
 #endif
   VTY_NODE,			/* Vty node. */
 };
@@ -157,6 +166,7 @@ struct cmd_node
 #define CMD_ATTR_HIDDEN      2  /* command is not listed in "?" or "list", but executes action routine */
 #define CMD_ATTR_NOT_ENABLED 4  /* command is listed, but not calling action routine */
 #define CMD_ATTR_DISABLED    (CMD_ATTR_HIDDEN | CMD_ATTR_NOT_ENABLED)
+#define CMD_ATTR_NOLOCK      8  /* command doesn't take the OVSDB lock */
 
 #define CMD_FLAG_NO_CMD      1
 
@@ -415,13 +425,16 @@ struct cmd_token
 
 #define DEFUN_NO_FORM(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_CMD_FUNC_DECL(no_##funcname) \
-  DEFUN_CMD_ELEMENT(no_##funcname, no_##cmdname, "no " cmdstr, "NO_STR" helpstr, 0, 0) \
+  DEFUN_CMD_ELEMENT(no_##funcname, no_##cmdname, "no " cmdstr, NO_STR helpstr, 0, 0) \
   DEFUN_CMD_FUNC_TEXT(no_##funcname) \
 { \
    return funcname(self, vty, CMD_FLAG_NO_CMD, argc, argv); \
 }
 #define DEFUN_HIDDEN(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN)
+
+#define DEFUN_NOLOCK(funcname, cmdname, cmdstr, helpstr) \
+  DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_NOLOCK)
 
 #define DEFUN_DEPRECATED(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_DEPRECATED) \
@@ -478,6 +491,10 @@ struct cmd_token
 
 /* Some macroes */
 #define CMD_OPTION(S)   ((S[0]) == '[')
+/*
+ * OPS_TODO: Not sure what variable is checked in CMD_VARIABLE with '<'
+ * Token syntax verification may change accordingly
+ */
 #define CMD_VARIABLE(S) (((S[0]) >= 'A' && (S[0]) <= 'Z') || ((S[0]) == '<'))
 #define CMD_VARARG(S)   ((S[0]) == '.')
 #define CMD_RANGE(S)	((S[0] == '<'))
@@ -491,6 +508,7 @@ struct cmd_token
 #define CMD_IFNAME(S)   ((strcmp ((S), "IFNAME") == 0))
 #define CMD_PORT(S)     ((strcmp ((S), "PORT") == 0))
 #define CMD_VLAN(S)     ((strcmp ((S), "VLAN") == 0))
+#define CMD_MAC(S)     ((strcmp ((S), "MAC") == 0))
 #endif
 
 /* Common descriptions. */
@@ -530,15 +548,19 @@ struct cmd_token
 "(neighbor|interface|area|lsa|zebra|config|dbex|spf|route|lsdb|redistribute|hook|asbr|prefix|abr)"
 #define ISIS_STR    "IS-IS information\n"
 #define AREA_TAG_STR "[area tag]\n"
+#define RIB_STR    "Routing Information Base\n"
 
 /* Added for VRF */
-#define VRF_STR     "VRF Configuration.\n"
+#define VRF_STR     "VRF Configuration\n"
 
 /* VLAN help strings */
-#define VLAN_STR            "VLAN Configuration\n"
+#define VLAN_STR            "VLAN configuration\n"
+#define VLAN_NAME_STR            "Name configuration\n"
+#define VLAN_DESCRIPTION_STR     "VLAN description\n"
+#define TRUNK_STR           "Trunk configuration\n"
 #define VLAN_INT_STR        "VLAN internal configuration\n"
 #define VLAN_INT_RANGE_STR  "VLAN internal range configuration\n"
-#define SHOW_VLAN_STR       "Show VLAN Configuration\n"
+#define SHOW_VLAN_STR       "Show VLAN configuration\n"
 #define SHOW_VLAN_INT_STR   "Show VLAN internal configuration\n"
 
 /* Help strings for show commands */
@@ -564,7 +586,14 @@ struct cmd_token
 #define NEIGHBOR_CMD2      "neighbor (A.B.C.D|WORD) "
 #define NO_NEIGHBOR_CMD2   "no neighbor (A.B.C.D|WORD) "
 #define NEIGHBOR_ADDR_STR2 "Neighbor address\nNeighbor tag\n"
+
 #endif /* HAVE_IPV6 */
+
+/* ECMP CLI help strings */
+#define ECMP_CONFIG_DISABLE_STR      "Completely disable ECMP\n"
+#define ECMP_STR                     "Configure ECMP\n"
+#define LOAD_BAL_STR                 "Configure hashing parameters\n"
+
 
 /* Prototypes. */
 extern void install_node (struct cmd_node *, int (*) (struct vty *));

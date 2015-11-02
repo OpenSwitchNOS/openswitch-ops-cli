@@ -1,6 +1,7 @@
 /* LLDP CLI commands
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,7 +22,6 @@
  *
  * Purpose:  To add LLDP CLI configuration and display commands.
  */
-
 #include <sys/un.h>
 #include <setjmp.h>
 #include <sys/wait.h>
@@ -31,7 +31,6 @@
 #include <readline/history.h>
 
 #include <lib/version.h>
-#include "getopt.h"
 #include "command.h"
 #include "memory.h"
 #include "vtysh/vtysh.h"
@@ -41,14 +40,13 @@
 #include "lldp_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lldp_cli);
 extern struct ovsdb_idl *idl;
 
-#define INTF_NAME_SIZE 20
 typedef enum
 {
   LLDP_OFF,
@@ -75,9 +73,9 @@ typedef struct
   int delete_count;
   int drop_count;
   int ageout_count;
-  char  chassis_id[256];
-  char  port_id[256];
-  char  chassis_ttl[10];
+  char  chassis_id[LLDP_MAX_BUF_SIZE];
+  char  port_id[LLDP_MAX_BUF_SIZE];
+  char  chassis_ttl[LLDP_STR_CHASSIS_TLV_LENGTH];
 }lldp_neighbor_info;
 
 
@@ -85,18 +83,19 @@ typedef struct
    Takes true/false argument   */
 static int lldp_set_global_status(const char *status)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
@@ -105,15 +104,17 @@ static int lldp_set_global_status(const char *status)
      return CMD_OVSDB_FAILURE;
   }
 
-  if(strcmp("true",status) == 0)
-    smap_replace(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_ENABLE, status);
-  else
-    smap_remove(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_ENABLE);
+  smap_clone(&smap_other_config, &row->other_config);
 
-  ovsrec_open_vswitch_set_other_config(row, &row->other_config);
+  if(strcmp("true",status) == 0)
+    smap_replace(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_ENABLE, status);
+  else
+    smap_remove(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_ENABLE);
+
+  ovsrec_system_set_other_config(row, &smap_other_config);
 
   txn_status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_other_config);
   if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
   {
     return CMD_SUCCESS;
@@ -129,7 +130,7 @@ static int lldp_set_global_status(const char *status)
 DEFUN (cli_lldp_set_global_status,
        lldp_set_global_status_cmd,
        "feature lldp",
-       "Enables or disables the selected feature.\n"
+       "Enables or disables the selected feature\n"
        CONFIG_LLDP_STR)
 {
   return lldp_set_global_status("true");
@@ -139,7 +140,7 @@ DEFUN (cli_lldp_no_set_global_status,
        lldp_no_set_global_status_cmd,
        "no feature lldp",
         NO_STR
-       "Enables or disables the selected feature.\n"
+       "Enables or disables the selected feature\n"
        CONFIG_LLDP_STR)
 {
   return lldp_set_global_status("false");
@@ -149,18 +150,19 @@ DEFUN (cli_lldp_no_set_global_status,
    If the holdtime is default then deletes the key from the column. */
 static int set_global_hold_time(const char *hold_time)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+  struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
@@ -169,15 +171,16 @@ static int set_global_hold_time(const char *hold_time)
     return CMD_OVSDB_FAILURE;
   }
 
-  if( OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT != atoi(hold_time))
-    smap_replace(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD, hold_time);
+  smap_clone(&smap_other_config, &row->other_config);
+  if( SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT != atoi(hold_time))
+    smap_replace(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD, hold_time);
   else
-    smap_remove(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD);
+    smap_remove(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD);
 
-  ovsrec_open_vswitch_set_other_config(row, &row->other_config);
+  ovsrec_system_set_other_config(row, &smap_other_config);
 
   status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_other_config);
   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
   {
     return CMD_SUCCESS;
@@ -193,21 +196,22 @@ DEFUN (cli_lldp_set_hold_time,
        lldp_set_global_hold_time_cmd,
        "lldp holdtime <2-10>",
        CONFIG_LLDP_STR
-       "The amount of time a receiving device should hold the information sent by your device before discarding it.\n"
-       "The range is 2 to 10; the default is 4.\n")
+       "Set hold time multiplier, total hold time is calculated by multiplying it with LLDP timer\n"
+       "Hold time multiplier(Default:4)\n")
 {
   return set_global_hold_time(argv[0]);
 }
 
 DEFUN (cli_lldp_no_set_hold_time,
        lldp_no_set_global_hold_time_cmd,
-       "no lldp holdtime",
+       "no lldp holdtime [<2-10>]",
         NO_STR
        CONFIG_LLDP_STR
-       "The amount of time a receiving device should hold the information sent by your device before discarding it.\n")
+       "Set hold time multiplier, total hold time is calculated by multiplying it with LLDP timer\n"
+       "Hold time multiplier(Default:4)\n")
 {
   char def_holdtime[LLDP_TIMER_MAX_STRING_LENGTH]={0};
-  snprintf(def_holdtime,LLDP_TIMER_MAX_STRING_LENGTH, "%d",OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
+  snprintf(def_holdtime,LLDP_TIMER_MAX_STRING_LENGTH, "%d",SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
   return set_global_hold_time(def_holdtime);
 }
 
@@ -215,18 +219,19 @@ DEFUN (cli_lldp_no_set_hold_time,
    If the transmission time is default then deletes the key from the column. */
 static int lldp_set_global_timer(const char *timer)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
@@ -235,15 +240,16 @@ static int lldp_set_global_timer(const char *timer)
     return CMD_OVSDB_FAILURE;
   }
 
-  if(OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT != atoi(timer))
-    smap_replace(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL, timer);
+  smap_clone(&smap_other_config, &row->other_config);
+  if(SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT != atoi(timer))
+    smap_replace(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL, timer);
   else
-    smap_remove(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL);
+    smap_remove(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL);
 
-  ovsrec_open_vswitch_set_other_config(row, &row->other_config);
+  ovsrec_system_set_other_config(row, &smap_other_config);
 
   status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_other_config);
   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
     return CMD_SUCCESS;
   else
@@ -257,21 +263,22 @@ DEFUN (cli_lldp_set_timer,
        lldp_set_global_timer_cmd,
        "lldp timer <5-32768>",
        CONFIG_LLDP_STR
-       "The interval at which LLDP status updates are transmitted to neighbors in seconds.\n"
-        "The range is 5 to 32768 seconds; the default is 30 seconds.\n")
+       "The interval(in seconds) at which LLDP status updates are transmitted to neighbors\n"
+        "The range is 5 to 32768 seconds (Default:30 seconds)\n")
 {
   return lldp_set_global_timer(argv[0]);
 }
 
 DEFUN (cli_no_lldp_set_timer,
        lldp_no_set_global_timer_cmd,
-       "no lldp timer",
+       "no lldp timer [<5-32768>]",
        NO_STR
        CONFIG_LLDP_STR
-       "The interval at which LLDP status updates are transmitted to neighbors in seconds.\n")
+       "The interval(in seconds) at which LLDP status updates are transmitted to neighbors\n"
+       "The range is 5 to 32768 seconds (Default:30 seconds)\n")
 {
   char def_global_time[LLDP_TIMER_MAX_STRING_LENGTH]={0};
-  snprintf(def_global_time,LLDP_TIMER_MAX_STRING_LENGTH, "%d",OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
+  snprintf(def_global_time,LLDP_TIMER_MAX_STRING_LENGTH, "%d",SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
   return lldp_set_global_timer(def_global_time);
 }
 
@@ -280,23 +287,24 @@ DEFUN (cli_lldp_clear_counters,
        lldp_clear_counters_cmd,
        "lldp clear counters",
        CONFIG_LLDP_STR
-       "Clear LLDP information.\n"
-       "Clear LLDP counters.\n")
+       "Clear LLDP information\n"
+       "Clear LLDP counters\n")
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   int clear_counter = 0;
-  char buffer[10];
+  char buffer[10] = {0};
+  struct smap smap_status;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
   if(!row)
   {
      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -308,11 +316,12 @@ DEFUN (cli_lldp_clear_counters,
   clear_counter++;
 
   sprintf(buffer, "%d", clear_counter);
-  smap_replace(&row->status, "lldp_num_clear_counters_requested", buffer);
-  ovsrec_open_vswitch_set_status(row, &row->status);
+  smap_clone(&smap_status, &row->status);
+  smap_replace(&smap_status, "lldp_num_clear_counters_requested", buffer);
+  ovsrec_system_set_status(row, &smap_status);
 
   status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_status);
   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
   {
     return CMD_SUCCESS;
@@ -329,23 +338,24 @@ DEFUN (cli_lldp_clear_neighbors,
        lldp_clear_neighbors_cmd,
        "lldp clear neighbors",
        CONFIG_LLDP_STR
-       "Clear LLDP information.\n"
-       "Clear LLDP neighbor tables.\n")
+       "Clear LLDP information\n"
+       "Clear LLDP neighbor entries\n")
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   int clear_neighbor_table = 0;
-  char buffer[10];
+  char buffer[10] = {0};
+  struct smap smap_status;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
   if(!row)
   {
     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -357,10 +367,12 @@ DEFUN (cli_lldp_clear_neighbors,
   clear_neighbor_table++;
 
   sprintf(buffer, "%d", clear_neighbor_table);
-  smap_replace(&row->status, "lldp_num_clear_table_requested", buffer);
-  ovsrec_open_vswitch_set_status(row, &row->status);
+  smap_clone(&smap_status, &row->status);
+  smap_replace(&smap_status, "lldp_num_clear_table_requested", buffer);
+  ovsrec_system_set_status(row, &smap_status);
 
   status = cli_do_config_finish(status_txn);
+  smap_destroy(&smap_status);
 
   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
   {
@@ -377,19 +389,20 @@ DEFUN (cli_lldp_clear_neighbors,
 static int
 lldp_set_tlv(const char *tlv_name, const char *status)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
   char tlv[50]={0};
+  struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
@@ -399,33 +412,34 @@ lldp_set_tlv(const char *tlv_name, const char *status)
   }
 
   if(0 == strcmp(tlv_name, "management-address"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_MGMT_ADDR_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_MGMT_ADDR_ENABLE);
   else if (0 == strcmp(tlv_name, "port-description"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE);
   else if (0 == strcmp(tlv_name, "port-vlan-id"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_ID_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_ID_ENABLE);
   else if(0 == strcmp(tlv_name, "port-vlan-name"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_NAME_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_NAME_ENABLE);
   else if(0 == strcmp(tlv_name, "port-protocol-vlan-id"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_VLAN_ID_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_VLAN_ID_ENABLE);
   else if(0 == strcmp(tlv_name, "port-protocol-id"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_ID_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_ID_ENABLE);
   else if(0 == strcmp(tlv_name, "system-capabilities"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_CAP_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_SYS_CAP_ENABLE);
   else if(0 == strcmp(tlv_name, "system-description"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_DESC_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_SYS_DESC_ENABLE);
   else if(0 == strcmp(tlv_name, "system-name"))
-    strcpy(tlv, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_NAME_ENABLE);
+    strcpy(tlv, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_SYS_NAME_ENABLE);
 
+  smap_clone(&smap_other_config, &row->other_config);
   if(strcmp("false",status) == 0)
-    smap_replace(&row->other_config, tlv, status);
+    smap_replace(&smap_other_config, tlv, status);
   else
-    smap_remove(&row->other_config, tlv);
+    smap_remove(&smap_other_config, tlv);
 
-  ovsrec_open_vswitch_set_other_config(row, &row->other_config);
+  ovsrec_system_set_other_config(row, &smap_other_config);
 
   txn_status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_other_config);
   if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
   {
     return CMD_SUCCESS;
@@ -445,16 +459,16 @@ DEFUN (cli_lldp_select_tlv,
                         port-protocol-id | system-capabilities |\
                         system-description | system-name)",
        CONFIG_LLDP_STR
-       "Specifies the TLVs to send and receive in LLDP packets.\n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n")
+       "Specifies the TLVs to send and receive in LLDP packets\n"
+       "Select management-address TLV\n"
+       "Select port-description TLV\n"
+       "Select port-vlan-id TLV\n"
+       "Select port-vlan-name TLV\n"
+       "Select port-protocol-vlan-id TLV\n"
+       "Select port-protocol-id TLV\n"
+       "Select system-capabilities TLV\n"
+       "Select system-description TLV\n"
+       "Select system-name TLV\n")
 {
   return lldp_set_tlv(argv[0],"true");
 }
@@ -467,16 +481,16 @@ DEFUN (cli_no_lldp_select_tlv,
                         system-description | system-name)",
        NO_STR
        CONFIG_LLDP_STR
-       "Specifies the TLVs to send and receive in LLDP packets.\n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n"
-       " \n")
+       "Specifies the TLVs to send and receive in LLDP packets\n"
+       "Select management-address TLV\n"
+       "Select port-description TLV\n"
+       "Select port-vlan-id TLV\n"
+       "Select port-vlan-name TLV\n"
+       "Select port-protocol-vlan-id TLV\n"
+       "Select port-protocol-id TLV\n"
+       "Select system-capabilities TLV\n"
+       "Select system-description TLV\n"
+       "Select system-name TLV\n")
 {
   return lldp_set_tlv(argv[0],"false");
 }
@@ -484,18 +498,19 @@ DEFUN (cli_no_lldp_select_tlv,
 /* Sets management address to be advertised by LLDP. */
 static int lldp_set_mgmt_address(const char *status, boolean set)
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
     return CMD_OVSDB_FAILURE;
   }
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
   if(!row)
   {
     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
@@ -503,14 +518,16 @@ static int lldp_set_mgmt_address(const char *status, boolean set)
     return CMD_OVSDB_FAILURE;
   }
 
+  smap_clone(&smap_other_config, &row->other_config);
   if(set)
-    smap_replace(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_MGMT_ADDR, status);
+    smap_replace(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_MGMT_ADDR, status);
   else
-    smap_remove(&row->other_config, OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_MGMT_ADDR);
+    smap_remove(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_MGMT_ADDR);
 
-  ovsrec_open_vswitch_set_other_config(row, &row->other_config);
+  ovsrec_system_set_other_config(row, &smap_other_config);
 
   txn_status = cli_do_config_finish(status_txn);
+  smap_destroy(&smap_other_config);
 
   if(txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
   {
@@ -527,9 +544,9 @@ DEFUN (cli_lldp_set_mgmt_address,
        lldp_set_mgmt_address_cmd,
        "lldp management-address (A.B.C.D | X:X::X:X)",
        CONFIG_LLDP_STR
-       "LLDP Management IP Address to be sent in TLV.\n"
-       "LLDP Management IP4 Address.\n"
-       "LLDP Management IP6 Address.\n")
+       "LLDP management IP address to be sent in TLV\n"
+       "LLDP management IPv4 address\n"
+       "LLDP management IPv6 address\n")
 {
   return lldp_set_mgmt_address(argv[0], true);
 }
@@ -539,70 +556,83 @@ DEFUN (cli_lldp_set_no_mgmt_address,
        "no lldp management-address",
        NO_STR
        CONFIG_LLDP_STR
-       "LLDP Management IP Address to be sent in TLV.\n")
+       "LLDP management IP address to be sent in TLV\n")
 {
   return lldp_set_mgmt_address(argv[0], false);
 }
 
+DEFUN (cli_lldp_set_no_mgmt_address_arg,
+       lldp_set_no_mgmt_address_cmd_arg,
+       "no lldp management-address (A.B.C.D | X:X::X:X)",
+       NO_STR
+       CONFIG_LLDP_STR
+       "LLDP management IP address to be sent in TLV\n"
+       "LLDP management IPv4 address\n"
+       "LLDP management IPv6 address\n")
+{
+  return lldp_set_mgmt_address(argv[0], false);
+}
+
+
 /* Prints TLVs enabled for LLDP*/
 void
-lldp_show_tlv(struct ovsrec_open_vswitch *row)
+lldp_show_tlv(const struct ovsrec_system *row)
 {
   bool tlv_set = false;
 
   vty_out (vty, "%sTLVs advertised: %s", VTY_NEWLINE, VTY_NEWLINE);
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_MGMT_ADDR_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_MGMT_ADDR_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
-     vty_out (vty, "Management Adress %s", VTY_NEWLINE);
+     vty_out (vty, "Management Address %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
      vty_out (vty, "Port description %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_ID_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_ID_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
      vty_out (vty, "Port VLAN-ID %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_VLAN_ID_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_VLAN_ID_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
      vty_out (vty, "Port Protocol VLAN-ID %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_NAME_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_VLAN_NAME_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
      vty_out (vty, "Port VLAN Name %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_ID_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_PROTO_ID_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
      vty_out (vty, "Port Protocol-ID %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_CAP_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_SYS_CAP_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
 
   if(tlv_set)
      vty_out (vty, "System capabilities %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_DESC_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_SYS_DESC_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
      vty_out (vty, "System description %s", VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_SYS_NAME_ENABLE,
-                           OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_SYS_NAME_ENABLE,
+                           SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
      vty_out (vty, "System name %s", VTY_NEWLINE);
 }
@@ -612,11 +642,11 @@ DEFUN (cli_lldp_show_tlv,
        "show lldp tlv",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show TLVs advertised by LLDP.\n")
+       "Show TLVs advertised by LLDP\n")
 {
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
@@ -633,11 +663,10 @@ DEFUN (cli_lldp_show_intf_statistics,
        "show lldp statistics IFNAME",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show LLDP statistics.\n"
-       "Specify the interface name.\n")
+       "Show LLDP statistics\n"
+       "Specify the interface name\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
-  const char  *port_name = NULL;
   bool port_found = false;
   const struct ovsdb_datum *datum;
   static char *lldp_interface_statistics_keys [] = {
@@ -664,26 +693,26 @@ DEFUN (cli_lldp_show_intf_statistics,
 
         atom.string = lldp_interface_statistics_keys[0];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets transmitted :%d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets transmitted :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
 
         atom.string = lldp_interface_statistics_keys [1];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets received :%d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets received :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
 
         atom.string = lldp_interface_statistics_keys[2];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets received and discarded :%d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets received and discarded :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
 
         atom.string = lldp_interface_statistics_keys[3];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets received and unrecognized :%d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets received and unrecognized :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
         break;
      }
   }
 
   if(!port_found)
   {
-    vty_out (vty, "Error: Wrong interface name.%s", VTY_NEWLINE);
+    vty_out (vty, "Wrong interface name%s", VTY_NEWLINE);
     return CMD_WARNING;
   }
 
@@ -695,10 +724,10 @@ DEFUN (cli_lldp_show_config,
        "show lldp configuration ",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show LLDP configuration. \n")
+       "Show LLDP configuration\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
-  const struct ovsrec_open_vswitch *row = NULL;
+  const struct ovsrec_system *row = NULL;
   bool lldp_enabled = false;
   int tx_interval = 0;
   int hold_time = 0;
@@ -706,26 +735,27 @@ DEFUN (cli_lldp_show_config,
   lldp_intf_stats *new_intf_stats = NULL;
   lldp_intf_stats *temp = NULL, *current = NULL;
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
+     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
      return CMD_OVSDB_FAILURE;
   }
 
   vty_out(vty, "LLDP Global Configuration:%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
   lldp_enabled = smap_get_bool(&row->other_config,
-                               OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_ENABLE,
-                               OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_ENABLE_DEFAULT);
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_ENABLE,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_ENABLE_DEFAULT);
 
   tx_interval = smap_get_int(&row->other_config,
-                               OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL,
-                               OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
 
   hold_time = smap_get_int(&row->other_config,
-                             OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD,
-                             OPEN_VSWITCH_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
+                             SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD,
+                             SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
 
   vty_out(vty, "LLDP Enabled :%s%s", lldp_enabled?"Yes":"No",VTY_NEWLINE);
 
@@ -743,8 +773,13 @@ DEFUN (cli_lldp_show_config,
 
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
   {
+    if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
+    {
+       /* Skipping internal interfaces */
+       continue;
+    }
     new_intf_stats = xcalloc(1, sizeof *new_intf_stats);
-    char *lldp_enable_dir = smap_get(&ifrow->other_config , INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
+    const char *lldp_enable_dir = smap_get(&ifrow->other_config , INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
 
     memset(new_intf_stats->name, '\0', INTF_NAME_SIZE);
     strncpy(new_intf_stats->name, ifrow->name, INTF_NAME_SIZE);
@@ -768,7 +803,7 @@ DEFUN (cli_lldp_show_config,
     {
       new_intf_stats->lldp_dir = LLDP_TXRX;
     }
-    if((intf_stats == NULL) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
+    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
     {
       new_intf_stats->next = intf_stats;
       intf_stats = new_intf_stats;
@@ -777,7 +812,7 @@ DEFUN (cli_lldp_show_config,
     {
       current = intf_stats;
 
-      while(current->next != NULL && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
+      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
       {
         current = current->next;
       }
@@ -832,17 +867,14 @@ DEFUN (cli_lldp_show_statistics,
        "show lldp statistics",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show LLDP statistics.\n")
+       "Show LLDP statistics\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
-  const struct ovsrec_open_vswitch *row = NULL;
-  bool lldp_enabled = false;
-  int tx_interval = 0;
-  int hold_time = 0;
+  const struct ovsrec_system *row = NULL;
   lldp_intf_stats *intf_stats = NULL;
   lldp_intf_stats *new_intf_stats = NULL;
   lldp_intf_stats *temp = NULL, *current = NULL;
-  const struct ovsdb_datum *datum;
+  const struct ovsdb_datum *datum = NULL;
   static char *lldp_interface_statistics_keys [] = {
     INTERFACE_STATISTICS_LLDP_TX_COUNT,
     INTERFACE_STATISTICS_LLDP_RX_COUNT,
@@ -855,15 +887,21 @@ DEFUN (cli_lldp_show_statistics,
   unsigned int total_rx_unrecognized = 0;
   unsigned int index;
 
-  row = ovsrec_open_vswitch_first(idl);
+  row = ovsrec_system_first(idl);
 
   if(!row)
   {
+     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
      return CMD_OVSDB_FAILURE;
   }
 
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
   {
+    if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
+    {
+       /* Skipping internal interfaces */
+       continue;
+    }
     union ovsdb_atom atom;
     new_intf_stats = xcalloc(1, sizeof *new_intf_stats);
 
@@ -888,7 +926,7 @@ DEFUN (cli_lldp_show_statistics,
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
     new_intf_stats->rx_unrecognized = (index == UINT_MAX)? 0 : datum->values[index].integer;
 
-    if((intf_stats == NULL) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
+    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
     {
       new_intf_stats->next = intf_stats;
       intf_stats = new_intf_stats;
@@ -897,7 +935,7 @@ DEFUN (cli_lldp_show_statistics,
     {
       current = intf_stats;
 
-      while(current->next != NULL && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
+      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
       {
         current = current->next;
       }
@@ -917,10 +955,10 @@ DEFUN (cli_lldp_show_statistics,
   }
 
   vty_out(vty, "LLDP Global statistics:\n\n");
-  vty_out(vty, "Total Packets transmitted : %lu\n",total_tx_packets);
-  vty_out(vty, "Total Packets received : %lu\n",total_rx_packets);
-  vty_out(vty, "Total Packet received and discarded : %lu\n",total_rx_discared);
-  vty_out(vty, "Total TLVs unrecognized : %lu\n",total_rx_unrecognized);
+  vty_out(vty, "Total Packets transmitted : %u\n",total_tx_packets);
+  vty_out(vty, "Total Packets received : %u\n",total_rx_packets);
+  vty_out(vty, "Total Packet received and discarded : %u\n",total_rx_discared);
+  vty_out(vty, "Total TLVs unrecognized : %u\n",total_rx_unrecognized);
 
   vty_out(vty, "LLDP Port Statistics:\n");
   vty_out(vty, "%-10s","Port-ID");
@@ -934,10 +972,10 @@ DEFUN (cli_lldp_show_statistics,
   while(NULL != current)
   {
     vty_out (vty, "%-10s", current->name);
-    vty_out (vty, "%-15lu", current->tx_packets);
-    vty_out (vty, "%-15lu", current->rx_packets);
-    vty_out (vty, "%-20lu", current->rx_discared);
-    vty_out (vty, "%-20lu", current->rx_unrecognized);
+    vty_out (vty, "%-15d", current->tx_packets);
+    vty_out (vty, "%-15d", current->rx_packets);
+    vty_out (vty, "%-20d", current->rx_discared);
+    vty_out (vty, "%-20d", current->rx_unrecognized);
     printf("\n");
     current = current->next;
   }
@@ -954,7 +992,10 @@ DEFUN (cli_lldp_show_statistics,
   return CMD_SUCCESS;
 }
 
-static inline int compar_intf(void*a,void* b)
+/* qsort comparator function.
+ * This may need to be modified depending on the format of interface name
+ */
+static inline int compare_intf(const void*a, const void* b)
 {
     lldp_neighbor_info* s1 = (lldp_neighbor_info*)a;
     lldp_neighbor_info* s2 = (lldp_neighbor_info*)b;
@@ -986,13 +1027,13 @@ DEFUN (cli_lldp_show_neighbor_info,
        "show lldp neighbor-info",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show global LLDP neighbor information.\n")
+       "Show global LLDP neighbor information\n")
 {
   const struct ovsrec_interface *ifrow = NULL;
   const struct ovsrec_subsystem *row = NULL;
   lldp_neighbor_info *nbr_info = NULL;
   uint  iter = 0, nIntf = 0;
-  const struct ovsdb_datum *datum;
+  const struct ovsdb_datum *datum = NULL;
   static char *lldp_interface_neighbor_info_keys [] = {
     INTERFACE_STATISTICS_LLDP_INSERT_COUNT,
     INTERFACE_STATISTICS_LLDP_DELETE_COUNT,
@@ -1014,10 +1055,16 @@ DEFUN (cli_lldp_show_neighbor_info,
   {
      nIntf = row->n_interfaces;
      if(!nIntf)
+     {
+        VLOG_ERR(OVSDB_LLDP_INTF_ROW_FETCH_ERROR);
         return CMD_OVSDB_FAILURE;
+     }
   }
   else
+  {
+     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
       return CMD_OVSDB_FAILURE;
+  }
 
   nbr_info = xcalloc(nIntf, sizeof (lldp_neighbor_info));
 
@@ -1025,11 +1072,16 @@ DEFUN (cli_lldp_show_neighbor_info,
   {
     union ovsdb_atom atom;
 
+   if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
+   {
+      /* Skipping internal interfaces */
+      continue;
+   }
   /*
    * If for some reason the n_interfaces doesnt comply with
    * OVSREC_INTERFACE_FOR_EACH rows.
   */
-   if(iter > nIntf)
+   if(iter >= nIntf)
     break;
 
     strncpy(nbr_info[iter].name, ifrow->name, INTF_NAME_SIZE);
@@ -1076,10 +1128,10 @@ DEFUN (cli_lldp_show_neighbor_info,
   }
 
   vty_out(vty, "\n");
-  vty_out(vty, "Total neighbor entries : %lu\n", total_insert_count);
-  vty_out(vty, "Total neighbor entries deleted : %lu\n", total_delete_count);
-  vty_out(vty, "Total neighbor entries dropped : %lu\n", total_drop_count);
-  vty_out(vty, "Total neighbor entries aged-out : %lu\n", total_ageout_count);
+  vty_out(vty, "Total neighbor entries : %u\n", total_insert_count);
+  vty_out(vty, "Total neighbor entries deleted : %u\n", total_delete_count);
+  vty_out(vty, "Total neighbor entries dropped : %u\n", total_drop_count);
+  vty_out(vty, "Total neighbor entries aged-out : %u\n", total_ageout_count);
 
   vty_out(vty, "\n");
   vty_out(vty, "%-15s","Local Port");
@@ -1088,7 +1140,7 @@ DEFUN (cli_lldp_show_neighbor_info,
   vty_out(vty, "%-10s","TTL");
   vty_out(vty, "%s", VTY_NEWLINE);
 
-  qsort((void*)nbr_info,nIntf,sizeof(lldp_neighbor_info),compar_intf);
+  qsort((void*)nbr_info,nIntf,sizeof(lldp_neighbor_info),compare_intf);
 
   iter = 0;
   while(iter < nIntf)
@@ -1118,13 +1170,12 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
        "show lldp neighbor-info IFNAME",
        SHOW_STR
        SHOW_LLDP_STR
-       "Show global LLDP neighbor information.\n"
-       "Specify the interface name.")
+       "Show global LLDP neighbor information\n"
+       "Specify the interface name")
 {
   const struct ovsrec_interface *ifrow = NULL;
-  const char  *port_name = NULL;
   bool port_found = false;
-  const struct ovsdb_datum *datum;
+  const struct ovsdb_datum *datum = NULL;
   static char *lldp_interface_neighbor_info_keys [] = {
     INTERFACE_STATISTICS_LLDP_INSERT_COUNT,
     INTERFACE_STATISTICS_LLDP_DELETE_COUNT,
@@ -1153,19 +1204,19 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
         datum = ovsrec_interface_get_lldp_statistics(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
         atom.string = lldp_interface_neighbor_info_keys[0];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries               : %d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries               : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
 
         atom.string = lldp_interface_neighbor_info_keys[1];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries deleted       : %d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries deleted       : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
 
         atom.string = lldp_interface_neighbor_info_keys[2];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries dropped       : %d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries dropped       : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
 
         atom.string = lldp_interface_neighbor_info_keys[3];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries age-out       : %d\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries age-out       : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
 
         datum = ovsrec_interface_get_lldp_neighbor_info(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_STRING);
 
@@ -1202,7 +1253,7 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
   if(!port_found)
   {
-    vty_out (vty, "Error: Wrong interface name.%s", VTY_NEWLINE);
+    VLOG_ERR("Wrong interface name");
     return CMD_WARNING;
   }
 
@@ -1210,14 +1261,15 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
 }
 
-
+/* set LLDP interface state as TX, RX or both */
 int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   const struct ovsrec_interface * row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
-  char *state_value;
+  const char *state_value;
+  struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -1227,7 +1279,7 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   row = ovsrec_interface_first(idl);
   if(!row)
   {
-    VLOG_ERR("unable to fetch a row.");
+    VLOG_ERR("unable to fetch row");
     cli_do_config_abort(status_txn);
     return 1;
   }
@@ -1237,16 +1289,17 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
     if(strcmp(row->name, ifvalue) == 0)
     {
       state_value = smap_get(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
+      smap_clone(&smap_other_config, &row->other_config);
       if(state == LLDP_TX)
       {
         if((NULL == state_value) || (strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF) == 0))
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX);
         }
         else if(strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX);
         }
       }
@@ -1254,23 +1307,23 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
       {
         if((NULL == state_value) || (strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF) == 0))
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX);
         }
         else if(strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX);
         }
       }
 
-      ovsrec_interface_set_other_config(row, &row->other_config);
+      ovsrec_interface_set_other_config(row, &smap_other_config);
       break;
     }
   }
 
   status = cli_do_config_finish(status_txn);
-
+  smap_destroy(&smap_other_config);
   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
   {
     return 0;
@@ -1290,7 +1343,7 @@ DEFUN (lldp_if_lldp_tx,
        "Set the transmission\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_TX) != 0)
-    VLOG_ERR("Failed to set lldp transmission in Interface context");
+    VLOG_ERR("Failed to set lldp transmission");
 
   return CMD_SUCCESS;
 }
@@ -1299,24 +1352,25 @@ DEFUN (lldp_if_lldp_rx,
        lldp_if_lldp_rx_cmd,
        "lldp reception",
        INTF_LLDP_STR
-       "Set the receiption\n")
+       "Set the reception\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_RX) != 0)
-    VLOG_ERR("Failed to set lldp reception in Interface context");
+    VLOG_ERR("Failed to set lldp reception");
 
   return CMD_SUCCESS;
 }
 
-
+/* set LLDP interface state to default */
 int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 {
   const struct ovsrec_interface * row = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn* status_txn = cli_do_config_start();
-  char *state_value;
+  const char *state_value;
   boolean validstate = false, ifexists = false;
+  struct smap smap_other_config;
 
-  if(status_txn == NULL)
+  if(NULL == status_txn)
   {
     VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
     cli_do_config_abort(status_txn);
@@ -1326,7 +1380,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
   row = ovsrec_interface_first(idl);
   if(!row)
   {
-    VLOG_ERR("unable to fetch a row.");
+    VLOG_ERR("unable to fetch a row");
     cli_do_config_abort(status_txn);
     return 1;
   }
@@ -1337,17 +1391,18 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
     {
       ifexists = true;
       state_value = smap_get(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
+      smap_clone(&smap_other_config, &row->other_config);
       if(state == LLDP_TX)
       {
         if((NULL == state_value) || (strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0))
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX);
           validstate = true;
         }
         else if(strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF);
           validstate = true;
         }
@@ -1356,13 +1411,13 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
       {
         if((NULL == state_value) || (strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0))
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX);
           validstate = true;
         }
         else if(strcmp(state_value, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
         {
-          smap_replace(&row->other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
+          smap_replace(&smap_other_config, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR,
                         INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF);
           validstate = true;
         }
@@ -1370,7 +1425,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 
       if (true == validstate)
       {
-        ovsrec_interface_set_other_config(row, &row->other_config);
+        ovsrec_interface_set_other_config(row, &smap_other_config);
       }
       break;
     }
@@ -1379,6 +1434,7 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
   if ((true == ifexists) && (true == validstate))
   {
     status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_other_config);
     if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
     {
       return 0;
@@ -1390,13 +1446,14 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
   }
   else
   {
+    smap_destroy(&smap_other_config);
     if (false == ifexists)
     {
       VLOG_ERR("unable to find the interface");
     }
     if ((true == ifexists) && (false == validstate))
     {
-      VLOG_ERR("ifrow other_config has invalid lldp dir state");
+      VLOG_ERR("ifrow other_config has invalid LLDP dir state");
     }
 
     cli_do_config_abort(status_txn);
@@ -1413,7 +1470,7 @@ DEFUN (lldp_if_no_lldp_tx,
        "Set the transmission\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_TX) != 0)
-    VLOG_ERR("Failed to set lldp transmission in Interface context");
+    VLOG_ERR("Failed to set lldp transmission");
 
   return CMD_SUCCESS;
 }
@@ -1423,10 +1480,10 @@ DEFUN (lldp_if_no_lldp_rx,
        "no lldp reception",
        NO_STR
        INTF_LLDP_STR
-       "Set the receiption\n")
+       "Set the reception\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_RX) != 0)
-    VLOG_ERR("Failed to set lldp reception in Interface context");
+    VLOG_ERR("Failed to set lldp reception");
 
   return CMD_SUCCESS;
 }
@@ -1447,6 +1504,7 @@ lldp_vty_init (void)
   install_element (CONFIG_NODE, &lldp_clear_neighbors_cmd);
   install_element (CONFIG_NODE, &lldp_set_mgmt_address_cmd);
   install_element (CONFIG_NODE, &lldp_set_no_mgmt_address_cmd);
+  install_element (CONFIG_NODE, &lldp_set_no_mgmt_address_cmd_arg);
   install_element (ENABLE_NODE, &lldp_show_tlv_cmd);
   install_element (ENABLE_NODE, &lldp_show_intf_statistics_cmd);
   install_element (ENABLE_NODE, &lldp_show_intf_neighbor_info_cmd);

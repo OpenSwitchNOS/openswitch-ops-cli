@@ -1,5 +1,6 @@
 /* User authentication for vtysh.
  * Copyright (C) 2000 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -157,6 +158,7 @@ user_get (const char *name)
   return user;
 }
 
+#ifndef ENABLE_OVSDB
 DEFUN (username_nopassword,
        username_nopassword_cmd,
        "username WORD nopassword",
@@ -169,6 +171,7 @@ DEFUN (username_nopassword,
   user->nopassword = 1;
   return CMD_SUCCESS;
 }
+#endif
 
 int
 vtysh_auth ()
@@ -195,5 +198,7 @@ void
 vtysh_user_init ()
 {
   userlist = list_new ();
+#ifndef ENABLE_OVSDB
   install_element (CONFIG_NODE, &username_nopassword_cmd);
+#endif
 }

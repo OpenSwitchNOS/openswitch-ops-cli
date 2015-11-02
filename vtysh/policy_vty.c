@@ -1,6 +1,7 @@
 /*
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,7 +47,7 @@
 #include "lib/plist.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "util.h"
 
 extern struct ovsdb_idl *idl;
@@ -61,7 +62,7 @@ struct lookup_entry {
 };
 
 const struct lookup_entry match_table[]={
-  {"ip address prefix list", "prefix_list"},
+  {"ip address prefix-list", "prefix_list"},
   {NULL, NULL},
 };
 

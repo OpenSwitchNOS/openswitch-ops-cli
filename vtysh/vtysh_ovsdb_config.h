@@ -1,19 +1,22 @@
 /*
- Copyright (C) 2015 Hewlett Packard Enterprise Development LP
- All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License"); you may
- not use this file except in compliance with the License. You may obtain
- a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- License for the specific language governing permissions and limitations
- under the License.
-*/
+ * Copyright (C) 1997 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ *
+ * GNU Zebra is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2, or (at your option) any
+ * later version.
+ *
+ * GNU Zebra is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Zebra; see the file COPYING.  If not, write to the Free
+ * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ */
 /****************************************************************************
  * @ingroup  quagga
  *
@@ -40,10 +43,12 @@ typedef enum vtysh_context_idenum
   e_vtysh_context_id_first = 0,
   e_vtysh_config_context = 0,
   e_vtysh_router_context,
+  e_vtysh_vlan_context,
   e_vtysh_interface_context,
   e_vtysh_mgmt_interface_context,
-  e_vtysh_vlan_context,
+  e_vtysh_interface_lag_context,
   e_vtysh_dependent_config,
+  e_vtysh_dhcp_tftp_context,
   e_vtysh_context_id_max
 } vtysh_contextid;
 
@@ -57,6 +62,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_fan,
   e_vtysh_config_context_led,
   e_vtysh_config_context_staticroute,
+  e_vtysh_config_context_ecmp,
   e_vtysh_config_context_client_id_max
 } vtysh_config_context_clientid;
 
@@ -64,6 +70,8 @@ typedef enum vtysh_config_context_client_idenum
 typedef enum vtysh_router_context_client_idenum
 {
   e_vtysh_router_context_client_id_first = 0,
+  e_vtysh_router_context_bgp_ip_prefix,
+  e_vtysh_router_context_bgp_routemap,
   e_vtysh_router_context_bgp,
   e_vtysh_router_context_ospf,
   e_vtysh_router_context_client_id_max
@@ -87,6 +95,15 @@ typedef enum vtysh_mgmt_interface_context_client_idenum
   e_vtysh_mgmt_interface_context_client_id_max
 } vtysh_mgmt_interface_context_clientid;
 
+/* Mgmt Interface Context client-id type */
+typedef enum vtysh_interface_lag_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_interface_lag_context_client_id_first = 0,
+  e_vtysh_interface_lag_context_config,
+  e_vtysh_interface_lag_context_client_id_max
+} vtysh_interface_lag_context_clientid;
+
 /* Vlan Context client-id type */
 typedef enum vtysh_vlan_context_client_idenum
 {
@@ -104,6 +121,16 @@ typedef enum vtysh_dependent_config_client_idenum
   e_vtysh_dependent_config_staticroute,
   e_vtysh_dependent_config_client_id_max
 } vtysh_dependent_config_clientid;
+
+/* Dependent Config Client ID type */
+typedef enum vtysh_dhcp_tftp_config_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_dhcp_tftp_context_client_id_first = 0,
+  e_vtysh_dhcp_tftp_context_dhcp,
+  e_vtysh_dhcp_tftp_context_tftp,
+  e_vtysh_dhcp_tftp_context_client_id_max,
+} vtysh_dhcp_tftp_context_clientid;
 
 typedef struct vtysh_ovsdb_cbmsg_struct
 {
@@ -162,7 +189,7 @@ int vtysh_context_get_minclientid(vtysh_contextid contextid);
 void vtysh_ovsdb_config_init(const char *db_path);
 void vtysh_ovsdb_read_config(FILE *fp);
 void vtysh_context_table_list_clients(struct vty *vty);
-void vtysh_ovsdb_init_clients();
+void vtysh_ovsdb_init_clients(void);
 
 vtysh_ret_val vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, ...);
 

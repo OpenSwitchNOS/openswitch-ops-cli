@@ -1,6 +1,7 @@
 /* FAN CLI commands file
  *
- * Hewlett-Packard Company Confidential (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 1997, 98 Kunihiro Ishiguro
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,58 +34,58 @@
 #include "fan_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
-#include "openhalon-idl.h"
+#include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_fan_cli);
 extern struct ovsdb_idl *idl;
-/*-----------------------------------------------------------------------------
-| @function       : vtysh_ovsdb_fan_speed_set
-| @responsibility : set other_config:fan_speed_override in subsystem table
-| @params
-|    speed        : speed to be set
-|    set          : boolean param to set or unset the speed
------------------------------------------------------------------------------*/
+/*
+ * Function       : vtysh_ovsdb_fan_speed_set
+ * Responsibility : Set fan speed globally
+ * Parameters
+ *    speed        : speed to be set
+ *    set          : boolean param to set or unset the speed
+ */
 
-static int vtysh_ovsdb_fan_speed_set( char* speed, boolean set )
+static int
+vtysh_ovsdb_fan_speed_set ( char* speed, boolean set )
 {
     const struct ovsrec_subsystem *row = NULL;
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     struct smap smap_other_config;
 
-    status_txn = cli_do_config_start();
+    status_txn = cli_do_config_start ();
 
-    if(status_txn == NULL)
+    if (status_txn == NULL)
     {
-        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
-    row = ovsrec_subsystem_first(idl);
-    if(!row)
+    row = ovsrec_subsystem_first (idl);
+    if (!row)
     {
-        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_ERR (OVSDB_ROW_FETCH_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
-    smap_clone(&smap_other_config, &row->other_config);
+    smap_clone (&smap_other_config, &row->other_config);
 
-    if(set && speed)
+    if (set && speed)
     {
-        smap_replace(&smap_other_config, FAN_SPEED_OVERRIDE_STR, speed);
+        smap_replace (&smap_other_config, FAN_SPEED_OVERRIDE_STR, speed);
     }
     else
     {
-        smap_remove(&smap_other_config,FAN_SPEED_OVERRIDE_STR);
+        smap_remove (&smap_other_config,FAN_SPEED_OVERRIDE_STR);
     }
-    ovsrec_subsystem_set_other_config(row,&smap_other_config);
-    smap_destroy(&smap_other_config);
+    ovsrec_subsystem_set_other_config (row,&smap_other_config);
+    smap_destroy (&smap_other_config);
 
-    status = cli_do_config_finish(status_txn);
-
-    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    status = cli_do_config_finish (status_txn);
+    if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
     {
         return CMD_SUCCESS;
     }
@@ -95,95 +96,113 @@ static int vtysh_ovsdb_fan_speed_set( char* speed, boolean set )
     }
 }
 
-DEFUN ( vtysh_fan_speed,
+DEFUN (vtysh_fan_speed,
         vtysh_fan_speed_cmd,
-        "fan-speed (slow | normal | medium | fast | max)",
+        "fan-speed ( normal | slow | medium | fast | max )",
         FAN_SET_STR
-        " \n"
+        "(Default)\n"
         " \n"
         " \n"
         " \n"
         " \n")
 {
-    return vtysh_ovsdb_fan_speed_set(argv[0], true);
+    return vtysh_ovsdb_fan_speed_set (CONST_CAST(char*,argv[0]), true);
 }
 
-DEFUN ( vtysh_no_fan_speed,
+DEFUN (vtysh_no_fan_speed,
         vtysh_no_fan_speed_cmd,
-        "no fan-speed",
+        "no fan-speed { normal | slow | medium | fast | max }",
         NO_STR
-        FAN_SET_STR)
+        FAN_SET_STR
+        "(Default)\n"
+        " \n"
+        " \n"
+        " \n"
+        " \n")
 {
-    return vtysh_ovsdb_fan_speed_set(NULL,false );
+    return vtysh_ovsdb_fan_speed_set (NULL,false );
 }
 
-/*-----------------------------------------------------------------------------
-| @function        : vtysh_ovsdb_fan_show
-| @responsibility  : display fan table entries
------------------------------------------------------------------------------*/
+/*
+ * Function        : vtysh_ovsdb_fan_show
+ * Responsibility  : Display fan table entries
+ */
 
-static void  vtysh_ovsdb_fan_show()
+static void
+vtysh_ovsdb_fan_show ()
 {
     const struct ovsrec_fan *row = NULL;
     const struct ovsrec_subsystem *subsysrow = NULL;
-    const char* override = NULL ;
-    int64_t rpm = 0 ;
-    subsysrow = ovsrec_subsystem_first(idl);
-    /* HALON_TODO: there could be a case where multiple subsystem rows could be present.
-       In such case we may need to check for respective row of subsystem table*/
-    if(subsysrow)
+    const char* override = NULL;
+    int64_t rpm = 0;
+    subsysrow = ovsrec_subsystem_first (idl);
+    /*
+     * OPS_TODO : Support for multiple subsystem
+     */
+    if (subsysrow)
     {
-        override = smap_get(&subsysrow->other_config, "fan_speed_override");
-        OVSREC_FAN_FOR_EACH(row, idl)
+        override = smap_get (&subsysrow->other_config, "fan_speed_override");
+        OVSREC_FAN_FOR_EACH (row, idl)
         {
-            if(row)
+            if (row)
             {
-                struct ovsdb_datum *at = ovsrec_fan_get_rpm(row,OVSDB_TYPE_INTEGER);
-                if(at)
+                const struct ovsdb_datum *at =
+                    ovsrec_fan_get_rpm (row,OVSDB_TYPE_INTEGER);
+                if (at)
                     rpm=at->keys->integer;
-                vty_out (vty,"%-13s%-7s%-15s%-14s%-8lld%s",
-                 row->name,row->speed,((0 == strncmp(row->direction , "f2b",3))?"front-to-back":"back-to-front"),row->status,rpm,VTY_NEWLINE);
+                vty_out (vty,"%-13s%-7s%-15s%-14s%-8ld%s",
+                        row->name,row->speed,
+                        ((0 == strncmp(row->direction , "f2b",3))?
+                                "front-to-back":"back-to-front"),
+                        row->status,rpm,VTY_NEWLINE);
             }
             else
-                VLOG_ERR("Couldn't retrieve any fan table rows");
+                VLOG_ERR("Unable to retrieve fan table rows");
         }
-        vty_out(vty,"------------------------------------------------------%s",VTY_NEWLINE);
-        if(override)
-            vty_out(vty,"Fan speed override is set to : %s%s", override,VTY_NEWLINE);
+        vty_out(vty,"------------------------------------------------------%s",
+                VTY_NEWLINE);
+        if (override)
+            vty_out(vty,"Fan speed override is set to : %s%s",
+                    override,VTY_NEWLINE);
         else
             vty_out(vty,"Fan speed override is not configured %s",VTY_NEWLINE);
-        vty_out(vty,"------------------------------------------------------%s",VTY_NEWLINE);
+        vty_out(vty,"------------------------------------------------------%s",
+                VTY_NEWLINE);
     }
     else
     {
-        VLOG_ERR("Couldn't retrieve any subsystem table rows");
+        VLOG_ERR("Unable to retrieve subsystem table rows");
     }
 }
 
 
 DEFUN (vtysh_show_system_fan,
-       vtysh_show_system_fan_cmd,
-       "show system fan",
-       SHOW_STR
-       SYS_STR
-       FAN_STR)
+        vtysh_show_system_fan_cmd,
+        "show system fan",
+        SHOW_STR
+        SYS_STR
+        FAN_STR)
 {
     vty_out(vty,"%s%s","Fan information",VTY_NEWLINE);
-    vty_out(vty,"------------------------------------------------------%s",VTY_NEWLINE);
-    vty_out(vty,"%-13s%-7s%-15s%-14s%-8s%s","Name","Speed","Direction","Status","RPM",VTY_NEWLINE);
-    vty_out(vty,"------------------------------------------------------%s",VTY_NEWLINE);
-    vtysh_ovsdb_fan_show();
+    vty_out(vty,"------------------------------------------------------%s",
+            VTY_NEWLINE);
+    vty_out(vty,"%-13s%-7s%-15s%-14s%-8s%s","Name","Speed",
+            "Direction","Status","RPM",VTY_NEWLINE);
+    vty_out(vty,"------------------------------------------------------%s",
+            VTY_NEWLINE);
+    vtysh_ovsdb_fan_show ();
     return CMD_SUCCESS;
 }
 
 
 
-/*-----------------------------------------------------------------------------
-| @function       : platform_vty_init
-| @responsibility : install all the CLIs in the respective contexts.
------------------------------------------------------------------------------*/
+/*
+ * Function       : platform_vty_init
+ * Responsibility : Install all the CLIs in the respective contexts.
+ */
 
-void fan_vty_init (void)
+void
+fan_vty_init (void)
 {
     install_element (VIEW_NODE, &vtysh_show_system_fan_cmd);
     install_element (ENABLE_NODE, &vtysh_show_system_fan_cmd);
