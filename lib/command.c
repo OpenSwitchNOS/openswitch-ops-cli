@@ -1881,31 +1881,32 @@ cmd_element_match(struct cmd_element *cmd_element,
 
   if (argc != NULL)
     *argc = 0;
+  if (cmd_element->tokens) {
+      for (token_index = 0;
+           token_index < vector_active(cmd_element->tokens);
+           token_index++)
+     {
+          struct cmd_token *token = vector_slot(cmd_element->tokens, token_index);
 
-  for (token_index = 0;
-       token_index < vector_active(cmd_element->tokens);
-       token_index++)
-    {
-      struct cmd_token *token = vector_slot(cmd_element->tokens, token_index);
+          switch (token->type)
+         {
+             case TOKEN_TERMINAL:
+                 rv = cmd_matcher_match_terminal(&matcher, token, argc, argv);
+                 break;
+             case TOKEN_MULTIPLE:
+                 rv = cmd_matcher_match_multiple(&matcher, token, argc, argv);
+                 break;
+             case TOKEN_KEYWORD:
+                 rv = cmd_matcher_match_keyword(&matcher, token, argc, argv);
+         }
 
-      switch (token->type)
-        {
-        case TOKEN_TERMINAL:
-          rv = cmd_matcher_match_terminal(&matcher, token, argc, argv);
-          break;
-        case TOKEN_MULTIPLE:
-          rv = cmd_matcher_match_multiple(&matcher, token, argc, argv);
-          break;
-        case TOKEN_KEYWORD:
-          rv = cmd_matcher_match_keyword(&matcher, token, argc, argv);
-        }
+         if (MATCHER_ERROR(rv))
+             return rv;
 
-      if (MATCHER_ERROR(rv))
-        return rv;
-
-      if (matcher.word_index > index)
-        return MATCHER_OK;
-    }
+         if (matcher.word_index > index)
+             return MATCHER_OK;
+      }
+  }
 
   /* return MATCHER_COMPLETE if all words were consumed */
   if (matcher.word_index >= vector_active(vline))
@@ -4688,19 +4689,21 @@ cmd_terminate_token(struct cmd_token *token)
   XFREE(MTYPE_CMD_TOKENS, token);
 }
 
-void
+struct cmd_element *
 cmd_terminate_element(struct cmd_element *cmd)
 {
   unsigned int i;
 
   if (cmd->tokens == NULL)
-    return;
+    return cmd;
 
   for (i = 0; i < vector_active(cmd->tokens); i++)
     cmd_terminate_token(vector_slot(cmd->tokens, i));
 
   vector_free(cmd->tokens);
   cmd->tokens = NULL;
+  cmd = NULL;
+  return cmd;
 }
 
 void
@@ -4749,4 +4752,49 @@ cmd_terminate ()
     XFREE (MTYPE_HOST, host.motdfile);
   if (host.config)
     XFREE (MTYPE_HOST, host.config);
+}
+
+/*
+ * This function will remove the cli installed node/element based on the
+ * type which is passed by caller.
+ */
+
+void
+cmd_terminate_node_element (void *del_ptr, enum data_type del_type)
+{
+  unsigned int i, j;
+  struct cmd_node *cmd_node;
+  struct cmd_element *cmd_element;
+  vector cmd_node_v;
+
+  if (cmdvec)
+  {
+      for (i = 0; i < vector_active (cmdvec); i++)
+        if ((cmd_node = vector_slot (cmdvec, i)) != NULL)
+        {
+            if ((del_type == NODE) && (cmd_node == del_ptr)) {
+                    cmd_node_v = cmd_node->cmd_vector;
+                    for (j = 0; j < vector_active (cmd_node_v); j++) {
+                      if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL) {
+                                vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
+                          }
+                      }
+                vector_free (cmd_node_v);
+                cmdvec->index[i] = NULL;
+                break;
+
+            } else if ((del_type == ELEMENT)) {
+                cmd_node_v = cmd_node->cmd_vector;
+                for (j = 0; j < vector_active (cmd_node_v); j++) {
+                        if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL) {
+                                if (cmd_element == del_ptr) {
+                                        vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
+                                        break;
+                                }
+                        }
+                }
+
+            }
+       }
+   }
 }
