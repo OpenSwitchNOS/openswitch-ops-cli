@@ -32,6 +32,12 @@
 #include "vty.h"
 #include "lib/route_types.h"
 
+
+enum data_type{
+  NODE=0,
+  ELEMENT
+};
+
 /* Host configuration variable */
 struct host
 {
@@ -617,7 +623,8 @@ extern int cmd_execute_command_strict (vector, struct vty *, struct cmd_element 
 extern void cmd_init (int);
 extern void cmd_terminate (void);
 extern int cmd_try_execute_command (struct vty *vty, char *buf);
-extern void cmd_terminate_element(struct cmd_element *cmd);
+extern struct cmd_element *cmd_terminate_element(struct cmd_element *cmd);
+extern void cmd_terminate_node_element (void *del_ptr, enum data_type del_type);
 
 extern vector cmd_parse_format(const char* string, const char *desc);
 extern void format_parser_read_word(struct format_parser_state *state);
