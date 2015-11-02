@@ -3822,31 +3822,12 @@ DEFUN (vtysh_alias_cli,
          if(strcmp(vtysh_aliases[i]->alias_def_str, argv[0]) == 0)
          {
             vtysh_alias_delete_alias(vtysh_aliases[i]->alias_def_str);
-#ifdef VTY_INFRA_FIXED
-            cmd_terminate_element(&vtysh_aliases[i]->alias_cmd_element);
-            cmd_terminate_element(&vtysh_aliases[i]->alias_cmd_element_with_args);
+            cmd_terminate_node_element(&vtysh_aliases[i]->alias_cmd_element, ELEMENT);
+            cmd_terminate_node_element(&vtysh_aliases[i]->alias_cmd_element_with_args, ELEMENT);
             free(vtysh_aliases[i]);
             vtysh_aliases[i] = vtysh_aliases[vtysh_alias_count-1];
             vtysh_aliases[vtysh_alias_count-1] = NULL;
             vtysh_alias_count--;
-#else
-            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_HIDDEN;
-            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_NOT_ENABLED;
-            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_DISABLED;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
-                CMD_ATTR_HIDDEN;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
-                CMD_ATTR_NOT_ENABLED;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
-                CMD_ATTR_DISABLED;
-            //TODO :
-            /* free cannot be done as cmd element is still referred by vector
-               */
-            //free(vtysh_aliases[i]);
-            vtysh_aliases[i] = vtysh_aliases[vtysh_alias_count-1];
-            vtysh_aliases[vtysh_alias_count-1] = NULL;
-            vtysh_alias_count--;
-#endif
             found = 1;
             break;
          }
