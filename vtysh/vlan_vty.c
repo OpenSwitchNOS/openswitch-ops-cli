@@ -39,6 +39,55 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_vlan_cli);
 extern struct ovsdb_idl *idl;
 
+/* qsort comparator function.
+ */
+static int
+compare_nodes_by_vlan_id_in_numerical(const void *a_, const void *b_)
+{
+    const struct shash_node *const *a = a_;
+    const struct shash_node *const *b = b_;
+    uint i1=0,i2=0;
+
+    sscanf((*a)->name,"%d",&i1);
+    sscanf((*b)->name,"%d",&i2);
+
+    if (i1 == i2)
+        return 0;
+    else if (i1 < i2)
+        return -1;
+    else
+        return 1;
+}
+
+/*
+ * Sorting function for vlan-id interface
+ * on success, returns sorted vlan-id list.
+ */
+static const struct shash_node **
+sort_vlan_id(const struct shash *sh)
+{
+    if (shash_is_empty(sh)) {
+        return NULL;
+    } else {
+        const struct shash_node **nodes;
+        struct shash_node *node;
+
+        size_t i, n;
+
+        n = shash_count(sh);
+        nodes = xmalloc(n * sizeof *nodes);
+        i = 0;
+        SHASH_FOR_EACH (node, sh) {
+            nodes[i++] = node;
+        }
+        ovs_assert(i == n);
+
+        qsort(nodes, n, sizeof *nodes, compare_nodes_by_vlan_id_in_numerical);
+        return nodes;
+    }
+}
+
+
 /*-----------------------------------------------------------------------------
  | Function: vlan_int_range_add
  | Responsibility: Add a vlan range to Open vSwitch table. This range is used to
@@ -258,6 +307,10 @@ static int show_vlan_int_range()
     uint16_t   min_vlan, max_vlan;
     struct ovsdb_idl_txn *status_txn = NULL;
 
+    struct shash sorted_vlan_port;
+    const struct shash_node **nodes;
+    int idx, count;
+
     /* VLAN info on port */
     const struct ovsrec_port *port_row = NULL;
     const char *port_vlan_str;
@@ -309,13 +362,23 @@ static int show_vlan_int_range()
     vty_out(vty, "\t%-4s\t\t%-16s\n", "VLAN","Interface");
     vty_out(vty, "\t%-4s\t\t%-16s\n", "----","---------");
 
+    shash_init(&sorted_vlan_port);
+
     OVSREC_PORT_FOR_EACH(port_row, idl) {
         port_vlan_str = smap_get(&port_row->hw_config, PORT_HW_CONFIG_MAP_INTERNAL_VLAN_ID);
 
         if (port_vlan_str == NULL) {
             continue;
+        } else {
+            shash_add(&sorted_vlan_port, port_vlan_str, (void *)port_row);
         }
+    }
 
+    count = shash_count(&sorted_vlan_port);
+    nodes = sort_vlan_id(&sorted_vlan_port);
+    for (idx = 0; idx < count; idx++) {
+        port_row = (const struct ovsrec_port *)nodes[idx]->data;
+         port_vlan_str = smap_get(&port_row->hw_config, PORT_HW_CONFIG_MAP_INTERNAL_VLAN_ID);
         vty_out(vty, "\t%-4s\t\t%-16s\n", port_vlan_str, port_row->name);
     }
 
@@ -324,6 +387,9 @@ static int show_vlan_int_range()
     } else {
         return CMD_OVSDB_FAILURE;
     }
+
+    shash_destroy(&sorted_vlan_port);
+    free(nodes);
 
     return CMD_SUCCESS;
 }
@@ -2066,7 +2132,10 @@ DEFUN(cli_show_vlan,
 {
     const struct ovsrec_vlan *vlan_row = NULL;
     const struct ovsrec_port *port_row = NULL;
-    int i = 0;
+    struct shash sorted_vlan_id;
+    const struct shash_node **nodes;
+    int idx, count, i;
+    char str[15];
 
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row == NULL)
@@ -2080,9 +2149,19 @@ DEFUN(cli_show_vlan,
     vty_out(vty, "VLAN    Name      Status   Reason         Reserved       Ports%s", VTY_NEWLINE);
     vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
 
+    shash_init(&sorted_vlan_id);
 
     OVSREC_VLAN_FOR_EACH(vlan_row, idl)
     {
+        sprintf(str, "%d", vlan_row->id);
+        shash_add(&sorted_vlan_id, str, (void *)vlan_row);
+    }
+
+    nodes = sort_vlan_id(&sorted_vlan_id);
+    count = shash_count(&sorted_vlan_id);
+    for (idx = 0; idx < count; idx++)
+    {
+        vlan_row = (const struct ovsrec_vlan *)nodes[idx]->data;
         char vlan_id[5] = { 0 };
         snprintf(vlan_id, 5, "%ld", vlan_row->id);
         vty_out(vty, "%-8s", vlan_id);
@@ -2135,6 +2214,8 @@ DEFUN(cli_show_vlan,
 
         vty_out(vty, "%s", VTY_NEWLINE);
     }
+    shash_destroy(&sorted_vlan_id);
+    free(nodes);
 
     return CMD_SUCCESS;
 }
