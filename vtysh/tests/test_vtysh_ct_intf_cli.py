@@ -88,6 +88,33 @@ class InterfaceCommandsTests(OpsVsiTest):
         out = s1.cmdCLI('end')
         return True
 
+    def display_interface_in_numerical_order(self):
+        s1 = self.net.switches[0]
+        s1.cmdCLI('end')
+        out = s1.cmdCLI('show interface brief')
+        list_interface = out.split("\n")
+        result_sortted = []
+        result_orig = []
+        for x in list_interface:
+            test = re.match('(\d+|.+\d+)\s+', x)
+            if test:
+                test_number = test.group(0)
+                if '-' in test_number:
+                    test_number = test_number.strip(" ")
+                    number = re.match('\d+.\d+', test_number).group(0)
+                    number = number.replace('-', '.')
+                    result_orig.append(float(number))
+                    result_sortted.append(float(number))
+                else:
+                    result_orig.append(int(test_number))
+                    result_sortted.append(int(test_number))
+
+        result_sortted.sort()
+
+        assert(result_orig == result_sortted), 'Test to display \
+               interface in numerical order -FAILED'
+        return True
+
 
 class Test_interfaceCommands:
 
@@ -105,6 +132,12 @@ class Test_interfaceCommands:
             print '''
 ########## Test to verify interface configuration clis - SUCCESS! ##########
 '''
+
+    def test_display_interface_in_numerical_order(self):
+        if self.test.display_interface_in_numerical_order():
+            info('''
+########## Test to verify that interface id displaying in numerical order \
+##########\n ''')
 
     def teardown_class(cls):
 
