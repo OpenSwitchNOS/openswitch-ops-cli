@@ -75,6 +75,7 @@
 #include "dhcp_tftp_vty.h"
 #endif
 
+#include "sub_if_vty.h"
 #include "aaa_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
@@ -87,6 +88,7 @@ int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 int vtysh_show_startup = 0;
 
+int maximum_sub_interfaces;
 #endif
 
 
@@ -827,6 +829,12 @@ static struct cmd_node interface_node =
    };
 
 #ifdef ENABLE_OVSDB
+static struct cmd_node sub_interface_node =
+{
+  SUB_INTERFACE_NODE,
+  "%s(config-sub-if)# ",
+};
+
 static struct cmd_node mgmt_interface_node =
 {
   MGMT_INTERFACE_NODE,
@@ -967,6 +975,225 @@ vtysh_end (void)
    return CMD_SUCCESS;
 }
 
+
+static int
+remove_intf_from_sub_if(const char *if_name)
+{
+   const struct ovsrec_interface *row = NULL;
+   const struct ovsrec_interface *interface_row = NULL;
+   const struct ovsrec_interface *if_row = NULL;
+   struct ovsdb_idl_txn* status_txn = NULL;
+   enum ovsdb_idl_txn_status status;
+   char sub_if_name[8]={0};
+   bool port_found = false;
+   struct ovsrec_interface **interfaces;
+   const struct ovsrec_port *sub_if_port = NULL;
+   int i=0, n=0, k=0;
+   bool interface_found = false;
+
+#if 1
+   /* Check if the SUB_INTERFACE port is present in DB. */
+   OVSREC_PORT_FOR_EACH(sub_if_port, idl)
+   {
+     if (strcmp(sub_if_port->name, if_name) == 0)
+     {
+       for (k = 0; k < sub_if_port->n_interfaces; k++)
+       {
+         if_row = sub_if_port->interfaces[k];
+         if(strcmp(if_name, if_row->name) == 0)
+         {
+           interface_found = true;
+         }
+       }
+       port_found = true;
+       break;
+     }
+   }
+
+   if(!port_found)
+   {
+     vty_out(vty, "Specified SUB_INTERFACE port doesn't exist.\n");
+     return CMD_SUCCESS;
+   }
+   if(!interface_found)
+   {
+     vty_out(vty, "Interface %s is not part of %s.\n", if_name, if_name);
+     return CMD_SUCCESS;
+   }
+
+   status_txn = cli_do_config_start();
+   if(status_txn == NULL)
+   {
+      VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+   }
+
+   /* Fetch the interface row to "interface_row" */
+   OVSREC_INTERFACE_FOR_EACH(row, idl)
+   {
+      if(strcmp(row->name, if_name) == 0)
+      {
+         interface_row = row;
+         break;
+      }
+   }
+
+   /* Unlink the interface from the Port row found*/
+   interfaces = xmalloc(sizeof *sub_if_port->interfaces * (sub_if_port->n_interfaces-1));
+   for(i = n = 0; i < sub_if_port->n_interfaces; i++)
+   {
+      if(sub_if_port->interfaces[i] != interface_row)
+      {
+         interfaces[n++] = sub_if_port->interfaces[i];
+      }
+   }
+   ovsrec_interface_delete(interface_row);
+   ovsrec_port_set_interfaces(sub_if_port, interfaces, n);
+   free(interfaces);
+   status = cli_do_config_finish(status_txn);
+
+   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+   {
+      return CMD_SUCCESS;
+   }
+   else
+   {
+      VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
+      return CMD_OVSDB_FAILURE;
+   }
+#endif
+}
+
+static int
+delete_sub_if(const char *sub_if_name)
+{
+  const struct ovsrec_vrf *vrf_row = NULL;
+  const struct ovsrec_bridge *bridge_row = NULL;
+  const struct ovsrec_port *sub_if_port_row = NULL;
+  bool sub_if_to_vrf = false;
+  bool sub_if_to_bridge = false;
+  struct ovsrec_port **ports;
+  int k=0, n=0, i=0;
+  struct ovsdb_idl_txn* status_txn = NULL;
+  enum ovsdb_idl_txn_status status;
+  bool port_found = false;
+  int ret;
+
+  ret = remove_intf_from_sub_if(sub_if_name);
+  if(ret == CMD_OVSDB_FAILURE){
+	vty_out(vty, "Unable to remove interface from subinterface port. %s",VTY_NEWLINE);
+  }
+
+  /* Return if SUB_INTERFACE port doesn't exit */
+  OVSREC_PORT_FOR_EACH(sub_if_port_row, idl)
+  {
+    if (strcmp(sub_if_port_row->name, sub_if_name) == 0)
+    {
+       port_found = true;
+    }
+  }
+
+  if(!port_found)
+  {
+    vty_out(vty, "Specified SUB_INTERFACE port doesn't exist.%s",VTY_NEWLINE);
+    return CMD_SUCCESS;
+  }
+
+  /* Check if the given SUB_INTERFACE port is part of VRF */
+  OVSREC_VRF_FOR_EACH (vrf_row, idl)
+  {
+    for (k = 0; k < vrf_row->n_ports; k++)
+    {
+       sub_if_port_row = vrf_row->ports[k];
+       if(strcmp(sub_if_port_row->name, sub_if_name) == 0)
+       {
+          sub_if_to_vrf = true;
+          goto port_attached;
+       }
+    }
+  }
+
+   /* Check if the given SUB_INTERFACE port is part of bridge */
+  OVSREC_BRIDGE_FOR_EACH (bridge_row, idl)
+  {
+    for (k = 0; k < bridge_row->n_ports; k++)
+    {
+       sub_if_port_row = bridge_row->ports[k];
+       if(strcmp(sub_if_port_row->name, sub_if_name) == 0)
+       {
+          sub_if_to_bridge = true;
+          goto port_attached;
+       }
+    }
+  }
+
+port_attached:
+  if(sub_if_to_vrf || sub_if_to_bridge)
+  {
+    /* SUB_INTERFACE port is attached to either VRF or bridge.
+     * So create transaction.                    */
+    status_txn = cli_do_config_start();
+    if(status_txn == NULL)
+    {
+      VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+  }
+  else
+  {
+    /* assert if the SUB_INTERFACE port is not part of either VRF or bridge */
+    assert(0);
+    VLOG_ERR("Port table entry not found either in VRF or in bridge.Function=%s, Line=%d", __func__,__LINE__);
+    return CMD_OVSDB_FAILURE;
+  }
+
+  if(sub_if_to_vrf)
+  {
+    /* Delete the SUB_INTERFACE port reference from VRF */
+    ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports-1));
+    for(i = n = 0; i < vrf_row->n_ports; i++)
+    {
+       if(vrf_row->ports[i] != sub_if_port_row)
+       {
+          ports[n++] = vrf_row->ports[i];
+       }
+    }
+    ovsrec_vrf_set_ports(vrf_row, ports, n);
+    free(ports);
+  }
+  else if(sub_if_to_bridge)
+  {
+    /* Delete the SUB_INTERFACE port reference from Bridge */
+    ports = xmalloc(sizeof *bridge_row->ports * (bridge_row->n_ports-1));
+    for(i = n = 0; i < bridge_row->n_ports; i++)
+    {
+       if(bridge_row->ports[i] != sub_if_port_row)
+       {
+          ports[n++] = bridge_row->ports[i];
+       }
+    }
+    ovsrec_bridge_set_ports(bridge_row, ports, n);
+    free(ports);
+  }
+
+  /* Delete the port as we cleared references to it from VRF or bridge*/
+  ovsrec_port_delete(sub_if_port_row);
+
+  status = cli_do_config_finish(status_txn);
+
+  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+  {
+     return CMD_SUCCESS;
+  }
+  else
+  {
+     VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
+     return CMD_OVSDB_FAILURE;
+  }
+}
+
 DEFUNSH (VTYSH_ALL,
       vtysh_end_all,
       vtysh_end_all_cmd,
@@ -975,6 +1202,7 @@ DEFUNSH (VTYSH_ALL,
 {
    return vtysh_end ();
 }
+
 #if 0
 DEFUNSH (VTYSH_BGPD,
       router_bgp,
@@ -1246,6 +1474,7 @@ vtysh_exit (struct vty *vty)
       vty->node = ENABLE_NODE;
       break;
     case INTERFACE_NODE:
+    case SUB_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
@@ -1518,6 +1747,9 @@ DEFUN (vtysh_interface,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
+  if (strchr(argv[0],'.'))
+	vty->node = SUB_INTERFACE_NODE;
+  else
   vty->node = INTERFACE_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
 
@@ -1579,6 +1811,10 @@ DEFUN (no_vtysh_interface,
   vty->node = CONFIG_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
 
+  if (strchr(argv[0],'.')){
+	delete_sub_if(argv[0]);
+	return CMD_SUCCESS;
+  }
   if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
       GET_VLANIF(ifnumber, argv[0]);
       if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
@@ -1981,7 +2217,155 @@ DEFUN (vtysh_interface_mgmt,
   vty->node = MGMT_INTERFACE_NODE;
   return CMD_SUCCESS;
 }
+
+DEFUN (cli_del_sub_if,
+    cli_del_sub_if_cmd,
+    "no interface A.B",
+    "Delete sub_interface L3_intf.sub_intf\n"
+    "Remove sub-interface entry from db\n")
+{
+  return delete_sub_if(argv[0]);
+}
+
+DEFUN (vtysh_sub_interface,
+       vtysh_sub_interface_cmd,
+       "interface A.B",
+      "Select a sub-interface to configure\n"
+      "Sub Interface phy_if.sub_if name\n")
+{
+  const struct ovsrec_port *port_row = NULL;
+  const struct ovsrec_interface *intf_row;
+  struct ovsrec_interface **iface_list;
+  bool port_found = false;
+  bool intf_found = false;
+  struct ovsdb_idl_txn *txn = NULL;
+  enum ovsdb_idl_txn_status status_txn;
+  static char ifnumber[SUB_INTF_NAME_LENGTH]={0};
+  const struct ovsrec_vrf *default_vrf_row = NULL;
+  const struct ovsrec_vrf *vrf_row = NULL;
+  int i=0;
+  struct ovsrec_port **ports = NULL;
+  char phy_intf[5];
+  char sub_if[5];
+  int phy_intf_number;
+  int sub_intf_number;
+
+
+  if (strlen(argv[0]) < 10)
+    memcpy(ifnumber, argv[0], strlen(argv));
+  vty->index = ifnumber;
+  vty->node = SUB_INTERFACE_NODE;
+
+  phy_intf_number = atof(argv[0]);
+  sub_intf_number = atoi(strchr(argv[0],'.') + 1);
+
+  if((phy_intf_number < MIN_PHY_INTF) || (phy_intf_number > MAX_PHY_INTF)){
+    fprintf (stdout, "Physical Interface Range <%d %d>\n", MIN_PHY_INTF, MAX_PHY_INTF);
+    return CMD_ERR_NOTHING_TODO;
+  }
+
+  if((sub_intf_number < MIN_SUB_INTF) || (sub_intf_number > MAX_SUB_INTF)){
+    fprintf (stdout, "Sub Interface Range <%d %d>\n", MIN_SUB_INTF, MAX_SUB_INTF);
+    return CMD_ERR_NOTHING_TODO;
+  }
+  memcpy(phy_intf, argv[0], strlen(argv[0]) - strlen(strchr(argv[0],'.')));
+  memcpy(sub_if, strchr(argv[0],'.') + 1, strlen(strchr(argv[0],'.') + 1));
+
+  OVSREC_PORT_FOR_EACH(port_row, idl)
+  {
+    if (strcmp(port_row->name, ifnumber) == 0)
+    {
+      port_found = true;
+      break;
+    }
+  }
+  if(!port_found)
+  {
+    if(maximum_sub_interfaces == MAX_SUB_INTF)
+    {
+      vty_out(vty, "Cannot create SUB interface. Maximum SUB interface count is already reached.%s",VTY_NEWLINE);
+      return CMD_SUCCESS;
+    }
+
+    txn = cli_do_config_start();
+    if (txn == NULL)
+    {
+      VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d",
+               " cli_do_config_start()", __func__, __LINE__);
+          cli_do_config_abort(txn);
+          return CMD_OVSDB_FAILURE;
+    }
+
+    port_row = ovsrec_port_insert(txn);
+    ovsrec_port_set_name(port_row, ifnumber);
+
+    OVSREC_VRF_FOR_EACH (vrf_row, idl)
+    {
+        if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
+            default_vrf_row = vrf_row;
+            break;
+        }
+    }
+    /* adding an interface */
+    intf_row = ovsrec_interface_insert(txn);
+    ovsrec_interface_set_name(intf_row, ifnumber);
+    ovsrec_interface_set_type(intf_row, OVSREC_INTERFACE_TYPE_INTERNAL);
+    struct smap smap_user_config;
+    smap_clone(&smap_user_config,&intf_row->user_config);
+
+    /* Set the admin state */
+    smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
+            OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN);
+
+    ovsrec_interface_set_user_config(intf_row, &smap_user_config);
+    smap_destroy(&smap_user_config);
+    iface_list = xmalloc(sizeof(struct ovsrec_interface));
+    iface_list[0] = (struct ovsrec_interface *)intf_row;
+
+    /* Adding a port to the corresponding interface*/
+    ovsrec_port_set_interfaces(port_row, iface_list, 1);
+
+    if(default_vrf_row == NULL)
+    {
+      assert(0);
+      VLOG_DBG("Couldn't fetch default VRF row. Function=%s, Line=%d",
+                __func__, __LINE__);
+      cli_do_config_abort(txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+    ports = xmalloc(sizeof *default_vrf_row->ports *
+                   (default_vrf_row->n_ports + 1));
+    for (i = 0; i < default_vrf_row->n_ports; i++)
+    {
+      ports[i] = default_vrf_row->ports[i];
+    }
+    ports[default_vrf_row->n_ports] = CONST_CAST(struct ovsrec_port*,port_row);
+    ovsrec_vrf_set_ports(default_vrf_row, ports,
+                         default_vrf_row->n_ports + 1);
+    free(ports);
+
+    status_txn = cli_do_config_finish(txn);
+    if(status_txn == TXN_SUCCESS || status_txn == TXN_UNCHANGED)
+    {
+      maximum_sub_interfaces++;
+      return CMD_SUCCESS;
+    }
+    else
+    {
+      VLOG_ERR("Transaction commit failed in function=%s, line=%d",__func__,__LINE__);
+      return CMD_OVSDB_FAILURE;
+    }
+  }
+  else
+  {
+    return CMD_SUCCESS;
+  }
+
+  return CMD_SUCCESS;
+}
 #else
+
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_interface,
       vtysh_interface_cmd,
@@ -1989,7 +2373,11 @@ DEFUNSH (VTYSH_INTERFACE,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
-  vty->node = INTERFACE_NODE;
+  if (strchr(argv[0],'.'))
+	vty->node = SUB_INTERFACE_NODE
+  else
+	vty->node = INTERFACE_NODE;
+
   static char ifnumber[5];
   if (strlen(argv[0]) < 5)
     memcpy(ifnumber, argv[0], strlen(argv));
@@ -2019,6 +2407,20 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
       NO_STR
       "Interface specific description\n")
 #endif
+
+DEFUNSH (VTYSH_INTERFACE,
+      vtysh_exit_sub_interface,
+      vtysh_exit_sub_interface_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_sub_interface,
+      vtysh_quit_sub_interface_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
 
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_exit_interface,
@@ -2052,6 +2454,8 @@ ALIAS (vtysh_exit_mgmt_interface,
        "Exit current mode and down to previous mode\n")
 #endif /* ifndef ENABLE_OVSDB */
 #endif
+
+
 /* Memory */
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_memory,
@@ -4234,6 +4638,7 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
    install_node (&vlan_node, NULL);
    install_node (&mgmt_interface_node, NULL);
+   install_node (&sub_interface_node, NULL);
    install_node (&link_aggregation_node, NULL);
    install_node (&vlan_interface_node, NULL);
 #endif
@@ -4276,6 +4681,7 @@ vtysh_init_vty (void)
    vtysh_install_default (MGMT_INTERFACE_NODE);
    vtysh_install_default (LINK_AGGREGATION_NODE);
    vtysh_install_default (VLAN_INTERFACE_NODE);
+   vtysh_install_default (SUB_INTERFACE_NODE);
    vtysh_install_default (DHCP_SERVER_NODE);
    vtysh_install_default (TFTP_SERVER_NODE);
 #endif
@@ -4394,6 +4800,13 @@ vtysh_init_vty (void)
 #endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
+<<<<<<< HEAD
+=======
+   install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
+   install_element (SUB_INTERFACE_NODE, &vtysh_exit_sub_interface_cmd);
+   install_element (SUB_INTERFACE_NODE, &vtysh_quit_sub_interface_cmd);
+   install_element (SUB_INTERFACE_NODE, &vtysh_end_all_cmd);
+>>>>>>> 3f136d9... sub interface cli commands added
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
 #ifdef HAVE_IPV6
@@ -4435,6 +4848,8 @@ vtysh_init_vty (void)
 #endif
 
 #ifdef ENABLE_OVSDB
+   install_element (CONFIG_NODE, &vtysh_sub_interface_cmd);
+   install_element (CONFIG_NODE, &cli_del_sub_if_cmd);
    install_element (CONFIG_NODE, &vtysh_interface_cmd);
    install_element (CONFIG_NODE, &vtysh_interface_vlan_cmd);
    install_element (CONFIG_NODE, &no_vtysh_interface_cmd);
@@ -4568,6 +4983,9 @@ vtysh_init_vty (void)
   /* Initialise System LED cli */
   led_vty_init();
   mgmt_intf_vty_init();
+  //sub_if_vty_init();
+  sub_if_vty_init();
+  encapsulation_vty_init();
   /* Initialise System cli */
   system_vty_init();
   fan_vty_init();

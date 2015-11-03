@@ -537,6 +537,7 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
   }
   if (check_iface_in_vrf(if_name)) {
     vrf_row = port_vrf_match(p_msg->idl, port_row);
+<<<<<<< HEAD
     if (NULL != vrf_row) {
       if (display_l3_info(port_row, vrf_row)) {
         if (!interfaceNameWritten) {
@@ -559,6 +560,35 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
           vtysh_ovsdb_cli_print(p_msg, "%4s%s%s%s", "", "ipv6 address ",
                   port_row->ip6_address_secondary[i], " secondary");
         }
+=======
+    if (display_l3_info(port_row, vrf_row)) {
+      if (!interfaceNameWritten) {
+        vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
+      }
+      if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "vrf attach ", vrf_row->name);
+      }
+      if (port_row->ip4_address) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "ip address ", port_row->ip4_address);
+      }
+      if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0) {
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "encapsulation dot1Q ",
+                port_row->trunks[i]);
+        }
+      }
+      for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s%s", "", "ip address ",
+                port_row->ip4_address_secondary[i], " secondary");
+      }
+      if (port_row->ip6_address) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "ipv6 address ", port_row->ip6_address);
+      }
+      for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s%s%s", "", "ipv6 address ",
+                port_row->ip6_address_secondary[i], " secondary");
+>>>>>>> 3f136d9... sub interface cli commands added
       }
     }
   }
