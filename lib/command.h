@@ -135,6 +135,7 @@ enum node_type
   TFTP_SERVER_NODE,             /* TFTP server node */
   VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
+  SUB_INTERFACE_NODE,          /* Sub Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
 #endif
@@ -552,6 +553,11 @@ struct cmd_token
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
+
+/*Sub Interface help Strings*/
+#define SUB_INTF_STR           "Sub Interface Configuration"
+#define SUB_INTF_INT_STR       "Sub Interface Internal Configuration"
+#define SUB_INTF_INT_RANGE_STR "Sub Interface Internal range Configuration"
 
 /* VLAN help strings */
 #define VLAN_STR            "VLAN configuration\n"
