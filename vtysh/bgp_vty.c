@@ -923,6 +923,10 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     if (vrf_row == NULL) {
     ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
+    if (vrf_row->n_bgp_routers && (vrf_row->key_bgp_routers[0] != asn)) {
+      VLOG_DBG("BGP is already running; AS is %ld", vrf_row->key_bgp_routers[0]);
+      ERRONEOUS_DB_TXN(bgp_router_txn, "bgp router already running");
+    }
     /* See if it already exists. */
     bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, asn);
 
