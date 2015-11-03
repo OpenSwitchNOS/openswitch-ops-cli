@@ -1136,6 +1136,18 @@ DEFUN (cli_intf_show_run_intf_if,
     return cli_show_run_interface_exec (self, vty, vty_flags, 1, argv);
 }
 
+DEFUN (cli_sub_intf_show_run_intf_if,
+        cli_sub_intf_show_run_intf_if_cmd,
+        "show running-config interface A.B",
+        SHOW_STR
+        "Current running configuration\n"
+        INTERFACE_STR
+        IFNAME_STR)
+{
+    parse_vlan(argv[0], vty);
+    return cli_show_run_interface_exec (self, vty, vty_flags, 1, argv);
+}
+
 int
 cli_show_run_interface_mgmt_exec (struct cmd_element *self, struct vty *vty)
 {
@@ -2257,6 +2269,7 @@ intf_vty_init (void)
     install_element (ENABLE_NODE, &cli_intf_show_run_intf_cmd);
     install_element (ENABLE_NODE, &cli_intf_show_run_intf_if_cmd);
     install_element (ENABLE_NODE, &cli_intf_show_run_intf_mgmt_cmd);
+    install_element (ENABLE_NODE, &cli_sub_intf_show_run_intf_if_cmd);
 
 #ifdef ENABLE_OVSDB
     install_element (VLAN_INTERFACE_NODE, &cli_intf_shutdown_cmd);
