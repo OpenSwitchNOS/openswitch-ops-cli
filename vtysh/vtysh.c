@@ -86,7 +86,6 @@ VLOG_DEFINE_THIS_MODULE(vtysh);
 #ifdef ENABLE_OVSDB
 int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
-int vtysh_show_startup = 0;
 
 int maximum_sub_interfaces;
 #endif
@@ -975,225 +974,6 @@ vtysh_end (void)
    return CMD_SUCCESS;
 }
 
-
-static int
-remove_intf_from_sub_if(const char *if_name)
-{
-   const struct ovsrec_interface *row = NULL;
-   const struct ovsrec_interface *interface_row = NULL;
-   const struct ovsrec_interface *if_row = NULL;
-   struct ovsdb_idl_txn* status_txn = NULL;
-   enum ovsdb_idl_txn_status status;
-   char sub_if_name[8]={0};
-   bool port_found = false;
-   struct ovsrec_interface **interfaces;
-   const struct ovsrec_port *sub_if_port = NULL;
-   int i=0, n=0, k=0;
-   bool interface_found = false;
-
-#if 1
-   /* Check if the SUB_INTERFACE port is present in DB. */
-   OVSREC_PORT_FOR_EACH(sub_if_port, idl)
-   {
-     if (strcmp(sub_if_port->name, if_name) == 0)
-     {
-       for (k = 0; k < sub_if_port->n_interfaces; k++)
-       {
-         if_row = sub_if_port->interfaces[k];
-         if(strcmp(if_name, if_row->name) == 0)
-         {
-           interface_found = true;
-         }
-       }
-       port_found = true;
-       break;
-     }
-   }
-
-   if(!port_found)
-   {
-     vty_out(vty, "Specified SUB_INTERFACE port doesn't exist.\n");
-     return CMD_SUCCESS;
-   }
-   if(!interface_found)
-   {
-     vty_out(vty, "Interface %s is not part of %s.\n", if_name, if_name);
-     return CMD_SUCCESS;
-   }
-
-   status_txn = cli_do_config_start();
-   if(status_txn == NULL)
-   {
-      VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
-      cli_do_config_abort(status_txn);
-      return CMD_OVSDB_FAILURE;
-   }
-
-   /* Fetch the interface row to "interface_row" */
-   OVSREC_INTERFACE_FOR_EACH(row, idl)
-   {
-      if(strcmp(row->name, if_name) == 0)
-      {
-         interface_row = row;
-         break;
-      }
-   }
-
-   /* Unlink the interface from the Port row found*/
-   interfaces = xmalloc(sizeof *sub_if_port->interfaces * (sub_if_port->n_interfaces-1));
-   for(i = n = 0; i < sub_if_port->n_interfaces; i++)
-   {
-      if(sub_if_port->interfaces[i] != interface_row)
-      {
-         interfaces[n++] = sub_if_port->interfaces[i];
-      }
-   }
-   ovsrec_interface_delete(interface_row);
-   ovsrec_port_set_interfaces(sub_if_port, interfaces, n);
-   free(interfaces);
-   status = cli_do_config_finish(status_txn);
-
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
-   {
-      return CMD_SUCCESS;
-   }
-   else
-   {
-      VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
-      return CMD_OVSDB_FAILURE;
-   }
-#endif
-}
-
-static int
-delete_sub_if(const char *sub_if_name)
-{
-  const struct ovsrec_vrf *vrf_row = NULL;
-  const struct ovsrec_bridge *bridge_row = NULL;
-  const struct ovsrec_port *sub_if_port_row = NULL;
-  bool sub_if_to_vrf = false;
-  bool sub_if_to_bridge = false;
-  struct ovsrec_port **ports;
-  int k=0, n=0, i=0;
-  struct ovsdb_idl_txn* status_txn = NULL;
-  enum ovsdb_idl_txn_status status;
-  bool port_found = false;
-  int ret;
-
-  ret = remove_intf_from_sub_if(sub_if_name);
-  if(ret == CMD_OVSDB_FAILURE){
-	vty_out(vty, "Unable to remove interface from subinterface port. %s",VTY_NEWLINE);
-  }
-
-  /* Return if SUB_INTERFACE port doesn't exit */
-  OVSREC_PORT_FOR_EACH(sub_if_port_row, idl)
-  {
-    if (strcmp(sub_if_port_row->name, sub_if_name) == 0)
-    {
-       port_found = true;
-    }
-  }
-
-  if(!port_found)
-  {
-    vty_out(vty, "Specified SUB_INTERFACE port doesn't exist.%s",VTY_NEWLINE);
-    return CMD_SUCCESS;
-  }
-
-  /* Check if the given SUB_INTERFACE port is part of VRF */
-  OVSREC_VRF_FOR_EACH (vrf_row, idl)
-  {
-    for (k = 0; k < vrf_row->n_ports; k++)
-    {
-       sub_if_port_row = vrf_row->ports[k];
-       if(strcmp(sub_if_port_row->name, sub_if_name) == 0)
-       {
-          sub_if_to_vrf = true;
-          goto port_attached;
-       }
-    }
-  }
-
-   /* Check if the given SUB_INTERFACE port is part of bridge */
-  OVSREC_BRIDGE_FOR_EACH (bridge_row, idl)
-  {
-    for (k = 0; k < bridge_row->n_ports; k++)
-    {
-       sub_if_port_row = bridge_row->ports[k];
-       if(strcmp(sub_if_port_row->name, sub_if_name) == 0)
-       {
-          sub_if_to_bridge = true;
-          goto port_attached;
-       }
-    }
-  }
-
-port_attached:
-  if(sub_if_to_vrf || sub_if_to_bridge)
-  {
-    /* SUB_INTERFACE port is attached to either VRF or bridge.
-     * So create transaction.                    */
-    status_txn = cli_do_config_start();
-    if(status_txn == NULL)
-    {
-      VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
-      cli_do_config_abort(status_txn);
-      return CMD_OVSDB_FAILURE;
-    }
-  }
-  else
-  {
-    /* assert if the SUB_INTERFACE port is not part of either VRF or bridge */
-    assert(0);
-    VLOG_ERR("Port table entry not found either in VRF or in bridge.Function=%s, Line=%d", __func__,__LINE__);
-    return CMD_OVSDB_FAILURE;
-  }
-
-  if(sub_if_to_vrf)
-  {
-    /* Delete the SUB_INTERFACE port reference from VRF */
-    ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports-1));
-    for(i = n = 0; i < vrf_row->n_ports; i++)
-    {
-       if(vrf_row->ports[i] != sub_if_port_row)
-       {
-          ports[n++] = vrf_row->ports[i];
-       }
-    }
-    ovsrec_vrf_set_ports(vrf_row, ports, n);
-    free(ports);
-  }
-  else if(sub_if_to_bridge)
-  {
-    /* Delete the SUB_INTERFACE port reference from Bridge */
-    ports = xmalloc(sizeof *bridge_row->ports * (bridge_row->n_ports-1));
-    for(i = n = 0; i < bridge_row->n_ports; i++)
-    {
-       if(bridge_row->ports[i] != sub_if_port_row)
-       {
-          ports[n++] = bridge_row->ports[i];
-       }
-    }
-    ovsrec_bridge_set_ports(bridge_row, ports, n);
-    free(ports);
-  }
-
-  /* Delete the port as we cleared references to it from VRF or bridge*/
-  ovsrec_port_delete(sub_if_port_row);
-
-  status = cli_do_config_finish(status_txn);
-
-  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
-  {
-     return CMD_SUCCESS;
-  }
-  else
-  {
-     VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
-     return CMD_OVSDB_FAILURE;
-  }
-}
-
 DEFUNSH (VTYSH_ALL,
       vtysh_end_all,
       vtysh_end_all_cmd,
@@ -1202,7 +982,6 @@ DEFUNSH (VTYSH_ALL,
 {
    return vtysh_end ();
 }
-
 #if 0
 DEFUNSH (VTYSH_BGPD,
       router_bgp,
@@ -1474,7 +1253,6 @@ vtysh_exit (struct vty *vty)
       vty->node = ENABLE_NODE;
       break;
     case INTERFACE_NODE:
-    case SUB_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
@@ -1524,12 +1302,10 @@ DEFUNSH (VTYSH_ALL,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_all,
       vtysh_quit_all_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_BGPD,
       exit_address_family,
@@ -1555,12 +1331,10 @@ DEFUNSH (VTYSH_ZEBRA,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_zebra,
       vtysh_quit_zebra_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_RIPD,
       vtysh_exit_ripd,
@@ -1570,12 +1344,11 @@ DEFUNSH (VTYSH_RIPD,
 {
    return vtysh_exit (vty);
 }
-#ifndef ENABLE_OVSDB
+
 ALIAS (vtysh_exit_ripd,
       vtysh_quit_ripd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_RIPNGD,
       vtysh_exit_ripngd,
@@ -1585,12 +1358,11 @@ DEFUNSH (VTYSH_RIPNGD,
 {
    return vtysh_exit (vty);
 }
-#ifndef ENABLE_OVSDB
+
 ALIAS (vtysh_exit_ripngd,
       vtysh_quit_ripngd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_RMAP,
       vtysh_exit_rmap,
@@ -1601,12 +1373,10 @@ DEFUNSH (VTYSH_RMAP,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_rmap,
       vtysh_quit_rmap_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_BGPD,
       vtysh_exit_bgpd,
@@ -1617,12 +1387,10 @@ DEFUNSH (VTYSH_BGPD,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_bgpd,
       vtysh_quit_bgpd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_OSPFD,
       vtysh_exit_ospfd,
@@ -1633,12 +1401,10 @@ DEFUNSH (VTYSH_OSPFD,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ospfd,
       vtysh_quit_ospfd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_OSPF6D,
       vtysh_exit_ospf6d,
@@ -1649,12 +1415,10 @@ DEFUNSH (VTYSH_OSPF6D,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ospf6d,
       vtysh_quit_ospf6d_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_ISISD,
       vtysh_exit_isisd,
@@ -1665,12 +1429,10 @@ DEFUNSH (VTYSH_ISISD,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_isisd,
       vtysh_quit_isisd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_ALL,
       vtysh_exit_line_vty,
@@ -1681,12 +1443,10 @@ DEFUNSH (VTYSH_ALL,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_line_vty,
       vtysh_quit_line_vty_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 
 #ifdef ENABLE_OVSDB
@@ -1709,12 +1469,10 @@ DEFUN (vtysh_exit_dhcp_server,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_dhcp_server,
       vtysh_quit_dhcp_server_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUN (vtysh_tftp_server,
       vtysh_tftp_server_cmd,
@@ -1735,12 +1493,11 @@ DEFUN (vtysh_exit_tftp_server,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_tftp_server,
       vtysh_quit_tftp_server_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
+
 DEFUN (vtysh_interface,
       vtysh_interface_cmd,
       "interface IFNAME",
@@ -1811,10 +1568,6 @@ DEFUN (no_vtysh_interface,
   vty->node = CONFIG_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
 
-  if (strchr(argv[0],'.')){
-	delete_sub_if(argv[0]);
-	return CMD_SUCCESS;
-  }
   if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
       GET_VLANIF(ifnumber, argv[0]);
       if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
@@ -1878,7 +1631,7 @@ DEFUN(vtysh_vlan,
     static char vlan[5] = { 0 };
     static char vlan_name[9] = { 0 };
     snprintf(vlan, 5, "%s", argv[0]);
-    snprintf(vlan_name, 9, "%s%s", "VLAN", argv[0]);
+    snprintf(vlan_name, 9, "%s%s", "vlan", argv[0]);
 
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row != NULL)
@@ -1891,15 +1644,6 @@ DEFUN(vtysh_vlan,
                 break;
             }
         }
-    }
-
-    if (vlan_found && check_if_internal_vlan(vlan_row))
-    {
-        /* Check for internal VLAN.
-         * No configuration is allowed on internal VLANs. */
-        vty_out(vty, "VLAN%d is used as an internal VLAN. "
-                "No further configuration allowed.%s", vlan_row->id, VTY_NEWLINE);
-        return CMD_SUCCESS;
     }
 
     if (!vlan_found)
@@ -1992,6 +1736,9 @@ DEFUN(vtysh_no_vlan,
     struct ovsrec_vlan **vlans = NULL;
     int i = 0, n = 0;
     int vlan_id = atoi(argv[0]);
+    static char vlan_name[9] = { 0 };
+
+    snprintf(vlan_name, 9, "%s%s", "vlan", argv[0]);
 
     vlan_row = ovsrec_vlan_first(idl);
     if (vlan_row != NULL)
@@ -2008,15 +1755,6 @@ DEFUN(vtysh_no_vlan,
 
     if (vlan_found)
     {
-        if (check_if_internal_vlan(vlan_row))
-        {
-            /* Check for internal VLAN.
-             * No deletion is allowed on internal VLANs. */
-            vty_out(vty, "VLAN%d is used as an internal VLAN. "
-                    "Deletion not allowed.%s", vlan_row->id, VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
-
         status_txn = cli_do_config_start();
 
         if (status_txn == NULL)
@@ -2114,9 +1852,9 @@ DEFUN(vtysh_no_vlan,
 DEFUN (vtysh_intf_link_aggregation,
        vtysh_intf_link_aggregation_cmd,
        "interface lag <1-2000>",
-       "Select an interface to configure\n"
-       "Configure link-aggregation parameters\n"
-       "LAG number ranges from 1 to 2000\n")
+       "Select an interface to configure.\n"
+       "Configure link-aggregation parameters.\n"
+       "LAG number ranges from 1 to 2000.\n")
 {
   const struct ovsrec_port *port_row = NULL;
   bool port_found = false;
@@ -2218,21 +1956,13 @@ DEFUN (vtysh_interface_mgmt,
   return CMD_SUCCESS;
 }
 
-DEFUN (cli_del_sub_if,
-    cli_del_sub_if_cmd,
-    "no interface A.B",
-    "Delete sub_interface L3_intf.sub_intf\n"
-    "Remove sub-interface entry from db\n")
-{
-  return delete_sub_if(argv[0]);
-}
-
 DEFUN (vtysh_sub_interface,
        vtysh_sub_interface_cmd,
        "interface A.B",
       "Select a sub-interface to configure\n"
       "Sub Interface phy_if.sub_if name\n")
 {
+#if 1
   const struct ovsrec_port *port_row = NULL;
   const struct ovsrec_interface *intf_row;
   struct ovsrec_interface **iface_list;
@@ -2295,6 +2025,23 @@ DEFUN (vtysh_sub_interface,
           cli_do_config_abort(txn);
           return CMD_OVSDB_FAILURE;
     }
+    /* adding an interface */
+    intf_row = ovsrec_interface_insert(txn);
+    ovsrec_interface_set_name(intf_row, ifnumber);
+    ovsrec_interface_set_type(intf_row, OVSREC_INTERFACE_TYPE_INTERNAL);
+#if 1
+    struct smap smap_user_config;
+    smap_clone(&smap_user_config,&intf_row->user_config);
+
+    /* Set the admin state */
+    smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
+            OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
+
+    ovsrec_interface_set_user_config(intf_row, &smap_user_config);
+    smap_destroy(&smap_user_config);
+#endif
+    iface_list = xmalloc(sizeof(struct ovsrec_interface));
+    iface_list[0] = (struct ovsrec_interface *)intf_row;
 
     port_row = ovsrec_port_insert(txn);
     ovsrec_port_set_name(port_row, ifnumber);
@@ -2306,22 +2053,6 @@ DEFUN (vtysh_sub_interface,
             break;
         }
     }
-    /* adding an interface */
-    intf_row = ovsrec_interface_insert(txn);
-    ovsrec_interface_set_name(intf_row, ifnumber);
-    ovsrec_interface_set_type(intf_row, OVSREC_INTERFACE_TYPE_INTERNAL);
-    struct smap smap_user_config;
-    smap_clone(&smap_user_config,&intf_row->user_config);
-
-    /* Set the admin state */
-    smap_replace(&smap_user_config, INTERFACE_USER_CONFIG_MAP_ADMIN,
-            OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN);
-
-    ovsrec_interface_set_user_config(intf_row, &smap_user_config);
-    smap_destroy(&smap_user_config);
-    iface_list = xmalloc(sizeof(struct ovsrec_interface));
-    iface_list[0] = (struct ovsrec_interface *)intf_row;
-
     /* Adding a port to the corresponding interface*/
     ovsrec_port_set_interfaces(port_row, iface_list, 1);
 
@@ -2363,6 +2094,7 @@ DEFUN (vtysh_sub_interface,
   }
 
   return CMD_SUCCESS;
+#endif
 }
 #else
 
@@ -2431,12 +2163,10 @@ DEFUNSH (VTYSH_INTERFACE,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_interface,
       vtysh_quit_interface_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 #ifdef ENABLE_OVSDB
 DEFUNSH (VTYSH_MGMT_INTF,
@@ -2447,12 +2177,10 @@ DEFUNSH (VTYSH_MGMT_INTF,
 {
   return vtysh_exit (vty);
 }
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_mgmt_interface,
        vtysh_quit_mgmt_interface_cmd,
        "quit",
        "Exit current mode and down to previous mode\n")
-#endif /* ifndef ENABLE_OVSDB */
 #endif
 
 
@@ -3001,10 +2729,6 @@ DEFUN (vtysh_show_running_config,
    FILE *fp = NULL;
 
    fp = stdout;
-   if (!vtysh_show_startup)
-   {
-       fprintf(fp, "Current configuration:\n");
-   }
 
    vtysh_ovsdb_read_config(fp);
    return CMD_SUCCESS;
@@ -3225,7 +2949,7 @@ DEFUN (show_startup_config,
        SHOW_STR
        "Contents of startup configuration\n")
 {
-  char *arguments[] = {"show", "startup-config", "cli"};
+  char *arguments[] = {"show", "startup-config"};
   char *temp_args[] = {"-D", TEMPORARY_STARTUP_SOCKET, "-c", "show running-config "};
   char *copy_db[] = {OVSDB_PATH, TEMPORARY_STARTUP_DB};
   char *run_server[] = {"--pidfile=/var/run/openvswitch/temp_startup.pid", "--detach", "--remote", "punix:/var/run/openvswitch/temp_startup.sock", TEMPORARY_STARTUP_DB};
@@ -3253,7 +2977,7 @@ DEFUN (show_startup_config,
   }
 
   // Copy startup config to temporary DB.
-  ret = execute_command ("cfgdbutil", 3, (const char **)arguments);
+  ret = execute_command ("cfgdbutil", 2, (const char **)arguments);
   if (ret == -1)
   {
       vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
@@ -3274,10 +2998,8 @@ DEFUN (show_startup_config,
       vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
       VLOG_ERR("Failed to invoke vtysh on Temporary DB\n");
       remove_temp_db(1);
-      vtysh_show_startup = 0;
       return CMD_SUCCESS;
   }
-  vtysh_show_startup = 0;
 
   // Remove temporary DB and kill the ovsdb-server to temporary DB.
   if (remove_temp_db(0))
@@ -3292,25 +3014,6 @@ DEFUN (show_startup_config,
       return -1;
   }
 
-  return CMD_SUCCESS;
-}
-
-/* Write startup configuration into the terminal in json format. */
-DEFUN (show_startup_config_json,
-       show_startup_config_json_cmd,
-       "show startup-config json",
-       SHOW_STR
-       "Contents of startup configuration\n"
-       "JSON format\n")
-{
-  char *arguments[] = {"show", "startup-config", "json"};
-  if (execute_command ("cfgdbutil", 3, (const char **)arguments) == -1)
-  {
-      vty_out(vty, "%s%s", STARTUP_CONFIG_ERR, VTY_NEWLINE);
-      VLOG_ERR("Failed to run cfgdbutil\n");
-      remove_temp_db(1);
-      return CMD_SUCCESS;
-  }
   return CMD_SUCCESS;
 }
 
@@ -3950,47 +3653,50 @@ DEFUN(vtysh_user_add,
 
 }
 
-/* Delete user account. */
+/* Delete the user account */
 static int
 delete_user(const char *user)
 {
-    struct passwd *pw;
-    int ret;
+    int ret,n_users;
     const char *arg[3];
-
-    if (!strcmp(user, "root")) {
-        vty_out(vty, "Permission denied. Cannot remove the root user.%s",
-                VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-
-    /* Avoid system users. */
-    if (!check_user_group(user, OVSDB_GROUP)) {
-        vty_out(vty, "Unknown user.%s", VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-
-    pw = getpwuid(geteuid());
-    if (pw && !(strcmp(pw->pw_name, user))) {
-        vty_out(vty, "Permission denied. You are logged in as %s.%s", user,
-                VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-
-    if (get_group_user_count(OVSDB_GROUP) <= 1) {
-        vty_out(vty, "Cannot delete the last user %s.%s", user, VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-
-    /* Call out to external command to delete the user. */
+    char *buf;
+    n_users = 0;
     arg[0] = USERDEL;
     arg[1] = "-r";
     arg[2] = CONST_CAST(char*, user);
-    ret = execute_command("sudo", 3, (const char **)arg);
-    if (ret == 0)
-        vty_out(vty, "User removed successfully.%s", VTY_NEWLINE);
+    buf = getlogin();
 
+    n_users = get_group_user_count(OVSDB_GROUP);
+    ret = check_user_group(user, OVSDB_GROUP);
+
+    /* If user is not in ovsdb_users list and if not root then it is unknown user*/
+    if ((ret == 0) && (strcmp(user, "root")))
+    {
+        vty_out(vty, "Unknown user: %s\n", user);
+        return CMD_SUCCESS;
+    }
+
+    /* Cannot delete user by himself, root and last user */
+    if (!strcmp(user, "root"))
+    {
+        vty_out(vty, "Permission denied. Cannot remove the root user.\n");
+        return CMD_SUCCESS;
+    }
+    if (n_users<=1)
+    {
+        vty_out(vty, "Cannot delete the last user %s.\n",user);
+        return CMD_SUCCESS;
+    }
+    if (!(strcmp(buf,user)))
+    {
+        vty_out(vty, "Permission denied. You are logged in as %s.\n",user);
+        return CMD_SUCCESS;
+    }
+
+    /* Delete the user*/
+    execute_command("sudo", 3, (const char **)arg);
     return CMD_SUCCESS;
+
 }
 
 DEFUN(vtysh_user_del,
@@ -4008,38 +3714,10 @@ DEFUN(vtysh_reboot,
       "reboot",
       "Reload the switch\n")
 {
-    char flag = '0';
-    static struct termios oldt, newt;
-    tcgetattr( STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON);
-    tcsetattr( STDIN_FILENO, TCSANOW, &newt);
-    vty_out(vty,"\rSystem will be rebooted. All the unsaved configurations will be lost.\nDo you want to continue [y/n]?");
-    while(1)
-    {
-        flag=getchar();
-        if (flag == 'y')
-        {
-           vty_out(vty,"%s",VTY_NEWLINE);
-           char *arg[1];
-           arg[0] = "/sbin/reboot";
-           execute_command("sudo", 1 ,(const char **)arg);
-           break;
-        }
-        else if (flag == 'n')
-        {
-           vty_out(vty,"%s",VTY_NEWLINE);
-           break;
-        }
-        else
-        {
-           vty_out(vty,"\r                                 ");
-           vty_out(vty,"\rDo you want to continue [y/n]?");
-        }
-    }
-    /*restore the old settings*/
-    tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
-    return CMD_SUCCESS;
+   char *arg[1];
+   arg[0] = "/sbin/reboot";
+   execute_command("sudo", 1 ,(const char **)arg);
+   return CMD_SUCCESS;
 }
 
 DEFUN (vtysh_demo_mac_tok,
@@ -4720,56 +4398,51 @@ vtysh_init_vty (void)
    install_element (VIEW_NODE, &vtysh_enable_cmd);
    install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
-#ifndef ENABLE_OVSDB
-   install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
-   install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
-   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
-   install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
-   install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
-   install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
-   install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
-   install_element (BGP_IPV6_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
-   install_element (BGP_VPNV4_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
-   install_element (ISIS_NODE, &vtysh_quit_isisd_cmd);
-   install_element (KEYCHAIN_KEY_NODE, &vtysh_quit_ripd_cmd);
-   install_element (VIEW_NODE, &vtysh_quit_all_cmd);
-   install_element (RMAP_NODE, &vtysh_quit_rmap_cmd);
-   install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
-   install_element (VTY_NODE, &vtysh_quit_line_vty_cmd);
-#endif
+
    /* "exit" command. */
    install_element (VIEW_NODE, &vtysh_exit_all_cmd);
+   install_element (VIEW_NODE, &vtysh_quit_all_cmd);
    install_element (CONFIG_NODE, &vtysh_exit_all_cmd);
    /* install_element (CONFIG_NODE, &vtysh_quit_all_cmd); */
    install_element (ENABLE_NODE, &vtysh_exit_all_cmd);
+   install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_exit_ripd_cmd);
+   install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
    install_element (RIPNG_NODE, &vtysh_exit_ripngd_cmd);
+   install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
+   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (OSPF6_NODE, &vtysh_exit_ospf6d_cmd);
+   install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
 #endif
    install_element (BGP_NODE, &vtysh_exit_bgpd_cmd);
+   install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_exit_bgpd_cmd);
+   install_element (BGP_VPNV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV4_NODE, &vtysh_exit_bgpd_cmd);
+   install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_exit_bgpd_cmd);
+   install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV6_NODE, &vtysh_exit_bgpd_cmd);
+   install_element (BGP_IPV6_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_exit_bgpd_cmd);
+   install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
 
    policy_vty_init();
    bgp_vty_init();
 #ifndef ENABLE_OVSDB
    install_element (ISIS_NODE, &vtysh_exit_isisd_cmd);
+   install_element (ISIS_NODE, &vtysh_quit_isisd_cmd);
 #endif
    install_element (KEYCHAIN_NODE, &vtysh_exit_ripd_cmd);
+   install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
    install_element (KEYCHAIN_KEY_NODE, &vtysh_exit_ripd_cmd);
+   install_element (KEYCHAIN_KEY_NODE, &vtysh_quit_ripd_cmd);
    install_element (RMAP_NODE, &vtysh_exit_rmap_cmd);
+   install_element (RMAP_NODE, &vtysh_quit_rmap_cmd);
    install_element (VTY_NODE, &vtysh_exit_line_vty_cmd);
+   install_element (VTY_NODE, &vtysh_quit_line_vty_cmd);
 
    /* "end" command. */
    install_element (CONFIG_NODE, &vtysh_end_all_cmd);
@@ -4800,13 +4473,10 @@ vtysh_init_vty (void)
 #endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
-<<<<<<< HEAD
-=======
    install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
    install_element (SUB_INTERFACE_NODE, &vtysh_exit_sub_interface_cmd);
    install_element (SUB_INTERFACE_NODE, &vtysh_quit_sub_interface_cmd);
    install_element (SUB_INTERFACE_NODE, &vtysh_end_all_cmd);
->>>>>>> 3f136d9... sub interface cli commands added
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
 #ifdef HAVE_IPV6
@@ -4849,12 +4519,12 @@ vtysh_init_vty (void)
 
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_sub_interface_cmd);
-   install_element (CONFIG_NODE, &cli_del_sub_if_cmd);
    install_element (CONFIG_NODE, &vtysh_interface_cmd);
    install_element (CONFIG_NODE, &vtysh_interface_vlan_cmd);
    install_element (CONFIG_NODE, &no_vtysh_interface_cmd);
    install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
+   install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
 #endif
 
@@ -4864,9 +4534,11 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_interface_mgmt_cmd);
    install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);
    install_element (MGMT_INTERFACE_NODE, &vtysh_exit_mgmt_interface_cmd);
+   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (MGMT_INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (CONFIG_NODE, &vtysh_intf_link_aggregation_cmd);
    install_element (LINK_AGGREGATION_NODE, &vtysh_exit_mgmt_interface_cmd);
+   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
@@ -4895,7 +4567,6 @@ vtysh_init_vty (void)
 #endif
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
-  install_element (ENABLE_NODE, &show_startup_config_json_cmd);
 #endif /* ENABLE_OVSDB */
 
 #ifndef ENABLE_OVSDB

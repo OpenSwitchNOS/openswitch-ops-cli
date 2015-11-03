@@ -203,16 +203,13 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_system_col_vrfs);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_bridges);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
-<<<<<<< HEAD
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_parent);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_children);
-=======
     ovsdb_idl_add_column(idl, &ovsrec_port_col_admin_state);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_operational_state);
->>>>>>> 3f136d9... sub interface cli commands added
 }
 
 static void
