@@ -72,7 +72,7 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   {
     if (VTYSH_STR_EQ(data, "true"))
     {
-      vtysh_ovsdb_cli_print(p_msg, "feature lldp");
+      vtysh_ovsdb_cli_print(p_msg, "lldp enable");
     }
   }
 

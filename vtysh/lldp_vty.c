@@ -129,8 +129,17 @@ static int lldp_set_global_status(const char *status)
 
 DEFUN (cli_lldp_set_global_status,
        lldp_set_global_status_cmd,
+       "lldp enable",
+       CONFIG_LLDP_STR
+       "Enables or disables LLDP feature\n")
+{
+  return lldp_set_global_status("true");
+}
+
+DEFUN (cli_feature_set_global_status,
+       feature_set_global_status_cmd,
        "feature lldp",
-       "Enables or disables the selected feature\n"
+       "Enables or disables LLDP feature\n"
        CONFIG_LLDP_STR)
 {
   return lldp_set_global_status("true");
@@ -138,13 +147,24 @@ DEFUN (cli_lldp_set_global_status,
 
 DEFUN (cli_lldp_no_set_global_status,
        lldp_no_set_global_status_cmd,
-       "no feature lldp",
+       "no lldp enable",
         NO_STR
-       "Enables or disables the selected feature\n"
-       CONFIG_LLDP_STR)
+        CONFIG_LLDP_STR
+       "Enables or disables LLDP feature\n")
 {
   return lldp_set_global_status("false");
 }
+
+DEFUN (cli_feature_no_set_global_status,
+       feature_no_set_global_status_cmd,
+       "no feature lldp",
+        NO_STR
+       "Enables or disables LLDP feature\n"
+        CONFIG_LLDP_STR)
+{
+  return lldp_set_global_status("false");
+}
+
 
 /* Sets LLDP hold time if the hold time passed is non-default.
    If the holdtime is default then deletes the key from the column. */
@@ -1494,6 +1514,8 @@ lldp_vty_init (void)
 
   install_element (CONFIG_NODE, &lldp_set_global_status_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_status_cmd);
+  install_element (CONFIG_NODE, &feature_set_global_status_cmd);
+  install_element (CONFIG_NODE, &feature_no_set_global_status_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_hold_time_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_hold_time_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_timer_cmd);
