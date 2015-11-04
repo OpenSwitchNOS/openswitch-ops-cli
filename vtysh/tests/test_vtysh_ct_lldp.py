@@ -78,7 +78,7 @@ class LLDPCliTest(OpsVsiTest):
         lldp_feature_enabled = False
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
-        s1.cmdCLI('feature lldp')
+        s1.cmdCLI('lldp enable')
         out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
@@ -88,6 +88,7 @@ class LLDPCliTest(OpsVsiTest):
             'Test to enable LLDP feature - FAILED'
         return True
 
+
     def disableLLDPFeatureTest(self):
         info('''
 ########## Test to disable LLDP feature ##########
@@ -95,7 +96,7 @@ class LLDPCliTest(OpsVsiTest):
         lldp_feature_enabled = True
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
-        s1.cmdCLI('no feature lldp')
+        s1.cmdCLI('no lldp enable')
         out = s1.cmd('ovs-vsctl list system')
         lines = out.split('\n')
         for line in lines:
@@ -282,7 +283,7 @@ class LLDPCliTest(OpsVsiTest):
 ''')
         counter = 0
         s1.cmdCLI('conf t')
-        s1.cmdCLI('feature lldp')
+        s1.cmdCLI('lldp enable')
         out = s1.cmd('ovs-vsctl list interface 1')
         lines = out.split('\n')
         for line in lines:
@@ -292,6 +293,7 @@ class LLDPCliTest(OpsVsiTest):
                 self.initLLDPNeighborinfo()
                 out = s1.cmdCLI('do show lldp neighbor-info 1')
                 lines = out.split('\n')
+		print lines
                 for line in lines:
                     if 'Neighbor Chassis-Name          : as5712' in line:
                         counter += 1
@@ -305,8 +307,11 @@ class LLDPCliTest(OpsVsiTest):
                     if 'Chassis Capabilities Available : '\
                        'Bridge,Router' in line:
                         counter += 1
+
+
                 assert counter == 4, \
-                    'Test LLDP neighbor info command - FAILED!'
+                'Test LLDP neighbor info command - FAILED!'
+
         return True
 
 
