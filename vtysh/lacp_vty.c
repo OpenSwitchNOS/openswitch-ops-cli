@@ -1167,10 +1167,10 @@ DEFUN (cli_lacp_show_aggregates,
 static char *
 get_lacp_state(const char *state)
 {
-   static char ret_state[8]={0};
+   static char ret_state[LACP_STATUS_FIELD_COUNT]={0};
    int n = 0;
 
-   memset(ret_state, 0, 8);
+   memset(ret_state, 0, LACP_STATUS_FIELD_COUNT);
    if(state == NULL)
    {
      return ret_state;
@@ -1210,14 +1210,50 @@ get_lacp_state(const char *state)
    return ret_state;
 }
 
+void
+parse_id_from_db (char *str, const char **value1, const char **value2)
+{
+  *value1 = strsep(&str, ",");
+  *value2 = strsep(&str, ",");
+}
+
+/* Expected format from DB (e.g):
+ * "Activ:1,TmOut:1,Aggr:1,Sync:0,Col:0,Dist:0,Def:1,Exp:0"
+ * Expected output (e.g):
+ * [1,1,1,0,0,0,1,0]
+ */
+void
+parse_state_from_db(const char *str, char *ret_str)
+{
+  char *rhs, *lhs, *to_free, *string;
+  int field_count = 0;
+  to_free = string = strdup(str);
+  while ((lhs = strsep(&string, ",")) != NULL && field_count < LACP_STATUS_FIELD_COUNT)
+  {
+    if (rhs = strchr(lhs, ':'))
+    {
+      ret_str[field_count] = *(++rhs) == '1'? 1: 0; /*ignore the colon*/
+    }
+    field_count++;
+  }
+  free(to_free);
+}
+
 static int
 lacp_show_interfaces_all()
 {
    const struct ovsrec_port *lag_port = NULL;
    const struct ovsrec_interface *if_row = NULL;
    int k = 0;
+   char lacp_state_ovsdb[LACP_STATUS_FIELD_COUNT];
+   memset(lacp_state_ovsdb, 0, LACP_STATUS_FIELD_COUNT);
    const char *lacp_state = NULL;
    const char *key = NULL, *port_priority = NULL, *port_id = NULL;
+   char *port_priority_id_ovsdb = NULL, *system_priority_id_ovsdb = NULL;
+   const char *system_id = NULL, *system_priority = NULL;
+   const char *data_in_db = NULL;
+
+   const char columns[] = "%-12s %-8s %-10s %-6s %-10s %-18s %-8s";
 
    vty_out(vty,"%s", VTY_NEWLINE);
    vty_out(vty, "State abbreviations :%s", VTY_NEWLINE);
@@ -1231,11 +1267,11 @@ lacp_show_interfaces_all()
    vty_out(vty,"%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
    vty_out(vty, "Actor details of all interfaces:%s",VTY_NEWLINE);
-   vty_out(vty, "-------------------------------------------");
+   vty_out(vty, "------------------------------------------------------------------------------");
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, "%-12s %-6s %-10s %-10s", "Intf-name", "Key", "Priority", "State");
+   vty_out(vty, columns, "Intf-name", "Port-id", "Priority", "Key", "State", "System-id", "Priority");
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, "-------------------------------------------");
+   vty_out(vty, "------------------------------------------------------------------------------");
    vty_out(vty,"%s", VTY_NEWLINE);
 
    OVSREC_PORT_FOR_EACH(lag_port, idl)
@@ -1247,15 +1283,32 @@ lacp_show_interfaces_all()
          for (k = 0; k < lag_port->n_interfaces; k++)
          {
             if_row = lag_port->interfaces[k];
-            lacp_state = get_lacp_state(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_STATE));
-            key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_KEY);
-            port_priority = smap_get(&if_row->other_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
-            vty_out(vty, "%-12s %-6s %-10s %-10s",
+            port_id = port_priority = key = lacp_state = system_id = system_priority = NULL;
+            if (data_in_db = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_STATE))
+            {
+              parse_state_from_db(data_in_db, lacp_state_ovsdb);
+              lacp_state = get_lacp_state(lacp_state_ovsdb);
+              key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_KEY);
+              /*
+              * The system and port priority are kept in the lacp_status column as part of the id fields separated by commas
+              * e.g port_id = 1,18 where 1 = priority and 18 = id
+              */
+              port_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_PORT_ID));
+              parse_id_from_db(port_priority_id_ovsdb, &port_priority, &port_id);
+              system_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_SYSTEM_ID));
+              parse_id_from_db(system_priority_id_ovsdb, &system_priority, &system_id);
+            }
+            vty_out(vty, columns,
                        if_row->name,
-                       key ? key: " ",
+                       port_id ? port_id : " ",
                        port_priority ? port_priority : " ",
-                       lacp_state?lacp_state:" ");
+                       key ? key : " ",
+                       lacp_state ? lacp_state : " ",
+                       system_id ? system_id : " ",
+                       system_priority ? system_priority : " ");
             vty_out(vty,"%s", VTY_NEWLINE);
+            free(port_priority_id_ovsdb);
+            free(system_priority_id_ovsdb);
          }
          if(k == 0)
            vty_out(vty, "No interfaces are attached to %s%s", lag_port->name, VTY_NEWLINE);
@@ -1264,13 +1317,13 @@ lacp_show_interfaces_all()
    vty_out(vty,"%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
    vty_out(vty, "Partner details of all interfaces:%s",VTY_NEWLINE);
-   vty_out(vty, "-------------------------------------------------");
+   vty_out(vty, "------------------------------------------------------------------------------");
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, "%-12s %-8s %-6s %-10s %-10s", "Intf-name", "Partner", "Key", "Priority", "State");
+   vty_out(vty, columns, "Intf-name", "Partner", "Priority", "Key", "State", "System-id", "Priority");
    vty_out(vty,"%s", VTY_NEWLINE);
    vty_out(vty, "%-12s %-8s"," ","port-id");
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, "-------------------------------------------------");
+   vty_out(vty, "------------------------------------------------------------------------------");
    vty_out(vty,"%s", VTY_NEWLINE);
 
    OVSREC_PORT_FOR_EACH(lag_port, idl)
@@ -1282,17 +1335,28 @@ lacp_show_interfaces_all()
          for (k = 0; k < lag_port->n_interfaces; k++)
          {
             if_row = lag_port->interfaces[k];
-            lacp_state = get_lacp_state(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_STATE));
-            key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_KEY);
-            port_id = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_PORT_ID);
-            port_priority = smap_get(&if_row->other_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
-            vty_out(vty, "%-12s %-8s %-6s %-10s %-10s",
+            port_id = port_priority = key = lacp_state = system_id = system_priority = NULL;
+            if (data_in_db = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_STATE))
+            {
+              parse_state_from_db(data_in_db, lacp_state_ovsdb);
+              lacp_state = get_lacp_state(lacp_state_ovsdb);
+              key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_KEY);
+              port_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_PORT_ID));
+              parse_id_from_db(port_priority_id_ovsdb, &port_priority, &port_id);
+              system_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_SYSTEM_ID));
+              parse_id_from_db(system_priority_id_ovsdb, &system_priority, &system_id);
+            }
+            vty_out(vty, columns,
                        if_row->name,
                        port_id ? port_id : " ",
-                       key ? key : "",
                        port_priority ? port_priority : " ",
-                       lacp_state?lacp_state:"");
+                       key ? key : " ",
+                       lacp_state ? lacp_state : " ",
+                       system_id ? system_id : " ",
+                       system_priority ? system_priority : " ");
             vty_out(vty,"%s", VTY_NEWLINE);
+            free(port_priority_id_ovsdb);
+            free(system_priority_id_ovsdb);
          }
          if(k == 0)
            vty_out(vty, "No interfaces are attached to %s%s", lag_port->name, VTY_NEWLINE);
@@ -1318,9 +1382,16 @@ lacp_show_interfaces(const char *if_name)
    const struct ovsrec_port *port_row = NULL;
    const struct ovsrec_interface *if_row = NULL;
    int k = 0;
+   char a_lacp_state_ovsdb[LACP_STATUS_FIELD_COUNT], p_lacp_state_ovsdb[LACP_STATUS_FIELD_COUNT];
+   memset(a_lacp_state_ovsdb, 0, LACP_STATUS_FIELD_COUNT);
+   memset(p_lacp_state_ovsdb, 0, LACP_STATUS_FIELD_COUNT);
    const char *a_lacp_state = NULL, *p_lacp_state = NULL;
-   const char *a_key = NULL, *a_system_id = NULL, *a_port_id = NULL;
-   const char *p_key = NULL, *p_system_id = NULL, *p_port_id = NULL;
+   const char *a_key = NULL, *a_system_id = NULL, *a_system_priority = NULL, *a_port_id = NULL, *a_port_priority = NULL;
+   const char *p_key = NULL, *p_system_id = NULL, *p_system_priority = NULL, *p_port_id = NULL, *p_port_priority = NULL;
+   char *a_port_priority_id_ovsdb = NULL, *a_system_priority_id_ovsdb = NULL;
+   char *p_port_priority_id_ovsdb = NULL, *p_system_priority_id_ovsdb = NULL;
+   const char *data_in_db = NULL;
+   const char *columns = "%-18s | %-18s | %-18s %s";
    bool port_row_round = false;
 
    vty_out(vty,"%s", VTY_NEWLINE);
@@ -1343,15 +1414,27 @@ lacp_show_interfaces(const char *if_name)
            if_row = port_row->interfaces[k];
            if(strcmp(if_name, if_row->name) == 0)
            {
-             a_lacp_state = get_lacp_state(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_STATE));
-             a_key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_KEY);
-             a_port_id = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_PORT_ID);
-             a_system_id = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_SYSTEM_ID);
+             a_port_id = a_port_priority = a_key = a_lacp_state = a_system_id = a_system_priority = NULL;
+             p_port_id = p_port_priority = p_key = p_lacp_state = p_system_id = p_system_priority = NULL;
+             if (data_in_db = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_STATE))
+             {
+               parse_state_from_db(data_in_db, a_lacp_state_ovsdb);
+               /*get_lacp_state() returns a static char*, unless copied it will be overwritten by partner state*/
+               a_lacp_state = strdup(get_lacp_state(a_lacp_state_ovsdb));
+               a_key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_KEY);
+               a_port_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_PORT_ID));
+               parse_id_from_db(a_port_priority_id_ovsdb, &a_port_priority, &a_port_id);
+               a_system_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_SYSTEM_ID));
+               parse_id_from_db(a_system_priority_id_ovsdb, &a_system_priority, &a_system_id);
 
-             p_lacp_state = get_lacp_state(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_STATE));
-             p_key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_KEY);
-             p_port_id = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_PORT_ID);
-             p_system_id = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_SYSTEM_ID);
+               parse_state_from_db(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_STATE), p_lacp_state_ovsdb);
+               p_lacp_state = strdup(get_lacp_state(p_lacp_state_ovsdb));
+               p_key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_KEY);
+               p_port_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_PORT_ID));
+               parse_id_from_db(p_port_priority_id_ovsdb, &p_port_priority, &p_port_id);
+               p_system_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_SYSTEM_ID));
+               parse_id_from_db(p_system_priority_id_ovsdb, &p_system_priority, &p_system_id);
+             }
              port_row_round = true;
              goto Exit;
            }
@@ -1363,20 +1446,29 @@ Exit:
    vty_out(vty, "Aggregate-name : %s%s", port_row_round?port_row->name:" ", VTY_NEWLINE);
    vty_out(vty, "-------------------------------------------------");
    vty_out(vty,"%s",VTY_NEWLINE);
-   vty_out(vty, "                   Actor             Partner");
+   vty_out(vty, "                       Actor             Partner");
    vty_out(vty,"%s",VTY_NEWLINE);
    vty_out(vty, "-------------------------------------------------");
    vty_out(vty,"%s",VTY_NEWLINE);
-   vty_out(vty,"%-10s | %-18s | %-18s %s",
-               "System-id",a_system_id?a_system_id:" ", p_system_id?p_system_id:" ", VTY_NEWLINE);
-   vty_out(vty,"%-10s | %-18s | %-18s %s",
+   vty_out(vty,columns,
                "Port-id", a_port_id?a_port_id:" ", p_port_id?p_port_id:" ", VTY_NEWLINE);
-   vty_out(vty,"%-10s | %-18s | %-18s %s",
+   vty_out(vty,columns,
+               "Port-priority", a_port_priority?a_port_priority:" ", p_port_priority?p_port_priority:" ", VTY_NEWLINE);
+   vty_out(vty,columns,
                "Key", a_key?a_key:" ", p_key?p_key:" ", VTY_NEWLINE);
-   vty_out(vty,"%-10s | %-18s | %-18s %s",
+   vty_out(vty,columns,
                "State", a_lacp_state?a_lacp_state:" ", p_lacp_state?p_lacp_state:" ", VTY_NEWLINE);
+   vty_out(vty,columns,
+               "System-id",a_system_id?a_system_id:" ", p_system_id?p_system_id:" ", VTY_NEWLINE);
+   vty_out(vty,columns,
+               "System-priority",a_system_priority?a_system_priority:" ", p_system_priority?p_system_priority:" ", VTY_NEWLINE);
    vty_out(vty,"%s",VTY_NEWLINE);
-
+   free(a_port_priority_id_ovsdb);
+   free(p_port_priority_id_ovsdb);
+   free(a_system_priority_id_ovsdb);
+   free(p_system_priority_id_ovsdb);
+   free(a_lacp_state);
+   free(p_lacp_state);
    return CMD_SUCCESS;
 }
 
