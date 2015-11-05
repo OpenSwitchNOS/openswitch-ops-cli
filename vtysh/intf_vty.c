@@ -276,17 +276,43 @@ DEFUN_NO_FORM (cli_intf_speed,
         "speed",
         "Enter the interface speed\n");
 
+void
+dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
+                  char * const helpstr, int max_strlen)
+{
+    const struct ovsrec_subsystem * row = NULL;
+    char * mtu = NULL;
+
+    row = ovsrec_subsystem_first(idl);
+    if (!row)
+    {
+        vty_out(vty, "OVSDB failure\n");
+        return NULL;
+    }
+
+    OVSREC_SUBSYSTEM_FOR_EACH(row, idl)
+    {
+        mtu = smap_get(&row->other_info, "max_transmission_unit");
+        if (mtu != NULL)
+            snprintf(helpstr, max_strlen, \
+                     "Enter MTU (in bytes) in the range <576-%s>", mtu);
+        else
+            snprintf(helpstr, max_strlen, "Max mtu not configured");
+    }
+    return;
+}
 
 /*
  * CLI "mtu"
  * default : auto
  */
-DEFUN (cli_intf_mtu,
+DEFUN_DYN_HELPSTR (cli_intf_mtu,
         cli_intf_mtu_cmd,
-        "mtu (auto|<576-9216>)",
+        "mtu (auto|WORD)",
         "Configure mtu for the interface\n"
         "Set MTU to system default (Default)\n"
-        "Enter MTU (in bytes)\n")
+        "Enter MTU (in bytes)\n",
+        "\n\ndyncb_helpstr_mtu\n")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();

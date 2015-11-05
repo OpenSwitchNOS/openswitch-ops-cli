@@ -126,6 +126,22 @@ class InterfaceCommandsTests(OpsVsiTest):
         out = s1.cmdCLI('end')
         return True
 
+    def dynHelpStr_intfmtuTest(self):
+        print '''
+########## Test to verify dynamic helpstr for mtu  ##########
+'''
+
+        s1 = self.net.switches[0]
+        s1.ovscmd('ovs-vsctl set Subsystem base other_info:max_transmission_unit="2500"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('mtu ?')
+        assert 'WORD  Enter MTU (in bytes) in the range <576-2500>' in out, \
+            'Test to verify dyn helpstr for mtu 2500 - FAILED!'
+        out = s1.cmdCLI('end')
+
+        return True
+
 class Test_interfaceCommands:
 
     def setup(self):
@@ -147,6 +163,12 @@ class Test_interfaceCommands:
         if self.test.dynHelpStr_intfSpeedTest():
             print '''
 ########## Test to verify dyn helpstr for int speed cli - SUCCESS! ##########
+'''
+
+    def test_dynHelpStr_intfmtu(self):
+        if self.test.dynHelpStr_intfmtuTest():
+            print '''
+########## Test to verify dyn helpstr for mtu - SUCCESS! ##########
 '''
 
     def teardown_class(cls):
