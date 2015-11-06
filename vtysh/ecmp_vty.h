@@ -39,7 +39,9 @@
 #define GET_ECMP_CONFIG_HASH_DST_PORT_STATUS(row) smap_get_bool(&row->ecmp_config, \
                                                           SYSTEM_ECMP_CONFIG_HASH_DST_PORT, \
                                                           SYSTEM_ECMP_CONFIG_ENABLE_DEFAULT)
-
+#define GET_ECMP_CONFIG_HASH_RESILIENT_STATUS(row) smap_get_bool(&row->ecmp_config, \
+                                                          SYSTEM_ECMP_CONFIG_HASH_RESILIENT, \
+                                                          SYSTEM_ECMP_CONFIG_ENABLE_DEFAULT)
 void
 ecmp_vty_init (void);
 

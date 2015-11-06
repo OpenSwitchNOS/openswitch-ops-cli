@@ -724,6 +724,10 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance dst-port disable");
     }
+    if(!GET_ECMP_CONFIG_HASH_RESILIENT_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance resilient disable");
+    }
 
     return e_vtysh_ok;
 }
