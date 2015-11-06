@@ -548,6 +548,15 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
         if (port_row->ip4_address) {
           vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "ip address ", port_row->ip4_address);
         }
+	if ((NULL != port_row->vlan_mode) && 
+             (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0))
+        {
+            for (i = 0; i < port_row->n_trunks; i++)
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", 
+                    "encapsulation dot1Q ", port_row->trunks[i]);
+            }
+        }
         for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
           vtysh_ovsdb_cli_print(p_msg, "%4s%s%s%s", "", "ip address ",
                   port_row->ip4_address_secondary[i], " secondary");

@@ -208,6 +208,8 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_parent);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_children);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_admin_state);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_operational_state);
 }
 
 static void

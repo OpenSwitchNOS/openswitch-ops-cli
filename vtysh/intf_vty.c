@@ -879,7 +879,7 @@ vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
  *      const char *if_name           : Name of interface
  *      struct vty* vty               : Used for ouput
  */
-static int
+int
 parse_vlan(const char *if_name, struct vty* vty)
 {
     const struct ovsrec_port *port_row;
@@ -899,6 +899,14 @@ parse_vlan(const char *if_name, struct vty* vty)
     {
         vty_out(vty, "%3s%s%ld%s", "", "vlan access ",
                 *port_row->tag, VTY_NEWLINE);
+    }
+    else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
+    {
+        for (i = 0; i < port_row->n_trunks; i++)
+        {
+            vty_out(vty, "%3s%s%ld%s", "", "encapsulation dot1Q ",
+                    port_row->trunks[i], VTY_NEWLINE);
+        }
     }
     else if (strcmp(port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
     {
@@ -1467,7 +1475,7 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
   |     const char *if_name           : Name of interface
   |     struct vty* vty               : Used for ouput
   -----------------------------------------------------------------------------*/
-static int
+int
 show_ip_addresses(const char *if_name, struct vty *vty)
 {
     const struct ovsrec_port *port_row;
@@ -1640,6 +1648,22 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
                         ifrow->error, VTY_NEWLINE);
             }
 
+            //Check for sub interface
+            char parent_intf[PARENT_INTERFACE_NAME_LENGTH];
+            int len=0;
+            if (strcmp(ifrow->type,OVSREC_INTERFACE_TYPE_VLANSUBINT) == 0)
+	    {
+            	len = strlen(ifrow->name) - strlen(strchr(ifrow->name,'.'));
+	    	if(len)
+		{
+            		strncpy(parent_intf,ifrow->name,len);
+			parent_intf[len]=NULL;
+            		vty_out (vty, " parent interface is : %s %s",
+                			parent_intf, VTY_NEWLINE);
+	    	}
+	   }
+
+            parse_vlan(ifrow->name, vty);
             vty_out (vty, " Hardware: Ethernet, MAC Address: %s %s",
                     ifrow->mac_in_use, VTY_NEWLINE);
 
