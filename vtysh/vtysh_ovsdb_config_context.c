@@ -38,6 +38,8 @@
 #include "logrotate_vty.h"
 #include "openswitch-dflt.h"
 #include "ecmp_vty.h"
+#include "command.h"
+#include "ospf_vty.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
 
@@ -488,6 +490,17 @@ vtysh_config_context_global_clientcallback(void *p_private)
 
     /* parse aaa config param */
     vtysh_ovsdb_ovstable_parse_aaa_cfg(&vswrow->aaa, p_msg);
+
+    /* Print ospf enable */
+    int i = 0;
+    for (i = 0; i < vswrow->n_enable_features; i++)
+    {
+        if ((strcmp(vswrow->key_enable_features[i], OSPF_FEATURE) == 0) &&
+            (vswrow->value_enable_features[i] == true))
+        {
+            vtysh_ovsdb_cli_print(p_msg, "ospf enable");
+        }
+    }
   }
 
   /* display radius server commands */
