@@ -609,9 +609,9 @@ struct cmd_token
 #endif /* HAVE_IPV6 */
 
 /* ECMP CLI help strings */
-#define ECMP_CONFIG_DISABLE_STR      "Completely disable ECMP\n"
-#define ECMP_STR                     "Configure ECMP\n"
-#define LOAD_BAL_STR                 "Configure hashing parameters\n"
+#define ECMP_CONFIG_DISABLE_STR  "Completely disable ECMP (default: enabled)\n"
+#define ECMP_STR                 "Configure ECMP\n"
+#define LOAD_BAL_STR             "Configure hashing parameters\n"
 
 
 /* Prototypes. */

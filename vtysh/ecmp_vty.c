@@ -114,7 +114,7 @@ DEFUN (ip_ecmp_status,
     ECMP_STR
     ECMP_CONFIG_DISABLE_STR)
 {
-  VLOG_DBG("We are seting status of the ecmp");
+  VLOG_DBG("We are setting status of the ecmp");
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_STATUS);
 }
 
@@ -125,7 +125,7 @@ DEFUN (ip_ecmp_load_balance_src_ip,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by source IP\n"
-    "Disable load balancing by source IP\n")
+    "Disable load balancing by source IP (default: enabled)\n")
 {
   VLOG_DBG("Add hash option Source IP");
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_SRC_IP);
@@ -138,7 +138,7 @@ DEFUN (ip_ecmp_load_balance_dst_ip,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by destination IP\n"
-    "Disable load balancing by destination IP\n")
+    "Disable load balancing by destination IP (default: enabled)\n")
 {
   VLOG_DBG("Add hash option Destination IP");
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_DST_IP);
@@ -151,7 +151,7 @@ DEFUN (ip_ecmp_load_balance_dst_port,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by destination port\n"
-    "Disable load balancing by destination port\n")
+    "Disable load balancing by destination port (default: enabled)\n")
 {
   VLOG_DBG("Add hash option Destination Port");
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_DST_PORT);
@@ -164,10 +164,23 @@ DEFUN (ip_ecmp_load_balance_src_port,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by source port\n"
-    "Disable load balancing by source port\n")
+    "Disable load balancing by source port (default: enabled)\n")
 {
   VLOG_DBG("Add hash option Source Port");
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_SRC_PORT);
+}
+
+DEFUN (ip_ecmp_load_balance_resilient,
+    ip_ecmp_load_balance_resilient_cmd,
+    "ip ecmp load-balance resilient disable",
+    IP_STR
+    ECMP_STR
+    LOAD_BAL_STR
+    "Preserve flows when ECMP group members change\n"
+    "Don't preserve flows when ECMP group members change (default: enabled)\n")
+{
+  VLOG_DBG("Add hash option Resilient");
+  return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_RESILIENT);
 }
 
 DEFUN (no_ip_ecmp_status,
@@ -190,7 +203,7 @@ DEFUN (no_ip_ecmp_load_balance_src_ip,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by source IP\n"
-    "Disable load balancing by source IP\n")
+    "Disable load balancing by source IP (default: enabled)\n")
 {
   VLOG_DBG("Delete hash option Source IP");
   return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_SRC_IP);
@@ -204,7 +217,7 @@ DEFUN (no_ip_ecmp_load_balance_dst_ip,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by destination IP\n"
-    "Disable load balancing by destination IP\n")
+    "Disable load balancing by destination IP (default: enabled)\n")
 {
   VLOG_DBG("Add hash option Destination IP");
   return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_DST_IP);
@@ -218,7 +231,7 @@ DEFUN (no_ip_ecmp_load_balance_dst_port,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by destination port\n"
-    "Disable load balancing by destination port\n")
+    "Disable load balancing by destination port (default: enabled)\n")
 {
   VLOG_DBG("Add hash option Destination Port");
   return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_DST_PORT);
@@ -232,10 +245,24 @@ DEFUN (no_ip_ecmp_load_balance_src_port,
     ECMP_STR
     LOAD_BAL_STR
     "Load balancing by source port\n"
-    "Disable load balancing by source port\n")
+    "Disable load balancing by source port (default: enabled)\n")
 {
   VLOG_DBG("Add hash option Source Port");
   return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_SRC_PORT);
+}
+
+DEFUN (no_ip_ecmp_load_balance_resilient,
+    no_ip_ecmp_load_balance_resilient_cmd,
+    "no ip ecmp load-balance resilient disable",
+    NO_STR
+    IP_STR
+    ECMP_STR
+    LOAD_BAL_STR
+    "Preserve flows when ECMP group members change\n"
+    "Don't preserve flows when ECMP group members change (default: enabled)\n")
+{
+  VLOG_DBG("Add hash option Resilient");
+  return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_RESILIENT);
 }
 
 DEFUN (show_ip_ecmp,
@@ -255,22 +282,26 @@ DEFUN (show_ip_ecmp,
     }
 
   vty_out (vty, "\nECMP Configuration\n");
-  vty_out (vty, "---------------------\n\n");
-  vty_out (vty, "ECMP Status        : %s%s",
+  vty_out (vty, "---------------------\n");
+  vty_out (vty, " ECMP Status        : %s%s",
           GET_ECMP_CONFIG_STATUS(ovs_row)?"Enabled":"Disabled",
           VTY_NEWLINE);
+  vty_out (vty, " Resilient Hashing  : %s%s",
+            GET_ECMP_CONFIG_HASH_RESILIENT_STATUS(ovs_row)
+            ? "Enabled" : "Disabled",
+            VTY_NEWLINE);
   vty_out (vty, "\nECMP Load Balancing by\n");
   vty_out (vty, "------------------------\n");
-  vty_out (vty, "Source IP          : %s%s",
+  vty_out (vty, " Source IP          : %s%s",
           GET_ECMP_CONFIG_HASH_SRC_IP_STATUS(ovs_row)?"Enabled":"Disabled",
           VTY_NEWLINE);
-  vty_out (vty, "Destination IP     : %s%s",
+  vty_out (vty, " Destination IP     : %s%s",
           GET_ECMP_CONFIG_HASH_DST_IP_STATUS(ovs_row)?"Enabled":"Disabled",
           VTY_NEWLINE);
-  vty_out (vty, "Source Port        : %s%s",
+  vty_out (vty, " Source Port        : %s%s",
           GET_ECMP_CONFIG_HASH_SRC_PORT_STATUS(ovs_row)?"Enabled":"Disabled",
           VTY_NEWLINE);
-  vty_out (vty, "Destination Port   : %s%s\n",
+  vty_out (vty, " Destination Port   : %s%s\n",
           GET_ECMP_CONFIG_HASH_DST_PORT_STATUS(ovs_row)?"Enabled":"Disabled",
           VTY_NEWLINE);
   return CMD_SUCCESS;
@@ -286,10 +317,12 @@ ecmp_vty_init (void)
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_src_port_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_dst_ip_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_dst_port_cmd);
+  install_element (CONFIG_NODE, &ip_ecmp_load_balance_resilient_cmd);
   install_element (ENABLE_NODE, &show_ip_ecmp_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_status_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_src_ip_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_src_port_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_dst_ip_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_dst_port_cmd);
+  install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_resilient_cmd);
 }
