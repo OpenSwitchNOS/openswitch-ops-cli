@@ -170,6 +170,19 @@ DEFUN (ip_ecmp_load_balance_src_port,
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_SRC_PORT);
 }
 
+DEFUN (ip_ecmp_load_balance_resilient,
+    ip_ecmp_load_balance_resilient_cmd,
+    "ip ecmp load-balance resilient disable",
+    IP_STR
+    ECMP_STR
+    LOAD_BAL_STR
+    "Preserve flows when ECMP group membership changes\n"
+    "Don't preserve flows when ECMP group membership changes\n")
+{
+  VLOG_DBG("Add hash option Resilient");
+  return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_RESILIENT);
+}
+
 DEFUN (no_ip_ecmp_status,
     no_ip_ecmp_status_cmd,
     "no ip ecmp disable",
@@ -238,6 +251,20 @@ DEFUN (no_ip_ecmp_load_balance_src_port,
   return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_SRC_PORT);
 }
 
+DEFUN (no_ip_ecmp_load_balance_resilient,
+    no_ip_ecmp_load_balance_resilient_cmd,
+    "no ip ecmp load-balance resilient disable",
+    NO_STR
+    IP_STR
+    ECMP_STR
+    LOAD_BAL_STR
+    "Preserve flows when ECMP group membership changes\n"
+    "Don't preserve flows when ECMP group membership changes\n")
+{
+  VLOG_DBG("Add hash option Resilient");
+  return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_HASH_RESILIENT);
+}
+
 DEFUN (show_ip_ecmp,
     show_ip_ecmp_cmd,
     "show ip ecmp",
@@ -259,6 +286,10 @@ DEFUN (show_ip_ecmp,
   vty_out (vty, "ECMP Status        : %s%s",
           GET_ECMP_CONFIG_STATUS(ovs_row)?"Enabled":"Disabled",
           VTY_NEWLINE);
+  vty_out (vty, "Resilient Hashing  : %s%s",
+            GET_ECMP_CONFIG_HASH_RESILIENT_STATUS(ovs_row)
+            ? "Enabled" : "Disabled",
+            VTY_NEWLINE);
   vty_out (vty, "\nECMP Load Balancing by\n");
   vty_out (vty, "------------------------\n");
   vty_out (vty, "Source IP          : %s%s",
@@ -286,10 +317,12 @@ ecmp_vty_init (void)
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_src_port_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_dst_ip_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_dst_port_cmd);
+  install_element (CONFIG_NODE, &ip_ecmp_load_balance_resilient_cmd);
   install_element (ENABLE_NODE, &show_ip_ecmp_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_status_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_src_ip_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_src_port_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_dst_ip_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_dst_port_cmd);
+  install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_resilient_cmd);
 }
