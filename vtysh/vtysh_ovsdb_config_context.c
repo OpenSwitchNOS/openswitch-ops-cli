@@ -715,22 +715,22 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
                               "vtysh_config_context_ecmp_clientcallback entered");
 
     ovs_row = ovsrec_system_first(p_msg->idl);
-    if(!ovs_row)
+    if (!ovs_row)
     {
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                             "vtysh_config_context_ecmp_clientcallback: error ovs_row");
         return e_vtysh_error;
     }
 
-    if(!GET_ECMP_CONFIG_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp disable");
     }
-    if(!GET_ECMP_CONFIG_HASH_SRC_IP_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_HASH_SRC_IP_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance src-ip disable");
     }
-    if(!GET_ECMP_CONFIG_HASH_SRC_PORT_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_HASH_SRC_PORT_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance src-port disable");
     }
@@ -738,9 +738,13 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance dst-ip disable");
     }
-    if(!GET_ECMP_CONFIG_HASH_DST_PORT_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_HASH_DST_PORT_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance dst-port disable");
+    }
+    if (!GET_ECMP_CONFIG_HASH_RESILIENT_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance resilient disable");
     }
 
     return e_vtysh_ok;
