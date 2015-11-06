@@ -73,6 +73,10 @@
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
 #include "dhcp_tftp_vty.h"
+
+
+void ospf_vty_init(void);
+
 #endif
 
 #include "aaa_vty.h"
@@ -889,13 +893,14 @@ static struct cmd_node bgp_ipv6m_node =
       "%s(config-router-af)# "
    };
 
-#ifndef ENABLE_OVSDB
+
 static struct cmd_node ospf_node =
    {
       OSPF_NODE,
       "%s(config-router)# "
    };
 
+#ifndef ENABLE_OVSDB
 static struct cmd_node ripng_node =
    {
       RIPNG_NODE,
@@ -1404,12 +1409,10 @@ DEFUNSH (VTYSH_OSPFD,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ospfd,
       vtysh_quit_ospfd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_OSPF6D,
       vtysh_exit_ospf6d,
@@ -4246,8 +4249,9 @@ vtysh_init_vty (void)
    install_node (&bgp_ipv6_node, NULL);
    install_node (&bgp_ipv6m_node, NULL);
 /* #endif */
-#ifndef ENABLE_OVSDB
+
    install_node (&ospf_node, NULL);
+#ifndef ENABLE_OVSDB
 /* #ifdef HAVE_IPV6 */
    install_node (&ripng_node, NULL);
    install_node (&ospf6_node, NULL);
@@ -4287,12 +4291,12 @@ vtysh_init_vty (void)
    vtysh_install_default (BGP_IPV6_NODE);
    vtysh_install_default (BGP_IPV6M_NODE);
 #ifndef ENABLE_OVSDB
-   vtysh_install_default (OSPF_NODE);
    vtysh_install_default (RIPNG_NODE);
    vtysh_install_default (OSPF6_NODE);
    vtysh_install_default (BABEL_NODE);
    vtysh_install_default (ISIS_NODE);
 #endif
+   vtysh_install_default (OSPF_NODE);
    vtysh_install_default (KEYCHAIN_NODE);
    vtysh_install_default (KEYCHAIN_KEY_NODE);
    vtysh_install_default (VTY_NODE);
@@ -4314,11 +4318,12 @@ vtysh_init_vty (void)
    install_element (VIEW_NODE, &vtysh_enable_cmd);
    install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
+   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
+
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
    install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
-   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
@@ -4342,10 +4347,12 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_exit_all_cmd);
    /* install_element (CONFIG_NODE, &vtysh_quit_all_cmd); */
    install_element (ENABLE_NODE, &vtysh_exit_all_cmd);
+
+   install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
+
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_exit_ripd_cmd);
    install_element (RIPNG_NODE, &vtysh_exit_ripngd_cmd);
-   install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
    install_element (OSPF6_NODE, &vtysh_exit_ospf6d_cmd);
 #endif
    install_element (BGP_NODE, &vtysh_exit_bgpd_cmd);
@@ -4368,10 +4375,12 @@ vtysh_init_vty (void)
    /* "end" command. */
    install_element (CONFIG_NODE, &vtysh_end_all_cmd);
    install_element (ENABLE_NODE, &vtysh_end_all_cmd);
+
+   install_element (OSPF_NODE, &vtysh_end_all_cmd);
+
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_end_all_cmd);
    install_element (RIPNG_NODE, &vtysh_end_all_cmd);
-   install_element (OSPF_NODE, &vtysh_end_all_cmd);
    install_element (OSPF6_NODE, &vtysh_end_all_cmd);
    install_element (BABEL_NODE, &vtysh_end_all_cmd);
 #endif
@@ -4396,10 +4405,11 @@ vtysh_init_vty (void)
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
+   install_element (CONFIG_NODE, &router_ospf_cmd);
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ripng_cmd);
 #endif
-   install_element (CONFIG_NODE, &router_ospf_cmd);
+
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ospf6_cmd);
 #endif
@@ -4578,6 +4588,9 @@ vtysh_init_vty (void)
   /* Initialise power supply cli */
   powersupply_vty_init();
   lacp_vty_init();
+
+  /* Initialize ospf commands*/
+  ospf_vty_init();
 
   /* Initialize ECMP CLI */
   ecmp_vty_init();
