@@ -38,6 +38,37 @@ class InterfaceCommandsTests(OpsVsiTest):
                            host=Host, link=OpsVsiLink,
                            controller=None, build=True)
 
+
+    def showRunInterfaceLag(self):
+        info('''
+########## Test show running-config interface with LAG ##########
+''')
+        lag_interface = False
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('no routing')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('hash l2-src-dst')
+        s1.cmdCLI('lacp fallback')
+        s1.cmdCLI('lacp rate fast')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('interface 2')
+        s1.cmdCLI('lacp port-id 1')
+        s1.cmdCLI('lacp port-priority 1')
+        s1.cmdCLI('lag 1')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('exit')
+        out = s1.cmdCLI('show run interface')
+        if "interface lag 1" in out and "no routing" in out \
+            and "hash l2-src-dst" in out and "lacp fallback" in out \
+            and "lacp rate fast" in out and "lacp port-id 1" in out \
+            and "lacp port-priority 1" in out and "lag 1" in out:
+            lag_interface = True
+        assert (lag_interface is True), \
+            'Test show running-config interface with LAG port - FAILED!'
+        return True
+
     def interfaceConfigCliTest(self):
         print '''
 ########## Test to verify interface configuration clis  ##########
@@ -164,6 +195,12 @@ class Test_interfaceCommands:
 
     def setup_class(cls):
         Test_interfaceCommands.test = InterfaceCommandsTests()
+
+    def test_showRunInterfaceLag(self):
+        if self.test.showRunInterfaceLag():
+            info('''
+########## Test show running-config interface with LAG - SUCCESS! ##########
+''')
 
     def test_interfaceConfigCli(self):
         if self.test.interfaceConfigCliTest():

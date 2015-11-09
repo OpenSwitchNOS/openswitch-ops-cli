@@ -47,6 +47,7 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "vtysh/mgmt_intf_vty.h"
 #include "vtysh/vtysh_ovsdb_intf_context.h"
+#include "lacp_vty.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_interface_cli);
 extern struct ovsdb_idl *idl;
@@ -1105,6 +1106,126 @@ parse_l3config(const char *if_name, struct vty *vty)
 }
 
 static int
+print_interface_lag(const char *if_name, struct vty *vty, bool *bPrinted)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_interface *if_row = NULL;
+    int k=0;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if (strncmp(port_row->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
+        {
+            for (k = 0; k < port_row->n_interfaces; k++)
+            {
+                if_row = port_row->interfaces[k];
+                if(strncmp(if_name, if_row->name, MAX_IFNAME_LENGTH) == 0)
+                {
+                    if (!(*bPrinted))
+                    {
+                        *bPrinted = true;
+                        vty_out (vty, "interface %s %s", if_name, VTY_NEWLINE);
+                    }
+                    vty_out(vty, "%3s%s %s%s", "", "lag",
+                            &port_row->name[LAG_PORT_NAME_PREFIX_LENGTH], VTY_NEWLINE);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+static int
+parse_lacp_othercfg(const struct smap *ifrow_config, const char *if_name,
+                                                struct vty *vty, bool *bPrinted)
+{
+    const char *data = NULL;
+
+    data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_ID);
+
+    if (data)
+    {
+        if (!(*bPrinted))
+        {
+            *bPrinted = true;
+            vty_out (vty, "interface %s%s", if_name, VTY_NEWLINE);
+        }
+
+        vty_out (vty, "%3s%s %s%s", "", "lacp port-id", data, VTY_NEWLINE);
+    }
+
+    data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
+
+    if (data)
+    {
+        if (!(*bPrinted))
+        {
+            *bPrinted = true;
+            vty_out (vty, "interface %s%s", if_name, VTY_NEWLINE);
+        }
+
+            vty_out (vty, "%3s%s %s%s", "", "lacp port-priority", data, VTY_NEWLINE);
+
+    }
+
+    return 0;
+}
+
+static int
+parse_lag(struct vty *vty)
+{
+    const char *data = NULL;
+    const struct ovsrec_port *port_row = NULL;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if(strncmp(port_row->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
+        {
+            /* Print the LAG port name because lag port is present. */
+            vty_out (vty, "interface lag %s%s", &port_row->name[LAG_PORT_NAME_PREFIX_LENGTH], VTY_NEWLINE);
+            data = smap_get(&port_row->other_config, "lacp");
+
+            if (check_port_in_bridge(port_row->name))
+            {
+                vty_out (vty, "%3s%s%s", "", "no routing", VTY_NEWLINE);
+                parse_vlan(port_row->name, vty);
+            }
+
+            if(data)
+            {
+                vty_out (vty, "%3slacp mode %s%s"," ",data, VTY_NEWLINE);
+            }
+
+            data = smap_get(&port_row->other_config, "bond_mode");
+
+            if(data)
+            {
+                vty_out (vty, "%3shash %s%s"," ",data, VTY_NEWLINE);
+            }
+
+            data = smap_get(&port_row->other_config, "lacp-fallback-ab");
+
+            if(data)
+            {
+                if(VTYSH_STR_EQ(data, "true"))
+                {
+                    vty_out (vty, "%3slacp fallback%s"," ", VTY_NEWLINE);
+                }
+            }
+
+            data = smap_get(&port_row->other_config, "lacp-time");
+
+            if(data)
+            {
+                vty_out (vty, "%3slacp rate %s%s"," ", data, VTY_NEWLINE);
+            }
+        }
+    }
+
+    return 0;
+}
+
+static int
 cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
         int flags, int argc, const char *argv[])
 {
@@ -1217,11 +1338,17 @@ cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
 
         parse_l3config(row->name, vty);
 
+        parse_lacp_othercfg(&row->other_config, row->name, vty, &bPrinted);
+
+        print_interface_lag(row->name, vty, &bPrinted);
+
         if (bPrinted)
         {
             vty_out(vty, "   exit%s", VTY_NEWLINE);
         }
     }
+
+    parse_lag(vty);
 
     return CMD_SUCCESS;
 }
