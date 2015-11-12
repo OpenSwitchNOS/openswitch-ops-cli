@@ -210,6 +210,10 @@ DEFUN_DYN_HELPSTR (cli_intf_speed,
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     struct smap smap_user_config;
+    const char *speeds_list = NULL;
+    char *tmp = NULL;
+    int support_flag = 0;
+    char *cur_state = NULL;
 
     if (status_txn == NULL)
     {
@@ -246,8 +250,36 @@ DEFUN_DYN_HELPSTR (cli_intf_speed,
                 }
                 else
                 {
-                    smap_replace(&smap_user_config,
-                            INTERFACE_USER_CONFIG_MAP_SPEEDS, argv[0]);
+                    speeds_list = smap_get(&row->hw_intf_info, "speeds");
+                    support_flag = 0;
+                    if (speeds_list != NULL)
+                    {
+                        cur_state = calloc(strlen(speeds_list) + 1,
+                                                           sizeof(char));
+                        strcpy(cur_state, speeds_list);
+                        tmp = strtok(cur_state, ",");
+                        while (tmp != NULL)
+                        {
+                            if (strcmp(tmp, argv[0]) == 0)
+                            {
+                                support_flag = 1;
+                                break;
+                            }
+                            tmp = strtok(NULL, ",");
+                        }
+                        if (support_flag == 0)
+                        {
+                            vty_out(vty, "Interface doesn't support %s (Mb/s) "
+                                        "speed,supported speed : %s (Mb/s)%s",
+                                        argv[0], speeds_list, VTY_NEWLINE);
+                            cli_do_config_abort(status_txn);
+                            smap_destroy(&smap_user_config);
+                            return CMD_SUCCESS;
+                         }
+                            smap_replace(&smap_user_config,
+                                         INTERFACE_USER_CONFIG_MAP_SPEEDS,
+                                         argv[0]);
+                      }
                 }
             }
             ovsrec_interface_set_user_config(row, &smap_user_config);

@@ -50,9 +50,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         assert 'mtu 2500' in out, \
             'Test to verify interface configuration clis - FAILED!'
 
-        s1.cmdCLI('speed 4000')
+        s1.cmdCLI('speed 1000')
         out = s1.cmdCLI('do show running-conf interface 2')
-        assert 'speed 4000' in out, \
+        assert 'speed 1000' in out, \
             'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('duplex half')
