@@ -40,6 +40,7 @@
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
 #include "intf_vty.h"
+#include "lacp_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openswitch-idl.h"
@@ -1670,6 +1671,164 @@ show_ip_addresses(const char *if_name, struct vty *vty)
 }
 
 
+void
+show_lacp_interfaces_brief (struct vty *vty, const char *argv[])
+{
+    const struct ovsrec_port *lag_port = NULL;
+    const struct ovsrec_interface *if_row = NULL;
+    const char *aggregate_mode = NULL;
+    const struct ovsdb_datum *datum;
+
+    int64_t lag_speed = 0;
+
+    // Index for loops
+    int interface_index = 0;
+
+    OVSREC_PORT_FOR_EACH(lag_port, idl)
+    {
+        if ((NULL != argv[0]) && (0 != strcmp(argv[0],lag_port->name)))
+        {
+            continue;
+        }
+
+        if(strncmp(lag_port->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) != 0)
+        {
+            continue;
+        }
+
+        vty_out(vty, " %-12s ", lag_port->name);
+        vty_out(vty, "--      "); /*VLAN */
+        vty_out(vty, "--  "); /*type */
+
+        aggregate_mode = lag_port->lacp;
+        if(aggregate_mode)
+            vty_out(vty, "%-7s ", aggregate_mode); /* mode -  active, passive*/
+        else
+            vty_out(vty, "--      "); /* mode -  active, passive */
+
+        vty_out(vty, "--     ");/* Status */
+        vty_out(vty, "--                       "); /*Reason*/
+
+        /* Speed calculation: Adding speed of all aggregated interfaces*/
+        lag_speed = 0;
+        for (interface_index = 0; interface_index < lag_port->n_interfaces; interface_index++)
+        {
+            if_row = lag_port->interfaces[interface_index];
+
+            datum = ovsrec_interface_get_link_speed(if_row, OVSDB_TYPE_INTEGER);
+            if ((NULL!=datum) && (datum->n >0))
+            {
+                lag_speed += datum->keys[0].integer;
+            }
+        }
+        if(lag_speed == 0)
+        {
+            vty_out(vty, " %-6s", "auto");
+        }
+        else
+        {
+            vty_out(vty, " %-6ld", lag_speed/1000000);
+        }
+
+        vty_out(vty, "   -- ");  /* Port channel */
+        vty_out(vty, "%s", VTY_NEWLINE);
+    }
+}
+
+void
+show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
+                      const char *argv[])
+{
+    const struct ovsrec_port *lag_port = NULL;
+    const struct ovsrec_interface *if_row = NULL;
+    const char *aggregate_mode = NULL;
+    const struct ovsdb_datum *datum;
+    unsigned int index;
+
+    int64_t lag_speed = 0;
+
+    // Indexes for loops
+    int interface_index = 0;
+    int stat_index = 0;
+
+    // Array to keep the statistics for each lag while adding the
+    // stats for each interface in the lag.
+    int lag_statistics [12] = {0};
+
+    OVSREC_PORT_FOR_EACH(lag_port, idl)
+    {
+        union ovsdb_atom atom;
+
+        if ((NULL != argv[0]) && (0 != strcmp(argv[0],lag_port->name)))
+        {
+            continue;
+        }
+
+        if(strncmp(lag_port->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) != 0)
+        {
+            continue;
+        }
+
+        vty_out(vty, "Aggregate-name %s %s", lag_port->name, VTY_NEWLINE);
+        vty_out(vty, " Aggregated-interfaces : ");
+
+
+        lag_speed = 0;
+        for (interface_index = 0; interface_index < lag_port->n_interfaces; interface_index++)
+        {
+            if_row = lag_port->interfaces[interface_index];
+            vty_out(vty, "%s ", if_row->name);
+
+            datum = ovsrec_interface_get_link_speed(if_row, OVSDB_TYPE_INTEGER);
+            if ((NULL!=datum) && (datum->n >0))
+            {
+                lag_speed += datum->keys[0].integer;
+            }
+
+            datum = ovsrec_interface_get_statistics(if_row,
+                                OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
+
+            // Adding statistic value for each interface in the lag
+            for (stat_index = 0; stat_index < sizeof(lag_statistics)/sizeof(int); stat_index++)
+            {
+                atom.string = interface_statistics_keys[stat_index];
+                index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+                lag_statistics[stat_index] += (index == UINT_MAX)? 0 : datum->values[index].integer;
+            }
+        }
+        vty_out(vty, "%s", VTY_NEWLINE);
+        aggregate_mode = lag_port->lacp;
+        if(aggregate_mode)
+            vty_out(vty, " Aggregate mode : %s %s", aggregate_mode, VTY_NEWLINE);
+        vty_out(vty, " Speed %ld Mb/s %s",lag_speed/1000000 , VTY_NEWLINE);
+        vty_out(vty, " RX%s", VTY_NEWLINE);
+        vty_out(vty, "   %10ld input packets  ", lag_statistics[0]);
+        vty_out(vty, "   %10ld bytes  ",lag_statistics[1]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld input error    ",lag_statistics[8]);
+        vty_out(vty, "   %10ld dropped  ",lag_statistics[4]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld CRC/FCS  ",lag_statistics[7]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, " TX%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld output packets ",lag_statistics[2]);
+        vty_out(vty, "   %10ld bytes  ",lag_statistics[3]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld input error    ",lag_statistics[11]);
+        vty_out(vty, "   %10ld dropped  ",lag_statistics[9]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld collision  ",lag_statistics[10]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, "%s", VTY_NEWLINE);
+    }
+}
+
+
 int
 cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
         int flags, int argc, const char *argv[], bool brief)
@@ -1955,6 +2114,15 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
     shash_destroy(&sorted_interfaces);
     free(nodes);
+
+    if(brief)
+    {
+        show_lacp_interfaces_brief(vty, argv);
+    }
+    else
+    {
+        show_lacp_interfaces(vty, interface_statistics_keys, argv);
+    }
 
     return CMD_SUCCESS;
 }
