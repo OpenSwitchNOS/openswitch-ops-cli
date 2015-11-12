@@ -734,26 +734,33 @@ cli_do_config_abort(struct ovsdb_idl_txn* status_txn)
 }
 
 /*
- * Check if the input string is a valid interface in the
- * ovsdb table.
+ * Check if the input string is a valid interface or
+ * lag aggregate in the ovsdb table.
  */
 int
 vtysh_ovsdb_interface_match(const char *str)
 {
 
     const struct ovsrec_interface *row, *next;
+    const struct ovsrec_port *lag_port, *lag_port_next;
 
     if (!str) {
         return 1;
     }
-
+    // Search for each interface
     OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
     {
-        if ( strcmp(str,row->name) == 0) {
+        if ( strncmp(str,row->name, strlen(str)) == 0) {
             return 0;
         }
     }
-
+    // Search for each lag port
+    OVSREC_PORT_FOR_EACH_SAFE(lag_port, lag_port_next, idl)
+    {
+        if ( strncmp(str,lag_port->name,strlen(str)) == 0){
+            return 0;
+        }
+    }
     return 1;
 }
 
