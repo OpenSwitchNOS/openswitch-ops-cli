@@ -99,9 +99,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
         out = s1.cmdCLI('speed ?')
-        assert '1000   Gb/s supported' in out and \
-            '10000  Gb/s not supported' in out and \
-            '40000  Gb/s not supported' in out, \
+        assert '1000   Mb/s supported' in out and \
+            '10000  Mb/s not supported' in out and \
+            '40000  Mb/s not supported' in out, \
             'Test to verify dyn helpstr for int speeds=1000 - FAILED!'
         out = s1.cmdCLI('end')
 
@@ -109,9 +109,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
         out = s1.cmdCLI('speed ?')
-        assert '1000   Gb/s supported' in out and \
-            '10000  Gb/s supported' in out and \
-            '40000  Gb/s not supported' in out, \
+        assert '1000   Mb/s supported' in out and \
+            '10000  Mb/s supported' in out and \
+            '40000  Mb/s not supported' in out, \
             'Test to verify dyn helpstr for int speeds="1000,10000" - FAILED!'
         out = s1.cmdCLI('end')
 
@@ -119,9 +119,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
         out = s1.cmdCLI('speed ?')
-        assert '1000   Gb/s not supported' in out and \
-            '10000  Gb/s not supported' in out and \
-            '40000  Gb/s supported' in out, \
+        assert '1000   Mb/s not supported' in out and \
+            '10000  Mb/s not supported' in out and \
+            '40000  Mb/s supported' in out, \
             'Test to verify dynamic helpstr for interface speed cli - FAILED!'
         out = s1.cmdCLI('end')
         return True
@@ -153,6 +153,22 @@ class InterfaceCommandsTests(OpsVsiTest):
                interface in numerical order -FAILED'
         return True
 
+    def dynHelpStr_intfmtuTest(self):
+        print '''
+########## Test to verify dynamic helpstr for mtu  ##########
+'''
+
+        s1 = self.net.switches[0]
+        s1.ovscmd('ovs-vsctl set Subsystem base other_info:max_transmission_unit="2500"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('mtu ?')
+        assert 'WORD  Enter MTU (in bytes) in the range <576-2500>' in out, \
+            'Test to verify dyn helpstr for mtu 2500 - FAILED!'
+        out = s1.cmdCLI('end')
+
+        return True
+
 
 class Test_interfaceCommands:
 
@@ -182,6 +198,12 @@ class Test_interfaceCommands:
             info('''
 ########## Test to verify that interface id displaying in numerical order \
 ##########\n ''')
+
+    def test_dynHelpStr_intfmtu(self):
+        if self.test.dynHelpStr_intfmtuTest():
+            print '''
+########## Test to verify dyn helpstr for mtu - SUCCESS! ##########
+'''
 
     def teardown_class(cls):
 
