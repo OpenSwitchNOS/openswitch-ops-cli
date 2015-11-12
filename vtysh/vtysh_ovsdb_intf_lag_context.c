@@ -130,13 +130,13 @@ vtysh_intf_lag_context_clientcallback(void *p_private)
     {
       /* Print the LAG port name because lag port is present. */
       vtysh_ovsdb_cli_print(p_msg, "interface lag %d", atoi(&port_row->name[LAG_PORT_NAME_PREFIX_LENGTH]));
-      data = smap_get(&port_row->other_config, "lacp");
       if (check_port_in_bridge(port_row->name))
       {
           vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no routing");
           vtysh_ovsdb_porttable_parse_vlan(port_row->name, p_msg);
       }
-      if(data)
+      data = port_row->lacp;
+      if(data && strcmp(data, OVSREC_PORT_LACP_OFF) != 0)
       {
         vtysh_ovsdb_cli_print(p_msg, "%4slacp mode %s"," ",data);
       }
