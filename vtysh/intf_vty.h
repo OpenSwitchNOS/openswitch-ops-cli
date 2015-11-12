@@ -47,6 +47,8 @@ int delete_vlan_interface(const char *vlan_if);
 bool verify_ifname(char *str);
 void dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
                           char * const helpstr, int max_len);
+void dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
+                       char * const helpstr, int max_strlen);
 #endif
 
 #endif /* _INFT_VTY_H */

@@ -211,13 +211,12 @@ dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
 {
     const struct ovsrec_interface * row = NULL;
     const char *speeds_list = NULL;
-    char * str = NULL;
     char * tmp = NULL;
     int len = 0;
     row = ovsrec_interface_first(idl);
     if (!row)
     {
-        vty_out(vty, "OVSDB failure\n");
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
         return NULL;
     }
 
@@ -236,20 +235,17 @@ dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
             {
                 if (strcmp(tmp, token->cmd) == 0)
                 {
-                    str = "Gb/s supported";
-                    strncpy(helpstr, str, max_strlen);
+                    snprintf(helpstr, max_strlen, "Mb/s supported");
                     free(cur_state);
                     return;
                 }
                 tmp = strtok(NULL, ",");
             }
-            str = "Gb/s not supported";
+            snprintf(helpstr, max_strlen, "Mb/s not supported");
             free(cur_state);
         }
         else
-            str = "Gb/s not configured";
-
-        strncpy(helpstr, str, max_strlen);
+            snprintf(helpstr, max_strlen, "Mb/s not configured");
     }
     return;
 }
@@ -337,17 +333,41 @@ DEFUN_NO_FORM (cli_intf_speed,
         "speed",
         "Enter the interface speed\n");
 
+void
+dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
+                  char * const helpstr, int max_strlen)
+{
+    const struct ovsrec_subsystem * row = NULL;
+    char * mtu = NULL;
+
+    row = ovsrec_subsystem_first(idl);
+    if (!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return NULL;
+    }
+
+    OVSREC_SUBSYSTEM_FOR_EACH(row, idl)
+    {
+        mtu = smap_get(&row->other_info, "max_transmission_unit");
+        if (mtu != NULL)
+            snprintf(helpstr, max_strlen, \
+                     "Enter MTU (in bytes) in the range <576-%s>", mtu);
+    }
+    return;
+}
 
 /*
  * CLI "mtu"
  * default : auto
  */
-DEFUN (cli_intf_mtu,
+DEFUN_DYN_HELPSTR (cli_intf_mtu,
         cli_intf_mtu_cmd,
-        "mtu (auto|<576-9216>)",
-        "Configure mtu for the interface\n"
+        "mtu (auto|WORD)",
+        "Configure MTU for the interface\n"
         "Set MTU to system default (Default)\n"
-        "Enter MTU (in bytes)\n")
+        "Enter MTU (in bytes) in the range <576-9216>\n",
+        "\n\ndyncb_helpstr_mtu\n")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();

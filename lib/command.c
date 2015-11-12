@@ -37,6 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "lib_vtysh_ovsdb_if.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
+#include "dyn_helpstr.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
@@ -114,22 +115,6 @@ static struct cmd_node config_node =
   1
 };
 
-extern void dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
-                                 char * const dyn_helpstr_ptr, int max_strlen);
-
-struct dyn_cb_func
-{
-  char * funcname;
-  void (*funcptr)(struct cmd_token *token, struct vty *vty, \
-                  char * const dyn_helpstr_ptr, int max_strlen);
-};
-/* callback func lookup table for dynamic helpstr */
-struct dyn_cb_func dyn_cb_lookup[] =
-{
-  {"dyncb_helpstr_1G", dyncb_helpstr_speeds},
-  {"dyncb_helpstr_10G", dyncb_helpstr_speeds},
-  {"dyncb_helpstr_40G", dyncb_helpstr_speeds},
-};
 
 /* Default motd string. */
 static const char *default_motd =
@@ -2522,6 +2507,7 @@ cmd_describe_command_real (vector vline, struct vty *vty, int *status)
 
               if (token->dyn_cb != NULL)
               {
+                memset(dyn_helpstr, '\0', MAX_DYN_HELPSTR_LEN);
                 token->dyn_cb_func(token, vty, dyn_helpstr, MAX_DYN_HELPSTR_LEN);
                 len = strlen(dyn_helpstr);
                 if (len > 0)
