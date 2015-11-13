@@ -45,6 +45,8 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "intf_vty.h"
+#include "smap.h"
+#include "openswitch-dflt.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -1420,6 +1422,7 @@ vrf_del_ipv6 (const char *if_name, const char *ipv6, bool secondary)
 static int
 show_vrf_info ()
 {
+  char *status = NULL;
   const struct ovsrec_vrf *vrf_row = NULL;
   size_t i;
 
@@ -1446,13 +1449,25 @@ show_vrf_info ()
   OVSREC_VRF_FOR_EACH (vrf_row, idl)
     {
       vty_out (vty, "VRF Name : %s%s\n", vrf_row->name, VTY_NEWLINE);
-      vty_out (vty, "\tInterfaces : %s", VTY_NEWLINE);
-      vty_out (vty, "\t------------%s", VTY_NEWLINE);
+      vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
+      vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
       for (i = 0; i < vrf_row->n_ports; i++)
-        vty_out (vty, "\t%s%s", vrf_row->ports[i]->name, VTY_NEWLINE);
+        {
+        if (smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR) == NULL)
+          {
+            vty_out (vty, "\t%s                %s%s", vrf_row->ports[i]->name,
+                     PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
+          }
+        else
+          {
+            vty_out (vty, "\t%s                error: %s%s", vrf_row->ports[i]->name,
+                     smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR),
+                     VTY_NEWLINE);
+          }
+        }
+  return CMD_SUCCESS;
     }
 
-  return CMD_SUCCESS;
 }
 
 DEFUN (cli_vrf_add,
