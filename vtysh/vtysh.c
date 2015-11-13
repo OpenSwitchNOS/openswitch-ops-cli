@@ -73,6 +73,7 @@
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
 #include "dhcp_tftp_vty.h"
+#include "ping_vty.h"
 #endif
 
 #include "aaa_vty.h"
@@ -4610,5 +4611,7 @@ vtysh_init_vty (void)
 
   /* Initialize ECMP CLI */
   ecmp_vty_init();
+  /* Initialize ping CLI */
+  ping_vty_init();
 #endif
 }
