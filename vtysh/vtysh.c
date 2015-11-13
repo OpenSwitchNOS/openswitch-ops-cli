@@ -73,12 +73,12 @@
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
 #include "dhcp_tftp_vty.h"
+#include "ping_vty.h"
 #endif
 
 #include "aaa_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
-
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -4587,6 +4587,7 @@ vtysh_init_vty (void)
 
 #ifdef ENABLE_OVSDB
   lldp_vty_init();
+  ping_vty_init();
   vrf_vty_init();
   neighbor_vty_init();
   intf_vty_init();
