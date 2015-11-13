@@ -188,6 +188,55 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI('exit')
 
+    def test_vrf_no_internal_vlan(self):
+        '''
+            Test VRF status for up/no internal vlan
+        '''
+
+        info("\n########## VRF status up/no_internal_vlan validations ##########\n")
+        s1 = self.net.switches[0]
+
+        # ovs-vsctl command to create vlans
+        s1.cmd("ovs-vsctl set Subsystem base " \
+               "other_info:l3_port_requires_internal_vlan=1")
+
+        # Configurig vlan range for a single vlan
+        s1.cmdCLI("configure terminal")
+        s1.cmdCLI("vlan internal range 1024 1024 ascending")
+        intf_cmd = 'interface ' + first_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('routing')
+        s1.cmdCLI('ip address 10.1.1.1/8')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + second_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('routing')
+        s1.cmdCLI('ip address 11.1.1.1/8')
+        s1.cmdCLI('exit')
+
+        # Checking to see if up and no_internal_vlan cases are handled
+        ret = s1.cmdCLI('do show vrf')
+        expected_output = '\t' + first_interface + '                up'
+        assert expected_output in ret, 'Interface status up failed'
+        info('### Interface status up passed ###\n')
+        expected_output = '\t' + second_interface \
+            + '                error: no_internal_vlan'
+        assert expected_output in ret, 'Interface status no_internal_vlan failed'
+        info('### Interface status no_internal_vlan Passed ###\n')
+
+        # Cleanup
+
+        intf_cmd = 'interface ' + first_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('no routing')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + second_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('no routing')
+        s1.cmdCLI('exit')
+
+        s1.cmdCLI('exit')
+
     def test_ip(self):
         '''
             Test configuration of IP address for port
@@ -767,6 +816,9 @@ class Test_vtysh_vrf:
 
     def test_interface(self):
         self.test.test_interface()
+
+    def test_vrf_no_internal_vlan(self):
+        self.test.test_vrf_no_internal_vlan()
 
     def test_ip(self):
         self.test.test_ip()
