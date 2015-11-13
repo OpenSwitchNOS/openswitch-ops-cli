@@ -3314,7 +3314,7 @@ vtysh_prompt (void)
 {
    static struct utsname names;
    static char buf[100];
-   const char*hostname;
+   const char *hostname;
    extern struct host host;
 
 #ifdef ENABLE_OVSDB
@@ -4477,6 +4477,7 @@ vtysh_init_vty (void)
   mgmt_intf_vty_init();
   /* Initialise System cli */
   system_vty_init();
+  traceroute_vty_init ();
   fan_vty_init();
   temperature_vty_init();
   alias_vty_init();
