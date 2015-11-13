@@ -195,7 +195,9 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_vlan_mode);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_trunks);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_tag);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_bgp_routers);
@@ -204,7 +206,6 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_vrfs);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_bridges);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
