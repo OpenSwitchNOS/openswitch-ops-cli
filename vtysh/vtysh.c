@@ -73,6 +73,8 @@
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
 #include "dhcp_tftp_vty.h"
+#include "traceroute.h"
+
 #endif
 
 #include "aaa_vty.h"
@@ -4603,6 +4605,7 @@ vtysh_init_vty (void)
   temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
+  traceroute_vty_init();
 
   /* Initialise power supply cli */
   powersupply_vty_init();
