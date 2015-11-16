@@ -74,6 +74,8 @@
 #include "ecmp_vty.h"
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
+#include "traceroute.h"
+
 #endif
 
 #include "aaa_vty.h"
@@ -4648,6 +4650,9 @@ vtysh_init_vty (void)
   temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
+
+  /* Initialise tracerouote CLI */
+  traceroute_vty_init();
 
   /* Initialise power supply cli */
   powersupply_vty_init();
