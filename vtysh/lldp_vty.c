@@ -1404,6 +1404,288 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
 }
 
+static char *
+lldpd_get_system_description() {
+    static char release[1024];
+    char line[1024];
+    char *key, *val;
+    char *ptr1 = NULL;
+    struct utsname un;
+    char *hp;
+    bool pretty_name_found = 0;
+
+    FILE *fp = fopen("/etc/os-release", "r");
+
+    if (!fp)
+    {
+        VLOG_ERR("could not open /etc/os-release");
+        return NULL;
+    }
+
+    while ((fgets(line, sizeof(line), fp) != NULL))
+    {
+        key = strtok(line, "=");
+        val = strtok(NULL, "=");
+
+        if (strncmp(key, "PRETTY_NAME", sizeof(line)) == 0) {
+            pretty_name_found = 1;
+            break;
+        }
+    }
+    fclose(fp);
+
+    if ( !pretty_name_found )
+        return NULL;
+
+    /* Remove trailing newline and all " in the string. */
+    ptr1 = val + strlen(val) - 1;
+    while (ptr1 != val &&
+        ((*ptr1 == '"') || (*ptr1 == '\n')))
+    {
+        *ptr1 = '\0';
+        ptr1--;
+    }
+
+    if (val[0] == '"')
+        val+=1;
+
+    if (uname(&un) < 0)
+    {
+       VLOG_ERR("Error in getting system description");
+       return NULL;
+    }
+
+    sprintf(release, "%s %s %s %s %s", val, un.sysname, un.release, un.version, un.machine);
+    return release;
+}
+
+static struct ovsrec_interface *
+lldp_port_get_matching_interface_row(const struct ovsrec_port *port_row)
+{
+    const struct ovsrec_interface *int_row = NULL;
+    int i;
+
+    for (i = 0; i < port_row->n_interfaces; i++) {
+        int_row = port_row->interfaces[i];
+        if (!strcmp(int_row->name, port_row->name)) {
+            return (struct ovsrec_interface *)int_row;
+        }
+    }
+    return NULL;
+}
+
+static char *
+lldp_get_vlan_name(int vlan_id)
+{
+    const struct ovsrec_vlan *vlan;
+
+    /* Collect all the VLANs in the DB */
+    OVSREC_VLAN_FOR_EACH(vlan, idl) {
+        if (vlan->id == vlan_id) {
+            return vlan->name;
+        }
+    }
+    return NULL;
+}
+
+DEFUN (cli_lldp_show_local_device,
+          lldp_show_local_device_cmd,
+          "show lldp local-device",
+          SHOW_STR
+          SHOW_LLDP_STR
+          "Show LLDP local device information\n")
+{
+    const struct ovsrec_system *system = NULL;
+    const struct ovsrec_bridge *br = NULL;
+    const struct ovsrec_vrf *vrf = NULL;
+    const struct ovsrec_port *portrow = NULL;
+    const struct ovsrec_interface *ifrow = NULL;
+    const struct ovsrec_vlan *vlan;
+
+    bool lldp_enabled = false;
+    int tx_interval = 0;
+    int hold_time = 0;
+    char *system_name = NULL;
+    char *system_des = NULL;
+    char *chassis_id = NULL;
+    const char *lldp_mgmt_pattern = NULL;
+    struct utsname un;
+    bool print_header = 0;
+    char *vlan_name = NULL;
+    int ret = 0, i;
+
+    system_des = lldpd_get_system_description();
+
+    if (!system_des)
+    {
+        VLOG_ERR("Error in getting system description");
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if (uname(&un) < 0)
+    {
+       VLOG_ERR("Error in getting system name");
+       return CMD_OVSDB_FAILURE;
+    }
+
+    system_name = un.nodename;
+
+    system = ovsrec_system_first(idl);
+
+    if(!system)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    chassis_id = system->system_mac;
+
+    tx_interval = smap_get_int(&system->other_config,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL,
+                               SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT);
+
+    hold_time = smap_get_int(&system->other_config,
+                             SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD,
+                             SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
+
+    br = ovsrec_bridge_first(idl);
+    vrf = ovsrec_vrf_first(idl);
+
+    lldp_mgmt_pattern = smap_get(&system->other_config,
+                     SYSTEM_OTHER_CONFIG_MAP_LLDP_MGMT_ADDR);
+
+    if (lldp_mgmt_pattern == NULL) {
+        lldp_mgmt_pattern = smap_get(&system->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_IP);
+    }
+
+    if (lldp_mgmt_pattern == NULL) {
+        lldp_mgmt_pattern = smap_get(&system->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_IPV6);
+    }
+
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty,"Global Data%s", VTY_NEWLINE);
+    vty_out(vty,"---------------%s%s", VTY_NEWLINE, VTY_NEWLINE);
+    vty_out(vty,"Chasis-id              : %s%s", chassis_id, VTY_NEWLINE);
+    vty_out(vty,"System Name            : %s%s", system_name, VTY_NEWLINE);
+    vty_out(vty,"Systen Description     : %s%s", system_des, VTY_NEWLINE);
+    vty_out(vty,"Management Address     : %s%s",
+                (lldp_mgmt_pattern ? lldp_mgmt_pattern :""), VTY_NEWLINE);
+    vty_out(vty,"Capabilities Available : Bridge, Router%s", VTY_NEWLINE);
+    vty_out(vty,"Capabilities Enabled   : %s%s%s%s",
+                                         (br != NULL ? "Bridge":""),
+                                         (br && vrf ? ", ":""),
+                                         (vrf != NULL ? "Router":""),
+                                         VTY_NEWLINE);
+    vty_out(vty,"TTL                    : %d%s", tx_interval * hold_time, VTY_NEWLINE);
+    vty_out(vty, "%s", VTY_NEWLINE);
+
+    OVSREC_PORT_FOR_EACH(portrow, idl) {
+        ifrow = lldp_port_get_matching_interface_row(portrow);
+
+        if (!ifrow || !ifrow->link_state || !ifrow->admin_state)
+            continue;
+
+        if (strcmp(ifrow->link_state, OVSREC_INTERFACE_LINK_STATE_UP)  ||
+            strcmp(ifrow->admin_state, OVSREC_INTERFACE_ADMIN_STATE_UP))
+                continue;
+
+
+        if(!print_header) {
+            vty_out(vty,"Port Based Data%s", VTY_NEWLINE);
+            vty_out(vty,"----------------%s", VTY_NEWLINE);
+
+            print_header = 1;
+        }
+
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, "Port-ID           : %s%s", portrow->name,  VTY_NEWLINE);
+        vty_out(vty, "Port-Description  : \"%s\"%s", portrow->name, VTY_NEWLINE);
+
+        vlan_name = NULL;
+        if (portrow->vlan_mode && strcmp(portrow->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) != 0) {
+            if (portrow->tag) {
+                vlan_name = lldp_get_vlan_name(*portrow->tag);
+            }
+
+            vty_out(vty, "Port VLAN Id      : ");
+            if (portrow->tag)
+                vty_out(vty, "%d%s", *portrow->tag, VTY_NEWLINE);
+
+            if (strcmp(portrow->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0) {
+                vty_out(vty, "VLAN-Ids          : ");
+                if (portrow->tag)
+                    vty_out(vty, "%d%s", *portrow->tag, VTY_NEWLINE);
+
+                vty_out(vty, "VLAN Name         : %s%s", (vlan_name ? vlan_name : ""), VTY_NEWLINE);
+                vty_out(vty, "%s", VTY_NEWLINE);
+            } else {
+                vty_out(vty, "VLAN-Ids          : ");
+
+                if (portrow->tag)
+                    vty_out(vty, "%d", *portrow->tag);
+
+
+                for (i = 0; i < portrow->n_trunks; i++) {
+                    if (portrow->tag && *portrow->tag == portrow->trunks[i])
+                        continue;
+
+                    if (portrow->tag || i )
+                        vty_out(vty, ", ");
+
+
+                    vty_out(vty, "%d", portrow->trunks[i]);
+                }
+
+                vty_out(vty, " %s", VTY_NEWLINE);
+                vty_out(vty, "VLAN Name         : ");
+
+                if (portrow->tag) {
+                    vlan_name = lldp_get_vlan_name(*portrow->tag);
+                    vty_out(vty, "%s", (vlan_name ? vlan_name : ""), VTY_NEWLINE);
+                }
+
+                for (i = 0; i < portrow->n_trunks; i++) {
+                    if (portrow->tag && *portrow->tag == portrow->trunks[i])
+                        continue;
+
+                    if ( portrow->tag || i )
+                        vty_out(vty, ", ");
+
+                    vlan_name = lldp_get_vlan_name(portrow->trunks[i]);
+                    vty_out(vty, "%s", (vlan_name ? vlan_name : ""));
+                }
+
+            }
+        }
+
+        if (portrow->vlan_mode && strcmp(portrow->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0) {
+
+            vty_out(vty, "Port VLAN Id      :%s", VTY_NEWLINE);
+            vty_out(vty, "VLAN-Ids          : ");
+            for (i = 0; i < portrow->n_trunks; i++) {
+                if ( i )
+                    vty_out(vty, ", ");
+                vty_out(vty, "%d", portrow->trunks[i]);
+            }
+
+            vty_out(vty, " %s", VTY_NEWLINE);
+            vty_out(vty, "VLAN Name         : ");
+            for (i = 0; i < portrow->n_trunks; i++) {
+                if ( i )
+                    vty_out(vty, ", ");
+                vlan_name = lldp_get_vlan_name(portrow->trunks[i]);
+                vty_out(vty, "%s", (vlan_name ? vlan_name : ""));
+            }
+
+            vty_out(vty, " %s", VTY_NEWLINE);
+
+        }
+    }
+    vty_out(vty, "%s", VTY_NEWLINE);
+    return CMD_SUCCESS;
+}
+
+
 /* set LLDP interface state as TX, RX or both */
 int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
   const struct ovsrec_interface * row = NULL;
@@ -1656,6 +1938,7 @@ lldp_vty_init (void)
   install_element (ENABLE_NODE, &lldp_show_config_cmd);
   install_element (ENABLE_NODE, &lldp_show_config_cmd_if);
   install_element (ENABLE_NODE, &lldp_show_statistics_cmd);
+  install_element (ENABLE_NODE, &lldp_show_local_device_cmd);
   install_element (INTERFACE_NODE, &lldp_if_lldp_tx_cmd);
   install_element (INTERFACE_NODE, &lldp_if_lldp_rx_cmd);
   install_element (INTERFACE_NODE, &lldp_if_no_lldp_tx_cmd);
