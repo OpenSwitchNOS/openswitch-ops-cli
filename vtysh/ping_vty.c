@@ -189,7 +189,7 @@ int decodeParam (const char* value, pingArguments type, pingEntry* p)
 DEFUN (cli_ping,
        cli_ping_cmd,
     " ping ( A.B.C.D | WORD )"
-    " { datagram-size <100-65468> | data-fill WORD | repetitions <1-10000>"
+    " { datagram-size <100-65399> | data-fill WORD | repetitions <1-10000>"
     " | interval <1-60> | timeout <1-60> |  tos <0-255>"
     " | ip-option (include-timestamp | include-timestamp-and-address"
     " | record-route )}",
