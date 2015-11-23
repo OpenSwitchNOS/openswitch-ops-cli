@@ -97,46 +97,46 @@ struct format_parser_state
 /* There are some command levels which called from command node. */
 enum node_type 
 {
-  AUTH_NODE,			/* Authentication mode of vty interface. */
-  RESTRICTED_NODE,		/* Restricted view mode */ 
-  VIEW_NODE,			/* View node. Default mode of vty interface. */
-  AUTH_ENABLE_NODE,		/* Authentication mode for change enable. */
-  ENABLE_NODE,			/* Enable node. */
-  CONFIG_NODE,			/* Config node. Default mode of config file. */
-  SERVICE_NODE, 		/* Service node. */
-  DEBUG_NODE,			/* Debug node. */
-  AAA_NODE,			/* AAA node. */
-  KEYCHAIN_NODE,		/* Key-chain node. */
-  KEYCHAIN_KEY_NODE,		/* Key-chain key node. */
-  INTERFACE_NODE,		/* Interface mode node. */
-  ZEBRA_NODE,			/* zebra connection node. */
-  TABLE_NODE,			/* rtm_table selection node. */
-  RIP_NODE,			/* RIP protocol mode node. */ 
-  RIPNG_NODE,			/* RIPng protocol mode node. */
-  BABEL_NODE,			/* Babel protocol mode node. */
-  BGP_NODE,			/* BGP protocol mode which includes BGP4+ */
-  BGP_VPNV4_NODE,		/* BGP MPLS-VPN PE exchange. */
-  BGP_IPV4_NODE,		/* BGP IPv4 unicast address family.  */
-  BGP_IPV4M_NODE,		/* BGP IPv4 multicast address family.  */
-  BGP_IPV6_NODE,		/* BGP IPv6 address family */
-  BGP_IPV6M_NODE,		/* BGP IPv6 multicast address family. */
-  OSPF_NODE,			/* OSPF protocol mode */
-  OSPF6_NODE,			/* OSPF protocol for IPv6 mode */
-  ISIS_NODE,			/* ISIS protocol mode */
-  PIM_NODE,			/* PIM protocol mode */
-  MASC_NODE,			/* MASC for multicast.  */
-  IRDP_NODE,			/* ICMP Router Discovery Protocol mode. */ 
-  IP_NODE,			/* Static ip route node. */
-  ACCESS_NODE,			/* Access list node. */
-  PREFIX_NODE,			/* Prefix list node. */
-  ACCESS_IPV6_NODE,		/* Access list node. */
-  PREFIX_IPV6_NODE,		/* Prefix list node. */
-  AS_LIST_NODE,			/* AS list node. */
-  COMMUNITY_LIST_NODE,		/* Community list node. */
-  RMAP_NODE,			/* Route map node. */
-  SMUX_NODE,			/* SNMP configuration node. */
-  DUMP_NODE,			/* Packet dump node. */
-  FORWARDING_NODE,		/* IP forwarding node. */
+  AUTH_NODE,            /* Authentication mode of vty interface. */
+  RESTRICTED_NODE,        /* Restricted view mode */
+  VIEW_NODE,            /* View node. Default mode of vty interface. */
+  AUTH_ENABLE_NODE,        /* Authentication mode for change enable. */
+  ENABLE_NODE,            /* Enable node. */
+  CONFIG_NODE,            /* Config node. Default mode of config file. */
+  SERVICE_NODE,         /* Service node. */
+  DEBUG_NODE,            /* Debug node. */
+  AAA_NODE,            /* AAA node. */
+  KEYCHAIN_NODE,        /* Key-chain node. */
+  KEYCHAIN_KEY_NODE,        /* Key-chain key node. */
+  INTERFACE_NODE,        /* Interface mode node. */
+  ZEBRA_NODE,            /* zebra connection node. */
+  TABLE_NODE,            /* rtm_table selection node. */
+  RIP_NODE,            /* RIP protocol mode node. */
+  RIPNG_NODE,            /* RIPng protocol mode node. */
+  BABEL_NODE,            /* Babel protocol mode node. */
+  BGP_NODE,            /* BGP protocol mode which includes BGP4+ */
+  BGP_VPNV4_NODE,        /* BGP MPLS-VPN PE exchange. */
+  BGP_IPV4_NODE,        /* BGP IPv4 unicast address family.  */
+  BGP_IPV4M_NODE,        /* BGP IPv4 multicast address family.  */
+  BGP_IPV6_NODE,        /* BGP IPv6 address family */
+  BGP_IPV6M_NODE,        /* BGP IPv6 multicast address family. */
+  OSPF_NODE,            /* OSPF protocol mode */
+  OSPF6_NODE,            /* OSPF protocol for IPv6 mode */
+  ISIS_NODE,            /* ISIS protocol mode */
+  PIM_NODE,            /* PIM protocol mode */
+  MASC_NODE,            /* MASC for multicast.  */
+  IRDP_NODE,            /* ICMP Router Discovery Protocol mode. */
+  IP_NODE,            /* Static ip route node. */
+  ACCESS_NODE,            /* Access list node. */
+  PREFIX_NODE,            /* Prefix list node. */
+  ACCESS_IPV6_NODE,        /* Access list node. */
+  PREFIX_IPV6_NODE,        /* Prefix list node. */
+  AS_LIST_NODE,            /* AS list node. */
+  COMMUNITY_LIST_NODE,        /* Community list node. */
+  RMAP_NODE,            /* Route map node. */
+  SMUX_NODE,            /* SNMP configuration node. */
+  DUMP_NODE,            /* Packet dump node. */
+  FORWARDING_NODE,        /* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
 #ifdef ENABLE_OVSDB
   DHCP_SERVER_NODE,             /* DHCP server node */
@@ -145,8 +145,10 @@ enum node_type
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
+  SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
+  LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
 #endif
-  VTY_NODE,			/* Vty node. */
+  VTY_NODE,            /* Vty node. */
 };
 
 /* Node which has some commands and prompt string and configuration
@@ -154,10 +156,10 @@ enum node_type
 struct cmd_node 
 {
   /* Node index. */
-  enum node_type node;		
+  enum node_type node;
 
   /* Prompt character at vty interface. */
-  const char *prompt;			
+  const char *prompt;
 
   /* Is this node's configuration goes to vtysh ? */
   int vtysh;
@@ -166,7 +168,7 @@ struct cmd_node
   int (*func) (struct vty *);
 
   /* Vector of this node's command list. */
-  vector cmd_vector;	
+  vector cmd_vector;
 };
 
 /* MACROS TO BE USED AS COMMAND ATTRIBUTES */
@@ -181,12 +183,12 @@ struct cmd_node
 /* Structure of command element. */
 struct cmd_element 
 {
-  const char *string;			/* Command specification by string. */
+  const char *string;            /* Command specification by string. */
   int (*func) (struct cmd_element *, struct vty *, int, int, const char *[]);
-  const char *doc;			/* Documentation of this command. */
+  const char *doc;              /* Documentation of this command. */
   int daemon;                   /* Daemon to which this command belong. */
-  vector tokens;		/* Vector of cmd_tokens */
-  int attr;			/* Command attributes */
+  vector tokens;                /* Vector of cmd_tokens */
+  int attr;                     /* Command attributes */
   const char *dyn_cb_str;       /* Callback funcname list for dynamic helpstr */
 };
 
@@ -210,7 +212,7 @@ struct cmd_token
   vector keyword; /* vector of vector of cmd_tokens */
 
   /* Used for type == TERMINAL */
-  char *cmd;                    /* Command string. */
+  char *cmd;                     /* Command string. */
   char *desc;                    /* Command's description. */
   char *dyn_cb;                  /* Command's dynamic callback func name. */
   void (*dyn_cb_func)(struct cmd_token *token, struct vty *vty, \
@@ -516,9 +518,9 @@ struct cmd_token
  */
 #define CMD_VARIABLE(S) (((S[0]) >= 'A' && (S[0]) <= 'Z') || ((S[0]) == '<'))
 #define CMD_VARARG(S)   ((S[0]) == '.')
-#define CMD_RANGE(S)	((S[0] == '<'))
+#define CMD_RANGE(S)    ((S[0] == '<'))
 
-#define CMD_IPV4(S)	   ((strcmp ((S), "A.B.C.D") == 0))
+#define CMD_IPV4(S)       ((strcmp ((S), "A.B.C.D") == 0))
 #define CMD_IPV4_PREFIX(S) ((strcmp ((S), "A.B.C.D/M") == 0))
 #define CMD_IPV6(S)        ((strcmp ((S), "X:X::X:X") == 0))
 #define CMD_IPV6_PREFIX(S) ((strcmp ((S), "X:X::X:X/M") == 0))
