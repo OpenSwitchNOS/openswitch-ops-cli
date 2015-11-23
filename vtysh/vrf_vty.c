@@ -778,86 +778,133 @@ vrf_routing (const char *if_name)
 static int
 vrf_no_routing (const char *if_name)
 {
-  const struct ovsrec_port *port_row = NULL;
-  const struct ovsrec_vrf *vrf_row = NULL;
-  const struct ovsrec_bridge *default_bridge_row = NULL;
-  struct ovsdb_idl_txn *status_txn = NULL;
-  enum ovsdb_idl_txn_status status;
-  struct ovsrec_port **vrf_ports;
-  struct ovsrec_port **bridge_ports;
-  size_t i, n;
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsrec_port **vrf_ports;
+    struct ovsrec_port **bridge_ports;
+    size_t i, n;
 
-  status_txn = cli_do_config_start ();
+    status_txn = cli_do_config_start ();
 
-  if (status_txn == NULL)
+    if (status_txn == NULL)
     {
-      VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
-      cli_do_config_abort (status_txn);
-      return CMD_OVSDB_FAILURE;
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort (status_txn);
+        return CMD_OVSDB_FAILURE;
     }
 
-  /* Check for spit interface conditions */
-  if (!check_split_iface_conditions (if_name))
+    /* Check for spit interface conditions */
+    if (!check_split_iface_conditions (if_name))
     {
-      cli_do_config_abort (status_txn);
-      return CMD_SUCCESS;
+        cli_do_config_abort (status_txn);
+        return CMD_SUCCESS;
     }
-  port_row = port_check_and_add (if_name, true, false, status_txn);
-  if (check_iface_in_bridge (if_name))
+    port_row = port_check_and_add (if_name, true, false, status_txn);
+    if (check_iface_in_bridge (if_name))
     {
-      VLOG_DBG ("%s Interface \"%s\" is already L2. No change required.",
+        VLOG_DBG ("%s Interface \"%s\" is already L2. No change required.",
                 __func__, if_name);
-      cli_do_config_abort (status_txn);
-      return CMD_SUCCESS;
+        cli_do_config_abort (status_txn);
+        return CMD_SUCCESS;
     }
-  else if ((vrf_row = port_vrf_lookup (port_row)) != NULL)
+    else if ((vrf_row = port_vrf_lookup (port_row)) != NULL)
     {
-      vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
-      for (i = n = 0; i < vrf_row->n_ports; i++)
+        /* Delete subinterfaces configured, if any */
+        const struct ovsrec_port *tmp_port_row = NULL,
+            *sub_intf_port_row =  NULL;
+        const struct ovsrec_vrf *tmp_vrf_row = NULL;
+        const struct ovsrec_interface *tmp_intf_row = NULL,
+            *tmp_parent_intf_row = NULL;
+        struct ovsrec_port **ports;
+        int k=0, n=0, i=0;
+
+        tmp_parent_intf_row = port_row->interfaces[0];
+
+        OVSREC_PORT_FOR_EACH(tmp_port_row, idl)
         {
-          if (vrf_row->ports[i] != port_row)
-            vrf_ports[n++] = vrf_row->ports[i];
+            tmp_intf_row = tmp_port_row->interfaces[0];
+            if(tmp_intf_row->n_subintf_parent > 0)
+            {
+                if(tmp_intf_row->value_subintf_parent[0] == tmp_parent_intf_row)
+                {
+                    /* This is a subinterface created for the parent
+                       being configured as L2 interface, need to remove */
+                    ovsrec_interface_delete(tmp_intf_row);
+
+                    OVSREC_VRF_FOR_EACH (tmp_vrf_row, idl)
+                    {
+                        for (k = 0; k < tmp_vrf_row->n_ports; k++)
+                        {
+                            if(tmp_port_row == tmp_vrf_row->ports[k])
+                            {
+                                ports = xmalloc(sizeof *tmp_vrf_row->ports
+                                        * (tmp_vrf_row->n_ports-1));
+                                for (i = n = 0; i < tmp_vrf_row->n_ports; i++)
+                                {
+                                    if (tmp_vrf_row->ports[i] != tmp_port_row)
+                                    {
+                                        ports[n++] = tmp_vrf_row->ports[i];
+                                    }
+                                }
+                                ovsrec_vrf_set_ports(tmp_vrf_row, ports, n);
+                                free(ports);
+                                break;
+                            }
+                        }
+                    }
+                    ovsrec_port_delete(tmp_port_row);
+                }
+            }
         }
-      ovsrec_vrf_set_ports (vrf_row, vrf_ports, n);
-      free (vrf_ports);
-      ovsrec_port_delete (port_row);
-      port_row = port_check_and_add (if_name, true, false, status_txn);
+
+        vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
+        for (i = n = 0; i < vrf_row->n_ports; i++)
+        {
+            if (vrf_row->ports[i] != port_row)
+                vrf_ports[n++] = vrf_row->ports[i];
+        }
+        ovsrec_vrf_set_ports (vrf_row, vrf_ports, n);
+        free (vrf_ports);
+        ovsrec_port_delete (port_row);
+        port_row = port_check_and_add (if_name, true, false, status_txn);
     }
 
-  default_bridge_row = ovsrec_bridge_first (idl);
-  bridge_ports = xmalloc (
-      sizeof *default_bridge_row->ports * (default_bridge_row->n_ports + 1));
-  for (i = 0; i < default_bridge_row->n_ports; i++)
-    bridge_ports[i] = default_bridge_row->ports[i];
+    default_bridge_row = ovsrec_bridge_first (idl);
+    bridge_ports = xmalloc (sizeof *default_bridge_row->ports *
+            (default_bridge_row->n_ports + 1));
+    for (i = 0; i < default_bridge_row->n_ports; i++)
+        bridge_ports[i] = default_bridge_row->ports[i];
 
-  struct ovsrec_port
-  *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
-  bridge_ports[default_bridge_row->n_ports] = temp_port_row;
-  ovsrec_bridge_set_ports (default_bridge_row, bridge_ports,
-                           default_bridge_row->n_ports + 1);
-  free (bridge_ports);
+    struct ovsrec_port
+    *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    bridge_ports[default_bridge_row->n_ports] = temp_port_row;
+    ovsrec_bridge_set_ports (default_bridge_row, bridge_ports,
+            default_bridge_row->n_ports + 1);
+    free (bridge_ports);
 
-  status = cli_do_config_finish (status_txn);
-  if (status == TXN_SUCCESS)
+    status = cli_do_config_finish (status_txn);
+    if (status == TXN_SUCCESS)
     {
-      VLOG_DBG ("%s The command succeeded and interface \"%s\" is now L2"
+        VLOG_DBG ("%s The command succeeded and interface \"%s\" is now L2"
                 " and attached to default bridge",
                 __func__, if_name);
-      return CMD_SUCCESS;
+        return CMD_SUCCESS;
     }
-  else if (status == TXN_UNCHANGED)
+    else if (status == TXN_UNCHANGED)
     {
-      VLOG_DBG ("%s The command resulted in no change. Check if"
+        VLOG_DBG ("%s The command resulted in no change. Check if"
                 " interface \"%s\" is already L2",
                 __func__, if_name);
-      return CMD_SUCCESS;
+        return CMD_SUCCESS;
     }
-  else
+    else
     {
-      VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
-      return CMD_OVSDB_FAILURE;
+        VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+        return CMD_OVSDB_FAILURE;
     }
-
 }
 
 /*
