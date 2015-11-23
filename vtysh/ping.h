@@ -70,7 +70,10 @@
 
 /* default ping cmd */
 #define PING4_DEF_CMD       "ping"
-#define PING6_DEF_CMD       "ping6"
+
+/* ping6 : use -n to suppress lookup of symbolic names.
+Display numeric output only */
+#define PING6_DEF_CMD       "ping6 -n"
 
 /* cmd to execute in namespace swns */
 #define SWNS_EXEC            "/sbin/ip netns exec swns"
