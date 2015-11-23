@@ -333,12 +333,40 @@ vtysh_intf_context_clientcallback(void *p_private)
           continue;
       }
 
+      if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_LOOPBACK) == 0)
+      {
+          vtysh_ovsdb_cli_print(p_msg, "interface loopback %s",
+                  ifrow->name + 2);
+          intfcfg.disp_intf_cfg = true;
+          vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg,
+                  intfcfg.disp_intf_cfg);
+          continue;
+      }
+      if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) == 0)
+      {
+          PRINT_INT_HEADER_IN_SHOW_RUN;
+      }
+
      cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
      if ((NULL != cur_state)
            && (strcmp(cur_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0))
      {
         PRINT_INT_HEADER_IN_SHOW_RUN;
         vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
+     }
+
+     if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) == 0)
+     {
+         int64_t vlan_number;
+         if (0 < ifrow->n_subintf_parent)
+         {
+             vlan_number = ifrow->key_subintf_parent[0];
+         }
+         if (0 != vlan_number)
+         {
+             vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "",
+                     " encapsulation dot1Q ", vlan_number);
+         }
      }
 
      cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
@@ -528,9 +556,11 @@ vtysh_ovsdb_intftable_parse_l3config(const char *if_name,
   if (!port_row) {
     return e_vtysh_ok;
   }
-  if (!check_iface_in_vrf(if_name)) {
-    if (!interfaceNameWritten) {
-      vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
+  if (!check_iface_in_vrf(if_name))
+  {
+    if (!interfaceNameWritten)
+    {
+        vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);
     }
     vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no routing");
     vtysh_ovsdb_intftable_parse_vlan(if_name, p_msg);
