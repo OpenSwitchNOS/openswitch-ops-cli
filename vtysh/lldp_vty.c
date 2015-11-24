@@ -136,15 +136,6 @@ DEFUN (cli_lldp_set_global_status,
   return lldp_set_global_status("true");
 }
 
-DEFUN (cli_feature_set_global_status,
-       feature_set_global_status_cmd,
-       "feature lldp",
-       "Enables or disables LLDP feature\n"
-       CONFIG_LLDP_STR)
-{
-  return lldp_set_global_status("true");
-}
-
 DEFUN (cli_lldp_no_set_global_status,
        lldp_no_set_global_status_cmd,
        "no lldp enable",
@@ -155,15 +146,6 @@ DEFUN (cli_lldp_no_set_global_status,
   return lldp_set_global_status("false");
 }
 
-DEFUN (cli_feature_no_set_global_status,
-       feature_no_set_global_status_cmd,
-       "no feature lldp",
-        NO_STR
-       "Enables or disables LLDP feature\n"
-        CONFIG_LLDP_STR)
-{
-  return lldp_set_global_status("false");
-}
 
 
 /* Sets LLDP hold time if the hold time passed is non-default.
@@ -1637,8 +1619,6 @@ lldp_vty_init (void)
 
   install_element (CONFIG_NODE, &lldp_set_global_status_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_status_cmd);
-  install_element (CONFIG_NODE, &feature_set_global_status_cmd);
-  install_element (CONFIG_NODE, &feature_no_set_global_status_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_hold_time_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_hold_time_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_timer_cmd);
