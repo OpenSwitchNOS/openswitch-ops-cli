@@ -2321,6 +2321,82 @@ DEFUN (cli_intf_show_intferface_ifname_br,
     return rc;
 }
 
+/*
+ *  Function : parse_l3config
+ *  Responsibility : Used for L3 related config
+ *  Parameters :
+ *      const char *if_name           : Name of interface
+ *      struct vty* vty               : Used for ouput
+ */
+static int
+ipstats(const char *if_name, bool display_ipv4, struct vty *vty)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_interface *intf_row = NULL;
+    size_t i;
+
+    port_row = port_find(if_name);
+    if (!port_row) {
+        return 0;
+    }
+    if (check_iface_in_bridge(if_name)) {
+        vty_out(vty, "%3s%s%s", "", "Interface %s configured as L2", if_name, VTY_NEWLINE);
+        return 0;
+    }
+    if (check_iface_in_vrf(if_name)) {
+        vrf_row = port_match_in_vrf(port_row);
+        if (display_l3_info(port_row, vrf_row)) {
+          if (display_ipv4) {
+            if (port_row->ip4_address) {
+                vty_out(vty, "%3s%s%s%s", "", "ip address ",
+                        port_row->ip4_address, VTY_NEWLINE);
+            }
+            for (i = 0; i < port_row->n_ip4_address_secondary; i++) {
+                vty_out(vty, "%3s%s%s%s%s", "", "ip address ",
+                        port_row->ip4_address_secondary[i], " secondary",
+                        VTY_NEWLINE);
+            }
+            } else {
+            if (port_row->ip6_address) {
+                vty_out(vty, "%3s%s%s%s", "", "ipv6 address ",
+                        port_row->ip6_address, VTY_NEWLINE);
+            }
+            for (i = 0; i < port_row->n_ip6_address_secondary; i++) {
+                vty_out(vty, "%3s%s%s%s%s", "", "ipv6 address ",
+                        port_row->ip6_address_secondary[i], " secondary",
+                        VTY_NEWLINE);
+            }
+            }
+
+    }
+        OVSREC_INTERFACE_FOR_EACH(intf_row, idl) {
+          if (strcmp (intf_row->name, if_name) == 0)
+            {
+
+            }
+        }
+    return 0;
+    }
+}
+
+DEFUN (cli_intf_show_ip_intferface_ifname,
+        cli_intf_show_ip_intferface_ifname__cmd,
+        "show (ip|ipv6) interface IFNAME",
+        SHOW_STR
+        "ipv4 statistics\n"
+        "ipv6 statistics\n"
+        INTERFACE_STR
+        IFNAME_STR)
+{
+  vty_out(vty, "argv[0] = %s", argv[0]);
+  vty_out(vty, "argv[1] = %s", argv[1]);
+  vty_out(vty, "argv[2] = %s", argv[2]);
+  ipstats(argv[1], true, vty);
+  return 0;
+}
+
+
 #ifdef ENABLE_OVSDB
 /* Function : check_internal_vlan
  * Description : Checks if interface vlan is being created for
