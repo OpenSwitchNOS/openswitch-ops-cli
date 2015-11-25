@@ -57,17 +57,20 @@ vtysh_vlan_context_clientcallback(void *p_private)
 
   OVSREC_VLAN_FOR_EACH(vlan_row, p_msg->idl)
   {
-      vtysh_ovsdb_cli_print(p_msg, "%s %d", "vlan", vlan_row->id);
+      if (!check_if_internal_vlan(vlan_row)) {
+          vtysh_ovsdb_cli_print(p_msg, "%s %d", "vlan", vlan_row->id);
 
-      if (strcmp(vlan_row->admin, OVSREC_VLAN_ADMIN_UP) == 0)
-      {
-          vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
-      }
+          if (strcmp(vlan_row->admin, OVSREC_VLAN_ADMIN_UP) == 0)
+          {
+              vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
+          }
 
-      if (vlan_row->description != NULL)
-      {
-          vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "description ", vlan_row->description);
-      }
+          if (vlan_row->description != NULL)
+          {
+              vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "description ",
+                                                     vlan_row->description);
+          }
+     }
   }
 
   return e_vtysh_ok;
