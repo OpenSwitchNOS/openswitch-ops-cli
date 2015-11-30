@@ -77,6 +77,7 @@
 #endif
 
 #include "aaa_vty.h"
+#include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
 
@@ -4604,6 +4605,9 @@ vtysh_init_vty (void)
   temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
+
+  /* initialise SFTP cli's */
+  sftp_vty_init();
 
   /* Initialise power supply cli */
   powersupply_vty_init();
