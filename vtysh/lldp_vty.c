@@ -605,7 +605,7 @@ lldp_show_tlv(const struct ovsrec_system *row)
                            SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_MGMT_ADDR_ENABLE,
                            SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_DEFAULT);
   if(tlv_set)
-     vty_out (vty, "Management Address %s", VTY_NEWLINE);
+     vty_out (vty, "Management Address %s",VTY_NEWLINE);
 
   tlv_set = smap_get_bool(&row->other_config,
                            SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE,
@@ -1330,7 +1330,8 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
     "chassis_capability_available",
     "chassis_capability_enabled",
     "chassis_name",
-    "chassis_description"
+    "chassis_description",
+    "mgmt_ip_list"
   };
 
   unsigned int index;
@@ -1374,6 +1375,10 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
         atom.string = lldp_interface_neighbor_info_keys[4];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
         vty_out(vty, "Neighbor Chassis-ID            : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+
+        atom.string = lldp_interface_neighbor_info_keys[11];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "Management-Address             : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
 
         atom.string = lldp_interface_neighbor_info_keys[7];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
