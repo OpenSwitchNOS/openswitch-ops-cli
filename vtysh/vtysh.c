@@ -2635,22 +2635,46 @@ ALIAS (vtysh_write_memory,
 #endif
 
 #ifdef ENABLE_OVSDB
-DEFUN (vtysh_show_running_config,
-      vtysh_show_running_config_cmd,
-      "show running-config",
-      SHOW_STR
-      "Current running configuration\n")
+
+int
+vtysh_show_context_running_config(vtysh_contextid context_id)
 {
    FILE *fp = NULL;
-
    fp = stdout;
    if (!vtysh_show_startup)
    {
        fprintf(fp, "Current configuration:\n");
    }
-
-   vtysh_ovsdb_read_config(fp);
+   vtysh_ovsdb_read_config(fp, context_id);
    return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_show_running_config,
+      vtysh_show_running_config_cmd,
+      "show running-config {interface}",
+      SHOW_STR
+      "Current running configuration\n"
+      INTERFACE_STR)
+{
+   vtysh_contextid context_id = e_vtysh_config_context;
+
+   if ((NULL != argv[0]) && (strcmp(argv[0], "interface") == 0))
+   {
+      context_id = e_vtysh_interface_context;
+   }
+   return vtysh_show_context_running_config(context_id);
+}
+
+DEFUN (vtysh_show_running_config_mgmt,
+      vtysh_show_running_config_mgmt_cmd,
+      "show running-config interface mgmt",
+      SHOW_STR
+      "Current running configuration\n"
+      INTERFACE_STR
+      "Management interface\n")
+{
+   vtysh_contextid context_id = e_vtysh_mgmt_interface_context;
+   return vtysh_show_context_running_config(context_id);
 }
 
 
@@ -4521,6 +4545,7 @@ vtysh_init_vty (void)
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
 #ifdef ENABLE_OVSDB
+   install_element (ENABLE_NODE, &vtysh_show_running_config_mgmt_cmd);
    install_element (CONFIG_NODE, &vtysh_vlan_cmd);
    install_element (CONFIG_NODE, &vtysh_interface_mgmt_cmd);
    install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);

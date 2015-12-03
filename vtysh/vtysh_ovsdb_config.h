@@ -187,7 +187,7 @@ int vtysh_context_get_maxclientid(vtysh_contextid contextid);
 int vtysh_context_get_minclientid(vtysh_contextid contextid);
 
 void vtysh_ovsdb_config_init(const char *db_path);
-void vtysh_ovsdb_read_config(FILE *fp);
+void vtysh_ovsdb_read_config(FILE *fp, vtysh_contextid context_id);
 void vtysh_context_table_list_clients(struct vty *vty);
 void vtysh_ovsdb_init_clients(void);
 

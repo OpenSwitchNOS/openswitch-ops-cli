@@ -350,12 +350,14 @@ vtysh_context_iterateoverclients(vtysh_contextid contextid, vtysh_ovsdb_cbmsg *p
 | Responsibility : reads ovsdb config by traversing the vtysh_ovsdb_tables
 | Parameters:
 |           FILE *fp : file pointer to write data to
+|           vtysh_contextid context_id : context id to selectively print
+|                                        context level configuration
 | Return: void
 -----------------------------------------------------------------------------*/
 void
-vtysh_ovsdb_read_config(FILE *fp)
+vtysh_ovsdb_read_config(FILE *fp,  vtysh_contextid context_id)
 {
-  vtysh_contextid contextid=0;
+  vtysh_contextid c_id=0;
   vtysh_ovsdb_cbmsg msg;
 
   VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
@@ -368,11 +370,18 @@ vtysh_ovsdb_read_config(FILE *fp)
   VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
   fprintf(fp, "!\n");
 
-  for(contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
+  if(e_vtysh_config_context != context_id)
   {
-    msg.contextid = contextid;
-    msg.clientid = 0;
-    vtysh_context_iterateoverclients(contextid, &msg);
+    vtysh_context_iterateoverclients(context_id, &msg);
+  }
+  else
+  {
+    for(c_id = 0; c_id < e_vtysh_context_id_max; c_id++)
+    {
+      msg.contextid = c_id;
+      msg.clientid = 0;
+      vtysh_context_iterateoverclients(c_id, &msg);
+    }
   }
 }
 
