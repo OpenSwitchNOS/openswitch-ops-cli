@@ -56,6 +56,9 @@ class LLDPCliTest(OpsVsiTest):
                + ' lldp_neighbor_info:chassis_refcount=1 \n')
         s1.cmd('ovs-vsctl  set interface ' + LLDPCliTest.uuid
                + ' lldp_neighbor_info:chassis_ttl=120 \n')
+        s1.cmd('ovs-vsctl  set interface ' + LLDPCliTest.uuid
+               + ' lldp_neighbor_info:mgmt_ip_list=10.10.10.10 \n')
+
         sleep(1)
 
     def setupNet(self):
@@ -292,8 +295,8 @@ class LLDPCliTest(OpsVsiTest):
                 LLDPCliTest.uuid = _id[1].strip()
                 self.initLLDPNeighborinfo()
                 out = s1.cmdCLI('do show lldp neighbor-info 1')
+
                 lines = out.split('\n')
-		print lines
                 for line in lines:
                     if 'Neighbor Chassis-Name          : as5712' in line:
                         counter += 1
@@ -307,9 +310,11 @@ class LLDPCliTest(OpsVsiTest):
                     if 'Chassis Capabilities Available : '\
                        'Bridge,Router' in line:
                         counter += 1
+                    if 'Management-Address             : '\
+                       '10.10.10.10' in line:
+                        counter += 1
 
-
-                assert counter == 4, \
+                assert counter == 5, \
                 'Test LLDP neighbor info command - FAILED!'
 
         return True
