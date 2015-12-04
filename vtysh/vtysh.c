@@ -72,6 +72,7 @@
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
+#include "source_interface_selection_vty.h"
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
@@ -4613,6 +4614,9 @@ vtysh_init_vty (void)
   /* Initialise power supply cli */
   powersupply_vty_init();
   lacp_vty_init();
+
+  /* Initialize source interface selection CLI*/
+  source_interface_selection_vty_init();
 
   /* Initialize ECMP CLI */
   ecmp_vty_init();
