@@ -616,6 +616,20 @@ class VLANCliTest(OpsVsiTest):
                   display vlan-id in numerical order -FAILED'
         return True
 
+    def noVlanTrunkAllowed(self):
+        info('''
+########## Test to check no vlan trunk allowed ##########
+''')
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('int 1')
+        s1.cmdCLI('no routing')
+        out1 = s1.cmdCLI('do show running config')
+        s1.cmdCLI('no vlan trunk allowed 100')
+        out2 = s1.cmdCLI('do show running config')
+        assert out1 in out2, \
+               'Test to remove vlan trunk - FAILED!'
+        return True
 
 class Test_vlan_cli:
 
@@ -711,6 +725,12 @@ class Test_vlan_cli:
             info('''
 ########## Test to verify that vlan id is displaying in numerical order \
  - SUCCESS! ##########\n''')
+
+    def test_noVlanTrunkAllowed(self):
+        if self.test.noVlanTrunkAllowed():
+            info('''
+########## Test to check no vlan trunk allowed - SUCCESS! ##########
+''')
 
     def teardown_class(cls):
         Test_vlan_cli.test.net.stop()
