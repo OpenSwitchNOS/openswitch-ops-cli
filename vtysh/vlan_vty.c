@@ -891,6 +891,10 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
     int i = 0, n = 0;
+    bool is_vlan_found = false;
+    char *ifname = (char *) vty->index;
+    int64_t* trunks = NULL;
+    int trunk_count = 0;
 
     if (NULL == status_txn)
     {
@@ -900,7 +904,6 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
         return CMD_SUCCESS;
     }
 
-    char *ifname = (char *) vty->index;
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -913,7 +916,8 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     port_row = ovsrec_port_first(idl);
     if (NULL == port_row)
     {
-        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
     else
     {
@@ -925,7 +929,6 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
                 {
                     if (strcmp(port_row->name, ifname) != 0)
                     {
-                        vty_out(vty, "Can't configure VLAN. Interface is part of LAG %s.%s", port_row->name, VTY_NEWLINE);
                         cli_do_config_abort(status_txn);
                         return CMD_SUCCESS;
                     }
@@ -941,7 +944,8 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
 
     if (NULL == vlan_port_row)
     {
-        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (!check_iface_in_bridge(ifname))
@@ -961,12 +965,23 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
         return CMD_SUCCESS;
     }
 
-    int64_t* trunks = NULL;
-    int trunk_count = vlan_port_row->n_trunks;
+    trunk_count = vlan_port_row->n_trunks;
     for (i = 0; i < vlan_port_row->n_trunks; i++)
     {
         if (vlan_id == vlan_port_row->trunks[i])
         {
+            for (i = n = 0; i < vlan_port_row->n_trunks; i++)
+            {
+                if (vlan_id == vlan_port_row->trunks[i])
+                    is_vlan_found = true;
+            }
+
+            if (is_vlan_found == false)
+            {
+                cli_do_config_abort(status_txn);
+                return CMD_SUCCESS;
+            }
+
             trunks = xmalloc(sizeof *vlan_port_row->trunks * (vlan_port_row->n_trunks - 1));
             for (i = n = 0; i < vlan_port_row->n_trunks; i++)
             {
@@ -977,11 +992,13 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
             }
             trunk_count = vlan_port_row->n_trunks - 1;
             ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
+            free(trunks);
             break;
         }
     }
 
-    if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
+    if (vlan_port_row->vlan_mode != NULL &&
+        strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
     {
         if (0 == trunk_count)
         {
