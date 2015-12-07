@@ -217,6 +217,80 @@ DEFUN (cli_lldp_no_set_hold_time,
   return set_global_hold_time(def_holdtime);
 }
 
+/* Sets LLDP reinit time if the reinit time passed is non-default.
+   If the reinit is default then deletes the key from the column. */
+static int
+set_global_reinit_time(const char *reinit_time)
+{
+  const struct ovsrec_system *row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+  struct smap smap_other_config;
+
+  if (NULL == status_txn)
+  {
+    VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
+    return CMD_OVSDB_FAILURE;
+  }
+
+  row = ovsrec_system_first(idl);
+
+  if (!row)
+  {
+    VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+    cli_do_config_abort(status_txn);
+    return CMD_OVSDB_FAILURE;
+  }
+
+  smap_clone(&smap_other_config, &row->other_config);
+  if (SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT_DEFAULT != atoi(reinit_time))
+    smap_replace(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT,\
+                                     reinit_time);
+  else
+    smap_remove(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT);
+
+  ovsrec_system_set_other_config(row, &smap_other_config);
+
+  status = cli_do_config_finish(status_txn);
+  smap_destroy(&smap_other_config);
+  if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+  {
+    return CMD_SUCCESS;
+  }
+  else
+  {
+    VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+    return CMD_OVSDB_FAILURE;
+  }
+}
+
+DEFUN (cli_lldp_set_reinit_time,
+       lldp_set_global_reinit_time_cmd,
+       "lldp reinit <1-10>",
+       CONFIG_LLDP_STR
+       "Set reinit timer, time to wait before performing LLDP initialization\
+                                                         on any interface.\n"
+       "Reinit time (Default:2)\n")
+{
+  return set_global_reinit_time(argv[0]);
+}
+
+DEFUN (cli_lldp_no_set_reinit_time,
+       lldp_no_set_global_reinit_time_cmd,
+       "no lldp reinit [<1-10>]",
+        NO_STR
+       CONFIG_LLDP_STR
+       "Set reinit timer, time to wait before performing LLDP initialization\
+                                                         on any interface.\n"
+       "Reinit time (Default:2)\n")
+{
+  char def_reinit_time[LLDP_TIMER_MAX_STRING_LENGTH] = {0};
+  snprintf(def_reinit_time, LLDP_TIMER_MAX_STRING_LENGTH, "%d",\
+                            SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT_DEFAULT );
+  return set_global_reinit_time(def_reinit_time);
+}
+
 /* Sets LLDP transmission time if the transmision time passed is non-default.
    If the transmission time is default then deletes the key from the column. */
 static int lldp_set_global_timer(const char *timer)
@@ -1914,6 +1988,8 @@ lldp_vty_init (void)
   install_element (CONFIG_NODE, &lldp_no_set_global_status_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_hold_time_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_hold_time_cmd);
+  install_element (CONFIG_NODE, &lldp_set_global_reinit_time_cmd);
+  install_element (CONFIG_NODE, &lldp_no_set_global_reinit_time_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_timer_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_timer_cmd);
   install_element (CONFIG_NODE, &lldp_select_tlv_cmd);
