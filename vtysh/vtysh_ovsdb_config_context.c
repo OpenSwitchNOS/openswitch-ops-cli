@@ -60,7 +60,7 @@ static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
 {
   const char *data = NULL;
-  int hold_time = 0, transmit_interval = 0;
+  int hold_time = 0, transmit_interval = 0, reinit_time = 0;
 
   if(NULL == ifrow_config)
   {
@@ -95,6 +95,17 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
     if ( SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT != hold_time)
     {
       vtysh_ovsdb_cli_print(p_msg, "lldp timer %d", transmit_interval);
+    }
+  }
+
+  data = NULL;
+  data = smap_get(ifrow_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT);
+  if (data)
+  {
+    reinit_time = atoi(data);
+    if (SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT_DEFAULT != reinit_time)
+    {
+      vtysh_ovsdb_cli_print(p_msg, "lldp reinit %d", reinit_time);
     }
   }
 
