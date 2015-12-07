@@ -79,6 +79,7 @@
 #endif
 
 #include "aaa_vty.h"
+#include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
 
@@ -4653,6 +4654,8 @@ vtysh_init_vty (void)
 
   /* Initialise tracerouote CLI */
   traceroute_vty_init();
+  /* Initialise SFTP cli */
+  sftp_vty_init();
 
   /* Initialise power supply cli */
   powersupply_vty_init();
