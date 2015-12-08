@@ -25,6 +25,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  mgmt_intf_vty.c vtysh_ovsdb_mgmt_intf_context.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
                  logrotate_vty.c neighbor_vty.c traceroute_vty.c traceroute_handler.c \
+                 source_interface_selection_vty.c vtysh_ovsdb_source_interface_context.c \
                  powersupply_vty.c vtysh_ovsdb_intf_lag_context.c \
                  lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
@@ -43,6 +44,7 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   mgmt_intf_vty.h vtysh_ovsdb_mgmt_intf_context.h \
                   vtysh_ovsdb_router_context.h aaa_vty.h \
                   logrotate_vty.h neighbor_vty.h traceroute.h \
+                  source_interface_selection_vty.h vtysh_ovsdb_source_interface_context.h \
                   powersupply_vty.h vtysh_ovsdb_intf_lag_context.h\
                   lacp_vty.h vtysh_utils.h ecmp_vty.h dhcp_tftp_vty.h \
                   vtysh_ovsdb_dhcp_tftp_context.h ping.h
