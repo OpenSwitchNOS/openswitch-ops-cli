@@ -48,6 +48,7 @@ typedef enum vtysh_context_idenum
   e_vtysh_mgmt_interface_context,
   e_vtysh_interface_lag_context,
   e_vtysh_dependent_config,
+  e_vtysh_source_interface_context,
   e_vtysh_dhcp_tftp_context,
   e_vtysh_context_id_max
 } vtysh_contextid;
@@ -131,6 +132,15 @@ typedef enum vtysh_dhcp_tftp_config_client_idenum
   e_vtysh_dhcp_tftp_context_tftp,
   e_vtysh_dhcp_tftp_context_client_id_max,
 } vtysh_dhcp_tftp_context_clientid;
+
+/* Source interface Context client-id type */
+typedef enum vtysh_source_interface_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_source_interface_context_client_id_first = 0,
+  e_vtysh_source_interface_context_config,
+  e_vtysh_source_interface_context_client_id_max,
+} vtysh_source_interface_context_clientid;
 
 typedef struct vtysh_ovsdb_cbmsg_struct
 {
