@@ -52,6 +52,8 @@ vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_conte
 vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {{NULL}};
 vtysh_context_client vtysh_interface_lag_context_client_list[e_vtysh_interface_lag_context_client_id_max] = {{NULL}};
 vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_source_interface_context_client_list \
+[e_vtysh_source_interface_context_client_id_max] = {{NULL}};
 vtysh_context_client vtysh_dhcp_tftp_context_client_list[e_vtysh_dhcp_tftp_context_client_id_max] = {{NULL}};
 
 /* static array of vtysh context lists
@@ -68,6 +70,8 @@ vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
   { "Interface LAG Context",  e_vtysh_interface_lag_context, &vtysh_interface_lag_context_client_list},
   { "Dependent Config",   e_vtysh_dependent_config,  &vtysh_dependent_config_client_list},
   { "dhcp tftp Config",   e_vtysh_dhcp_tftp_context,  &vtysh_dhcp_tftp_context_client_list},
+  { "Source Interface Config",  e_vtysh_source_interface_context, \
+    &vtysh_source_interface_context_client_list},
 };
 
 /*-----------------------------------------------------------------------------
@@ -109,6 +113,9 @@ vtysh_context_get_maxclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_dependent_config:
          ret_val = e_vtysh_dependent_config_client_id_max;
+         break;
+    case e_vtysh_source_interface_context:
+         ret_val = e_vtysh_source_interface_context_client_id_max;
          break;
     case e_vtysh_dhcp_tftp_context:
          ret_val = e_vtysh_dhcp_tftp_context_client_id_max;
@@ -161,6 +168,9 @@ vtysh_context_get_minclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_dependent_config:
          ret_val = e_vtysh_dependent_config_client_id_first;
+         break;
+    case e_vtysh_source_interface_context:
+         ret_val = e_vtysh_source_interface_context_client_id_first;
          break;
     case e_vtysh_dhcp_tftp_context:
          ret_val = e_vtysh_dhcp_tftp_context_client_id_first;
@@ -508,5 +518,6 @@ vtysh_ovsdb_init_clients(void)
   vtysh_init_intf_context_clients();
   vtysh_init_mgmt_intf_context_clients();
   vtysh_init_intf_lag_context_clients();
+  vtysh_init_source_interface_context_clients();
   vtysh_init_dhcp_tftp_context_clients();
 }
