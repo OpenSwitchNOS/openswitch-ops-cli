@@ -1360,7 +1360,11 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
         atom.string = lldp_interface_neighbor_info_keys[11];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+<<<<<<< HEAD
         vty_out(vty, "Management-Address             : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+=======
+        vty_out(vty, "Neighbor Management-Address    : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+>>>>>>> 8155b30... displaying management ip-address in neighbor-info
 
         atom.string = lldp_interface_neighbor_info_keys[7];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);

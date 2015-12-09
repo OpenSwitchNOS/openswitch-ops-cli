@@ -313,7 +313,11 @@ class LLDPCliTest(OpsVsiTest):
                        '10.10.10.10' in line:
                         counter += 1
 
+<<<<<<< HEAD
                 assert counter == 5, \
+=======
+                assert counter == 4, \
+>>>>>>> 8155b30... displaying management ip-address in neighbor-info
                 'Test LLDP neighbor info command - FAILED!'
 
         return True
