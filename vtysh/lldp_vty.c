@@ -1496,6 +1496,7 @@ DEFUN (cli_lldp_show_local_device,
     char *system_des = NULL;
     char *chassis_id = NULL;
     const char *lldp_mgmt_pattern = NULL;
+    const char *lldp_mgmt_pattern_ipv6 = NULL;
     struct utsname un;
     bool print_header = 0;
     char *vlan_name = NULL;
@@ -1543,20 +1544,25 @@ DEFUN (cli_lldp_show_local_device,
 
     if (lldp_mgmt_pattern == NULL) {
         lldp_mgmt_pattern = smap_get(&system->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_IP);
+        lldp_mgmt_pattern_ipv6 = smap_get(&system->mgmt_intf_status,
+                                          SYSTEM_MGMT_INTF_MAP_IPV6);
     }
 
-    if (lldp_mgmt_pattern == NULL) {
-        lldp_mgmt_pattern = smap_get(&system->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_IPV6);
-    }
+    if (lldp_mgmt_pattern_ipv6)
+        lldp_mgmt_pattern_ipv6 = strtok((char *) lldp_mgmt_pattern_ipv6, "/");
 
     vty_out(vty, "%s", VTY_NEWLINE);
     vty_out(vty,"Global Data%s", VTY_NEWLINE);
     vty_out(vty,"---------------%s%s", VTY_NEWLINE, VTY_NEWLINE);
     vty_out(vty,"Chasis-id              : %s%s", chassis_id, VTY_NEWLINE);
     vty_out(vty,"System Name            : %s%s", system_name, VTY_NEWLINE);
-    vty_out(vty,"Systen Description     : %s%s", system_des, VTY_NEWLINE);
-    vty_out(vty,"Management Address     : %s%s",
-                (lldp_mgmt_pattern ? lldp_mgmt_pattern :""), VTY_NEWLINE);
+    vty_out(vty,"System Description     : %s%s", system_des, VTY_NEWLINE);
+    vty_out(vty,"Management Address     : %s%s%s%s",
+                (lldp_mgmt_pattern ? lldp_mgmt_pattern : ""),
+                (lldp_mgmt_pattern && lldp_mgmt_pattern_ipv6 ? ", " : ""),
+                (lldp_mgmt_pattern_ipv6 ? lldp_mgmt_pattern_ipv6 : ""),
+                VTY_NEWLINE);
+
     vty_out(vty,"Capabilities Available : Bridge, Router%s", VTY_NEWLINE);
     vty_out(vty,"Capabilities Enabled   : %s%s%s%s",
                                          (br != NULL ? "Bridge":""),
