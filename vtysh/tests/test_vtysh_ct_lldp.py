@@ -309,7 +309,7 @@ class LLDPCliTest(OpsVsiTest):
                     if 'Chassis Capabilities Available : '\
                        'Bridge,Router' in line:
                         counter += 1
-                    if 'Management-Address             : '\
+                    if 'Neighbor Management-Address    : '\
                        '10.10.10.10' in line:
                         counter += 1
 
