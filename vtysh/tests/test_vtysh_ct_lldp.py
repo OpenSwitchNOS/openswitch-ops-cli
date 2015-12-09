@@ -312,6 +312,9 @@ class LLDPCliTest(OpsVsiTest):
                     if 'Management-Address             : '\
                        '10.10.10.10' in line:
                         counter += 1
+                    if 'Management-Address             : '\
+                       '10.10.10.10' in line:
+                       counter += 1
 
                 assert counter == 5, \
                 'Test LLDP neighbor info command - FAILED!'
