@@ -262,34 +262,91 @@ class LLDPCliTest(OpsVsiTest):
         info('''
 ########## Test LLDP clear counters ##########
 ''')
-        lldp_clear_counters_set = False
         s1 = self.net.switches[0]
+        lldp_clear_counters_set = False
         s1.cmdCLI('conf t')
-        s1.cmdCLI('lldp clear counters')
-        out = s1.cmd('ovs-vsctl list system')
+        s1.cmdCLI('lldp enable')
+        out = s1.cmd('ovs-vsctl list interface 1')
         lines = out.split('\n')
         for line in lines:
-            if 'lldp_num_clear_counters_requested="1"' in line:
-                lldp_clear_counters_set = True
-        assert (lldp_clear_counters_set is True), \
-            'Test LLDP clear counters - FAILED!'
+            if '_uuid' in line:
+                _id = line.split(':')
+                LLDPCliTest.uuid = _id[1].strip()
+                self.initLLDPNeighborinfo()
+
+        s1.cmdCLI('lldp clear counters')
+        sleep(10)
+        out = s1.cmdCLI('do show lldp neighbor-info 1')
+        lines = out.split('\n')
+        counter = 0
+        for line in lines:
+            if 'Neighbor Chassis-Name          : ' in line \
+                    and 'as512' not in line:
+                counter += 1
+            if 'Neighbor Chassis-Description   : ' in line \
+                    and 'OpenSwitch_0.1.0' not in line:
+                counter += 1
+            if 'Neighbor Chassis-ID            : ' in line \
+                    and '70:72:cf:fd:e9:26' not in line:
+                counter += 1
+            if 'Management-Address             : ' in line \
+                    and '10.10.10.10' not in line:
+                counter += 1
+            if 'Chassis Capabilities Available : 'in line \
+                    and 'Bridge,Router' not in line:
+                counter += 1
+            if 'TTL                            : ' in line \
+                    and '120' not in line:
+                counter += 1
+
+        assert counter == 6, \
+            'Test LLDP clear counters command - FAILED!'
         return True
 
     def setLLDPClearNeighborsTest(self):
         info('''
 ########## Test LLDP clear neighbors ##########
 ''')
-        lldp_clear_neighbors_set = False
+
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
-        s1.cmdCLI('lldp clear neighbors')
-        out = s1.cmd('ovs-vsctl list system')
+        s1.cmdCLI('lldp enable')
+        out = s1.cmd('ovs-vsctl list interface 1')
         lines = out.split('\n')
         for line in lines:
-            if 'lldp_num_clear_table_requested="1"' in line:
-                lldp_clear_neighbors_set = True
-        assert (lldp_clear_neighbors_set is True), \
-            'Test LLDP clear neighbors - FAILED!'
+            if '_uuid' in line:
+                _id = line.split(':')
+                LLDPCliTest.uuid = _id[1].strip()
+                self.initLLDPNeighborinfo()
+                out = s1.cmdCLI('do show lldp neighbor-info 1')
+
+        s1.cmdCLI('lldp clear neighbors')
+        sleep(10)
+        out = s1.cmdCLI('do show lldp neighbor-info 1')
+        lines = out.split('\n')
+        counter = 0
+        for line in lines:
+            if 'Neighbor Chassis-Name          : ' in line \
+                    and 'as512' not in line:
+                counter += 1
+            if 'Neighbor Chassis-Description   : ' in line \
+                    and 'OpenSwitch_0.1.0' not in line:
+                counter += 1
+            if 'Neighbor Chassis-ID            : ' in line \
+                    and '70:72:cf:fd:e9:26' not in line:
+                counter += 1
+            if 'Management-Address             : ' in line \
+                    and '10.10.10.10' not in line:
+                counter += 1
+            if 'Chassis Capabilities Available : 'in line \
+                    and 'Bridge,Router' not in line:
+                counter += 1
+            if 'TTL                            : ' in line \
+                    and '120' not in line:
+                counter += 1
+
+        assert counter == 6, \
+            'Test LLDP neighbor info command - FAILED!'
         return True
 
     def LLDPNeighborsinfoTest(self):
