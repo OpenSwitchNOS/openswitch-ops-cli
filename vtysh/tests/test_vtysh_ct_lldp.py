@@ -26,6 +26,21 @@ class LLDPCliTest(OpsVsiTest):
 
     uuid = ''
 
+    def initLLDPLocaldevice(self):
+        s1 = self.net.switches[0]
+        #Set IPV4 and IPv6 Mgmt address
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface mgmt')
+        s1.cmdCLI('ip static 192.168.1.1/24')
+        s1.cmdCLI('ip static fd12:3456:789a:1::/64')
+        s1.cmdCLI('exit')
+        #Set hostname to openswitch
+        s1.cmd('hostname openswitch')
+        #Set holdtime and timer, to check TTL(3*20 = 60)
+        s1.cmdCLI('lldp holdtime 3')
+        s1.cmdCLI('lldp  timer 20')
+        sleep(10)
+
     def initLLDPNeighborinfo(self):
         s1 = self.net.switches[0]
         s1.cmd('ovs-vsctl  set interface ' + LLDPCliTest.uuid
@@ -89,7 +104,6 @@ class LLDPCliTest(OpsVsiTest):
         assert (lldp_feature_enabled is True), \
             'Test to enable LLDP feature - FAILED'
         return True
-
 
     def disableLLDPFeatureTest(self):
         info('''
@@ -295,7 +309,6 @@ class LLDPCliTest(OpsVsiTest):
                 self.initLLDPNeighborinfo()
                 out = s1.cmdCLI('do show lldp neighbor-info 1')
                 lines = out.split('\n')
-		print lines
                 for line in lines:
                     if 'Neighbor Chassis-Name          : as5712' in line:
                         counter += 1
@@ -314,7 +327,31 @@ class LLDPCliTest(OpsVsiTest):
                         counter += 1
 
                 assert counter == 5, \
-                'Test LLDP neighbor info command - FAILED!'
+                    'Test LLDP neighbor info command - FAILED!'
+
+        return True
+
+    def LLDPShowLocalDeviceTest(self):
+        s1 = self.net.switches[0]
+        info('''
+########## Test LLDP show local-device command ##########
+''')
+        counter = 0
+        self.initLLDPLocaldevice()
+        out = s1.cmdCLI('do show lldp local-device')
+
+        lines = out.split('\n')
+        for line in lines:
+            if 'System Name            : openswitch' in line:
+                counter += 1
+            if 'Management Address     : 192.168.1.1, fd12:3456:789a:1::'\
+                    in line:
+                counter += 1
+            if 'TTL                    : 60' in line:
+                counter += 1
+
+        assert counter == 3, \
+            'Test LLDP  show local-device command - FAILED!'
 
         return True
 
@@ -406,6 +443,12 @@ class Test_lldp_cli:
         if self.test.LLDPNeighborsinfoTest():
             info('''
 ########## Test LLDP neighbor info command - SUCCESS ##########
+''')
+
+    def test_LLDPShowLocalDeviceTest(self):
+        if self.test.LLDPShowLocalDeviceTest():
+            info('''
+########## Test LLDP show local-device command - SUCCESS ##########
 ''')
 
     def teardown_class(cls):
