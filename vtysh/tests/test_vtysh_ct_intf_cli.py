@@ -169,6 +169,25 @@ class InterfaceCommandsTests(OpsVsiTest):
 
         return True
 
+    def showlacpPortPriority(self):
+        info('''
+########## Test show running-config interface Port Priority ##########
+''')
+        lag_interface = False
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface 2')
+        s1.cmdCLI('lacp port-priority 1')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('exit')
+        out = s1.cmdCLI('show running-config')
+        if "lacp port-priority 1" in out:
+            lag_interface = True
+        assert (lag_interface is True), \
+            'Test show running-config lacp port priority showed - FAIL!'
+
+        return True
+
     def showRunInterfaceLag(self):
         info('''
 ########## Test show running-config interface with LAG ##########
@@ -234,6 +253,11 @@ class Test_interfaceCommands:
             print '''
 ########## Test to verify dyn helpstr for mtu - SUCCESS! ##########
 '''
+    def showlacpPortPriority(self):
+        if self.test.showlacpPortPriority():
+            info('''
+########## Test show running-config port priority default - SUCCESS! ##########
+''')
 
     def test_showRunInterfaceLag(self):
         if self.test.showRunInterfaceLag():
