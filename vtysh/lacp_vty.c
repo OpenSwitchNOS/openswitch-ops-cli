@@ -1239,7 +1239,7 @@ get_lacp_state(const char *state)
    memset(ret_state, 0, LACP_STATUS_FIELD_COUNT+1);
    if(state == NULL) return ret_state;
    ret_state[n++] = state[0]? 'A':'P';
-   ret_state[n++] = state[1]? 'L':'S';
+   ret_state[n++] = state[1]? 'S':'L';
    ret_state[n++] = state[2]? 'F':'I';
    ret_state[n++] = state[3]? 'N':'O';
    if (state[4]) ret_state[n++] = 'C';
