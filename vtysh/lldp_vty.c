@@ -1360,7 +1360,7 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
 
         atom.string = lldp_interface_neighbor_info_keys[11];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Management-Address             : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Neighbor Management-Address    : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
 
         atom.string = lldp_interface_neighbor_info_keys[7];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
@@ -1554,7 +1554,7 @@ DEFUN (cli_lldp_show_local_device,
     vty_out(vty, "%s", VTY_NEWLINE);
     vty_out(vty,"Global Data%s", VTY_NEWLINE);
     vty_out(vty,"---------------%s%s", VTY_NEWLINE, VTY_NEWLINE);
-    vty_out(vty,"Chasis-id              : %s%s", chassis_id, VTY_NEWLINE);
+    vty_out(vty,"Chassis-id              : %s%s", chassis_id, VTY_NEWLINE);
     vty_out(vty,"System Name            : %s%s", system_name, VTY_NEWLINE);
     vty_out(vty,"System Description     : %s%s", system_des, VTY_NEWLINE);
     vty_out(vty,"Management Address     : %s%s%s%s",
