@@ -471,7 +471,7 @@ vtysh_config_context_global_clientcallback(void *p_private)
   {
     if (vswrow->hostname[0] != '\0')
     {
-      vtysh_ovsdb_cli_print(p_msg, "hostname \"%s\"", vswrow->hostname);
+      vtysh_ovsdb_cli_print(p_msg, "hostname %s", vswrow->hostname);
     }
 
     /* parse the alias coumn */
