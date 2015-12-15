@@ -29,6 +29,8 @@ void vtysh_ovsdb_init(int argc, char *argv[], char *db_name);
 
 void vtysh_ovsdb_hostname_set(const char * in);
 
+int vtysh_ovsdb_hostname_reset(char *hostname_arg);
+
 const char* vtysh_ovsdb_hostname_get(void);
 
 void vtysh_ovsdb_exit(void);
