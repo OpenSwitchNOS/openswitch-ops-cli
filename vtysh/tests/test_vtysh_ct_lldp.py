@@ -289,7 +289,7 @@ class LLDPCliTest(OpsVsiTest):
             if 'Neighbor Chassis-ID            : ' in line \
                     and '70:72:cf:fd:e9:26' not in line:
                 counter += 1
-            if 'Management-Address             : ' in line \
+            if 'Neighbor Management-Address    : ' in line \
                     and '10.10.10.10' not in line:
                 counter += 1
             if 'Chassis Capabilities Available : 'in line \
@@ -335,7 +335,7 @@ class LLDPCliTest(OpsVsiTest):
             if 'Neighbor Chassis-ID            : ' in line \
                     and '70:72:cf:fd:e9:26' not in line:
                 counter += 1
-            if 'Management-Address             : ' in line \
+            if 'Neighbor Management-Address    : ' in line \
                     and '10.10.10.10' not in line:
                 counter += 1
             if 'Chassis Capabilities Available : 'in line \
@@ -379,7 +379,7 @@ class LLDPCliTest(OpsVsiTest):
                     if 'Chassis Capabilities Available : '\
                        'Bridge,Router' in line:
                         counter += 1
-                    if 'Management-Address             : '\
+                    if 'Neighbor Management-Address    : '\
                        '10.10.10.10' in line:
                         counter += 1
 
