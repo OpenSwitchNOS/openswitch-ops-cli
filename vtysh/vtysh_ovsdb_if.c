@@ -635,6 +635,43 @@ vtysh_ovsdb_hostname_set(const char* in)
 }
 
 /*
+ * Name : vtysh_ovsdb_hostname_reset
+ * Responsibility : To unset hostname set by CLI.
+ * Parameters : char *hostname_arg : Stores user's input value
+ * Return : CMD_SUCCESS for success, CMD_OVSDB_FAILURE for failure
+ */
+int
+vtysh_ovsdb_hostname_reset(char *hostname_arg)
+{
+    const struct ovsrec_system *row = NULL;
+    const struct ovsdb_datum *data = NULL;
+    char *ovsdb_hostname = NULL;
+    row = ovsrec_system_first(idl);
+
+    if (row != NULL)
+    {
+        data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
+        ovsdb_hostname = data->keys->string;
+
+        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        {
+            vtysh_ovsdb_hostname_set("");
+        }
+        else
+        {
+            vty_out(vty, "Hostname %s not configured. %s", hostname_arg,
+                    VTY_NEWLINE);
+        }
+    }
+    else
+    {
+        vty_out(vty, "Error in retrieving hostname.%s", VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+    return CMD_SUCCESS;
+}
+
+/*
  * The get command to read from the ovsdb system table
  * hostname column from the vtysh get-hostname command.
  */
