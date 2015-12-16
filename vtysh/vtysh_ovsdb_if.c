@@ -536,11 +536,16 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_enable_reconnect(idl);
     latch_init(&ovsdb_latch);
 
+    /* Add system table. */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+
+    /* Add software_info column */
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_software_info);
+
     /* Add switch version column */
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_switch_version);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_switch_version);
 
     /* Add hostname columns. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
     /* Add AAA columns. */
@@ -647,6 +652,42 @@ vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
     VLOG_DBG("OPS Vtysh OVSDB Integration has been initialized");
 
     return;
+}
+
+/*
+ * The get command to read from the ovsdb system table
+ * software_info:os_name value.
+ */
+const char *
+vtysh_ovsdb_os_name_get(void)
+{
+    const struct ovsrec_system *ovs;
+    char *os_name = NULL;
+
+    ovs = ovsrec_system_first(idl);
+    if (ovs) {
+        os_name = smap_get(&ovs->software_info, SYSTEM_SOFTWARE_INFO_OS_NAME);
+    }
+
+    return os_name ? os_name : "OpenSwitch";
+}
+
+/*
+ * The get command to read from the ovsdb system table
+ * switch_version column.
+ */
+const char *
+vtysh_ovsdb_switch_version_get(void)
+{
+    const struct ovsrec_system *ovs;
+
+    ovs = ovsrec_system_first(idl);
+    if (ovs == NULL) {
+        VLOG_ERR("unable to retrieve any system table rows");
+        return "";
+    }
+
+    return ovs->switch_version ? ovs->switch_version : "";
 }
 
 /*
