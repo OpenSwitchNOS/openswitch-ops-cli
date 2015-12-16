@@ -913,7 +913,7 @@ DEFUN (cli_lldp_show_config_if,
   vty_out(vty,"--------------------------%s",VTY_NEWLINE);
   vty_out(vty, "%-6s","Port");
   vty_out(vty, "%-25s","Transmission-enabled");
-  vty_out(vty, "%-25s","Reception-enabled");
+  vty_out(vty, "%-25s","Recieve-enabled");
   vty_out(vty, "%s", VTY_NEWLINE);
 
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
