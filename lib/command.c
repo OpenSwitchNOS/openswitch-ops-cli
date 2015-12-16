@@ -35,6 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "workqueue.h"
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_if.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
 #include "dyn_helpstr.h"
@@ -3392,6 +3393,7 @@ DEFUN (config_end,
 }
 
 /* Show version. */
+#ifndef ENABLE_OVSDB
 DEFUN (show_version,
        show_version_cmd,
        "show version",
@@ -3406,6 +3408,18 @@ DEFUN (show_version,
 
   return CMD_SUCCESS;
 }
+#else
+DEFUN (show_version,
+       show_version_cmd,
+       "show version",
+       SHOW_STR
+       "Displays switch version\n")
+{
+  vty_out (vty, "%s %s%s", vtysh_ovsdb_os_name_get(),
+           vtysh_ovsdb_switch_version_get(), VTY_NEWLINE);
+  return CMD_SUCCESS;
+}
+#endif /* ENABLE_OVSDB */
 
 /* Help display function for all node. */
 DEFUN (config_help,
