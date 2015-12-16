@@ -607,6 +607,24 @@ vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
 }
 
 /*
+ * The get command to read from the ovsdb system table
+ * switch_version column.
+ */
+const char *
+vtysh_ovsdb_switch_version_get(void)
+{
+   const struct ovsrec_system *ovs;
+
+   ovs = ovsrec_system_first(idl);
+   if (ovs == NULL) {
+        VLOG_ERR("unable to retrieve any system table rows");
+	return "";
+   }
+
+   return ovs->switch_version ? ovs->switch_version : "";
+}
+
+/*
  * The set command to set the hostname column in the
  * system table from the set-hotname command.
  */
