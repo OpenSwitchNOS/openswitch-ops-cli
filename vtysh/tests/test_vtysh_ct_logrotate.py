@@ -22,9 +22,9 @@ import pytest
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
 
-script_path = '/etc/cron.hourly/ops-log-rotate'
-logrotateCnfFile = '/etc/logrotate.ovs'
-shLogrotateCnfFile = 'cat /etc/logrotate.ovs'
+script_path = '/etc/cron.hourly/ops-gen-logrotate'
+logrotateCnfFile = '/etc/logrotate-ops.conf'
+shLogrotateCnfFile = 'cat /etc/logrotate-ops.conf'
 
 
 class LogrotateTests(OpsVsiTest):
