@@ -34,6 +34,8 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_router_context.h"
+#include "command.h"
+#include "ospf_vty.h"
 
 #define CLEANUP_SHOW_RUN
 
@@ -321,8 +323,47 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
 vtysh_ret_val
 vtysh_router_context_ospf_clientcallback(void *p_private)
 {
-  /* OPS-TODO */
-  return e_vtysh_ok;
+    const struct ovsrec_vrf *ovs_vrf = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    int i = 0, j = 0;
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+    const char *val = NULL;
+    char area_str[OSPF_SHOW_STR_LEN];
+
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                             "vtysh_context_router_ospf_clientcallback entered");
+
+    OVSREC_VRF_FOR_EACH(ovs_vrf, p_msg->idl)
+    {
+        for (j = 0; j < ovs_vrf->n_ospf_routers; j++)
+        {
+
+            vtysh_ovsdb_cli_print(p_msg, "%s", "router ospf");
+
+            ospf_router_row = ovs_vrf->value_ospf_routers[j];
+
+            /* Router id */
+            val = smap_get((const struct smap *)&ospf_router_row->router_id,
+                            OSPF_KEY_ROUTER_ID_VAL);
+            if (val && (strcmp(val, OSPF_DEFAULT_STR) != 0))
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
+                                      "router-id", val);
+
+            /* network <range> area <area-id>*/
+            while (i < ospf_router_row->n_networks)
+            {
+                memset(area_str,'\0', OSPF_SHOW_STR_LEN);
+                OSPF_IP_STRING_CONVERT(area_str, ntohl(ospf_router_row->value_networks[i]));
+                vtysh_ovsdb_cli_print(p_msg, "%4snetwork %s area %s", "",
+                                      ospf_router_row->key_networks[i],
+                                      area_str);
+                i++;
+            }
+        }
+    }
+
+    //vtysh_router_context_ospf_neighbor_callback(p_msg);
+    return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
