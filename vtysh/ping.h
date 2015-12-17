@@ -29,7 +29,6 @@
 #define PING_STR            "Ping Utility\n"
 #define PING_IP             "Enter IP address of the device to ping\n"
 #define PING_HOST           "Enter Hostname of the device to ping\n"
-#define PATTERN             "Enter Hexadecimal pattern, example 'AB'\n"
 #define TOS                 "Type of Service \n"
 #define INPUT_TOS           "Enter TOS value in the range \n"
 #define TS                  "Record the intermediate router timestamp\n"
@@ -38,6 +37,8 @@
 #define TSADDR              "include-timestamp-and-address"
 #define RR                  "record-route"
 
+#define PATTERN \
+"Enter Hexadecimal pattern, example 'AB'. (Max Length :16)\n"
 #define PING_IP_OPT \
 "Specify the IP option - Record Route or Timestamp option\n"
 #define PING_DSIZE \

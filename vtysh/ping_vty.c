@@ -121,13 +121,22 @@ int decodeParam (const char* value, pingArguments type, pingEntry* p)
             /* Store value of Datapattern */
             if (value)
             {
-                for (iter=0;value[iter]!='\0';iter++)
+                if(strlen(value) > 16 )
                 {
-                    if ((isxdigit(value[iter])) == 0)
+                    vty_out(vty, "Datafill pattern should be less"
+                    " than 16 characters\n", VTY_NEWLINE);
+                    return CMD_WARNING;
+                }
+                else
+                {
+                    for (iter=0;value[iter]!='\0';iter++)
                     {
-                        vty_out (vty, "Datafill pattern should be"
-                        " in hexadecimal only %s", VTY_NEWLINE);
-                        return CMD_WARNING;
+                        if ((isxdigit(value[iter])) == 0)
+                        {
+                            vty_out (vty, "Datafill pattern should be"
+                            " in hexadecimal only %s", VTY_NEWLINE);
+                            return CMD_WARNING;
+                        }
                     }
                 }
                 p->pingDataFill = (char*)value;
