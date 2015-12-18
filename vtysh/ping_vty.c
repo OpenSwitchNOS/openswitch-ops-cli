@@ -65,8 +65,8 @@ int decodeParam (const char* value, pingArguments type, pingEntry* p)
                 if (strlen((char*)value) > PING_MAX_HOSTNAME_LENGTH)
                 {
                     vty_out (vty, "Invalid Hostname. Length"
-                    " should be less than %d characters %s",
-                    PING_MAX_HOSTNAME_LENGTH, VTY_NEWLINE);
+                             " should be less than %d characters. %s",
+                             PING_MAX_HOSTNAME_LENGTH, VTY_NEWLINE);
                     return CMD_WARNING;
                 }
                 p->isIpv4 = true;
@@ -74,7 +74,7 @@ int decodeParam (const char* value, pingArguments type, pingEntry* p)
             }
             else if (inet_pton(AF_INET, (char*)value, &addr) <= 0)
             {
-                vty_out (vty, "Invalid IPv4 address %s", VTY_NEWLINE);
+                vty_out (vty, "Invalid IPv4 address. %s", VTY_NEWLINE);
                 return CMD_WARNING;
             }
             else
@@ -92,15 +92,15 @@ int decodeParam (const char* value, pingArguments type, pingEntry* p)
                 if (strlen((char*)value) > PING_MAX_HOSTNAME_LENGTH)
                 {
                     vty_out (vty, "Invalid Hostname. Length"
-                    " should be less than %d characters %s",
-                    PING_MAX_HOSTNAME_LENGTH, VTY_NEWLINE);
+                             " should be less than %d characters. %s",
+                             PING_MAX_HOSTNAME_LENGTH, VTY_NEWLINE);
                     return CMD_WARNING;
                 }
                 p->pingTarget = (char*)value;
             }
             else if (inet_pton(AF_INET6, (char*)value, &addr6) <= 0)
             {
-                vty_out (vty, "Invalid IPv6 address %s", VTY_NEWLINE);
+                vty_out (vty, "Invalid IPv6 address. %s", VTY_NEWLINE);
                 return CMD_WARNING;
             }
             else
@@ -121,14 +121,20 @@ int decodeParam (const char* value, pingArguments type, pingEntry* p)
             /* Store value of Datapattern */
             if (value)
             {
-                for (iter=0;value[iter]!='\0';iter++)
+                for (iter = 0;value[iter] != '\0';iter++)
                 {
                     if ((isxdigit(value[iter])) == 0)
                     {
                         vty_out (vty, "Datafill pattern should be"
-                        " in hexadecimal only %s", VTY_NEWLINE);
+                                 " in hexadecimal only. %s", VTY_NEWLINE);
                         return CMD_WARNING;
                     }
+                }
+                if (iter > MAX_PATTERN_LENGTH)
+                {
+                    vty_out (vty, "Only first %d characters will be"
+                             " used for data-fill. %s",
+                             MAX_PATTERN_LENGTH, VTY_NEWLINE);
                 }
                 p->pingDataFill = (char*)value;
             }
