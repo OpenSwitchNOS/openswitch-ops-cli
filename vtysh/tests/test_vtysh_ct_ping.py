@@ -36,7 +36,7 @@ class pingCLITest(OpsVsiTest):
         info('\n########## ping IP validations ##########\n')
         s1 = self.net.switches[0]
         ret = s1.cmdCLI("ping 300.300.300.300")
-        assert 'Invalid IPv4 address' in ret, \
+        assert 'Invalid IPv4 address.' in ret, \
             'Ping IP address validation failed'
         info('\n### Ping IP address validation passed ###\n')
 
@@ -46,7 +46,12 @@ class pingCLITest(OpsVsiTest):
         info('\n### Ping IP: value of data-size validation passed ###\n')
 
         ret = s1.cmdCLI("ping 1.1.1.1 data-fill pa")
-        assert 'Datafill pattern should be in hexadecimal only' in ret,\
+        assert 'Datafill pattern should be in hexadecimal only.' in ret,\
+            'Ping IP :data-fill validation failed'
+        info('\n### Ping IP: value of data-fill validation passed ###\n')
+
+        ret = s1.cmdCLI("ping 1.1.1.1 data-fill 12341234123412345")
+        assert 'Only first 16 characters will be used for data-fill.' in ret,\
             'Ping IP :data-fill validation failed'
         info('\n### Ping IP: value of data-fill validation passed ###\n')
 
@@ -103,9 +108,14 @@ class pingCLITest(OpsVsiTest):
         info('\n### Ping Host: value of data-size validation passed ###\n')
 
         ret = s1.cmdCLI("ping testname data-fill pa")
-        assert 'Datafill pattern should be in hexadecimal only' in ret, \
+        assert 'Datafill pattern should be in hexadecimal only.' in ret, \
             'Ping Host :data-fill validation failed'
         info('\n### Ping Host: value of data-fill validation passed ###\n')
+
+        ret = s1.cmdCLI("ping testname data-fill 12341234123412345")
+        assert 'Only first 16 characters will be used for data-fill.' in ret,\
+            'Ping IP :data-fill validation failed'
+        info('\n### Ping IP: value of data-fill validation passed ###\n')
 
         ret = s1.cmdCLI("ping testname repetitions 0")
         assert '% Unknown command.' in ret, \
@@ -154,7 +164,7 @@ class pingCLITest(OpsVsiTest):
         info('\n########## ping6 IP validations ##########\n')
         s1 = self.net.switches[0]
         ret = s1.cmdCLI("ping6 1.1::1.1")
-        assert 'Invalid IPv6 address' in ret, \
+        assert 'Invalid IPv6 address.' in ret, \
             'Ping IPv6 address validation failed'
         info('\n### Ping IPv6 address validation passed ###\n')
 
@@ -165,6 +175,11 @@ class pingCLITest(OpsVsiTest):
 
         ret = s1.cmdCLI("ping6 1:1::1:1 data-fill pa")
         assert 'Datafill pattern should be in hexadecimal only' in ret, \
+            'Ping IPv6 :data-fill validation failed'
+        info('\n### Ping IPv6: value of data-fill validation passed ###\n')
+
+        ret = s1.cmdCLI("ping6 1:1::1:1 data-fill 12341234123412345")
+        assert 'Only first 16 characters will be used for data-fill.' in ret, \
             'Ping IPv6 :data-fill validation failed'
         info('\n### Ping IPv6: value of data-fill validation passed ###\n')
 
@@ -194,6 +209,11 @@ class pingCLITest(OpsVsiTest):
 
         ret = s1.cmdCLI("ping6 testname data-fill pa")
         assert 'Datafill pattern should be in hexadecimal only' in ret, \
+            'Ping IPv6 :data-fill validation failed'
+        info('\n### Ping IPv6: value of data-fill validation passed ###\n')
+
+        ret = s1.cmdCLI("ping6 testname data-fill 12341234123412345")
+        assert 'Only first 16 characters will be used for data-fill.' in ret, \
             'Ping IPv6 :data-fill validation failed'
         info('\n### Ping IPv6: value of data-fill validation passed ###\n')
 
