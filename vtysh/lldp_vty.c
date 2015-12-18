@@ -770,7 +770,7 @@ DEFUN (cli_lldp_show_config,
   vty_out(vty, "%sLLDP Port Configuration:%s%s", VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
   vty_out(vty, "%-6s","Port");
   vty_out(vty, "%-25s","Transmission-enabled");
-  vty_out(vty, "%-25s","Receive-enabled");
+  vty_out(vty, "%-25s","Reception-enabled");
   vty_out(vty, "%s", VTY_NEWLINE);
 
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
