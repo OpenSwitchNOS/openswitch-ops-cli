@@ -24,7 +24,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  temperature_vty.c vtysh_ovsdb_vlan_context.c \
                  mgmt_intf_vty.c vtysh_ovsdb_mgmt_intf_context.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
-                 logrotate_vty.c neighbor_vty.c traceroute_vty.c traceroute_handler.c \
+                 logrotate_vty.c neighbor_vty.c ospf_vty.c \
                  powersupply_vty.c vtysh_ovsdb_intf_lag_context.c \
                  lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
@@ -42,8 +42,8 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   l3routes_vty.h led_vty.h system_vty.h fan_vty.h \
                   temperature_vty.h vtysh_ovsdb_vlan_context.h \
                   mgmt_intf_vty.h vtysh_ovsdb_mgmt_intf_context.h \
-                  vtysh_ovsdb_router_context.h aaa_vty.h \
-                  logrotate_vty.h neighbor_vty.h traceroute.h \
+                  vtysh_ovsdb_router_context.h aaa_vty.h  ospf_vty.h \
+                  logrotate_vty.h neighbor_vty.h \
                   powersupply_vty.h vtysh_ovsdb_intf_lag_context.h\
                   lacp_vty.h vtysh_utils.h ecmp_vty.h dhcp_tftp_vty.h \
                   vtysh_ovsdb_dhcp_tftp_context.h ping.h sftp_vty.h \
