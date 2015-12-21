@@ -72,6 +72,7 @@
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
+#include "source_interface_selection_vty.h"
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
@@ -4697,6 +4698,9 @@ vtysh_init_vty (void)
   temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
+
+  /* Initialize source interface selection CLI*/
+  source_interface_selection_vty_init();
 
   /* Initialise tracerouote CLI */
   traceroute_vty_init();
