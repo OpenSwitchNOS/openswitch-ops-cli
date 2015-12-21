@@ -432,14 +432,14 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
     }
   }
 
-  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION);
+  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION_ENABLE);
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
         vtysh_ovsdb_cli_print(p_msg, "no ssh password-authentication");
   }
 
-  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION);
+  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION_ENABLE);
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
