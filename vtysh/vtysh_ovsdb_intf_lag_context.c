@@ -30,7 +30,6 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
-#include "vtysh_ovsdb_mgmt_intf_context.h"
 #include "lacp_vty.h"
 #include "vrf_vty.h"
 

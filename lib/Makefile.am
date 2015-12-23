@@ -15,7 +15,7 @@ libzebra_cli_la_SOURCES = \
 	sockunion.c prefix.c thread.c if.c memory.c buffer.c table.c hash.c \
 	filter.c routemap.c distribute.c stream.c str.c log.c plist.c \
 	zclient.c sockopt.c smux.c agentx.c snmp.c md5.c if_rmap.c keychain.c privs.c \
-	sigevent.c pqueue.c jhash.c memtypes.c workqueue.c
+	sigevent.c pqueue.c jhash.c memtypes.c workqueue.c cli_plugins.c
 if ENABLE_OVSDB
 libzebra_cli_la_SOURCES += lib_vtysh_ovsdb_if.c vty_utils.c
 endif
@@ -29,17 +29,19 @@ if ENABLE_OVSDB
 libzebra_cli_la_LIBADD += -lovscommon -lovsdb -lpthread
 endif
 
-pkginclude_HEADERS = \
-	buffer.h checksum.h command.h filter.h getopt.h hash.h \
-	if.h linklist.h log.h \
-	memory.h network.h prefix.h routemap.h distribute.h sockunion.h \
-	str.h stream.h table.h thread.h vector.h version.h vty.h zebra.h \
-	plist.h zclient.h sockopt.h smux.h md5.h if_rmap.h keychain.h \
-	privs.h sigevent.h pqueue.h jhash.h zassert.h memtypes.h \
-	workqueue.h route_types.h libospf.h
-if ENABLE_OVSDB
-pkginclude_HEADERS += lib_vtysh_ovsdb_if.h vty_utils.h
-endif
+cliincludedir = $(includedir)/cli
+cliinclude_HEADERS = \
+       buffer.h checksum.h command.h filter.h getopt.h hash.h \
+       if.h linklist.h log.h \
+       memory.h network.h prefix.h routemap.h distribute.h sockunion.h \
+       str.h stream.h table.h thread.h vector.h version.h vty.h zebra.h \
+       plist.h zclient.h sockopt.h smux.h md5.h if_rmap.h keychain.h \
+       privs.h sigevent.h pqueue.h jhash.h zassert.h memtypes.h \
+       workqueue.h route_types.h libospf.h ../build/config.h \
+       lib_vtysh_ovsdb_if.h vty_utils.h
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = $(srcdir)/ops-cli.pc
 
 EXTRA_DIST = \
 	regex.c regex-gnu.h \
