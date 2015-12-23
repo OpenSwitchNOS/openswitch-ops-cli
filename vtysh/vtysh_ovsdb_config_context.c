@@ -197,6 +197,13 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
     vtysh_ovsdb_cli_print(p_msg, "lldp management-address %s", data);
   }
 
+  data = NULL;
+  data = smap_get(ifrow_config, SYSTEM_OTHER_CONFIG_MAP_CLI_SESSION_TIMEOUT);
+  if (data && (atoi(data) != DEFAULT_SESSION_TIMEOUT_PERIOD))
+  {
+    vtysh_ovsdb_cli_print(p_msg, "session-timeout %d", atoi(data));
+  }
+
   return e_vtysh_ok;
 }
 
