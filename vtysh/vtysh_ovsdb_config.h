@@ -59,6 +59,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_client_id_first = 0,
   e_vtysh_config_context_global,
   e_vtysh_config_context_vrf,
+  e_vtysh_config_context_sflow,
   e_vtysh_config_context_fan,
   e_vtysh_config_context_led,
   e_vtysh_config_context_staticroute,
