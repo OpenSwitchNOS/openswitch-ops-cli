@@ -214,6 +214,19 @@ vrf_ovsdb_init()
 }
 
 static void
+sflow_ovsdb_init()
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_sflow);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_sampling);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_header);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_targets);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_agent);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_agent_addr_family);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_sflow);
+}
+
+static void
 policy_ovsdb_init ()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
@@ -268,6 +281,7 @@ intf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_lacp_status);
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+    ovsdb_idl_add_table(idl, &ovsrec_table_sflow);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
@@ -528,6 +542,9 @@ ovsdb_init(const char *db_path)
     /* BGP tables. */
     bgp_ovsdb_init();
     l3routes_ovsdb_init();
+
+    /* SFLOW tables. */
+    sflow_ovsdb_init();
 
     /* VRF tables. */
     vrf_ovsdb_init();

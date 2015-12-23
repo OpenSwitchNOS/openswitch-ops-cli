@@ -63,6 +63,7 @@
 #include "smap.h"
 #include "lldp_vty.h"
 #include "vrf_vty.h"
+#include "sflow_vty.h"
 #include "neighbor_vty.h"
 #include "intf_vty.h"
 #include "l3routes_vty.h"
@@ -4636,6 +4637,7 @@ vtysh_init_vty (void)
   lldp_vty_init();
   vrf_vty_init();
   neighbor_vty_init();
+  sflow_vty_init();
   intf_vty_init();
   l3routes_vty_init();
   vlan_vty_init();
