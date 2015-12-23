@@ -68,7 +68,6 @@
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
 #include "led_vty.h"
-#include "mgmt_intf_vty.h"
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
@@ -90,7 +89,7 @@ VLOG_DEFINE_THIS_MODULE(vtysh);
 int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 int vtysh_show_startup = 0;
-
+#define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 #endif
 
 
@@ -874,11 +873,6 @@ static struct cmd_node interface_node =
    };
 
 #ifdef ENABLE_OVSDB
-static struct cmd_node mgmt_interface_node =
-{
-  MGMT_INTERFACE_NODE,
-  "%s(config-if-mgmt)# ",
-};
 
 static struct cmd_node link_aggregation_node =
 {
@@ -1280,7 +1274,7 @@ DEFUNSH (VTYSH_ALL,
    return CMD_SUCCESS;
 }
 
-static int
+int
 vtysh_exit (struct vty *vty)
 {
   switch (vty->node)
@@ -2019,16 +2013,6 @@ DEFUN (vtysh_intf_link_aggregation,
     return CMD_SUCCESS;
   }
 }
-
-DEFUN (vtysh_interface_mgmt,
-       vtysh_interface_mgmt_cmd,
-       "interface mgmt",
-       "Select an interface to configure\n"
-       "Configure management interface\n")
-{
-  vty->node = MGMT_INTERFACE_NODE;
-  return CMD_SUCCESS;
-}
 #else
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_interface,
@@ -2084,22 +2068,6 @@ ALIAS (vtysh_exit_interface,
       "Exit current mode and down to previous mode\n")
 #endif
 
-#ifdef ENABLE_OVSDB
-DEFUNSH (VTYSH_MGMT_INTF,
-             vtysh_exit_mgmt_interface,
-             vtysh_exit_mgmt_interface_cmd,
-             "exit",
-             "Exit current mode and down to previous mode\n")
-{
-  return vtysh_exit (vty);
-}
-#ifndef ENABLE_OVSDB
-ALIAS (vtysh_exit_mgmt_interface,
-       vtysh_quit_mgmt_interface_cmd,
-       "quit",
-       "Exit current mode and down to previous mode\n")
-#endif /* ifndef ENABLE_OVSDB */
-#endif
 /* Memory */
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_memory,
@@ -3314,7 +3282,7 @@ DEFUN (vtysh_start_zsh,
 }
 #endif
 
-static void
+void
 vtysh_install_default (enum node_type node)
 {
    install_element (node, &config_list_cmd);
@@ -4310,7 +4278,6 @@ vtysh_init_vty (void)
    install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
    install_node (&vlan_node, NULL);
-   install_node (&mgmt_interface_node, NULL);
    install_node (&link_aggregation_node, NULL);
    install_node (&vlan_interface_node, NULL);
 #endif
@@ -4350,7 +4317,6 @@ vtysh_init_vty (void)
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
    vtysh_install_default (VLAN_NODE);
-   vtysh_install_default (MGMT_INTERFACE_NODE);
    vtysh_install_default (LINK_AGGREGATION_NODE);
    vtysh_install_default (VLAN_INTERFACE_NODE);
    vtysh_install_default (DHCP_SERVER_NODE);
@@ -4393,7 +4359,6 @@ vtysh_init_vty (void)
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
    install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
@@ -4403,7 +4368,6 @@ vtysh_init_vty (void)
    install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
    install_element (BGP_IPV6_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
@@ -4523,12 +4487,8 @@ vtysh_init_vty (void)
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_vlan_cmd);
-   install_element (CONFIG_NODE, &vtysh_interface_mgmt_cmd);
    install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_exit_mgmt_interface_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (CONFIG_NODE, &vtysh_intf_link_aggregation_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_exit_mgmt_interface_cmd);
    install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
@@ -4634,6 +4594,11 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_reboot_cmd);
 
 #ifdef ENABLE_OVSDB
+  /* Plugins_cli_init will install all the features
+   * CLI node and elements by using Libltdl-interface.
+   */
+  plugins_cli_init(FEATURES_CLI_PATH);
+
   lldp_vty_init();
   vrf_vty_init();
   neighbor_vty_init();
@@ -4641,10 +4606,9 @@ vtysh_init_vty (void)
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();
-   dhcp_tftp_vty_init();
+  dhcp_tftp_vty_init();
   /* Initialise System LED cli */
   led_vty_init();
-  mgmt_intf_vty_init();
   /* Initialise System cli */
   system_vty_init();
   fan_vty_init();

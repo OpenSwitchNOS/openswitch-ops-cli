@@ -28,7 +28,7 @@
 #ifndef VTYSH_OVSDB_CONFIG_H
 #define VTYSH_OVSDB_CONFIG_H
 
-#include "lib/vty.h"
+#include "vty.h"
 
 /* general vtysh return type */
 typedef enum vtysh_ret_val_enum
@@ -44,9 +44,9 @@ typedef enum vtysh_context_idenum
   e_vtysh_config_context = 0,
   e_vtysh_router_context,
   e_vtysh_vlan_context,
-  e_vtysh_interface_lag_context,
   e_vtysh_interface_context,
   e_vtysh_mgmt_interface_context,
+  e_vtysh_interface_lag_context,
   e_vtysh_dependent_config,
   e_vtysh_dhcp_tftp_context,
   e_vtysh_sftp_server_context,
