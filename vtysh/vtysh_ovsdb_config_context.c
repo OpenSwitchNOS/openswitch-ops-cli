@@ -38,11 +38,13 @@
 #include "logrotate_vty.h"
 #include "openswitch-dflt.h"
 #include "ecmp_vty.h"
+#include <string.h>
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
 
 char globalconfigclientname[] = "vtysh_config_context_global_clientcallback";
 char vrfconfigclientname[]= "vtysh_config_context_vrf_clientcallback";
+char sflowconfigclientname[]= "vtysh_config_context_sflow_clientcallback";
 char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback";
 char ledconfigclientname[]= "vtysh_config_context_led_clientcallback";
 char staticrouteconfigclientname[]= "vtysh_config_context_staticroute_clientcallback";
@@ -525,6 +527,80 @@ vtysh_config_context_vrf_clientcallback(void *p_private)
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_config_context_sflow_clientcallback
+| Responsibility : sflow client callback routine
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_config_context_sflow_clientcallback(void *p_private)
+{
+  extern struct ovsdb_idl *idl;
+  int i=0;
+  char *ptr=NULL, *ip=NULL, *port=NULL, *vrf=NULL, *copy=NULL;
+  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+  const struct ovsrec_system *ovs_row = NULL;
+  ovs_row = ovsrec_system_first (idl);
+  const struct ovsrec_sflow *sflow_row = NULL;
+  const char delim[2] = "/";
+  OVSREC_SFLOW_FOR_EACH(sflow_row, p_msg->idl){
+    if (ovs_row->sflow != NULL) {
+    vtysh_ovsdb_cli_print(p_msg, "sflow Enable");
+      if (sflow_row->n_targets > 0)
+        {
+          for(i = 0; i < sflow_row->n_targets; i++)
+            {
+              copy = xstrdup(sflow_row->targets[i]);
+              ptr = strtok(copy, delim);
+              if (ptr != NULL) {
+                  ip = xstrdup(ptr);
+                  ptr = strtok(NULL, delim);
+              }
+              if(ptr != NULL)
+                {
+                  port = xstrdup(ptr);
+                  ptr = strtok(NULL, delim);
+                }
+              if(ptr != NULL)
+                {
+                  vrf = xstrdup(ptr);
+                }
+              if(port == NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s",ip);
+                }
+              if(port != NULL && vrf == NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s", ip, port);
+                }
+              if(port != NULL && vrf != NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s vrf %s", ip, port, vrf);
+                }
+                    }
+     }
+      if(sflow_row->agent != NULL && sflow_row->agent_addr_family == NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s", sflow_row->agent);
+        }
+      else if(sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
+        {
+           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s agent-address-family %s", sflow_row->agent, sflow_row->agent_addr_family);
+        }
+      if(sflow_row->sampling != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow sampling %lld", *(sflow_row->sampling));
+
+        }
+  }
+  return e_vtysh_ok;
+ }
+
+}
+
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_subsystemtable_parse_othercfg
 | Responsibility : parse subsystem table
 | scope: Static
@@ -772,6 +848,21 @@ vtysh_init_config_context_clients()
     assert(0);
     return retval;
   }
+
+  retval = e_vtysh_error;
+  memset(&client, 0, sizeof(vtysh_context_client));
+  client.p_client_name = sflowconfigclientname;
+  client.client_id = e_vtysh_config_context_sflow;
+  client.p_callback = &vtysh_config_context_sflow_clientcallback;
+  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_sflow, &client);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "config context unable to add sflow client callback");
+    assert(0);
+    return retval;
+  }
+
 
   retval = e_vtysh_error;
   memset(&client, 0, sizeof(vtysh_context_client));
