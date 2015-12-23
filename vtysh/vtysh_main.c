@@ -51,6 +51,9 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
 #endif
 
+extern int64_t timeout_start;
+extern struct termios tp;
+
 /* VTY shell program name. */
 char *progname;
 
@@ -200,6 +203,11 @@ vtysh_rl_gets ()
       free (line_read);
       line_read = NULL;
     }
+
+  /* Timer start for idle session timeout. */
+  timeout_start = time_now();
+  /* Copying terminal settings to global variable. */
+  tcgetattr(STDIN_FILENO, &tp);
 
   /* Get a line from the user.  Change prompt according to node.  XXX. */
   line_read = readline (vtysh_prompt ());
