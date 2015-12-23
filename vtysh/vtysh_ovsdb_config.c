@@ -37,7 +37,7 @@
 #include "vtysh_ovsdb_vlan_context.h"
 #include "vtysh_ovsdb_router_context.h"
 #include "vtysh_ovsdb_intf_lag_context.h"
-#include "vtysh_ovsdb_mgmt_intf_context.h"
+#include <dlfcn.h>
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
@@ -509,12 +509,32 @@ vtysh_ovsdb_config_logmsg(int loglevel, char *fmt, ...)
 void
 vtysh_ovsdb_init_clients(void)
 {
+  void *handle;
+  int (*client_fun)();
   /* register vtysh context table client callbacks */
   vtysh_init_config_context_clients();
   vtysh_init_router_context_clients();
   vtysh_init_vlan_context_clients();
   vtysh_init_intf_context_clients();
-  vtysh_init_mgmt_intf_context_clients();
+  /* Moved "vtysh_init_mgmt_intf_context_clients" function definition file into
+   * ops-mgmt-intf repo as part of modularization of ops-cli.
+   * As of now show running CLI infra is not taking in modularization
+   * of ops-cli.
+   * By using dlopen mechanism supporting the show running CLI infra,dlopen will
+   * loading this "vtysh_init_mgmt_intf_context_clients" symbol's
+   * shared object at runtime.
+   * As part of show running CLI infra design below code will be
+   * modified to support ops-cli modularity.
+   */
+  handle = dlopen ("/usr/lib/cli/plugins/libmgmt_intf_cli.so", RTLD_LAZY);
+  if (!handle) {
+       VLOG_ERR("mgmt_intf_context_clients register is failed");
+       return e_vtysh_error;
+  }
+  client_fun = dlsym(handle, "vtysh_init_mgmt_intf_context_clients");
+  if (client_fun != NULL) {
+       client_fun();
+  }
   vtysh_init_intf_lag_context_clients();
   vtysh_init_dhcp_tftp_context_clients();
   vtysh_init_sftp_context_clients();

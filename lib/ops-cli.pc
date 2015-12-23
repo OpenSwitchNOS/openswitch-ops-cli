@@ -1,0 +1,9 @@
+prefix=/exec_prefix/
+libdir=/libdir/
+includedir=/usr/include
+
+Name: ops-cli
+Description: cli header library
+Version: @VERSION@
+Libs: -L${libdir} -lzebra_cli
+Cflags: -I${includedir}/cli

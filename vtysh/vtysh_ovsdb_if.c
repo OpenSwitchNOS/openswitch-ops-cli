@@ -70,7 +70,7 @@ static struct unixctl_server *appctl;
 static int cur_cfg_no = 0;
 
 boolean exiting = false;
-volatile boolean vtysh_exit = false;
+volatile boolean vtysh_exit_flag = false;
 extern struct vty *vty;
 
 /* Running idl run and wait to fetch the data from the DB. */
@@ -882,8 +882,8 @@ vtysh_ovsdb_main_thread(void *arg)
     /* Detach thread to avoid memory leak upon exit. */
     pthread_detach(pthread_self());
 
-    vtysh_exit = false;
-    while (!vtysh_exit) {
+    vtysh_exit_flag = false;
+    while (!vtysh_exit_flag) {
         VTYSH_OVSDB_LOCK;
 
         /* This function updates the Cache by running
@@ -897,7 +897,7 @@ vtysh_ovsdb_main_thread(void *arg)
         vtysh_periodic_refresh();
 
         VTYSH_OVSDB_UNLOCK;
-        if (vtysh_exit) {
+        if (vtysh_exit_flag) {
             poll_immediate_wake();
         } else {
         /* The poll function polls on the OVSDB socket
