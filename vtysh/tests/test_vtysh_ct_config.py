@@ -268,6 +268,60 @@ timeout #########
             'Test to configure no session timeout - Failed!'
         return True
 
+    def restoreConfigFromRunningConfig(self):
+        info("########## "
+             "Test to verify show running-config output used "
+             "to restore configuration "
+             "#########\n\n")
+        s1 = self.net.switches[0]
+        commands = ['vlan 900', 'no shutdown', 'interface lag 1',
+                    'no routing', 'vlan access 900', 'interface 1',
+                    'no shutdown', 'no routing', 'vlan access 900',
+                    'interface 2', 'no shutdown', 'lag 1']
+        restoreCommands = ['no vlan 900', 'no interface lag 1', 'interface 1',
+                    'shutdown', 'routing', 'no vlan access 900',
+                    'interface 2', 'shutdown', 'no lag 1']
+
+        s1.cmdCLI('configure terminal')
+        # Applying configuration for the first time
+        for element in commands:
+            s1.cmdCLI(element)
+
+        # Saving first configuration
+        firstOut = s1.cmdCLI('do show running-config')
+        firstLines = firstOut.split('\n')
+
+        #Erasing configuration
+        for element in restoreCommands:
+            s1.cmdCLI(element)
+
+        # Applying configuration with show running-config output
+        for line in firstLines:
+            s1.cmdCLI(line)
+
+        # Saving configuration for the second time
+        secondOut = s1.cmdCLI('do show running-config')
+        secondLines = secondOut.split('\n')
+
+        # Eliminating last element from list, this is the name
+        # of the switch that the test should not validate
+        del firstLines[-1]
+        del secondLines[-1]
+
+        # If list don't have the same elements mean that the
+        # configuration was not properly applied
+        assert sorted(firstLines) == sorted(secondLines),   \
+            'Test to restore config with output from show ' \
+            'running-config - Failed!'
+
+        # Cleaning configuration to not affect other tests
+        for element in restoreCommands:
+            s1.cmdCLI(element)
+
+        s1.cmdCLI('end')
+
+        return True
+
 
 class Test_showrunningconfig:
 
@@ -281,6 +335,12 @@ class Test_showrunningconfig:
         Test_showrunningconfig.test = ShowRunningConfigTests()
 
   # show running config tests.
+
+    def test_restore_config(self):
+        if self.test.restoreConfigFromRunningConfig():
+            info("########## Test to verify show running-config "
+                 "output used to restore configuration - SUCCESS! "
+                 "########## \n")
 
     def test_enable_lldp_commands(self):
         if self.test.enablelldpTest():
