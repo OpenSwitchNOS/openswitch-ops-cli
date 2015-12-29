@@ -1222,6 +1222,26 @@ parse_lacp_othercfg(const struct smap *ifrow_config, const char *if_name,
 
     }
 
+    data = smap_get(ifrow_config,
+                    INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
+
+    if (data)
+    {
+        if (!(*bPrinted))
+        {
+            *bPrinted = true;
+            vty_out (vty, "interface %s%s", if_name, VTY_NEWLINE);
+        }
+
+        vty_out (vty,
+                 "%3s%s %s%s",
+                 "",
+                 "lacp aggregation-key",
+                 data,
+                 VTY_NEWLINE);
+
+    }
+
     return 0;
 }
 
@@ -1877,6 +1897,7 @@ show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
     // Indexes for loops
     int interface_index = 0;
     int stat_index = 0;
+    int other_config_index = 0;
 
     // Array to keep the statistics for each lag while adding the
     // stats for each interface in the lag.
@@ -1898,7 +1919,6 @@ show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
 
         vty_out(vty, "Aggregate-name %s %s", lag_port->name, VTY_NEWLINE);
         vty_out(vty, " Aggregated-interfaces : ");
-
 
         lag_speed = 0;
         for (interface_index = 0; interface_index < lag_port->n_interfaces; interface_index++)
@@ -1924,6 +1944,29 @@ show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
             }
         }
         vty_out(vty, "%s", VTY_NEWLINE);
+
+        /* Retrieve aggregation-key from previously used if_row pointer */
+        if (if_row)
+        {
+            datum = ovsrec_interface_get_other_config(if_row,
+                                                 OVSDB_TYPE_STRING,
+                                                 OVSDB_TYPE_STRING);
+
+            for (other_config_index = 0;
+                 other_config_index < datum->n;
+                 other_config_index++)
+            {
+                if (strcmp(datum->keys[other_config_index].string,
+                           INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY)
+                           == 0)
+                {
+                    vty_out(vty, " Aggregation-key : %s",
+                                 datum->values[other_config_index]);
+                    vty_out(vty, "%s", VTY_NEWLINE);
+                }
+            }
+        }
+
         aggregate_mode = lag_port->lacp;
         if(aggregate_mode)
             vty_out(vty, " Aggregate mode : %s %s", aggregate_mode, VTY_NEWLINE);
