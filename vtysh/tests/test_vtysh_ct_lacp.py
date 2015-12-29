@@ -282,11 +282,11 @@ class LACPCliTest(OpsVsiTest):
         # info('''%s \n''', out)
         lines = out.split('\n')
         for line in lines:
-            if 'lag3         --      --  --      --     --                        auto     --' in line:
+            if 'lag3' in line and 'auto' in line and line.count("--") is 6:
                 success += 1
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4' in line and 'passive' in line and 'auto' in line and line.count('--') is 5:
                 success += 1
-            if 'lag5         --      --  active  --     --                        auto     --' in line:
+            if 'lag5' in line and 'active' in line and 'auto' in line and line.count('--') is 5:
                 success += 1
         if success != 3:
             show_interface_brief = False
@@ -298,7 +298,7 @@ class LACPCliTest(OpsVsiTest):
         out = s1.cmdCLI('show interface lag4 brief')
         lines = out.split('\n')
         for line in lines:
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4' in line and 'passive' in line and 'auto' in line and line.count('--') is 5:
                 success += 1
             if 'lag1' in line or 'lag2' in line or 'lag3' in line or 'lag5' in line:
                 success -= 1
@@ -374,6 +374,51 @@ class LACPCliTest(OpsVsiTest):
 
         return True
 
+    def showInterfaceLagWithInterfaces(self):
+        info('''
+########## Test show interface lag command with interfaces ##########
+''')
+
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+
+        # Configure LAG 100
+        s1.cmdCLI('interface lag 100')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('exit')
+
+        # Asign interface to LAG 100
+        s1.cmdCLI('interface 10')
+        s1.cmdCLI('lag 100')
+        s1.cmdCLI('exit')
+
+        # exit configure terminal
+        s1.cmdCLI('exit')
+
+        success = 0;
+        out = s1.cmdCLI('show interface lag100')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Aggregate-name lag100 ' in line:
+                success += 1
+            if 'Aggregation-key :' in line and '100' in line:
+                success += 1
+            if 'Aggregated-interfaces : ' in line:
+                success += 1
+            if 'Aggregate mode' in line and 'active' in line:
+                success += 1
+            if 'Speed' in line and '0 Mb/s' in line:
+                success += 1
+
+        assert (success == 5), \
+            'Test show interface lag100 command - FAILED!'
+
+        # Cleanup
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('no interface lag 100')
+        s1.cmdCLI('exit')
+
+        return True
 
 class Test_lacp_cli:
 
@@ -438,6 +483,12 @@ class Test_lacp_cli:
         if self.test.showInterfaceLag():
             info('''
 ########## Test show interface lag command - SUCCESS! ##########
+''')
+
+    def test_showInterfaceLagWithInterfaces(self):
+        if self.test.showInterfaceLagWithInterfaces():
+            info('''
+########## Test show interface lag command with interfaces - SUCCESS! ##########
 ''')
 
     def teardown_class(cls):
