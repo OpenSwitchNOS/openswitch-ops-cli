@@ -21,7 +21,6 @@ from opsvsi.docker import *
 from opsvsi.opsvsitest import *
 import re
 
-
 class LACPCliTest(OpsVsiTest):
 
     def setupNet(self):
@@ -180,9 +179,7 @@ class LACPCliTest(OpsVsiTest):
             if 'lacp-time=fast' in line:
                 success += 1
                 break
-        if success != 4:
-            lag_context_cmds_found = False
-        assert (lag_context_cmds_found is True), \
+        assert success == 4,\
             'Test LAG context commands - FAILED!'
 
         success = 0
@@ -217,9 +214,7 @@ class LACPCliTest(OpsVsiTest):
             if 'lacp-time' in line:
                 success += 1
                 break
-        if success != 0:
-            lag_context_cmds_found = False
-        assert (lag_context_cmds_found is True), \
+        assert success == 0,\
             'Test LAG context commands - FAILED!'
         return True
 
@@ -227,27 +222,22 @@ class LACPCliTest(OpsVsiTest):
         info('''
 ########## Test interface context commands ##########
 ''')
-        interface_context_cmds_found = True
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
         s1.cmdCLI('interface 1')
         s1.cmdCLI('lacp port-id 999')
+        s1.cmdCLI('lacp port-priority 111')
         success = 0
         out = s1.cmd('ovs-vsctl list interface 1')
         lines = out.split('\n')
         for line in lines:
             if 'lacp-port-id="999"' in line:
                 success += 1
-        s1.cmdCLI('lacp port-priority 111')
-        out = s1.cmd('ovs-vsctl list interface 1')
-        lines = out.split('\n')
-        for line in lines:
             if 'lacp-port-priority="111"' in line:
                 success += 1
-
-        if success != 2:
-            interface_context_cmds_found = False
-        assert (interface_context_cmds_found is True), \
+            if 'lacp-aggregation-key="1"' in line:
+                success += 1
+        assert success == 3,\
             'Test interface context commands - FAILED!'
         return True
 
@@ -256,8 +246,6 @@ class LACPCliTest(OpsVsiTest):
         info('''
 ########## Test show interface lag brief command ##########
 ''')
-        show_interface_brief = True
-        show_interface_lag_brief = True
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
 
@@ -282,15 +270,13 @@ class LACPCliTest(OpsVsiTest):
         # info('''%s \n''', out)
         lines = out.split('\n')
         for line in lines:
-            if 'lag3         --      --  --      --     --                        auto     --' in line:
+            if 'lag3' in line and 'auto' in line and line.count("--") is 6:
                 success += 1
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4' in line and 'passive' in line and 'auto' in line and line.count('--') is 5:
                 success += 1
-            if 'lag5         --      --  active  --     --                        auto     --' in line:
+            if 'lag5' in line and 'active' in line and 'auto' in line and line.count('--') is 5:
                 success += 1
-        if success != 3:
-            show_interface_brief = False
-        assert (show_interface_brief is True), \
+        assert success == 3,\
             'Test show interface brief command - FAILED!'
 
         # Verify show interface lag4 brief shows only lag 4
@@ -298,13 +284,11 @@ class LACPCliTest(OpsVsiTest):
         out = s1.cmdCLI('show interface lag4 brief')
         lines = out.split('\n')
         for line in lines:
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4' in line and 'passive' in line and 'auto' in line and line.count('--') is 5:
                 success += 1
             if 'lag1' in line or 'lag2' in line or 'lag3' in line or 'lag5' in line:
                 success -= 1
-        if success != 1:
-            show_interface_lag_brief = False
-        assert (show_interface_lag_brief is True), \
+        assert success == 1,\
             'Test show interface lag4 brief command - FAILED!'
 
         return True
@@ -313,9 +297,6 @@ class LACPCliTest(OpsVsiTest):
         info('''
 ########## Test show interface lag command ##########
 ''')
-        show_interface_lag1 = True
-        show_interface_lag4 = True
-        show_interface_lag5 = True
         s1 = self.net.switches[0]
 
         # Verify 'show interface lag1' shows correct  information about lag1
@@ -331,9 +312,9 @@ class LACPCliTest(OpsVsiTest):
                 success += 1
             if 'Speed' in line and '0 Mb/s' in line:
                 success += 1
-        if success != 4:
-            show_interface_lag1 = False
-        assert (show_interface_lag1 is True), \
+            if 'Aggregation-key' in line and '1' in line:
+                success += 1
+        assert success == 5,\
             'Test show interface lag1 command - FAILED!'
 
         # Verify 'show interface lag4' shows correct  information about lag4
@@ -349,9 +330,7 @@ class LACPCliTest(OpsVsiTest):
                 success += 1
             if 'Speed' in line and '0 Mb/s' in line:
                 success += 1
-        if success != 4:
-            show_interface_lag4 = False
-        assert (show_interface_lag4 is True), \
+        assert success == 4,\
             'Test show interface lag4 command - FAILED!'
 
         # Verify 'show interface lag5' shows correct  information about lag5
@@ -367,13 +346,42 @@ class LACPCliTest(OpsVsiTest):
                 success += 1
             if 'Speed' in line and '0 Mb/s' in line:
                 success += 1
-        if success != 4:
-            show_interface_lag5 = False
-        assert (show_interface_lag5 is True), \
+        assert success == 4,\
             'Test show interface lag5 command - FAILED!'
 
         return True
 
+    def showLacpInterfaces(self):
+        show_lacp_interface = True
+        success = 0
+        s1 = self.net.switches[0]
+        out = s1.cmdCLI('show lacp interface')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Intf Aggregate Port    Port     Key  State   '\
+               'System-id         System   Aggr' in line:
+                success += 1
+            if 'name      id      Priority                                '\
+               'Priority Key' in line:
+                success += 1
+            if 'Intf Aggregate Partner Port     Key  State   '\
+               'System-id         System   Aggr' in line:
+                success += 1
+            if 'name      Port-id Priority                                '\
+               'Priority Key' in line:
+                success += 1
+            if '1    lag1' in line:
+                success += 1
+            if '2    lag1' in line:
+                success += 1
+            if '3    lag2' in line:
+                success += 1
+            if '4    lag2' in line:
+                success += 1
+
+        assert success == 12,\
+            'Test show lacp interface command = FAILED!'
+        return True
 
 class Test_lacp_cli:
 
@@ -438,6 +446,12 @@ class Test_lacp_cli:
         if self.test.showInterfaceLag():
             info('''
 ########## Test show interface lag command - SUCCESS! ##########
+''')
+
+    def test_showLacpInterface(self):
+        if self.test.showLacpInterfaces():
+            info('''
+########## Test show lacp interface command - SUCCESS! ##########
 ''')
 
     def teardown_class(cls):

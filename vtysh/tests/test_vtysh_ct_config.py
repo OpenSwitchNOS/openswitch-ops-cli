@@ -268,6 +268,34 @@ timeout #########
             'Test to configure no session timeout - Failed!'
         return True
 
+    def createLacpTest(self):
+        info("\n########## "\
+             "Test to verify lacp configuration"\
+             "in show running-config command "\
+             "#########\n\n")
+        s1 = self.net.switches[0]
+        success = 0
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('lag 1')
+        out = s1.cmdCLI('do show running-config')
+        s1.cmdCLI('exit')
+        lines = out.split('\n')
+        for line in lines:
+            if 'interface lag 1' in line:
+                success += 1
+            if 'lacp mode active' in line:
+                success += 1
+            if 'lag 1' in line:
+                success += 1
+            if 'lacp agregation key 1' in line:
+                success += 1
+        assert success == 4,\
+            'Test to configure lacp - Failed!'
+
+        return True
 
 class Test_showrunningconfig:
 
@@ -326,6 +354,12 @@ class Test_showrunningconfig:
         if self.test.setdefaultSessionTimeoutTest():
             print '########## Test to verify show running-config ' \
                   'for no session timeout - SUCCESS! ##########'
+
+    def test_set_default_sessionTimeout(self):
+        if self.test.createLacpTest():
+            info( '########## Test to verify show running-config ' \
+                  'for lacp configuration - SUCCESS! ##########\n')
+
 
     def teardown_class(cls):
 
