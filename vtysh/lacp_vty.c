@@ -58,13 +58,16 @@ delete_lag(const char *lag_name)
   const struct ovsrec_vrf *vrf_row = NULL;
   const struct ovsrec_bridge *bridge_row = NULL;
   const struct ovsrec_port *lag_port_row = NULL;
+  const struct ovsrec_interface *interface_row = NULL;
   bool lag_to_vrf = false;
   bool lag_to_bridge = false;
   struct ovsrec_port **ports;
-  int k=0, n=0, i=0;
+  int k=0, n=0, i=0, intf_index=0;
   struct ovsdb_idl_txn* status_txn = NULL;
   enum ovsdb_idl_txn_status status;
   bool port_found = false;
+
+  struct smap smap = SMAP_INITIALIZER(&smap);
 
   /* Return if LAG port doesn't exit */
   OVSREC_PORT_FOR_EACH(lag_port_row, idl)
@@ -74,6 +77,7 @@ delete_lag(const char *lag_name)
        port_found = true;
     }
   }
+
 
   if(!port_found)
   {
@@ -129,6 +133,17 @@ port_attached:
     VLOG_ERR("Port table entry not found either in VRF or in bridge.Function=%s, Line=%d", __func__,__LINE__);
     return CMD_OVSDB_FAILURE;
   }
+
+  /* Remove Aggregation-key */
+  for (intf_index=0; intf_index < lag_port_row->n_interfaces; intf_index++)
+  {
+      interface_row = lag_port_row->interfaces[intf_index];
+
+      smap_clone(&smap, &interface_row->other_config);
+      smap_remove(&smap, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
+      ovsrec_interface_set_other_config(interface_row, &smap);
+  }
+  smap_destroy(&smap);
 
   if(lag_to_vrf)
   {
@@ -730,70 +745,6 @@ DEFUN (cli_lacp_intf_set_port_priority,
   return lacp_intf_set_port_priority((char*)vty->index, argv[0]);
 }
 
-#if 0
-static int
-lacp_intf_set_aggregation_key(const char *if_name, const char *agg_key)
-{
-   const struct ovsrec_interface * row = NULL;
-   struct ovsdb_idl_txn* status_txn = NULL;
-   enum ovsdb_idl_txn_status status;
-   struct smap smap = SMAP_INITIALIZER(&smap);
-
-   status_txn = cli_do_config_start();
-   if(status_txn == NULL)
-   {
-      VLOG_ERR(LACP_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
-      cli_do_config_abort(status_txn);
-      return CMD_OVSDB_FAILURE;
-   }
-
-   row = ovsrec_interface_first(idl);
-   if(!row)
-   {
-      cli_do_config_abort(status_txn);
-      return CMD_OVSDB_FAILURE;
-   }
-
-   OVSREC_INTERFACE_FOR_EACH(row, idl)
-   {
-      if(strcmp(row->name, if_name) == 0)
-      {
-         smap_clone(&smap, &row->other_config);
-         smap_replace(&smap,INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY , agg_key);
-
-         ovsrec_interface_set_other_config(row, &smap);
-         smap_destroy(&smap);
-         break;
-      }
-   }
-
-   status = cli_do_config_finish(status_txn);
-
-   if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
-   {
-      return CMD_SUCCESS;
-   }
-   else
-   {
-      VLOG_ERR(LACP_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
-      return CMD_OVSDB_FAILURE;
-   }
-}
-#endif
-
-#if 0
-/* OPS_TODO: Enable this command once LACP deamon supports aggregation-key */
-DEFUN (cli_lacp_intf_set_aggregation_key,
-      cli_lacp_intf_set_aggregation_key_cmd,
-      "lacp aggregation-key <1-65535>",
-      LACP_STR
-      "Set aggregation-key is used in LACP negotiation\n"
-      "The range is 1 to 65535\n")
-{
-  return lacp_intf_set_aggregation_key((char*)vty->index, argv[0]);
-}
-#endif
-
 /*
  * Function : remove_port_reference
  * Responsibility : Remove port reference from VRF / bridge
@@ -867,6 +818,8 @@ lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
    struct ovsrec_interface **interfaces;
    const struct ovsrec_port *lag_port = NULL;
    int i=0, k=0, n=0;
+
+   struct smap smap = SMAP_INITIALIZER(&smap);
 
    snprintf(lag_name, LAG_NAME_LENGTH, "%s%s", LAG_PORT_NAME_PREFIX, lag_number);
 
@@ -979,6 +932,14 @@ exit_loop:
    ovsrec_port_set_interfaces(lag_port, interfaces, lag_port->n_interfaces + 1);
    free(interfaces);
 
+   /* Add Aggregation-Key */
+   smap_clone(&smap, &interface_row->other_config);
+   smap_replace(&smap, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY, lag_number);
+   ovsrec_interface_set_other_config(interface_row, &smap);
+
+   smap_destroy(&smap);
+
+   /* Execute Transaction */
    status = cli_do_config_finish(status_txn);
 
    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -1015,6 +976,7 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
    const struct ovsrec_port *lag_port = NULL;
    int i=0, n=0, k=0;
    bool interface_found = false;
+   struct smap smap = SMAP_INITIALIZER(&smap);
 
    /* LAG name should be in the format of lag1,lag2,etc  */
    snprintf(lag_name, LAG_NAME_LENGTH, "%s%s", LAG_PORT_NAME_PREFIX, lag_number);
@@ -1065,6 +1027,12 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
          break;
       }
    }
+
+   /* Remove Aggregation Key */
+   smap_clone(&smap, &interface_row->other_config);
+   smap_remove(&smap, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
+   ovsrec_interface_set_other_config(interface_row, &smap);
+   smap_destroy(&smap);
 
    /* Unlink the interface from the Port row found*/
    interfaces = xmalloc(sizeof *lag_port->interfaces * (lag_port->n_interfaces-1));
@@ -1284,12 +1252,14 @@ lacp_show_interfaces_all()
    char lacp_state_ovsdb[LACP_STATUS_FIELD_COUNT];
    memset(lacp_state_ovsdb, 0, LACP_STATUS_FIELD_COUNT);
    const char *lacp_state = NULL;
-   const char *key = NULL, *port_priority = NULL, *port_id = NULL;
+   const char *key = NULL, *agg_key = NULL, *port_priority = NULL, *port_id = NULL;
    char *port_priority_id_ovsdb = NULL, *system_priority_id_ovsdb = NULL;
    const char *system_id = NULL, *system_priority = NULL;
    const char *data_in_db = NULL;
 
-   const char columns[] = "%-12s %-8s %-10s %-6s %-10s %-18s %-8s";
+   const char columns[] = "%-5s%-10s%-8s%-9s%-5s%-8s%-18s%-9s%-8s";
+   const char *delimiter = "---------------------------------------"
+                           "---------------------------------------";
 
    vty_out(vty,"%s", VTY_NEWLINE);
    vty_out(vty, "State abbreviations :%s", VTY_NEWLINE);
@@ -1303,23 +1273,23 @@ lacp_show_interfaces_all()
    vty_out(vty,"%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
    vty_out(vty, "Actor details of all interfaces:%s",VTY_NEWLINE);
-   vty_out(vty, "------------------------------------------------------------------------------");
+   vty_out(vty, delimiter);
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, columns, "Intf-name", "Port-id", "Priority", "Key", "State", "System-id", "Priority");
+   vty_out(vty, columns, "Intf", "Aggregate", "Port", "Port", "Key", "State", "System-id", "System", "Aggr");
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, "------------------------------------------------------------------------------");
+   vty_out(vty, columns, "", "name", "id", "Priority", "", "", "", "Priority", "Key");
+   vty_out(vty,"%s", VTY_NEWLINE);
+   vty_out(vty, delimiter);
    vty_out(vty,"%s", VTY_NEWLINE);
 
    OVSREC_PORT_FOR_EACH(lag_port, idl)
    {
       if(strncmp(lag_port->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
       {
-         vty_out(vty, "Aggregate-name : %s%s", lag_port->name, VTY_NEWLINE);
-
          for (k = 0; k < lag_port->n_interfaces; k++)
          {
             if_row = lag_port->interfaces[k];
-            port_id = port_priority = key = lacp_state = system_id = system_priority = NULL;
+            port_id = port_priority = key = agg_key = lacp_state = system_id = system_priority = NULL;
             if (data_in_db = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_STATE))
             {
               if (parse_state_from_db(data_in_db, lacp_state_ovsdb) == LACP_STATUS_FIELD_COUNT)
@@ -1327,6 +1297,7 @@ lacp_show_interfaces_all()
                 lacp_state = get_lacp_state(lacp_state_ovsdb);
               }
               key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_KEY);
+              agg_key = smap_get(&if_row->other_config, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
               /*
               * The system and port priority are kept in the lacp_status column as part of the id fields separated by commas
               * e.g port_id = 1,18 where 1 = priority and 18 = id
@@ -1336,15 +1307,20 @@ lacp_show_interfaces_all()
               system_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_ACTOR_SYSTEM_ID));
               parse_id_from_db(system_priority_id_ovsdb, &system_priority, &system_id);
             }
+
+            /* Display information */
             vty_out(vty, columns,
                        if_row->name,
+                       lag_port->name,
                        port_id ? port_id : " ",
                        port_priority ? port_priority : " ",
                        key ? key : " ",
                        lacp_state ? lacp_state : " ",
                        system_id ? system_id : " ",
-                       system_priority ? system_priority : " ");
+                       system_priority ? system_priority : " ",
+                       agg_key ? agg_key : " ");
             vty_out(vty,"%s", VTY_NEWLINE);
+
             if (port_priority_id_ovsdb){
                 free(port_priority_id_ovsdb);
                 port_priority_id_ovsdb = NULL;
@@ -1354,32 +1330,29 @@ lacp_show_interfaces_all()
                 system_priority_id_ovsdb = NULL;
             }
          }
-         if(k == 0)
-           vty_out(vty, "No interfaces are attached to %s%s", lag_port->name, VTY_NEWLINE);
       }
    }
+
    vty_out(vty,"%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
    vty_out(vty, "Partner details of all interfaces:%s",VTY_NEWLINE);
-   vty_out(vty, "------------------------------------------------------------------------------");
+   vty_out(vty, delimiter);
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, columns, "Intf-name", "Partner", "Priority", "Key", "State", "System-id", "Priority");
+   vty_out(vty, columns, "Intf", "Aggregate", "Partner", "Port", "Key", "State", "System-id", "System", "Aggr");
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, "%-12s %-8s"," ","port-id");
+   vty_out(vty, columns, "", "name", "Port-id", "Priority", "", "", "", "Priority", "Key");
    vty_out(vty,"%s", VTY_NEWLINE);
-   vty_out(vty, "------------------------------------------------------------------------------");
+   vty_out(vty, delimiter);
    vty_out(vty,"%s", VTY_NEWLINE);
 
    OVSREC_PORT_FOR_EACH(lag_port, idl)
    {
       if(strncmp(lag_port->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
       {
-         vty_out(vty, "Aggregate-name : %s%s", lag_port->name, VTY_NEWLINE);
-
          for (k = 0; k < lag_port->n_interfaces; k++)
          {
             if_row = lag_port->interfaces[k];
-            port_id = port_priority = key = lacp_state = system_id = system_priority = NULL;
+            port_id = port_priority = key = agg_key = lacp_state = system_id = system_priority = NULL;
             if (data_in_db = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_STATE))
             {
               if (parse_state_from_db(data_in_db, lacp_state_ovsdb) == LACP_STATUS_FIELD_COUNT)
@@ -1387,6 +1360,7 @@ lacp_show_interfaces_all()
                 lacp_state = get_lacp_state(lacp_state_ovsdb);
               }
               key = smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_KEY);
+              agg_key = smap_get(&if_row->other_config, INTERFACE_OTHER_CONFIG_MAP_LACP_AGGREGATION_KEY);
               port_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_PORT_ID));
               parse_id_from_db(port_priority_id_ovsdb, &port_priority, &port_id);
               system_priority_id_ovsdb = strdup(smap_get(&if_row->lacp_status, INTERFACE_LACP_STATUS_MAP_PARTNER_SYSTEM_ID));
@@ -1394,12 +1368,14 @@ lacp_show_interfaces_all()
             }
             vty_out(vty, columns,
                        if_row->name,
+                       lag_port->name,
                        port_id ? port_id : " ",
                        port_priority ? port_priority : " ",
                        key ? key : " ",
                        lacp_state ? lacp_state : " ",
                        system_id ? system_id : " ",
-                       system_priority ? system_priority : " ");
+                       system_priority ? system_priority : " ",
+                       agg_key ? agg_key : " ");
             vty_out(vty,"%s", VTY_NEWLINE);
             if (port_priority_id_ovsdb){
                 free(port_priority_id_ovsdb);
@@ -1734,9 +1710,6 @@ lacp_vty_init (void)
   install_element (CONFIG_NODE, &vtysh_remove_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_id_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_priority_cmd);
-#if 0
-  install_element (INTERFACE_NODE, &cli_lacp_intf_set_aggregation_key_cmd);
-#endif
   install_element (INTERFACE_NODE, &cli_lacp_add_intf_to_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_remove_intf_from_lag_cmd);
   install_element (ENABLE_NODE, &cli_lacp_show_configuration_cmd);
