@@ -1877,10 +1877,15 @@ show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
     // Indexes for loops
     int interface_index = 0;
     int stat_index = 0;
+    int other_config_index = 0;
 
     // Array to keep the statistics for each lag while adding the
     // stats for each interface in the lag.
     int lag_statistics [12] = {0};
+
+    // Aggregation-key variables
+    size_t aggr_key_len = 6;
+    char aggr_key[aggr_key_len];
 
     OVSREC_PORT_FOR_EACH(lag_port, idl)
     {
@@ -1898,7 +1903,6 @@ show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
 
         vty_out(vty, "Aggregate-name %s %s", lag_port->name, VTY_NEWLINE);
         vty_out(vty, " Aggregated-interfaces : ");
-
 
         lag_speed = 0;
         for (interface_index = 0; interface_index < lag_port->n_interfaces; interface_index++)
@@ -1924,6 +1928,16 @@ show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
             }
         }
         vty_out(vty, "%s", VTY_NEWLINE);
+
+        /* Retrieve aggregation-key from lag name */
+        snprintf(aggr_key,
+                 aggr_key_len,
+                 "%s",
+                 lag_port->name + LAG_PORT_NAME_PREFIX_LENGTH);
+
+        vty_out(vty, " Aggregation-key : %s", aggr_key);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
         aggregate_mode = lag_port->lacp;
         if(aggregate_mode)
             vty_out(vty, " Aggregate mode : %s %s", aggregate_mode, VTY_NEWLINE);
