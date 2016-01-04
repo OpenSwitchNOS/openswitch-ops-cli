@@ -103,6 +103,8 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_other_config);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_external_ids);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_fast_external_failover);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_log_neighbor_changes);
 
     /* BGP neighbor table. */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
