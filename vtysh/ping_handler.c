@@ -110,7 +110,7 @@ bool ping_main (pingEntry *p, void (*fPtr)(char *buff))
             len += sprintf(target+len, " -R ");
     }
 
-    fp = popen(buffer,"r");
+    fp = popen(buffer,"w");
     if (fp)
     {
         while ( fgets( output, BUFSIZ, fp ) != NULL )
