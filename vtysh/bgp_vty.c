@@ -7548,10 +7548,6 @@ show_one_bgp_neighbor(struct vty *vty, char *name,
                 safe_print_string(1, ovs_bgp_neighbor->password));
 
 
-    if (ovs_bgp_neighbor->capability)
-        vty_out(vty, "    capability: %s\n",
-                safe_print_string(1, ovs_bgp_neighbor->capability));
-
     if (ovs_bgp_neighbor->n_local_as)
         vty_out(vty, "    local_as: %s\n",
                 safe_print_integer(ovs_bgp_neighbor->n_local_as,
