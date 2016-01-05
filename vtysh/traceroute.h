@@ -40,7 +40,7 @@
 #define TRACEROUTE_MINTTL \
 "Minimum time to live <1-255>\n"
 #define TRACEROUTE_TIMEOUT \
-"Traceroute timeout in seconds <1-120>\n"
+"Traceroute timeout in seconds <1-60>\n"
 #define TRACEROUTE_PROBES \
 "Number of Probes <1-5>\n"
 #define TRACEROUTE_DSTPORT \
