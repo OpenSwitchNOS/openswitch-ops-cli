@@ -30,7 +30,7 @@
 
 #include "vector.h"
 #include "vty.h"
-#include "lib/route_types.h"
+#include "route_types.h"
 
 
 enum data_type{
