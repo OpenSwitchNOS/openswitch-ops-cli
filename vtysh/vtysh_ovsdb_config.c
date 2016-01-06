@@ -37,7 +37,6 @@
 #include "vtysh_ovsdb_vlan_context.h"
 #include "vtysh_ovsdb_router_context.h"
 #include "vtysh_ovsdb_intf_lag_context.h"
-#include "vtysh_ovsdb_mgmt_intf_context.h"
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
@@ -524,7 +523,6 @@ vtysh_ovsdb_init_clients(void)
   vtysh_init_router_context_clients();
   vtysh_init_vlan_context_clients();
   vtysh_init_intf_context_clients();
-  vtysh_init_mgmt_intf_context_clients();
   vtysh_init_intf_lag_context_clients();
   vtysh_init_source_interface_context_clients();
   vtysh_init_dhcp_tftp_context_clients();
