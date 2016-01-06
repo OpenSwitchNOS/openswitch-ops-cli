@@ -28,7 +28,7 @@
 #ifndef VTYSH_OVSDB_CONFIG_H
 #define VTYSH_OVSDB_CONFIG_H
 
-#include "lib/vty.h"
+#include "vty.h"
 
 /* general vtysh return type */
 typedef enum vtysh_ret_val_enum
