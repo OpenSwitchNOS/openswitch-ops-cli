@@ -37,6 +37,7 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
+#include "vtysh/vtysh_utils.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
 #include "intf_vty.h"
@@ -46,7 +47,6 @@
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "vtysh/mgmt_intf_vty.h"
 #include "vtysh/vtysh_ovsdb_intf_context.h"
 #include "lacp_vty.h"
 

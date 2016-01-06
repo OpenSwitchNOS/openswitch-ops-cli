@@ -148,7 +148,12 @@ int remove_temp_db(int initialize);
 /* Child process execution flag. */
 extern int execute_flag;
 
+
 extern struct vty *vty;
+int vtysh_exit (struct vty *vty);
+int vtysh_end (void);
+void vtysh_install_default (enum node_type node);
+extern struct cmd_element vtysh_end_all_cmd;
 
 #define MAX_IFNAME_LENGTH 50
 
