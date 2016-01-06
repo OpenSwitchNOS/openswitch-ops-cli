@@ -22,7 +22,6 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_intf_context.c vlan_vty.c intf_vty.c \
                  l3routes_vty.c led_vty.c system_vty.c fan_vty.c \
                  temperature_vty.c vtysh_ovsdb_vlan_context.c \
-                 mgmt_intf_vty.c vtysh_ovsdb_mgmt_intf_context.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
                  logrotate_vty.c neighbor_vty.c traceroute_vty.c \
                  traceroute_handler.c \
@@ -37,28 +36,16 @@ endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
 CLEANFILES = vtysh_cmd.c
-noinst_HEADERS = vtysh.h vtysh_user.h
-if ENABLE_OVSDB
-noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
-                  vtysh_ovsdb_config.h vtysh_ovsdb_config_context.h \
-                  vtysh_ovsdb_intf_context.h vlan_vty.h intf_vty.h \
-                  l3routes_vty.h led_vty.h system_vty.h fan_vty.h \
-                  temperature_vty.h vtysh_ovsdb_vlan_context.h \
-                  mgmt_intf_vty.h vtysh_ovsdb_mgmt_intf_context.h \
-                  vtysh_ovsdb_router_context.h aaa_vty.h \
-                  logrotate_vty.h neighbor_vty.h traceroute.h \
-                  source_interface_selection_vty.h \
-                  vtysh_ovsdb_source_interface_context.h \
-                  powersupply_vty.h vtysh_ovsdb_intf_lag_context.h\
-                  lacp_vty.h vtysh_utils.h ecmp_vty.h dhcp_tftp_vty.h \
-                  vtysh_ovsdb_dhcp_tftp_context.h ping.h sftp_vty.h \
-                  vtysh_ovsdb_sftp_context.h
-endif
 
 vtysh_LDADD = ../lib/libzebra_cli.la @LIBCAP@ @LIBREADLINE@
 if ENABLE_OVSDB
 vtysh_LDADD += -lovscommon -lovsdb -lpthread
 endif
+
+vtyshincludedir = $(includedir)/cli
+vtyshinclude_HEADERS = vtysh_utils.h vtysh.h \
+	vtysh_ovsdb_if.h vtysh_user.h \
+	vtysh_ovsdb_config.h
 
 examplesdir = $(exampledir)
 dist_examples_DATA = vtysh.conf.sample
