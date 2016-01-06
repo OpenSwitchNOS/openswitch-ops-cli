@@ -4265,6 +4265,42 @@ ALIAS(no_neighbor_timers_connect,
       "BGP connect timer\n"
       "Connect timer\n")
 
+
+static int
+cli_neighbor_advertisement_interval_cmd_execute(int argc, const char *argv[])
+{
+    const char *ip_addr = argv[0];
+    int64_t advertisement_interval = (int64_t) atoi(argv[1]);
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *txn;
+    char *vrf_name = NULL;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+                                                        (int64_t)vty->index);
+
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (ovs_bgp_neighbor) {
+        /* To write to ovsdb nbr table. */
+        ovsrec_bgp_neighbor_set_advertisement_interval(ovs_bgp_neighbor, &advertisement_interval, 1);
+    }
+    END_DB_TXN(txn);
+}
+
+/*Neighbor advertisement interval*/
 DEFUN(neighbor_advertise_interval,
       neighbor_advertise_interval_cmd,
       NEIGHBOR_CMD "advertisement-interval <0-600>",
@@ -4273,10 +4309,12 @@ DEFUN(neighbor_advertise_interval,
       "Minimum interval between sending BGP routing updates\n"
       "time in seconds\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return ((argc==2)
+            ? cli_neighbor_advertisement_interval_cmd_execute(argc, argv)
+            : CMD_ERR_AMBIGUOUS);
 }
 
+/*No neighbor advertisement interval*/
 DEFUN(no_neighbor_advertise_interval,
       no_neighbor_advertise_interval_cmd,
       NO_NEIGHBOR_CMD "advertisement-interval",
@@ -4285,8 +4323,33 @@ DEFUN(no_neighbor_advertise_interval,
       NEIGHBOR_ADDR_STR
       "Minimum interval between sending BGP routing updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const char *ip_addr = argv[0];
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    struct ovsdb_idl_txn *txn;
+    char *vrf_name = NULL;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+                                                        (int64_t)vty->index);
+
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (ovs_bgp_neighbor) {
+        ovsrec_bgp_neighbor_set_advertisement_interval(ovs_bgp_neighbor, NULL, 0);
+    }
+    END_DB_TXN(txn);
 }
 
 ALIAS(no_neighbor_advertise_interval,
@@ -7547,6 +7610,10 @@ show_one_bgp_neighbor(struct vty *vty, char *name,
         vty_out(vty, "    password: %s\n",
                 safe_print_string(1, ovs_bgp_neighbor->password));
 
+    if (ovs_bgp_neighbor->advertisement_interval)
+        vty_out(vty, "    advertisement_interval: %s\n",
+            safe_print_integer(ovs_bgp_neighbor->n_advertisement_interval,
+            ovs_bgp_neighbor->advertisement_interval));
 
     if (ovs_bgp_neighbor->n_local_as)
         vty_out(vty, "    local_as: %s\n",
