@@ -96,6 +96,12 @@ extern struct ovsdb_idl *idl;
 #define BGP_SHOW_HEADER \
     "   Network          Next Hop            Metric LocPrf Weight Path%s"
 
+#define BGP_UPDATE_SOURCE_STR "(A.B.C.D|X:X::X:X|WORD)"
+#define BGP_UPDATE_SOURCE_HELP_STR \
+    "IPv4 address\n" \
+    "IPv6 address\n" \
+    "Interface name (requires zebra to be running)\n"
+
 VLOG_DEFINE_THIS_MODULE(bgp_vty);
 
 /*
@@ -3746,6 +3752,59 @@ DEFUN_DEPRECATED(neighbor_transparent_nexthop,
 }
 
 /* Neighbor ebgp-multihop. */
+static int
+cli_neighbor_ebgp_multihop_ttl_execute(char* vrf_name,
+    const char* ip_addr) {
+    const struct ovsrec_vrf* vrf_row;
+    const struct ovsrec_bgp_router* bgp_router_context;
+    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
+    struct ovsdb_idl_txn* txn;
+    const bool ebgp_multihop = true;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+            (int64_t) vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    if (string_is_an_ip_address(ip_addr)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "no neighbor configured");
+        }
+        if (ovs_bgp_neighbor->ebgp_multihop) {
+            ABORT_DB_TXN(txn, "command exists");
+        }
+        if (ovs_bgp_neighbor->ttl_security_hops) {
+            ABORT_DB_TXN(txn, "%% Can't configure ebgp-multihop and ttl-security at the same time \n");
+        }
+    }
+    else {
+        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
+        }
+        if (ovs_bgp_neighbor->ttl_security_hops) {
+            ABORT_DB_TXN(txn, "%% Can't configure ebgp-multihop and ttl-security at the same time \n");
+        }
+    }
+
+    ovsrec_bgp_neighbor_set_ebgp_multihop(ovs_bgp_neighbor, &ebgp_multihop, 1);
+
+    END_DB_TXN(txn);
+}
+
 DEFUN(neighbor_ebgp_multihop,
       neighbor_ebgp_multihop_cmd,
       NEIGHBOR_CMD2 "ebgp-multihop",
@@ -3753,20 +3812,7 @@ DEFUN(neighbor_ebgp_multihop,
       NEIGHBOR_ADDR_STR2
       "Allow EBGP neighbors not on directly connected networks\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(neighbor_ebgp_multihop_ttl,
-      neighbor_ebgp_multihop_ttl_cmd,
-      NEIGHBOR_CMD2 "ebgp-multihop <1-255>",
-      NEIGHBOR_STR
-      NEIGHBOR_ADDR_STR2
-      "Allow EBGP neighbors not on directly connected networks\n"
-      "maximum hop count\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_neighbor_ebgp_multihop_ttl_execute(NULL, argv[0]);
 }
 
 DEFUN(no_neighbor_ebgp_multihop,
@@ -3777,18 +3823,50 @@ DEFUN(no_neighbor_ebgp_multihop,
       NEIGHBOR_ADDR_STR2
       "Allow EBGP neighbors not on directly connected networks\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
+    const struct ovsrec_vrf* vrf_row;
+    const struct ovsrec_bgp_router* bgp_router_context;
+    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
+    struct ovsdb_idl_txn* txn;
+    char* vrf_name = NULL;
+    char* ip_addr = argv[0];
 
-ALIAS(no_neighbor_ebgp_multihop,
-      no_neighbor_ebgp_multihop_ttl_cmd,
-      NO_NEIGHBOR_CMD2 "ebgp-multihop <1-255>",
-      NO_STR
-      NEIGHBOR_STR
-      NEIGHBOR_ADDR_STR2
-      "Allow EBGP neighbors not on directly connected networks\n"
-      "maximum hop count\n")
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+            (int64_t) vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    if (string_is_an_ip_address(ip_addr)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "no neighbor configured");
+        }
+        if (!ovs_bgp_neighbor->ebgp_multihop) {
+            ABORT_DB_TXN(txn, "command doesn't exist");
+        }
+    }
+    else {
+        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
+        }
+    }
+
+    ovsrec_bgp_neighbor_set_ebgp_multihop(ovs_bgp_neighbor, NULL, 0);
+
+    END_DB_TXN(txn);
+}
 
 /* Disable-connected-check. */
 DEFUN(neighbor_disable_connected_check,
@@ -3930,7 +4008,51 @@ ALIAS(no_neighbor_description,
       "Neighbor specific description\n"
       "Up to 80 characters describing this neighbor\n")
 
-/* TODO
+
+/* Neighbor update-source. */
+static int
+cli_neighbor_update_source_execute(char* vrf_name,
+    const char* ip_addr, const char* addr_str) {
+    const struct ovsrec_vrf* vrf_row;
+    const struct ovsrec_bgp_router* bgp_router_context;
+    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
+    struct ovsdb_idl_txn* txn;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+            (int64_t) vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    if (string_is_an_ip_address(ip_addr)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "no neighbor configured");
+        }
+    }
+    else {
+        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
+        }
+    }
+
+    ovsrec_bgp_neighbor_set_update_source(ovs_bgp_neighbor, addr_str);
+
+    END_DB_TXN(txn);
+}
+
 DEFUN(neighbor_update_source,
       neighbor_update_source_cmd,
       NEIGHBOR_CMD2 "update-source " BGP_UPDATE_SOURCE_STR,
@@ -3939,10 +4061,9 @@ DEFUN(neighbor_update_source,
       "Source of routing updates\n"
       BGP_UPDATE_SOURCE_HELP_STR)
 {
-    report_unimplemented_command(vty, argc, argv);
+    cli_neighbor_update_source_execute(NULL, argv[0], argv[1]);
     return CMD_SUCCESS;
 }
-*/
 
 DEFUN(no_neighbor_update_source,
       no_neighbor_update_source_cmd,
@@ -3952,8 +4073,49 @@ DEFUN(no_neighbor_update_source,
       NEIGHBOR_ADDR_STR2
       "Source of routing updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_vrf* vrf_row;
+    const struct ovsrec_bgp_router* bgp_router_context;
+    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
+    struct ovsdb_idl_txn* txn;
+    char* vrf_name = NULL;
+    char* ip_addr = argv[0];
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+            (int64_t) vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    if (string_is_an_ip_address(ip_addr)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "no neighbor configured");
+        }
+        if (!ovs_bgp_neighbor->update_source) {
+            ABORT_DB_TXN(txn, "command doesn't exist");
+        }
+    }
+    else {
+        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
+        }
+    }
+
+    ovsrec_bgp_neighbor_set_update_source(ovs_bgp_neighbor, NULL);
+
+    END_DB_TXN(txn);
 }
 
 /* Neighbor default-originate. */
@@ -4908,6 +5070,58 @@ DEFUN(no_neighbor_allowas_in,
     END_DB_TXN(txn);
 }
 
+static int
+cli_neighbor_ttl_security_hops_execute(char* vrf_name,
+    const char* ip_addr, int64_t ttl) {
+    const struct ovsrec_vrf* vrf_row;
+    const struct ovsrec_bgp_router* bgp_router_context;
+    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
+    struct ovsdb_idl_txn* txn;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+            (int64_t) vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    if (string_is_an_ip_address(ip_addr)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "no neighbor configured");
+        }
+        if (ovs_bgp_neighbor->ttl_security_hops) {
+                    ABORT_DB_TXN(txn, "command exists");
+        }
+        if (ovs_bgp_neighbor->ebgp_multihop) {
+            ABORT_DB_TXN(txn, "%% Can't configure ebgp-multihop and ttl-security at the same time \n");
+        }
+    }
+    else {
+        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
+        }
+        if (ovs_bgp_neighbor->ebgp_multihop) {
+            ABORT_DB_TXN(txn, "%% Can't configure ebgp-multihop and ttl-security at the same time \n");
+        }
+    }
+
+    ovsrec_bgp_neighbor_set_ttl_security_hops(ovs_bgp_neighbor, &ttl, 1);
+
+    END_DB_TXN(txn);
+}
+
 DEFUN(neighbor_ttl_security,
       neighbor_ttl_security_cmd,
       NEIGHBOR_CMD2 "ttl-security hops <1-254>",
@@ -4915,7 +5129,7 @@ DEFUN(neighbor_ttl_security,
       NEIGHBOR_ADDR_STR2
       "Specify the maximum number of hops to the BGP peer\n")
 {
-    report_unimplemented_command(vty, argc, argv);
+    cli_neighbor_ttl_security_hops_execute(NULL, argv[0], atoi(argv[1]));
     return CMD_SUCCESS;
 }
 
@@ -4927,8 +5141,49 @@ DEFUN(no_neighbor_ttl_security,
       NEIGHBOR_ADDR_STR2
       "Specify the maximum number of hops to the BGP peer\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_vrf* vrf_row;
+    const struct ovsrec_bgp_router* bgp_router_context;
+    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
+    struct ovsdb_idl_txn* txn;
+    char* vrf_name = NULL;
+    char* ip_addr = argv[0];
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+            (int64_t) vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
+    }
+
+    if (string_is_an_ip_address(ip_addr)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "no neighbor configured");
+        }
+        if (!ovs_bgp_neighbor->ttl_security_hops) {
+            ABORT_DB_TXN(txn, "command doesn't exist");
+        }
+    }
+    else {
+        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
+                bgp_router_context, ip_addr);
+
+        if (!ovs_bgp_neighbor) {
+            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
+        }
+    }
+
+    ovsrec_bgp_neighbor_set_ttl_security_hops(ovs_bgp_neighbor, NULL, 0);
+
+    END_DB_TXN(txn);
 }
 
 /* Address family configuration. */
@@ -7563,10 +7818,26 @@ show_one_bgp_neighbor(struct vty *vty, char *name,
 
     if (ovs_bgp_neighbor->n_inbound_soft_reconfiguration)
         vty_out(vty, "    inbound_soft_reconfiguration: %s\n",
-                safe_print_bool(ovs_bgp_neighbor->
+                !strcmp(safe_print_bool(ovs_bgp_neighbor->
                                 n_inbound_soft_reconfiguration,
                                 ovs_bgp_neighbor->
-                                inbound_soft_reconfiguration));
+                                inbound_soft_reconfiguration), "yes") ?"Enabled":"Disabled");
+
+    if (ovs_bgp_neighbor->n_ebgp_multihop)
+        vty_out(vty, "    ebgp_multihop: %s\n",
+                !strcmp(safe_print_bool(ovs_bgp_neighbor->
+                                n_ebgp_multihop,
+                                ovs_bgp_neighbor->
+                                ebgp_multihop), "yes") ?"Enabled":"Disabled");
+
+    if (ovs_bgp_neighbor->n_ttl_security_hops)
+        vty_out(vty, "    ttl_security hops: %s\n",
+                safe_print_integer(ovs_bgp_neighbor->n_ttl_security_hops,
+                                   ovs_bgp_neighbor->ttl_security_hops));
+
+    if (ovs_bgp_neighbor->update_source)
+        vty_out(vty, "    update_source: %s\n",
+                safe_print_string(1, ovs_bgp_neighbor->update_source));
 
     if (ovs_bgp_neighbor->n_maximum_prefix_limit)
         vty_out(vty, "    maximum_prefix_limit: %s\n",
@@ -8843,9 +9114,7 @@ bgp_vty_init(void)
 
     /* "Neighbor ebgp-multihop" commands. */
     install_element(BGP_NODE, &neighbor_ebgp_multihop_cmd);
-    install_element(BGP_NODE, &neighbor_ebgp_multihop_ttl_cmd);
     install_element(BGP_NODE, &no_neighbor_ebgp_multihop_cmd);
-    install_element(BGP_NODE, &no_neighbor_ebgp_multihop_ttl_cmd);
 
     /* "Neighbor disable-connected-check" commands. */
     install_element(BGP_NODE, &neighbor_disable_connected_check_cmd);
@@ -8858,8 +9127,8 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &no_neighbor_description_cmd);
     install_element(BGP_NODE, &no_neighbor_description_val_cmd);
 
-    /* "Neighbor update-source" commands. "*/
-    /* install_element(BGP_NODE, &neighbor_update_source_cmd); */
+    /* "Neighbor update-source" commands. */
+    install_element(BGP_NODE, &neighbor_update_source_cmd);
     install_element(BGP_NODE, &no_neighbor_update_source_cmd);
 
     /* "Neighbor default-originate" commands. */
