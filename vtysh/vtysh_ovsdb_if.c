@@ -136,6 +136,9 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_external_ids);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_ebgp_multihop);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_ttl_security_hops);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_update_source);
 
     /* RIB. */
     ovsdb_idl_add_table(idl, &ovsrec_table_route);
