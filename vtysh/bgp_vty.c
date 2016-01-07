@@ -1652,6 +1652,39 @@ ALIAS(no_bgp_graceful_restart_stalepath_time,
       "Set the max time to hold onto restarting peer's stale paths\n"
       "Delay value (seconds)\n")
 
+static int
+cli_bgp_fast_external_failover_cmd_execute(char *vrf_name)
+{
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *bgp_router_txn = NULL;
+    const bool fast_external_failover = true;
+
+    /* Start of transaction. */
+    START_DB_TXN(bgp_router_txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+    }
+    /* See if it already exists. */
+    bgp_router_row =
+    get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+
+    /* If does not exist, nothing to modify. */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    } else {
+        /* Set fast external failover. */
+        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row,
+                                                     &fast_external_failover,
+                                                     1);
+    }
+
+    /* End of transaction. */
+    END_DB_TXN(bgp_router_txn);
+}
+
 /* "Bgp fast-external-failover" configuration. */
 DEFUN(bgp_fast_external_failover,
       bgp_fast_external_failover_cmd,
@@ -1660,8 +1693,38 @@ DEFUN(bgp_fast_external_failover,
       "Immediately reset session if a link to a directly connected "
       "external peer goes down\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_bgp_fast_external_failover_cmd_execute(NULL);
+}
+
+static int
+cli_no_bgp_fast_external_failover_cmd_execute(char *vrf_name)
+{
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *bgp_router_txn = NULL;
+
+    /* Start of transaction. */
+    START_DB_TXN(bgp_router_txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+    }
+    /* See if it already exists. */
+    bgp_router_row =
+    get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+
+    /* If does not exist, nothing to modify. */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    } else {
+        /* Unset fast external failover. */
+        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row, NULL, 0);
+    }
+
+    /* End of transaction. */
+    END_DB_TXN(bgp_router_txn);
+
 }
 
 DEFUN(no_bgp_fast_external_failover,
@@ -1672,8 +1735,7 @@ DEFUN(no_bgp_fast_external_failover,
       "Immediately reset session if a link to a directly connected "
       "external peer goes down\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_bgp_fast_external_failover_cmd_execute(NULL);
 }
 
 /* "Bgp enforce-first-as" configuration. */
@@ -1804,6 +1866,38 @@ DEFUN(no_bgp_bestpath_aspath_multipath_relax,
     return CMD_SUCCESS;
 }
 
+static int
+cli_bgp_log_neighbor_changes_cmd_execute (char *vrf_name)
+{
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *bgp_router_txn = NULL;
+    const bool log_neighbor_changes = true;
+
+    /* Start of transaction. */
+    START_DB_TXN(bgp_router_txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+    }
+    /* See if it already exists. */
+    bgp_router_row =
+    get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+
+    /* If does not exist, nothing to modify. */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    } else {
+        /* Set log neighbor changes. */
+        ovsrec_bgp_router_set_log_neighbor_changes(bgp_router_row,
+                                                   &log_neighbor_changes, 1);
+    }
+
+    /* End of transaction. */
+    END_DB_TXN(bgp_router_txn);
+}
+
 /* "Bgp log-neighbor-changes" configuration. */
 DEFUN(bgp_log_neighbor_changes,
       bgp_log_neighbor_changes_cmd,
@@ -1811,8 +1905,38 @@ DEFUN(bgp_log_neighbor_changes,
       "BGP specific commands\n"
       "Log neighbor up/down and reset reason\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_bgp_log_neighbor_changes_cmd_execute(NULL);
+}
+
+static int
+cli_no_bgp_log_neighbor_changes_cmd_execute (char *vrf_name)
+{
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_vrf *vrf_row;
+    struct ovsdb_idl_txn *bgp_router_txn = NULL;
+
+    /* Start of transaction. */
+    START_DB_TXN(bgp_router_txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+    }
+    /* See if it already exists. */
+    bgp_router_row =
+    get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+
+    /* If does not exist, nothing to modify. */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    } else {
+        /* Unset log neighbor changes. */
+        ovsrec_bgp_router_set_log_neighbor_changes(bgp_router_row, NULL, 0);
+    }
+
+    /* End of transaction. */
+    END_DB_TXN(bgp_router_txn);
+
 }
 
 DEFUN(no_bgp_log_neighbor_changes,
@@ -1822,8 +1946,7 @@ DEFUN(no_bgp_log_neighbor_changes,
       "BGP specific commands\n"
       "Log neighbor up/down and reset reason\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_bgp_log_neighbor_changes_cmd_execute(NULL);
 }
 
 /* "Bgp bestpath med" configuration. */
@@ -1934,11 +2057,23 @@ cli_bgp_network_cmd_execute(char *vrf_name, char *network)
     const struct ovsrec_vrf *vrf_row;
     char **network_list;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
+    char prefix_str[256];
 
     /* Convert IP prefix string to struct prefix. */
     ret = str2prefix (network, &p);
     if (! ret ) {
         vty_out (vty, "%% Malformed prefix%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* Apply mask. */
+    apply_mask(&p);
+
+    /* Convert prefix to string. */
+    memset(prefix_str, 0 ,sizeof(prefix_str));
+    ret = prefix2str(&p, prefix_str, sizeof(prefix_str));
+    if (ret) {
+        vty_out (vty, "%% Prefix to string conversion failed%s", VTY_NEWLINE);
         return CMD_WARNING;
     }
 
@@ -1963,7 +2098,7 @@ cli_bgp_network_cmd_execute(char *vrf_name, char *network)
         for (i = 0; i < bgp_router_row->n_networks; i++) {
             network_list[i] = bgp_router_row->networks[i];
         }
-        network_list[bgp_router_row->n_networks] = network;
+        network_list[bgp_router_row->n_networks] = &prefix_str;
         ovsrec_bgp_router_set_networks(bgp_router_row, network_list,
                                        (bgp_router_row->n_networks + 1));
         free(network_list);
@@ -1993,11 +2128,23 @@ cli_no_bgp_network_cmd_execute(char *vrf_name, const char *network)
     const struct ovsrec_vrf *vrf_row;
     char **network_list;
     struct ovsdb_idl_txn *bgp_router_txn=NULL;
+    char prefix_str[256];
 
     /* Convert IP prefix string to struct prefix. */
     ret = str2prefix (network, &p);
     if (! ret) {
         vty_out (vty, "%% Malformed prefix%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* Apply mask. */
+    apply_mask(&p);
+
+    /* Convert prefix to string */
+    memset(prefix_str, 0 ,sizeof(prefix_str));
+    ret = prefix2str(&p, prefix_str, sizeof(prefix_str));
+    if (ret) {
+        vty_out (vty, "%% Prefix to string conversion failed%s", VTY_NEWLINE);
         return CMD_WARNING;
     }
 
@@ -2022,7 +2169,7 @@ cli_no_bgp_network_cmd_execute(char *vrf_name, const char *network)
         network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
                                (bgp_router_row->n_networks - 1));
         for (i = 0,j = 0; i < bgp_router_row->n_networks; i++) {
-            if(0 != strcmp(bgp_router_row->networks[i], network)) {
+            if(0 != strcmp(bgp_router_row->networks[i], prefix_str)) {
                 network_list[j] = bgp_router_row->networks[i];
                 j++;
             }
@@ -2042,6 +2189,25 @@ DEFUN(no_bgp_network,
       NO_STR
       "Specify a network to announce via BGP\n"
       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
+{
+    return cli_no_bgp_network_cmd_execute(NULL, argv[0]);
+}
+
+DEFUN (ipv6_bgp_network,
+       ipv6_bgp_network_cmd,
+       "network X:X::X:X/M",
+       "Specify a network to announce via BGP\n"
+       "IPv6 prefix <network>/<length>\n")
+{
+    return cli_bgp_network_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
+}
+
+DEFUN(no_ipv6_bgp_network,
+      no_ipv6_bgp_network_cmd,
+      "no network X:X::X:X/M",
+      NO_STR
+      "Specify a network to announce via BGP\n"
+      "IPv6 prefix <network>/<length>\n")
 {
     return cli_no_bgp_network_cmd_execute(NULL, argv[0]);
 }
@@ -9188,6 +9354,8 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &address_family_ipv4_safi_cmd);
 #ifdef HAVE_IPV6
     install_element(BGP_NODE, &address_family_ipv6_safi_cmd);
+    install_element(BGP_NODE, &ipv6_bgp_network_cmd);
+    install_element(BGP_NODE, &no_ipv6_bgp_network_cmd);
 #endif /* HAVE_IPV6 */
 
     /* "Exit-address-family" command.
