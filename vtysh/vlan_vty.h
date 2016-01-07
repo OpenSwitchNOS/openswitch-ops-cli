@@ -44,6 +44,7 @@
 #include "openswitch-dflt.h"
 #include "openvswitch/vlog.h"
 #include "vtysh/vtysh_ovsdb_config.h"
+#include "shash.h"
 
 /* vlan length + 1 */
 #define VLAN_ID_LEN 5
@@ -65,5 +66,7 @@
 #define OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_TAG_ERROR "Failed to remove native VLAN tagging on the interface%s"
 
 void vlan_vty_init(void);
+extern int compare_nodes_by_vlan_id_in_numerical(const void *a_, const void *b_);
+extern const struct shash_node ** sort_vlan_id(const struct shash *sh);
 
 #endif /* _VLAN_VTY_H */
