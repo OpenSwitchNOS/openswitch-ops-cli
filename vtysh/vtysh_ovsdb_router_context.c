@@ -148,6 +148,33 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       "soft-reconfiguration inbound");
 
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                n_ebgp_multihop)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s", "", "neighbor",
+                                      bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "ebgp-multihop");
+
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                n_ttl_security_hops)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %d", "", "neighbor",
+                                      bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "ttl-security hops",
+                                      *(bgp_router_context->
+                                      value_bgp_neighbors[n_neighbors]->
+                                      ttl_security_hops));
+
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                update_source)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s", "", "neighbor",
+                                      bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "update-source",
+                                      (bgp_router_context->
+                                      value_bgp_neighbors[n_neighbors]->
+                                      update_source));
+
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 bgp_peer_group) {
                 for (k = 0; k < bgp_router_context->n_bgp_neighbors; k++) {
                     if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
