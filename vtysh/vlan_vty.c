@@ -41,7 +41,7 @@ extern struct ovsdb_idl *idl;
 
 /* qsort comparator function.
  */
-static int
+int
 compare_nodes_by_vlan_id_in_numerical(const void *a_, const void *b_)
 {
     const struct shash_node *const *a = a_;
@@ -63,7 +63,7 @@ compare_nodes_by_vlan_id_in_numerical(const void *a_, const void *b_)
  * Sorting function for vlan-id interface
  * on success, returns sorted vlan-id list.
  */
-static const struct shash_node **
+const struct shash_node **
 sort_vlan_id(const struct shash *sh)
 {
     if (shash_is_empty(sh)) {
