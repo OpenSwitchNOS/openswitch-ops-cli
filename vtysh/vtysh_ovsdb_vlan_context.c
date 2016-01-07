@@ -33,9 +33,9 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_vlan_context.h"
+#include "vlan_vty.h"
 
 char vlancontextclientname[] = "vtysh_vlan_context_clientcallback";
-
 /*-----------------------------------------------------------------------------
 | Function : vtysh_vlan_context_clientcallback
 | Responsibility : client callback routine
@@ -43,11 +43,16 @@ char vlancontextclientname[] = "vtysh_vlan_context_clientcallback";
 |     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
+
 vtysh_ret_val
 vtysh_vlan_context_clientcallback(void *p_private)
 {
   vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
   const struct ovsrec_vlan *vlan_row;
+  struct shash sorted_vlan_id;
+  const struct shash_node **nodes;
+  int idx,count;
+  char str[15];
 
   vlan_row = ovsrec_vlan_first(p_msg->idl);
   if (vlan_row == NULL)
@@ -55,9 +60,22 @@ vtysh_vlan_context_clientcallback(void *p_private)
       return e_vtysh_ok;
   }
 
-  OVSREC_VLAN_FOR_EACH(vlan_row, p_msg->idl)
-  {
-      if (!check_if_internal_vlan(vlan_row)) {
+  shash_init(&sorted_vlan_id);
+
+    OVSREC_VLAN_FOR_EACH(vlan_row, p_msg->idl)
+    {
+        sprintf(str, "%d", vlan_row->id);
+        shash_add(&sorted_vlan_id, str, (void *)vlan_row);
+    }
+
+    nodes = sort_vlan_id(&sorted_vlan_id);
+    count = shash_count(&sorted_vlan_id);
+
+    for (idx = 0; idx < count; idx++)
+    {
+        vlan_row = (const struct ovsrec_vlan *)nodes[idx]->data;
+        if (!check_if_internal_vlan(vlan_row))
+        {
           vtysh_ovsdb_cli_print(p_msg, "%s %d", "vlan", vlan_row->id);
 
           if (strcmp(vlan_row->admin, OVSREC_VLAN_ADMIN_UP) == 0)
@@ -70,8 +88,8 @@ vtysh_vlan_context_clientcallback(void *p_private)
               vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "description ",
                                                      vlan_row->description);
           }
-      }
-  }
+        }
+   }
 
   return e_vtysh_ok;
 }
