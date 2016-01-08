@@ -745,64 +745,6 @@ DEFUN (cli_lacp_intf_set_port_priority,
   return lacp_intf_set_port_priority((char*)vty->index, argv[0]);
 }
 
-/*
- * Function : remove_port_reference
- * Responsibility : Remove port reference from VRF / bridge
- *
- * Parameters :
- *   const struct ovsrec_port *port_row: port to be deleted
- */
-static void
-remove_port_reference (const struct ovsrec_port *port_row)
-{
-    struct ovsrec_port **ports;
-    const struct ovsrec_vrf *vrf_row = NULL;
-    const struct ovsrec_bridge *default_bridge_row = NULL;
-    struct ovsrec_port *row = NULL;
-    int i,n;
-    bool port_in_vrf = false;
-
-    OVSREC_VRF_FOR_EACH (vrf_row, idl)
-    {
-        for (i = 0; i < vrf_row->n_ports; i++)
-        {
-            row = vrf_row->ports[i];
-            if(strcmp(row->name, port_row->name) == 0)
-            {
-                port_in_vrf = true;
-                break;
-            }
-        }
-        if(port_in_vrf)
-            break;
-    }
-
-    if (port_in_vrf)
-    {
-        ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
-        for (i = n = 0; i < vrf_row->n_ports; i++)
-        {
-            if (vrf_row->ports[i] != port_row)
-                ports[n++] = vrf_row->ports[i];
-        }
-        ovsrec_vrf_set_ports (vrf_row, ports, n);
-        free(ports);
-    }
-
-    if (check_port_in_bridge(port_row->name))
-    {
-        default_bridge_row = ovsrec_bridge_first (idl);
-        ports = xmalloc (sizeof *default_bridge_row->ports * (default_bridge_row->n_ports - 1));
-        for (i = n = 0; i < default_bridge_row->n_ports; i++)
-        {
-            if (default_bridge_row->ports[i] != port_row)
-                ports[n++] = default_bridge_row->ports[i];
-        }
-        ovsrec_bridge_set_ports (default_bridge_row, ports, n);
-        free(ports);
-    }
-}
-
 static int
 lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
 {
@@ -853,13 +795,11 @@ lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
 
    /* Delete the port entry of interface if already exists.
     * This can happen if the interface is attached to VLAN.
-    * Remove the port reference from VRF and Bridge before.
     */
    OVSREC_PORT_FOR_EACH(port_row, idl)
    {
      if(strcmp(port_row->name, if_name) == 0)
      {
-        remove_port_reference(port_row);
         ovsrec_port_delete(port_row);
         break;
      }
