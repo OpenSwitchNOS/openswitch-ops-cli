@@ -853,13 +853,11 @@ lacp_add_intf_to_lag(const char *if_name, const char *lag_number)
 
    /* Delete the port entry of interface if already exists.
     * This can happen if the interface is attached to VLAN.
-    * Remove the port reference from VRF and Bridge before.
     */
    OVSREC_PORT_FOR_EACH(port_row, idl)
    {
      if(strcmp(port_row->name, if_name) == 0)
      {
-        remove_port_reference(port_row);
         ovsrec_port_delete(port_row);
         break;
      }
