@@ -46,6 +46,7 @@
 #include "assert.h"
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
+#include <termios.h>
 
 
 #ifdef HAVE_GNU_REGEX
@@ -58,6 +59,11 @@
 #include "latch.h"
 #include "lib/vty_utils.h"
 #include "intf_vty.h"
+
+#define TMOUT_POLL_INTERVAL 20
+
+int64_t timeout_start;
+struct termios tp;
 
 typedef unsigned char boolean;
 
@@ -119,14 +125,11 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_tcp_port_number);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_advertisement_interval);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_maximum_prefix_limit);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_capability);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_override_capability);
     ovsdb_idl_add_column(idl,
                          &ovsrec_bgp_neighbor_col_inbound_soft_reconfiguration);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_remove_private_as);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_passive);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_password);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_strict_capability_match);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_timers);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_route_maps);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_statistics);
@@ -635,6 +638,43 @@ vtysh_ovsdb_hostname_set(const char* in)
 }
 
 /*
+ * Name : vtysh_ovsdb_hostname_reset
+ * Responsibility : To unset hostname set by CLI.
+ * Parameters : char *hostname_arg : Stores user's input value
+ * Return : CMD_SUCCESS for success, CMD_OVSDB_FAILURE for failure
+ */
+int
+vtysh_ovsdb_hostname_reset(char *hostname_arg)
+{
+    const struct ovsrec_system *row = NULL;
+    const struct ovsdb_datum *data = NULL;
+    char *ovsdb_hostname = NULL;
+    row = ovsrec_system_first(idl);
+
+    if (row != NULL)
+    {
+        data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
+        ovsdb_hostname = data->keys->string;
+
+        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        {
+            vtysh_ovsdb_hostname_set("");
+        }
+        else
+        {
+            vty_out(vty, "Hostname %s not configured. %s", hostname_arg,
+                    VTY_NEWLINE);
+        }
+    }
+    else
+    {
+        vty_out(vty, "Error in retrieving hostname.%s", VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+    return CMD_SUCCESS;
+}
+
+/*
  * The get command to read from the ovsdb system table
  * hostname column from the vtysh get-hostname command.
  */
@@ -652,6 +692,82 @@ vtysh_ovsdb_hostname_get()
     }
 
     return NULL;
+}
+
+/*
+ * Function: vtysh_ovsdb_session_timeout_set
+ * Responsibility: To set CLI idle session timeout value.
+ * Parameters:
+ *     duration: session timeout value configured by user.
+ * Return: On success returns CMD_SUCCESS,
+ *         On failure returns CMD_OVSDB_FAILURE
+ */
+
+int
+vtysh_ovsdb_session_timeout_set(const char * duration)
+{
+    const struct ovsrec_system *ovs= NULL;
+    enum ovsdb_idl_txn_status status = TXN_ERROR;
+    struct smap smap_other_config;
+    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+
+    if (status_txn == NULL)
+    {
+        VLOG_ERR("Couldn't create the OVSDB transaction");
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    ovs = ovsrec_system_first(idl);
+    if (!ovs)
+    {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    smap_clone(&smap_other_config, &ovs->other_config);
+    smap_replace(&smap_other_config,
+                 SYSTEM_OTHER_CONFIG_MAP_CLI_SESSION_TIMEOUT, duration);
+    ovsrec_system_set_other_config(ovs, &smap_other_config);
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_other_config);
+
+    if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        return CMD_SUCCESS;
+    }
+    else
+    {
+        VLOG_ERR("Committing transaction to DB failed");
+    }
+
+    return CMD_OVSDB_FAILURE;
+}
+
+/*
+ * Function: vtysh_ovsdb_session_timeout_get
+ * Responsibility: To get CLI idle session timeout value.
+ * Return:
+ *    Returns the idle session timeout value.
+ */
+
+int64_t
+vtysh_ovsdb_session_timeout_get()
+{
+    const struct ovsrec_system *ovs= NULL;
+    int64_t timeout = 0;
+
+    ovs = ovsrec_system_first(idl);
+    if (!ovs)
+    {
+        return CMD_OVSDB_FAILURE;
+    }
+
+    timeout = smap_get_int(&ovs->other_config,
+                           SYSTEM_OTHER_CONFIG_MAP_CLI_SESSION_TIMEOUT,
+                           DEFAULT_SESSION_TIMEOUT_PERIOD);
+
+    return timeout;
 }
 
 /* Wait for database sysnchronization in case *
@@ -879,11 +995,18 @@ vtysh_regex_match(const char *regString, const char *inp)
 void *
 vtysh_ovsdb_main_thread(void *arg)
 {
+    long long int next_poll_msec = 0;
+    int64_t session_timeout_period = DEFAULT_SESSION_TIMEOUT_PERIOD;
+
     /* Detach thread to avoid memory leak upon exit. */
     pthread_detach(pthread_self());
 
     vtysh_exit = false;
+    next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
+
     while (!vtysh_exit) {
+
+        poll_timer_wait_until(next_poll_msec);
         VTYSH_OVSDB_LOCK;
 
         /* This function updates the Cache by running
@@ -908,6 +1031,25 @@ vtysh_ovsdb_main_thread(void *arg)
          * conditions while commiting the transaction.
          */
             poll_block();
+
+            /* Idle session timeout block. Checks if timeout period has
+             * exceeded. If yes, exits cli session.
+             */
+            session_timeout_period = 60 * vtysh_ovsdb_session_timeout_get();
+            if (time_msec() > next_poll_msec) {
+                next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
+                if ((session_timeout_period > 0) &&
+                    ((time_now() - timeout_start) > session_timeout_period))
+                {
+                    tcsetattr(STDIN_FILENO, TCSANOW, &tp);
+                    vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+                    vty_out(vty,
+                            "Idle session timeout reached, logging out.%s",
+                            VTY_NEWLINE);
+                    vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+                    exit(0);
+                }
+            }
         }
         /* Resets the latch. */
         latch_poll(&ovsdb_latch);

@@ -118,7 +118,7 @@ bool traceroute_handler(tracerouteEntry *p, void (*fPtr)(char *buff))
             len += sprintf(target+len, " -g %s", p->tracerouteLoosesourceIp);
         }
     }
-    fp = popen(buffer,"r");
+    fp = popen(buffer,"w");
 
     if(fp)
     {
