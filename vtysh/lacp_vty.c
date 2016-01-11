@@ -1,7 +1,7 @@
 /* LACP CLI commands
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -967,6 +967,7 @@ DEFUN (cli_lacp_add_intf_to_lag,
 static int
 lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
 {
+   const struct ovsrec_port *port_row = NULL;
    const struct ovsrec_interface *row = NULL;
    const struct ovsrec_interface *interface_row = NULL;
    const struct ovsrec_interface *if_row = NULL;
@@ -1040,7 +1041,7 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
    ovsrec_interface_set_other_config(interface_row, &smap);
    smap_destroy(&smap);
 
-   /* Unlink the interface from the Port row found*/
+   /* Unlink the interface from the LAG port specified*/
    interfaces = xmalloc(sizeof *lag_port->interfaces * (lag_port->n_interfaces-1));
    for(i = n = 0; i < lag_port->n_interfaces; i++)
    {
@@ -1051,6 +1052,10 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
    }
    ovsrec_port_set_interfaces(lag_port, interfaces, n);
    free(interfaces);
+
+   /* restore interface to port table */
+   port_row = port_check_and_add (if_name, true, true, status_txn);
+
 
    status = cli_do_config_finish(status_txn);
 
@@ -1071,7 +1076,7 @@ DEFUN (cli_lacp_remove_intf_from_lag,
       cli_lacp_remove_intf_from_lag_cmd,
       "no lag <1-2000>",
       NO_STR
-      "Add the current interface to link aggregation\n"
+      "Remove the current interface from link aggregation\n"
       "LAG number ranges from 1 to 2000\n")
 {
   return lacp_remove_intf_from_lag((char*)vty->index, argv[0]);
