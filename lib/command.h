@@ -531,6 +531,9 @@ struct cmd_token
 #endif
 
 /* Common descriptions. */
+#define HOSTNAME_SET_STR "Configure hostname\n"
+#define HOSTNAME_GET_STR "Display hostname\n"
+#define HOSTNAME_NO_STR "Reset hostname\n"
 #define SHOW_STR    "Show running system information\n"
 #define COPY_STR    "Copy from one config to another\n"
 #define AAA_STR     "Authentication, Authorization and Accounting\n"
