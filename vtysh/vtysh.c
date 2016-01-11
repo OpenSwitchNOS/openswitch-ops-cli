@@ -51,6 +51,7 @@
 #include "logrotate_vty.h"
 #include "fan_vty.h"
 #include "temperature_vty.h"
+#include "ntpd_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 #include "openswitch-idl.h"
@@ -4666,5 +4667,8 @@ vtysh_init_vty (void)
 
   /* Initialize ping CLI */
   ping_vty_init();
+
+  /* Initialize ntpd CLI */
+  ntpd_vty_init();
 #endif
 }
