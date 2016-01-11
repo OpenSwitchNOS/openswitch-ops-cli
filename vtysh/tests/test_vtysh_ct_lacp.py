@@ -252,6 +252,129 @@ class LACPCliTest(OpsVsiTest):
         return True
 
 
+    def showInterfaceLagBrief(self):
+        info('''
+########## Test show interface lag brief command ##########
+''')
+        show_interface_brief = True
+        show_interface_lag_brief = True
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+
+        # Configure lag with undefined mode
+        s1.cmdCLI('interface lag 3')
+        s1.cmdCLI('exit')
+
+        # Configure lag in passive mode
+        s1.cmdCLI('interface lag 4')
+        s1.cmdCLI('lacp mode passive')
+        s1.cmdCLI('exit')
+
+        # Configure lag in active mode
+        s1.cmdCLI('interface lag 5')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('exit')
+
+        # Verify show interface brief shows the lags created before
+        success = 0
+        out = s1.cmdCLI('show interface brief')
+        # info('''%s \n''', out)
+        lines = out.split('\n')
+        for line in lines:
+            if 'lag3         --      --  --      --     --                        auto     --' in line:
+                success += 1
+            if 'lag4         --      --  passive --     --                        auto     --' in line:
+                success += 1
+            if 'lag5         --      --  active  --     --                        auto     --' in line:
+                success += 1
+        if success != 3:
+            show_interface_brief = False
+        assert (show_interface_brief is True), \
+            'Test show interface brief command - FAILED!'
+
+        # Verify show interface lag4 brief shows only lag 4
+        success = 0;
+        out = s1.cmdCLI('show interface lag4 brief')
+        lines = out.split('\n')
+        for line in lines:
+            if 'lag4         --      --  passive --     --                        auto     --' in line:
+                success += 1
+            if 'lag1' in line or 'lag2' in line or 'lag3' in line or 'lag5' in line:
+                success -= 1
+        if success != 1:
+            show_interface_lag_brief = False
+        assert (show_interface_lag_brief is True), \
+            'Test show interface lag4 brief command - FAILED!'
+
+        return True
+
+    def showInterfaceLag(self):
+        info('''
+########## Test show interface lag command ##########
+''')
+        show_interface_lag1 = True
+        show_interface_lag4 = True
+        show_interface_lag5 = True
+        s1 = self.net.switches[0]
+
+        # Verify 'show interface lag1' shows correct  information about lag1
+        success = 0;
+        out = s1.cmdCLI('show interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Aggregate-name lag1 ' in line:
+                success += 1
+            if 'Aggregated-interfaces' in line and '1' in line and '2' in line:
+                success += 1
+            if 'Aggregate mode' in line and 'off' in line:
+                success += 1
+            if 'Speed' in line and '0 Mb/s' in line:
+                success += 1
+        if success != 4:
+            show_interface_lag1 = False
+        assert (show_interface_lag1 is True), \
+            'Test show interface lag1 command - FAILED!'
+
+        # Verify 'show interface lag4' shows correct  information about lag4
+        success = 0;
+        out = s1.cmdCLI('show interface lag4')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Aggregate-name lag4 ' in line:
+                success += 1
+            if 'Aggregated-interfaces : ' in line:
+                success += 1
+            if 'Aggregate mode' in line and 'passive' in line:
+                success += 1
+            if 'Speed' in line and '0 Mb/s' in line:
+                success += 1
+        if success != 4:
+            show_interface_lag4 = False
+        assert (show_interface_lag4 is True), \
+            'Test show interface lag4 command - FAILED!'
+
+        # Verify 'show interface lag5' shows correct  information about lag5
+        success = 0;
+        out = s1.cmdCLI('show interface lag5')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Aggregate-name lag5 ' in line:
+                success += 1
+            if 'Aggregated-interfaces : ' in line:
+                success += 1
+            if 'Aggregate mode' in line and 'active' in line:
+                success += 1
+            if 'Speed' in line and '0 Mb/s' in line:
+                success += 1
+        if success != 4:
+            show_interface_lag5 = False
+        assert (show_interface_lag5 is True), \
+            'Test show interface lag5 command - FAILED!'
+
+        return True
+
+
 class Test_lacp_cli:
 
     def setup(self):
@@ -303,6 +426,18 @@ class Test_lacp_cli:
         if self.test.interfaceContext():
             info('''
 ########## Test interface context commands - SUCCESS! ##########
+''')
+
+    def test_showInterfaceLagBrief(self):
+        if self.test.showInterfaceLagBrief():
+            info('''
+########## Test show interface lag brief command - SUCCESS! ##########
+''')
+
+    def test_showInterfaceLag(self):
+        if self.test.showInterfaceLag():
+            info('''
+########## Test show interface lag command - SUCCESS! ##########
 ''')
 
     def teardown_class(cls):

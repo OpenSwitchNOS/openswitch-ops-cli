@@ -770,6 +770,12 @@ ipv6_route_common (struct vty *vty, char **argv, char *distance)
 
       row_nh = set_nexthop_entry (status_txn, (char*) argv[1], prefix_match,
                                   static_match, distance, row, "ipv6");
+      if (row_nh == NULL)
+        {
+          cli_do_config_abort (status_txn);
+          return CMD_OVSDB_FAILURE;
+        }
+
       ovsrec_route_set_nexthops (row, (struct ovsrec_nexthop**) &row_nh,
                                  row->n_nexthops + 1);
     }

@@ -197,6 +197,13 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
     vtysh_ovsdb_cli_print(p_msg, "lldp management-address %s", data);
   }
 
+  data = NULL;
+  data = smap_get(ifrow_config, SYSTEM_OTHER_CONFIG_MAP_CLI_SESSION_TIMEOUT);
+  if (data && (atoi(data) != DEFAULT_SESSION_TIMEOUT_PERIOD))
+  {
+    vtysh_ovsdb_cli_print(p_msg, "session-timeout %d", atoi(data));
+  }
+
   return e_vtysh_ok;
 }
 
@@ -432,14 +439,14 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
     }
   }
 
-  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION);
+  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION_ENABLE);
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
         vtysh_ovsdb_cli_print(p_msg, "no ssh password-authentication");
   }
 
-  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION);
+  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION_ENABLE);
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
@@ -471,7 +478,7 @@ vtysh_config_context_global_clientcallback(void *p_private)
   {
     if (vswrow->hostname[0] != '\0')
     {
-      vtysh_ovsdb_cli_print(p_msg, "hostname \"%s\"", vswrow->hostname);
+      vtysh_ovsdb_cli_print(p_msg, "hostname %s", vswrow->hostname);
     }
 
     /* parse the alias coumn */

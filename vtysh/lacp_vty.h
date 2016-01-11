@@ -35,6 +35,7 @@
 #define LACP_STR "Configure LACP parameters\n"
 #define MAX_INTF_TO_LAG 8
 #define MAX_LAG_INTERFACES 256
+#define LACP_DEFAULT_PORT_PRIORITY 1
 
 extern int maximum_lag_interfaces;
 void

@@ -512,36 +512,6 @@ DEFUN(cli_intf_vlan_access,
     }
 
     char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to set access VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
-
-    vlan_row = ovsrec_vlan_first(idl);
-    if (NULL == vlan_row)
-    {
-        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
-
-    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
-    {
-        if (vlan_row->id == vlan_id)
-        {
-            found_vlan = 1;
-            break;
-        }
-    }
-
-    if (0 == found_vlan)
-    {
-        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -583,6 +553,37 @@ DEFUN(cli_intf_vlan_access,
     if (NULL == vlan_port_row)
     {
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to set access VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    vlan_row = ovsrec_vlan_first(idl);
+    if (NULL == vlan_row)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+    {
+        if (vlan_row->id == vlan_id)
+        {
+            found_vlan = 1;
+            break;
+        }
+    }
+
+    if (0 == found_vlan)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
@@ -634,12 +635,6 @@ DEFUN(cli_intf_no_vlan_access,
     }
 
     char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to remove access VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -681,6 +676,13 @@ DEFUN(cli_intf_no_vlan_access,
     if (NULL == vlan_port_row)
     {
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to remove access VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (NULL != vlan_port_row->vlan_mode &&
@@ -739,36 +741,6 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     }
 
     char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to set allowed trunk VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
-
-    vlan_row = ovsrec_vlan_first(idl);
-    if (NULL == vlan_row)
-    {
-        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
-
-    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
-    {
-        if (vlan_row->id == vlan_id)
-        {
-            found_vlan = 1;
-            break;
-        }
-    }
-
-    if (0 == found_vlan)
-    {
-        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -810,6 +782,37 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     if (NULL == vlan_port_row )
     {
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to set allowed trunk VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    vlan_row = ovsrec_vlan_first(idl);
+    if (NULL == vlan_row)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+    {
+        if (vlan_row->id == vlan_id)
+        {
+            found_vlan = 1;
+            break;
+        }
+    }
+
+    if (0 == found_vlan)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (NULL == vlan_port_row->vlan_mode)
@@ -888,6 +891,10 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
     int i = 0, n = 0;
+    bool is_vlan_found = false;
+    char *ifname = (char *) vty->index;
+    int64_t* trunks = NULL;
+    int trunk_count = 0;
 
     if (NULL == status_txn)
     {
@@ -897,13 +904,6 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
         return CMD_SUCCESS;
     }
 
-    char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to remove trunk VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -916,7 +916,8 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     port_row = ovsrec_port_first(idl);
     if (NULL == port_row)
     {
-        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
     else
     {
@@ -928,7 +929,6 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
                 {
                     if (strcmp(port_row->name, ifname) != 0)
                     {
-                        vty_out(vty, "Can't configure VLAN. Interface is part of LAG %s.%s", port_row->name, VTY_NEWLINE);
                         cli_do_config_abort(status_txn);
                         return CMD_SUCCESS;
                     }
@@ -944,7 +944,15 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
 
     if (NULL == vlan_port_row)
     {
-        vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to remove trunk VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
@@ -957,13 +965,14 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
         return CMD_SUCCESS;
     }
 
-    int64_t* trunks = NULL;
-    int trunk_count = vlan_port_row->n_trunks;
+    trunk_count = vlan_port_row->n_trunks;
     for (i = 0; i < vlan_port_row->n_trunks; i++)
     {
         if (vlan_id == vlan_port_row->trunks[i])
         {
+            is_vlan_found = true;
             trunks = xmalloc(sizeof *vlan_port_row->trunks * (vlan_port_row->n_trunks - 1));
+
             for (i = n = 0; i < vlan_port_row->n_trunks; i++)
             {
                 if (vlan_id != vlan_port_row->trunks[i])
@@ -973,11 +982,19 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
             }
             trunk_count = vlan_port_row->n_trunks - 1;
             ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
+            free(trunks);
             break;
         }
     }
 
-    if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
+    if (is_vlan_found == false)
+    {
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    if (vlan_port_row->vlan_mode != NULL &&
+        strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_TRUNK) == 0)
     {
         if (0 == trunk_count)
         {
@@ -1025,36 +1042,6 @@ DEFUN(cli_intf_vlan_trunk_native,
     }
 
     char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to add native vlan. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
-
-    vlan_row = ovsrec_vlan_first(idl);
-    if (NULL == vlan_row)
-    {
-        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
-
-    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
-    {
-        if (vlan_row->id == vlan_id)
-        {
-            found_vlan = 1;
-            break;
-        }
-    }
-
-    if (found_vlan == 0)
-    {
-        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -1096,6 +1083,37 @@ DEFUN(cli_intf_vlan_trunk_native,
     if (NULL == vlan_port_row)
     {
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to add native vlan. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    vlan_row = ovsrec_vlan_first(idl);
+    if (NULL == vlan_row)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+    {
+        if (vlan_row->id == vlan_id)
+        {
+            found_vlan = 1;
+            break;
+        }
+    }
+
+    if (found_vlan == 0)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (NULL == vlan_port_row->vlan_mode)
@@ -1160,12 +1178,6 @@ DEFUN(cli_intf_no_vlan_trunk_native,
     }
 
     char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to remove native VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -1207,6 +1219,13 @@ DEFUN(cli_intf_no_vlan_trunk_native,
     if (NULL == vlan_port_row)
     {
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to remove native VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
@@ -1261,12 +1280,6 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
     }
 
     char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to set native VLAN tagging. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -1308,6 +1321,13 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
     if (vlan_port_row == NULL)
     {
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to set native VLAN tagging. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
@@ -1359,12 +1379,6 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
     }
 
     char *ifname = (char *) vty->index;
-    if (!check_iface_in_bridge(ifname))
-    {
-        vty_out(vty, "Failed to remove native VLAN tagging. Disable routing on the interface.%s", VTY_NEWLINE);
-        cli_do_config_abort(status_txn);
-        return CMD_SUCCESS;
-    }
 
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
@@ -1406,6 +1420,13 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
     if (vlan_port_row == NULL)
     {
         vlan_port_row = port_check_and_add(ifname, true, true, status_txn);
+    }
+
+    if (!check_iface_in_bridge(ifname))
+    {
+        vty_out(vty, "Failed to remove native VLAN tagging. Disable routing on the interface.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
