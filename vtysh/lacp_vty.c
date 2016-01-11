@@ -1160,6 +1160,7 @@ DEFUN (cli_lacp_add_intf_to_lag,
 static int
 lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
 {
+   const struct ovsrec_port *port_row = NULL;
    const struct ovsrec_interface *row = NULL;
    const struct ovsrec_interface *interface_row = NULL;
    const struct ovsrec_interface *if_row = NULL;
@@ -1233,7 +1234,7 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
    ovsrec_interface_set_other_config(interface_row, &smap);
    smap_destroy(&smap);
 
-   /* Unlink the interface from the Port row found*/
+   /* Unlink the interface from the LAG port specified*/
    interfaces = xmalloc(sizeof *lag_port->interfaces * (lag_port->n_interfaces-1));
    for(i = n = 0; i < lag_port->n_interfaces; i++)
    {
@@ -1244,6 +1245,9 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
    }
    ovsrec_port_set_interfaces(lag_port, interfaces, n);
    free(interfaces);
+
+   /* restore interface to port table */
+   port_row = port_check_and_add (if_name, true, true, status_txn);
 
    status = cli_do_config_finish(status_txn);
 
@@ -1257,8 +1261,6 @@ lacp_remove_intf_from_lag(const char *if_name, const char *lag_number)
       return CMD_OVSDB_FAILURE;
    }
 }
-
-
 
 DEFUN (cli_lacp_remove_intf_from_lag,
       cli_lacp_remove_intf_from_lag_cmd,
