@@ -1,6 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -1639,6 +1639,9 @@ DEFUN (no_vtysh_interface,
   else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
   {
     strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+    if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+        return CMD_OVSDB_FAILURE;
+    }
   }
   else
   {
