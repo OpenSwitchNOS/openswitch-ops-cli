@@ -42,7 +42,7 @@ bool ping_main (pingEntry *p, void (*fPtr)(char *buff))
     char output[BUFSIZ], buffer[BUFSIZ];
     char *target = buffer;
     int len = 0;
-    FILE *fp = NULL;
+    FILE *fp = NULL, *fp2 = NULL;
 
     if (!fPtr)
     {
@@ -53,6 +53,23 @@ bool ping_main (pingEntry *p, void (*fPtr)(char *buff))
     {
         VLOG_ERR("Pointer to ping structure is null");
         return false;
+    }
+
+    /* If user is not root, dont execute ping */
+    fp2 = popen("whoami", "r");
+
+    if (fp2)
+    {
+        fgets(output, BUFSIZ, fp2);
+        pclose(fp2);
+
+        /* Removing new line at the end of output */
+        output[strlen(output)-1] = '\0';
+        if (strcmp(output, "root") != 0)
+        {
+            (*fPtr)("Ping is supported only for root users. \n");
+            return true;
+        }
     }
 
     /* Executing the command in the "swns" namespace, as the
