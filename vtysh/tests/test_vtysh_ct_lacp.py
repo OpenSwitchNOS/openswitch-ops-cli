@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2015-2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -101,6 +101,48 @@ class LACPCliTest(OpsVsiTest):
             'Test to delete LAG port - FAILED!'
         return True
 
+    def deleteLagOnIntf(self):
+        info('''
+########## Test to delete LAG on Interface ##########
+''')
+        lag_port_found = True
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface lag 500')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('interface 21')
+        s1.cmdCLI('interface 20')
+        s1.cmdCLI('lag 500')
+        s1.cmdCLI('no lag 500')
+        s1.cmdCLI('interface lag 300')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('interface 10')
+        s1.cmdCLI('lag 300')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('no interface lag 300')
+        s1.cmdCLI('no interface 21')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if '"lag3"' in line:
+                lag_port_found = False
+        assert (lag_port_found is True), \
+            'Test to delete LAG port - FAILED!'
+        lag_port_found = False
+        for line in lines:
+            if '"interface 20"' in line:
+                lag_port_found = True
+        assert (lag_port_found is False), \
+            'Test to move interface to port table - FAILED!'
+        lag_port_found = False
+        for line in lines:
+            if '"interface 21"' in line:
+                lag_port_found = True
+        assert (lag_port_found is False), \
+            'Test to remove interface from port table - FAILED!'
+        return True
+
+
     def addInterfacesToLags(self):
         info('''
 ########## Test to add interfaces to LAG ports ##########
@@ -199,13 +241,6 @@ class LACPCliTest(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             if 'lacp-fallback-ab' in line:
-                success += 1
-                break
-        s1.cmdCLI('no hash l2-src-dst')
-        out = s1.cmd('ovs-vsctl list port')
-        lines = out.split('\n')
-        for line in lines:
-            if 'bond_mode="l2-src-dst"' in line:
                 success += 1
                 break
         s1.cmdCLI('no lacp rate fast')
@@ -434,6 +469,12 @@ class Test_lacp_cli:
         if self.test.deleteLagPort():
             info('''
 ########## Test to delete LAG port - SUCCESS! ##########
+''')
+
+    def test_deleteLagOnIntf(self):
+        if self.test.deleteLagOnIntf():
+            info('''
+########## Test to delete LAG on Interface - SUCCESS! ##########
 ''')
 
     def test_addInterfacesToLags(self):
