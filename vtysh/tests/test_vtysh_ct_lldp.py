@@ -173,6 +173,58 @@ class LLDPCliTest(OpsVsiTest):
             'Test setting LLDP default holdtime - FAILED!'
         return True
 
+    def setLLDPReinitDelayTest(self):
+        info('''
+########## Test setting LLDP reinit delay ##########
+''')
+        lldp_reinit_delay_set = False
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('lldp reinit 7')
+        out = s1.cmdCLI('do show running')
+        lines = out.split('\n')
+        for line in lines:
+            if 'lldp reinit 7' in line:
+                lldp_reinit_delay_set = True
+        assert (lldp_reinit_delay_set is True), \
+            'Test setting LLDP reinit delay - FAILED!'
+        return True
+
+    def unsetLLDPReinitDelayTest(self):
+        s1 = self.net.switches[0]
+        info('''
+########## Test unsetting LLDP reinit delay ##########
+''')
+        lldp_reinit_delay_set = False
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('no lldp reinit')
+        out = s1.cmdCLI('do show running')
+        lines = out.split('\n')
+        for line in lines:
+            if 'lldp reinit' in line:
+                lldp_reinit_delay_set = True
+        assert (lldp_reinit_delay_set is False), \
+            'Test unsetting LLDP reinit - FAILED!'
+        return True
+
+    def setLLDPDefaultReinitDelayTest(self):
+        info('''
+########## Test setting LLDP default reinit delay ##########
+''')
+        lldp_reinit_delay_set = False
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('lldp reinit 2')
+        out = s1.cmdCLI('do show running')
+        lines = out.split('\n')
+        for line in lines:
+            if 'lldp reinit' in line:
+                lldp_reinit_delay_set = True
+        assert (lldp_reinit_delay_set is False), \
+            'Test setting LLDP default reinit - FAILED!'
+        return True
+
     def setLLDPTimerTest(self):
         info('''
 ########## Test setting LLDP timer ##########
@@ -452,6 +504,24 @@ class Test_lldp_cli:
         if self.test.setLLDPDefaultHoldtimeTest():
             info('''
 ########## Test setting LLDP default holdtime - SUCCESS ##########
+''')
+
+    def test_setLLDPReinitDelayTest(self):
+        if self.test.setLLDPReinitDelayTest():
+            info('''
+########## Test setting LLDP reinit delay - SUCCESS ##########
+''')
+
+    def test_unsetLLDPReinitDelayTest(self):
+        if self.test.unsetLLDPReinitDelayTest():
+            info('''
+########## Test unsetting LLDP reinit delay - SUCCESS ##########
+''')
+
+    def test_setLLDPDefaultReinitDelayTest(self):
+        if self.test.setLLDPDefaultReinitDelayTest():
+            info('''
+########## Test setting LLDP default reinit delay - SUCCESS ##########
 ''')
 
     def test_setLLDPTimerTest(self):
