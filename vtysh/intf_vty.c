@@ -91,7 +91,7 @@ compare_nodes_by_interface_in_numerical(const void *a_, const void *b_)
  * Sorting function for interface
  * on success, returns sorted interface list.
  */
-static const struct shash_node **
+const struct shash_node **
 sort_interface(const struct shash *sh)
 {
     if (shash_is_empty(sh)) {
