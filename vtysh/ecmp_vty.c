@@ -114,7 +114,7 @@ DEFUN (ip_ecmp_status,
     ECMP_STR
     ECMP_CONFIG_DISABLE_STR)
 {
-  VLOG_DBG("We are seting status of the ecmp");
+  VLOG_DBG("Setting status of the ecmp");
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_STATUS);
 }
 
@@ -178,7 +178,7 @@ DEFUN (no_ip_ecmp_status,
     ECMP_STR
     ECMP_CONFIG_DISABLE_STR)
 {
-  VLOG_DBG("We are setting the ecmp state");
+  VLOG_DBG("Setting the ecmp state");
   return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_STATUS);
 }
 
