@@ -83,7 +83,7 @@
 #include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
-
+#include "diag_dump_vty.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -4716,5 +4716,7 @@ vtysh_init_vty (void)
 
   /* Initialize ping CLI */
   ping_vty_init();
+
+  diag_dump_vty_init();
 #endif
 }
