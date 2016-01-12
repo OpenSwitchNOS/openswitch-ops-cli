@@ -55,8 +55,34 @@ bool traceroute_handler(tracerouteEntry *p, void (*fPtr)(char *buff))
         return false;
     }
 
-    /* Executing the command in the "swns" namespace, as the \
-    interfaces visible in vtysh are from "swns" */
+    /*
+     * As of now traceroute is executed from swns namespace
+     * swns namespace is accessible only by root users,
+     * fix is added to display proper error message for other users.
+     * This is a temporary fix, fix will be removed once RBAC is implemented.
+     */
+
+    fp = popen("whoami", "r");
+
+    if (fp)
+    {
+        fgets(output, BUFSIZ, fp);
+        pclose(fp);
+        fp = NULL;
+
+        /* Removing new line at the end of output */
+        output[strlen(output)-1] = '\0';
+        if (strcmp(output, "root") != 0)
+        {
+            (*fPtr)("Traceroute is supported only for root users.");
+            return true;
+        }
+    }
+
+    /*
+     * Executing the command in the "swns" namespace, as the
+     * interfaces visible in vtysh are from "swns".
+     */
     len += sprintf(target+len, "%s ", SWNS_EXEC);
 
     /* Append default cmd either traceroute4 or traceroute6 */
@@ -118,7 +144,7 @@ bool traceroute_handler(tracerouteEntry *p, void (*fPtr)(char *buff))
             len += sprintf(target+len, " -g %s", p->tracerouteLoosesourceIp);
         }
     }
-    fp = popen(buffer,"r");
+    fp = popen(buffer,"w");
 
     if(fp)
     {
