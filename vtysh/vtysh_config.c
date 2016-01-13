@@ -1,6 +1,6 @@
 /* Configuration generator.
    Copyright (C) 2000 Kunihiro Ishiguro
-   Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+   Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
 
 This file is part of GNU Zebra.
 
@@ -189,9 +189,7 @@ vtysh_config_parse_line (const char *line)
 	config_add_line (config_top, line);
       break;
     default:
-      if (strncmp (line, "interface", strlen ("interface")) == 0)
-	config = config_get (INTERFACE_NODE, line);
-      else if (strncmp (line, "interface mgmt", strlen ("interface mgmt")) == 0)
+      if (strncmp (line, "interface mgmt", strlen ("interface mgmt")) == 0)
           config = config_get (MGMT_INTERFACE_NODE, line);
 #ifdef ENABLE_OVSDB
       else if (strncasecmp (line, "interface vlan", strlen ("interface vlan")) == 0)
@@ -199,6 +197,8 @@ vtysh_config_parse_line (const char *line)
 #endif
       else if (strncmp (line, "interface lag", strlen ("interface lag")) == 0)
           config = config_get (LINK_AGGREGATION_NODE, line);
+      else if (strncmp (line, "interface", strlen ("interface")) == 0)
+        config = config_get (INTERFACE_NODE, line);
       else if (strncmp (line, "router-id", strlen ("router-id")) == 0)
 	config = config_get (ZEBRA_NODE, line);
       else if (strncmp (line, "router rip", strlen ("router rip")) == 0)

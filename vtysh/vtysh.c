@@ -1,6 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -1568,11 +1568,13 @@ DEFUN (vtysh_interface,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
+  const struct ovsrec_interface *if_row = NULL;
+  bool intf_exist = false;
   vty->node = INTERFACE_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
 
   if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
-  vty->node = VLAN_INTERFACE_NODE;
+      vty->node = VLAN_INTERFACE_NODE;
       GET_VLANIF(ifnumber, argv[0]);
       if (create_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
           return CMD_OVSDB_FAILURE;
@@ -1581,10 +1583,27 @@ DEFUN (vtysh_interface,
   else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
   {
     strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
-    default_port_add(ifnumber);
+    /*verify if interface exists */
+    OVSREC_INTERFACE_FOR_EACH(if_row, idl)
+    {
+        if (strcmp(if_row->name, ifnumber) == 0) {
+            intf_exist = true;
+        }
+    }
+    if (intf_exist == true) {
+        default_port_add(ifnumber);
+    }
+    else
+    {
+        vty_out(vty, "Bad name in interface definition.%s",VTY_NEWLINE);
+        vty->node = CONFIG_NODE;
+        return CMD_ERR_NO_MATCH;
+    }
   }
   else
   {
+    vty_out(vty, "Bad name in interface definition.%s",VTY_NEWLINE);
+    vty->node = CONFIG_NODE;
     return CMD_ERR_NO_MATCH;
   }
   VLOG_DBG("%s ifnumber = %s\n", __func__, ifnumber);
@@ -1639,6 +1658,9 @@ DEFUN (no_vtysh_interface,
   else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
   {
     strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+    if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+        return CMD_OVSDB_FAILURE;
+    }
   }
   else
   {
