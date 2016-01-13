@@ -702,7 +702,7 @@ DEFUN (cli_intf_autoneg,
         cli_intf_autoneg_cmd,
         "autonegotiation (off|on)",
         "Configure auto-negotiation process for the interface\n"
-        "Turn off autonegotiation (Default)\nTurn on autonegotiation\n")
+        "Turn off autonegotiation\nTurn on autonegotiation (Default)\n")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();

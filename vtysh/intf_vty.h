@@ -28,6 +28,7 @@
 #define INTERFACE_USER_CONFIG_MAP_PAUSE_DEFAULT                 "none"
 #define INTERFACE_USER_CONFIG_MAP_DUPLEX_DEFAULT                "full"
 #define INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT                "auto"
+#define INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT               "on"
 
 #ifdef ENABLE_OVSDB
 #define VERIFY_VLAN_IFNAME(s) strncasecmp(s, "vlan", 4)
