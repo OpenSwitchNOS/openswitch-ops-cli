@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -223,7 +223,7 @@ vrf_add (const char *vrf_name)
     }
 
   /* OPS_TODO: In case multiple vrfs. */
-#if 0
+#ifndef ENABLE_VRF
   vrf_row = vrf_lookup(vrf_name);
   if (vrf_row)
     {
@@ -322,6 +322,7 @@ vrf_delete (const char *vrf_name)
   const struct ovsrec_system *ovs_row = NULL;
   enum ovsdb_idl_txn_status status;
   size_t i;
+  int n;
   char *port_name;
 
   status_txn = cli_do_config_start ();
@@ -344,7 +345,7 @@ vrf_delete (const char *vrf_name)
   /*
    * OPS_TODO: In case of multiple VRFs.
    */
-#if 0
+#ifndef ENABLE_VRF
   vrf_row = vrf_lookup(vrf_name);
   if (!vrf_row)
     {
@@ -388,7 +389,7 @@ vrf_delete (const char *vrf_name)
     }
 
   /* OPS_TODO: In case multiple vrfs. */
-#if 0
+#ifndef ENABLE_VRF
   struct ovsrec_vrf **vrfs;
   vrfs = xmalloc(sizeof *ovs_row->vrfs * (ovs_row->n_vrfs - 1));
   for (i = n = 0; i < ovs_row->n_vrfs; i++)
@@ -482,7 +483,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
   /*
    * OPS_TODO: In case of multiple VRFs.
    */
-#if 0
+#ifndef ENABLE_VRF
   vrf_row = vrf_lookup(vrf_name);
   if (!vrf_row)
     {
@@ -593,7 +594,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
   /*
    * OPS_TODO: In case of multiple VRFs.
    */
-#if 0
+#ifndef ENABLE_VRF
   vrf_row = vrf_lookup(vrf_name);
   if (!vrf_row)
     {
@@ -634,7 +635,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
-
+  port_row = NULL;
   for (i = 0; i < vrf_row->n_ports; i++)
     {
       if (strcmp (vrf_row->ports[i]->name, if_name) == 0)
@@ -1389,8 +1390,8 @@ show_vrf_info ()
                      VTY_NEWLINE);
           }
         }
-  return CMD_SUCCESS;
     }
+  return CMD_SUCCESS;
 
 }
 
@@ -1400,6 +1401,16 @@ DEFUN (cli_vrf_add,
     VRF_STR
     "VRF name\n")
 {
+  if (!strcmp(argv[0], "swns")) {
+      vty_out(vty, "Cannot create vrf %s, as %s namespace already present\n",
+                     argv[0], argv[0]);
+      return CMD_SUCCESS;
+  }
+  else if (!strcmp(argv[0], "nonet")) {
+      vty_out(vty, "Cannot create vrf %s, as %s namespace already present\n",
+                     argv[0], argv[0]);
+      return CMD_SUCCESS;
+  }
   return vrf_add(argv[0]);
 }
 
