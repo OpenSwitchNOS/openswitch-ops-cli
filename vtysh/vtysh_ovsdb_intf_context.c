@@ -139,8 +139,10 @@ vtysh_ovsdb_intftable_parse_lacp_othercfg(const struct smap *ifrow_config,
   data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
   if (data)
   {
-    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
-    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-priority", atoi(data));
+    if (atoi(data) != LACP_DEFAULT_PORT_PRIORITY) {
+       PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+       vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-priority", atoi(data));
+    }
   }
 
   return e_vtysh_ok;
@@ -313,8 +315,21 @@ vtysh_intf_context_clientcallback(void *p_private)
    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
    const struct ovsrec_interface *ifrow;
    const char *cur_state =NULL;
+   struct shash sorted_interfaces;
+   const struct shash_node **nodes;
+   int idx, count;
+
+   shash_init(&sorted_interfaces);
 
    OVSREC_INTERFACE_FOR_EACH(ifrow, p_msg->idl)
+   {
+       shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
+   }
+
+   nodes = sort_interface(&sorted_interfaces);
+   count = shash_count(&sorted_interfaces);
+
+   for (idx = 0; idx < count; idx++)
    {
       vtysh_ovsdb_intf_cfg intfcfg;
 
@@ -322,6 +337,8 @@ vtysh_intf_context_clientcallback(void *p_private)
       intfcfg.admin_state = false;
       intfcfg.disp_intf_cfg = false;
       intfcfg.lldptxrx_state = e_lldp_dir_tx_rx;
+
+      ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
 
       if (ifrow && !strcmp(ifrow->name, DEFAULT_BRIDGE_NAME)) {
           continue;
@@ -429,6 +446,9 @@ vtysh_intf_context_clientcallback(void *p_private)
      vtysh_ovsdb_intftable_print_lag(p_msg, &intfcfg, ifrow->name);
      vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg, intfcfg.disp_intf_cfg);
    }
+
+   shash_destroy(&sorted_interfaces);
+   free(nodes);
 
    return e_vtysh_ok;
 }
