@@ -1548,6 +1548,411 @@ ALIAS (vtysh_exit_tftp_server,
       "Exit current mode and down to previous mode\n")
 #endif
 
+DEFUN (vtysh_interface,
+      vtysh_interface_cmd,
+      "interface IFNAME",
+      "Select an interface to configure\n"
+      "Interface's name\n")
+{
+  const struct ovsrec_interface *if_row = NULL;
+  bool intf_exist = false;
+  vty->node = INTERFACE_NODE;
+  static char ifnumber[MAX_IFNAME_LENGTH];
+
+  if (strchr(argv[0], '.'))
+     vty->node = SUB_INTERFACE_NODE;
+  else
+     vty->node = INTERFACE_NODE;
+
+  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
+      vty->node = VLAN_INTERFACE_NODE;
+      GET_VLANIF(ifnumber, argv[0]);
+      if (create_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+          return CMD_OVSDB_FAILURE;
+      }
+  }
+  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
+  {
+    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+    /*verify if interface exists */
+    OVSREC_INTERFACE_FOR_EACH(if_row, idl)
+    {
+        if (strcmp(if_row->name, ifnumber) == 0) {
+            intf_exist = true;
+        }
+    }
+    if (intf_exist == true) {
+        default_port_add(ifnumber);
+    }
+    else
+    {
+        vty->node = CONFIG_NODE;
+        return CMD_ERR_NO_MATCH;
+    }
+  }
+  else
+  {
+    vty->node = CONFIG_NODE;
+    return CMD_ERR_NO_MATCH;
+  }
+  VLOG_DBG("%s ifnumber = %s\n", __func__, ifnumber);
+  vty->index = ifnumber;
+  return CMD_SUCCESS;
+}
+
+DEFUN (vtysh_interface_vlan,
+       vtysh_interface_vlan_cmd,
+       "interface vlan VLANID",
+       "Select an interface to configure\n"
+        VLAN_STR
+       "Vlan id within <1-4094> and should not be an internal vlan\n")
+{
+   vty->node = VLAN_INTERFACE_NODE;
+   static char vlan_if[MAX_IFNAME_LENGTH];
+
+   VLANIF_NAME(vlan_if, argv[0]);
+
+   if ((verify_ifname(vlan_if) == 0)) {
+       vty->node = CONFIG_NODE;
+       return CMD_ERR_NO_MATCH;
+   }
+
+   VLOG_DBG("%s vlan interface = %s\n", __func__, vlan_if);
+
+   if (create_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
+       vty->node = CONFIG_NODE;
+       return CMD_ERR_NO_MATCH;
+   }
+   vty->index = vlan_if;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN (no_vtysh_interface,
+      no_vtysh_interface_cmd,
+      "no interface IFNAME",
+      NO_STR
+      "Delete a pseudo interface's configuration\n"
+      "Interface's name\n")
+{
+  vty->node = CONFIG_NODE;
+  static char ifnumber[MAX_IFNAME_LENGTH];
+
+  if (strchr(argv[0], '.'))
+  {
+     delete_sub_intf(argv[0]);
+     return CMD_SUCCESS;
+  }
+
+  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
+      GET_VLANIF(ifnumber, argv[0]);
+      if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+          return CMD_OVSDB_FAILURE;
+      }
+  }
+  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
+  {
+    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+    if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+        return CMD_OVSDB_FAILURE;
+    }
+  }
+  else
+  {
+    return CMD_ERR_NO_MATCH;
+  }
+  vty->index = ifnumber;
+  return CMD_SUCCESS;
+}
+
+DEFUN (no_vtysh_interface_vlan,
+       no_vtysh_interface_vlan_cmd,
+       "no interface vlan VLANID",
+       NO_STR
+       "Delete a pseudo interface's configuration\n"
+       "VLAN interface\n"
+       "Vlan id within <1-4094> and should not be an internal vlan\n")
+{
+   vty->node = CONFIG_NODE;
+   static char vlan_if[MAX_IFNAME_LENGTH];
+
+   VLANIF_NAME(vlan_if, argv[0]);
+
+   if ((verify_ifname(vlan_if) == 0)) {
+       return CMD_OVSDB_FAILURE;
+   }
+
+   VLOG_DBG("%s: vlan interface = %s\n", __func__, vlan_if);
+
+   if (delete_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
+       return CMD_OVSDB_FAILURE;
+   }
+   vty->index = vlan_if;
+
+   return CMD_SUCCESS;
+}
+
+DEFUN(vtysh_vlan,
+    vtysh_vlan_cmd,
+    "vlan <1-4094>",
+    VLAN_STR
+    "VLAN identifier\n")
+{
+    const struct ovsrec_vlan *vlan_row = NULL;
+    const struct ovsrec_bridge *bridge_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
+    bool vlan_found = false;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsrec_vlan **vlans = NULL;
+    int i = 0;
+    int vlan_id = atoi(argv[0]);
+    static char vlan[5] = { 0 };
+    static char vlan_name[9] = { 0 };
+    snprintf(vlan, 5, "%s", argv[0]);
+    snprintf(vlan_name, 9, "%s%s", "VLAN", argv[0]);
+
+    vlan_row = ovsrec_vlan_first(idl);
+    if (vlan_row != NULL)
+    {
+        OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+        {
+            if (vlan_row->id == vlan_id)
+            {
+                vlan_found = true;
+                break;
+            }
+        }
+    }
+
+    if (vlan_found && check_if_internal_vlan(vlan_row))
+    {
+        /* Check for internal VLAN.
+         * No configuration is allowed on internal VLANs. */
+        vty_out(vty, "VLAN%d is used as an internal VLAN. "
+                "No further configuration allowed.%s", vlan_row->id, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    if (!vlan_found)
+    {
+        status_txn = cli_do_config_start();
+
+        if (status_txn == NULL)
+        {
+            VLOG_DBG("Transaction creation failed by cli_do_config_start().Function=%s, Line=%d", __func__, __LINE__);
+            cli_do_config_abort(status_txn);
+            vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+
+        vlan_row = ovsrec_vlan_insert(status_txn);
+        ovsrec_vlan_set_id(vlan_row, vlan_id);
+        ovsrec_vlan_set_name(vlan_row, vlan_name);
+        ovsrec_vlan_set_admin(vlan_row, OVSREC_VLAN_ADMIN_DOWN);
+        ovsrec_vlan_set_oper_state(vlan_row, OVSREC_VLAN_OPER_STATE_DOWN);
+        ovsrec_vlan_set_oper_state_reason(vlan_row, OVSREC_VLAN_OPER_STATE_REASON_ADMIN_DOWN);
+
+        default_bridge_row = ovsrec_bridge_first(idl);
+        if (default_bridge_row != NULL)
+        {
+            OVSREC_BRIDGE_FOR_EACH(bridge_row, idl)
+            {
+                if (strcmp(bridge_row->name, DEFAULT_BRIDGE_NAME) == 0)
+                {
+                    default_bridge_row = (struct ovsrec_bridge*)bridge_row;
+                    break;
+                }
+            }
+
+            if (default_bridge_row == NULL)
+            {
+                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%d", __func__, __LINE__);
+                cli_do_config_abort(status_txn);
+                vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
+                return CMD_SUCCESS;
+            }
+        }
+
+        vlans = xmalloc(sizeof(*default_bridge_row->vlans) *
+            (default_bridge_row->n_vlans + 1));
+        for (i = 0; i < default_bridge_row->n_vlans; i++)
+        {
+            vlans[i] = default_bridge_row->vlans[i];
+        }
+        vlans[default_bridge_row->n_vlans] = CONST_CAST(struct ovsrec_vlan*,vlan_row);
+        ovsrec_bridge_set_vlans(default_bridge_row, vlans,
+            default_bridge_row->n_vlans + 1);
+
+        status = cli_do_config_finish(status_txn);
+        free(vlans);
+        if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+        {
+            vty->node = VLAN_NODE;
+            vty->index = (char *) vlan;
+        }
+        else
+        {
+            VLOG_DBG("Transaction failed to create vlan. Function:%s, LINE:%d", __func__, __LINE__);
+            vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+    }
+    else
+    {
+        vty->node = VLAN_NODE;
+        vty->index = (char *) vlan;
+        return CMD_SUCCESS;
+    }
+    return CMD_SUCCESS;
+}
+
+DEFUN(vtysh_no_vlan,
+    vtysh_no_vlan_cmd,
+    "no vlan <2-4094>",
+    NO_STR
+    VLAN_STR
+    "VLAN Identifier\n")
+{
+    const struct ovsrec_vlan *vlan_row = NULL;
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_bridge *bridge_row = NULL;
+    const struct ovsrec_bridge *default_bridge_row = NULL;
+    bool vlan_found = false;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsrec_vlan **vlans = NULL;
+    int i = 0, n = 0;
+    int vlan_id = atoi(argv[0]);
+
+    vlan_row = ovsrec_vlan_first(idl);
+    if (vlan_row != NULL)
+    {
+        OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+        {
+            if (vlan_row->id == vlan_id)
+            {
+                vlan_found = true;
+                break;
+            }
+        }
+    }
+
+    if (vlan_found)
+    {
+        if (check_if_internal_vlan(vlan_row))
+        {
+            /* Check for internal VLAN.
+             * No deletion is allowed on internal VLANs. */
+            vty_out(vty, "VLAN%d is used as an internal VLAN. "
+                    "Deletion not allowed.%s", vlan_row->id, VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+
+        status_txn = cli_do_config_start();
+
+        if (status_txn == NULL)
+        {
+            VLOG_DBG("Trasaction creation failed by cli_do_config_start().Function=%s, Line=%d", __func__, __LINE__);
+            cli_do_config_abort(status_txn);
+            vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+
+        default_bridge_row = ovsrec_bridge_first(idl);
+        if (default_bridge_row != NULL)
+        {
+            OVSREC_BRIDGE_FOR_EACH(bridge_row, idl)
+            {
+                if (strcmp(bridge_row->name, DEFAULT_BRIDGE_NAME) == 0)
+                {
+                    default_bridge_row = (struct ovsrec_bridge*)bridge_row;
+                    break;
+                }
+            }
+
+            if (default_bridge_row == NULL)
+            {
+                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%d", __func__, __LINE__);
+                cli_do_config_abort(status_txn);
+                vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
+                return CMD_SUCCESS;
+            }
+        }
+
+        vlans = xmalloc(sizeof(*default_bridge_row->vlans) *
+            (default_bridge_row->n_vlans - 1));
+        for (i = n = 0; i < default_bridge_row->n_vlans; i++)
+        {
+            if (vlan_row != default_bridge_row->vlans[i])
+            {
+                vlans[n++] = default_bridge_row->vlans[i];
+            }
+        }
+        ovsrec_bridge_set_vlans(default_bridge_row, vlans,
+            default_bridge_row->n_vlans - 1);
+
+        OVSREC_PORT_FOR_EACH(port_row, idl)
+        {
+            int64_t* trunks = NULL;
+            int trunk_count = port_row->n_trunks;
+            for (i = 0; i < port_row->n_trunks; i++)
+            {
+                if (vlan_id == port_row->trunks[i])
+                {
+                    trunks = xmalloc(sizeof *port_row->trunks * (port_row->n_trunks - 1));
+                    for (i = n = 0; i < port_row->n_trunks; i++)
+                    {
+                        if (vlan_id != port_row->trunks[i])
+                        {
+                            trunks[n++] = port_row->trunks[i];
+                        }
+                    }
+                    trunk_count = port_row->n_trunks - 1;
+                    ovsrec_port_set_trunks(port_row, trunks, trunk_count);
+                    break;
+                }
+            }
+            if (port_row->n_tag == 1 && *port_row->tag == vlan_row->id)
+            {
+                int64_t* tag = NULL;
+                int tag_count = 0;
+                if ( trunk_count ) {
+                    ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
+                    ovsrec_port_set_tag(port_row, tag, tag_count);
+                } else {
+                    ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
+                    tag = xmalloc(sizeof *port_row->tag);
+                    tag_count = 1;
+                    tag[0] = DEFAULT_VLAN;
+                    ovsrec_port_set_tag(port_row, tag, tag_count);
+                    free(tag);
+                }
+            }
+        }
+
+        ovsrec_vlan_delete(vlan_row);
+
+        status = cli_do_config_finish(status_txn);
+        free(vlans);
+        if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+        {
+            return CMD_SUCCESS;
+        }
+        else
+        {
+            VLOG_DBG("Transaction failed to delete vlan. Function:%s, LINE:%d", __func__, __LINE__);
+            vty_out(vty, "Failed to delete the vlan%s", VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+    }
+    else
+    {
+        vty_out(vty, "Couldn't find the VLAN %d. Make sure it's configured%s", vlan_id, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+}
+
 DEFUN (vtysh_intf_link_aggregation,
        vtysh_intf_link_aggregation_cmd,
        "interface lag <1-2000>",
