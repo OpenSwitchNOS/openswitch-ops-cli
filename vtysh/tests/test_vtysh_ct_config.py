@@ -208,6 +208,66 @@ class ShowRunningConfigTests(OpsVsiTest):
             'Test to verify show running-config for logrotate target - FAILED!'
         return True
 
+    def setsessionTimeoutTest(self):
+        print '''
+########## Test to verify show running-config for session timeout #########
+'''
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        out1 = s1.cmdCLI('session-timeout')
+        out2 = s1.cmdCLI('do show running-config')
+        s1.cmdCLI('exit')
+        assert 'session-timeout' not in out2 and \
+            'Command incomplete' in out1, \
+            'Test to configure session timeout - Failed!'
+
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('session-timeout 5')
+        out = s1.cmdCLI('do show running-config')
+        s1.cmdCLI('exit')
+        assert 'session-timeout 5' in out, \
+            'Test to configure session timeout - Failed!'
+        return True
+
+    def sessionTimeoutRangeTest(self):
+        print '''
+########## Test to verify show running-config for session timeout \
+range test########
+'''
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('session-timeout -1')
+        out = s1.cmdCLI('do show running-config')
+        assert 'session-timeout 5' in out, \
+            'Test to configure session timeout - Failed!'
+        s1.cmdCLI('configure terminal')
+
+        s1.cmdCLI('session-timeout 43201')
+        out = s1.cmdCLI('do show running-config')
+        assert 'session-timeout 5' in out, \
+            'Test to configure session timeout - Failed!'
+
+        s1.cmdCLI('session-timeout abc')
+        out = s1.cmdCLI('do show running-config')
+        s1.cmdCLI('exit')
+        assert 'session-timeout 5' in out, \
+            'Test to configure session timeout - Failed!'
+        return True
+
+    def setdefaultSessionTimeoutTest(self):
+        print '''
+########## Test to verify show running-config for default session \
+timeout #########
+'''
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('no session-timeout')
+        out = s1.cmdCLI('do show running-config')
+        s1.cmdCLI('exit')
+        assert 'session-timeout' not in out, \
+            'Test to configure no session timeout - Failed!'
+        return True
+
 
 class Test_showrunningconfig:
 
@@ -251,6 +311,21 @@ class Test_showrunningconfig:
         if self.test.setLogrotateTargetTest():
             print '########## Test to verify show running-config ' \
                   'for logrotate target - SUCCESS! ##########'
+
+    def test_set_sessionTimeout(self):
+        if self.test.setsessionTimeoutTest():
+            print '########## Test to verify show running-config ' \
+                  'for setting session timeout - SUCCESS! ##########'
+
+    def test_sessionTimeout_range(self):
+        if self.test.sessionTimeoutRangeTest():
+            print '########## Test to verify show running-config ' \
+                  'for session timeout range check - SUCCESS! ##########'
+
+    def test_set_default_sessionTimeout(self):
+        if self.test.setdefaultSessionTimeoutTest():
+            print '########## Test to verify show running-config ' \
+                  'for no session timeout - SUCCESS! ##########'
 
     def teardown_class(cls):
 

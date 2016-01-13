@@ -72,6 +72,7 @@
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
+#include "source_interface_selection_vty.h"
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
@@ -79,6 +80,7 @@
 #endif
 
 #include "aaa_vty.h"
+#include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
 
@@ -98,6 +100,8 @@ int vtysh_show_startup = 0;
                                     IN6_IS_ADDR_LINKLOCAL(i))
 
 #define MINIMUM(x,y) (x < y) ? x : y
+
+#define MAX_DEFAULT_SESSION_TIMEOUT_LEN 10
 
 /* Struct VTY. */
 struct vty *vty;
@@ -4223,6 +4227,47 @@ DEFUN (vtysh_show_alias_cli,
    return CMD_SUCCESS;
 }
 
+/* Configure idle session timeout value. */
+DEFUN (vtysh_session_timeout_cli,
+       vtysh_session_timeout_cli_cmd,
+       "session-timeout <0-43200>",
+       "Configures the idle session timeout in minutes\n"
+       "Idle timeout range in minutes. "
+       "Value 0 disables the timeout (Default: 30)\n")
+{
+    if (argv[0])
+        return vtysh_ovsdb_session_timeout_set(argv[0]);
+    else
+        return CMD_ERR_INCOMPLETE;
+}
+
+/* Configure idle session timeout to default value 30 mins. */
+DEFUN (vtysh_no_session_timeout_cli,
+       vtysh_no_session_timeout_cli_cmd,
+       "no session-timeout",
+       NO_STR
+       "Idle session timeout in minutes\n")
+{
+    char def_session_timeout[MAX_DEFAULT_SESSION_TIMEOUT_LEN] = {0};
+    snprintf(def_session_timeout, MAX_DEFAULT_SESSION_TIMEOUT_LEN,
+             "%d", DEFAULT_SESSION_TIMEOUT_PERIOD);
+    return vtysh_ovsdb_session_timeout_set(def_session_timeout);
+}
+
+/* Display the session timeout value if its not default value. */
+DEFUN (vtysh_show_session_timeout_cli,
+       vtysh_show_session_timeout_cli_cmd,
+       "show session-timeout",
+       SHOW_STR
+       "Idle session timeout in minutes\n")
+{
+    int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
+
+    if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)
+        vty_out(vty, "session-timeout %d%s", timeout_period, VTY_NEWLINE);
+
+    return CMD_SUCCESS;
+}
 
 /*
  * Function : alias_vty_init
@@ -4517,6 +4562,8 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
+   install_element (CONFIG_NODE, &vtysh_session_timeout_cli_cmd);
+   install_element (CONFIG_NODE, &vtysh_no_session_timeout_cli_cmd);
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
@@ -4557,6 +4604,7 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
   install_element (ENABLE_NODE, &show_startup_config_json_cmd);
+  install_element (ENABLE_NODE, &vtysh_show_session_timeout_cli_cmd);
 #endif /* ENABLE_OVSDB */
 
 #ifndef ENABLE_OVSDB
@@ -4651,8 +4699,13 @@ vtysh_init_vty (void)
   alias_vty_init();
   logrotate_vty_init();
 
+  /* Initialize source interface selection CLI*/
+  source_interface_selection_vty_init();
+
   /* Initialise tracerouote CLI */
   traceroute_vty_init();
+  /* Initialise SFTP CLI */
+  sftp_vty_init();
 
   /* Initialise power supply cli */
   powersupply_vty_init();
