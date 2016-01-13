@@ -1146,7 +1146,8 @@ show_ssh_auth_method()
     }
 
     if (!strcmp
-            (smap_get(&row->aaa, SSH_PUBLICKEY_AUTHENTICATION), SSH_AUTH_ENABLE))
+            (smap_get(&row->aaa, SSH_PUBLICKEY_AUTHENTICATION_ENABLE),
+                       SSH_AUTH_ENABLE))
     {
         vty_out(vty, " SSH publickey authentication : %s%s", "Enabled",
                 VTY_NEWLINE);
@@ -1158,7 +1159,8 @@ show_ssh_auth_method()
     }
 
     if (!strcmp
-            (smap_get(&row->aaa, SSH_PASSWORD_AUTHENTICATION), SSH_AUTH_ENABLE))
+            (smap_get(&row->aaa, SSH_PASSWORD_AUTHENTICATION_ENABLE),
+                       SSH_AUTH_ENABLE))
     {
         vty_out(vty, " SSH password authentication  : %s%s", "Enabled",
                 VTY_NEWLINE);
@@ -1210,11 +1212,13 @@ set_ssh_publickey_auth(const char *status)
 
     if (strcmp(SSH_AUTH_ENABLE, status) == 0)
     {
-        smap_replace(&smap_aaa, SSH_PUBLICKEY_AUTHENTICATION, SSH_AUTH_ENABLE);
+        smap_replace(&smap_aaa, SSH_PUBLICKEY_AUTHENTICATION_ENABLE,
+                      SSH_AUTH_ENABLE);
     }
     else if (strcmp(SSH_AUTH_DISABLE, status) == 0)
     {
-        smap_replace(&smap_aaa, SSH_PUBLICKEY_AUTHENTICATION, SSH_AUTH_DISABLE);
+        smap_replace(&smap_aaa, SSH_PUBLICKEY_AUTHENTICATION_ENABLE,
+                      SSH_AUTH_DISABLE);
     }
 
     ovsrec_system_set_aaa(row, &smap_aaa);
@@ -1281,11 +1285,13 @@ set_ssh_password_auth(const char *status)
 
     if (strcmp(SSH_AUTH_ENABLE, status) == 0)
     {
-        smap_replace(&smap_aaa, SSH_PASSWORD_AUTHENTICATION, SSH_AUTH_ENABLE);
+        smap_replace(&smap_aaa, SSH_PASSWORD_AUTHENTICATION_ENABLE,
+                      SSH_AUTH_ENABLE);
     }
     else if (strcmp(SSH_AUTH_DISABLE, status) == 0)
     {
-        smap_replace(&smap_aaa, SSH_PASSWORD_AUTHENTICATION, SSH_AUTH_DISABLE);
+        smap_replace(&smap_aaa, SSH_PASSWORD_AUTHENTICATION_ENABLE,
+                      SSH_AUTH_DISABLE);
     }
 
     ovsrec_system_set_aaa(row, &smap_aaa);

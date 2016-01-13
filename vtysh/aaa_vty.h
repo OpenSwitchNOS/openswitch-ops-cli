@@ -37,11 +37,11 @@
 #define AUTO_PROVISIONING_ENABLE              "enable"
 #define AUTO_PROVISIONING_DISABLE             "disable"
 
-#define SSH_AUTH_ENABLE                       "enable"
-#define SSH_AUTH_DISABLE                      "disable"
+#define SSH_AUTH_ENABLE                       "true"
+#define SSH_AUTH_DISABLE                      "false"
 
-#define SSH_PUBLICKEY_AUTHENTICATION          "ssh_publickeyauthentication"
-#define SSH_PASSWORD_AUTHENTICATION           "ssh_passkeyauthentication"
+#define SSH_PUBLICKEY_AUTHENTICATION_ENABLE "ssh_publickeyauthentication_enable"
+#define SSH_PASSWORD_AUTHENTICATION_ENABLE  "ssh_passkeyauthentication_enable"
 
 void
 aaa_vty_init (void);

@@ -60,7 +60,7 @@ static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
 {
   const char *data = NULL;
-  int hold_time = 0, transmit_interval = 0;
+  int hold_time = 0, transmit_interval = 0, reinit_time = 0;
 
   if(NULL == ifrow_config)
   {
@@ -95,6 +95,17 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
     if ( SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT != hold_time)
     {
       vtysh_ovsdb_cli_print(p_msg, "lldp timer %d", transmit_interval);
+    }
+  }
+
+  data = NULL;
+  data = smap_get(ifrow_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT);
+  if (data)
+  {
+    reinit_time = atoi(data);
+    if (SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT_DEFAULT != reinit_time)
+    {
+      vtysh_ovsdb_cli_print(p_msg, "lldp reinit %d", reinit_time);
     }
   }
 
@@ -195,6 +206,13 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
   if (data)
   {
     vtysh_ovsdb_cli_print(p_msg, "lldp management-address %s", data);
+  }
+
+  data = NULL;
+  data = smap_get(ifrow_config, SYSTEM_OTHER_CONFIG_MAP_CLI_SESSION_TIMEOUT);
+  if (data && (atoi(data) != DEFAULT_SESSION_TIMEOUT_PERIOD))
+  {
+    vtysh_ovsdb_cli_print(p_msg, "session-timeout %d", atoi(data));
   }
 
   return e_vtysh_ok;
@@ -432,14 +450,14 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
     }
   }
 
-  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION);
+  data = smap_get(ifrow_aaa, SSH_PASSWORD_AUTHENTICATION_ENABLE);
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
         vtysh_ovsdb_cli_print(p_msg, "no ssh password-authentication");
   }
 
-  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION);
+  data = smap_get(ifrow_aaa, SSH_PUBLICKEY_AUTHENTICATION_ENABLE);
   if (data)
   {
     if (!VTYSH_STR_EQ(data, SSH_AUTH_ENABLE))
@@ -471,7 +489,7 @@ vtysh_config_context_global_clientcallback(void *p_private)
   {
     if (vswrow->hostname[0] != '\0')
     {
-      vtysh_ovsdb_cli_print(p_msg, "hostname \"%s\"", vswrow->hostname);
+      vtysh_ovsdb_cli_print(p_msg, "hostname %s", vswrow->hostname);
     }
 
     /* parse the alias coumn */
