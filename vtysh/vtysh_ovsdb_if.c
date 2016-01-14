@@ -474,6 +474,29 @@ lacp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_port_col_lacp);
 }
 
+static void
+ntp_ovsdb_init()
+{
+#if 0
+    /* Add System & VRF Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+
+    /* Add columns in VRF table */
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ntp_associations);
+#endif
+
+    /* Add NTP Association Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ntp_associations);
+
+    /* Add columns in NTP Association Table */
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_associations_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_associations_col_association_status);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_associations_col_vrf);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_associations_col_key);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_associations_col_association_attributes);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -560,6 +583,8 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 
+    /* Add tables/columns needed for NTP config commands. */
+    ntp_ovsdb_init();
 }
 
 static void
