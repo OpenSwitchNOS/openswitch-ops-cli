@@ -1152,49 +1152,59 @@ port_check_and_add (const char *port_name, bool create,
                     bool attach_to_default_vrf, struct ovsdb_idl_txn *txn)
 {
     const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_interface *intf_row = NULL;
+    int i = 0;
+
     OVSREC_PORT_FOR_EACH (port_row, idl)
-      {
+    {
         if (strcmp (port_row->name, port_name) == 0)
-        return port_row;
-      }
+            return port_row;
+        /* The interface can be associated with another port */
+        for (i = 0; i < port_row->n_interfaces; i++) {
+            intf_row = port_row->interfaces[i];
+            if (!strcmp(intf_row->name, port_name)) {
+                return port_row;
+            }
+        }
+    }
     if (!port_row && create)
-      {
+    {
         const struct ovsrec_interface *if_row = NULL;
         struct ovsrec_interface **ifs;
 
-      OVSREC_INTERFACE_FOR_EACH (if_row, idl)
+        OVSREC_INTERFACE_FOR_EACH (if_row, idl)
         {
-          if (strcmp (if_row->name, port_name) == 0)
+            if (strcmp (if_row->name, port_name) == 0)
             {
-              port_row = ovsrec_port_insert (txn);
-              ovsrec_port_set_name (port_row, port_name);
-              ifs = xmalloc (sizeof *if_row);
-              ifs[0] = (struct ovsrec_interface *) if_row;
-              ovsrec_port_set_interfaces (port_row, ifs, 1);
-              free (ifs);
-              break;
+                port_row = ovsrec_port_insert (txn);
+                ovsrec_port_set_name (port_row, port_name);
+                ifs = xmalloc (sizeof *if_row);
+                ifs[0] = (struct ovsrec_interface *) if_row;
+                ovsrec_port_set_interfaces (port_row, ifs, 1);
+                free (ifs);
+                break;
             }
         }
-      if (attach_to_default_vrf)
+        if (attach_to_default_vrf)
         {
-          const struct ovsrec_vrf *default_vrf_row = NULL;
-          struct ovsrec_port **ports = NULL;
-          size_t i;
-          default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
-          ports = xmalloc (
-              sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
-          for (i = 0; i < default_vrf_row->n_ports; i++)
-            ports[i] = default_vrf_row->ports[i];
+            const struct ovsrec_vrf *default_vrf_row = NULL;
+            struct ovsrec_port **ports = NULL;
+            size_t i;
+            default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
+            ports = xmalloc (
+                    sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
+            for (i = 0; i < default_vrf_row->n_ports; i++)
+                ports[i] = default_vrf_row->ports[i];
 
-          struct ovsrec_port
-          *temp_port_row = CONST_CAST(struct ovsrec_port*,
-              port_row);
-          ports[default_vrf_row->n_ports] = temp_port_row;
-          ovsrec_vrf_set_ports (default_vrf_row, ports,
-                                default_vrf_row->n_ports + 1);
-          free (ports);
+            struct ovsrec_port
+                *temp_port_row = CONST_CAST(struct ovsrec_port*,
+                        port_row);
+            ports[default_vrf_row->n_ports] = temp_port_row;
+            ovsrec_vrf_set_ports (default_vrf_row, ports,
+                    default_vrf_row->n_ports + 1);
+            free (ports);
         }
-      return port_row;
+        return port_row;
     }
     return NULL;
 }
