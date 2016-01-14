@@ -474,6 +474,36 @@ lacp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_port_col_lacp);
 }
 
+static void
+ntp_ovsdb_init()
+{
+    /* Add System & VRF Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+
+#if 0
+    /* Add columns in VRF table */
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ntp_associations);
+
+    /* Add NTP Association Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ntp_association);
+
+    /* Add columns in NTP Association Table */
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_network_delay);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_jitter);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_address_family);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_ref_clock_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_root_dispersion);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_stratum);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_external_ids);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_time_offset);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_name);
+#endif
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -560,6 +590,8 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 
+    /* Add tables/columns needed for NTP config commands. */
+    ntp_ovsdb_init();
 }
 
 static void
