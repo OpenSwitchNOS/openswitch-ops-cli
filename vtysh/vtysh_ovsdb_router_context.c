@@ -99,6 +99,15 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       password);
 
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                n_advertisement_interval)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %d", "", "neighbor",
+                                      bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "advertisement-interval", *(bgp_router_context->
+                                      value_bgp_neighbors[n_neighbors]->
+                                      advertisement_interval));
+
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_timers > 0)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d %d","","neighbor",
                                       bgp_router_context->
@@ -305,6 +314,12 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
                                       ovs_vrf->value_bgp_routers[j]->
                                       value_timers[1], ovs_vrf->
                                       value_bgp_routers[j]->value_timers[0]);
+
+            if (ovs_vrf->value_bgp_routers[j]->n_fast_external_failover)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s", "", "bgp fast-external-failover");
+
+            if (ovs_vrf->value_bgp_routers[j]->n_log_neighbor_changes)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s", "", "bgp log-neighbor-changes");
         }
     }
     vtysh_router_context_bgp_neighbor_callback(p_msg);
