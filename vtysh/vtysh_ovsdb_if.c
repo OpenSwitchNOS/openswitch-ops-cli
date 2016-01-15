@@ -221,6 +221,11 @@ vrf_ovsdb_init()
 static void
 policy_ovsdb_init ()
 {
+    ovsdb_idl_add_table(idl, &ovsrec_table_community_filter);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_action);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_match);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_type);
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_prefix_list_entries);
