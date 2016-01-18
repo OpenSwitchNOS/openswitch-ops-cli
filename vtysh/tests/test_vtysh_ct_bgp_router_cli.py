@@ -33,6 +33,17 @@ class bgpCLItest(OpsVsiTest):
                            host=Host, link=OpsVsiLink,
                            controller=None, build=True)
 
+    def verify_bgp_router_table(self):
+        info("\n##########  Test to verify BGP router table"
+             " ##########\n")
+
+        s1 = self.net.switches[0]
+        out = s1.cmdCLI("show ip bgp summary")
+        assert "No bgp router configured." in out, \
+            "Test to verify BGP router table FAILED!"
+        info("\n##########  Test to verify BGP router table successfull"
+             " ##########\n")
+
     def configure_bgp_router_flags(self):
         info("\n##########  Test to configure BGP router flags"
              " ##########\n")
@@ -169,6 +180,7 @@ class Test_bgpd_router_cmds:
         del self.test
 
     def test_bgp_router_cmds(self):
+        self.test.verify_bgp_router_table()
         self.test.configure_bgp_router_flags()
         self.test.unconfigure_bgp_router_flags()
         self.test.configure_bgp_network()
