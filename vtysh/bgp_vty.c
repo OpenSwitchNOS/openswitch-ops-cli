@@ -7492,6 +7492,12 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
     START_DB_TXN(txn);
 
     ovs_vrf = ovsrec_vrf_first(idl);
+    if (ovs_vrf->value_bgp_routers == NULL)
+    {
+        vty_out(vty, "No bgp router configured.\n");
+        END_DB_TXN(txn);
+        return CMD_SUCCESS;
+    }
     bgp_router_context = ovs_vrf->value_bgp_routers[0];
 
     if (bgp_router_context)
