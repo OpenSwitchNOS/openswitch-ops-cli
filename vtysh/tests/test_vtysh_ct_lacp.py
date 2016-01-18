@@ -20,7 +20,29 @@
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
 import re
+import time
 
+hosts = 0
+switches = 2
+
+class myTopo(Topo):
+
+    '''
+        Custom Topology Example
+        S1[1][2]<--->[1][2]S2
+    '''
+
+    def build(self, hsts=0, sws=2, **_opts):
+        self.sws = sws
+
+        # Add list of switches
+        for s in irange(1, sws):
+            switch = self.addSwitch('s%s' % s)
+
+        # Add links between nodes based on custom topo
+
+        self.addLink('s1', 's2')
+        self.addLink('s1', 's2')
 
 class LACPCliTest(OpsVsiTest):
 
@@ -32,8 +54,8 @@ class LACPCliTest(OpsVsiTest):
 
         host_opts = self.getHostOpts()
         switch_opts = self.getSwitchOpts()
-        infra_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
-        self.net = Mininet(infra_topo, switch=VsiOpenSwitch,
+        static_topo = myTopo(hsts=hosts, sws=switches, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(static_topo, switch=VsiOpenSwitch,
                            host=Host, link=OpsVsiLink,
                            controller=None, build=True)
 
@@ -374,6 +396,71 @@ class LACPCliTest(OpsVsiTest):
 
         return True
 
+    def testLACPConnectivity(self):
+
+        s1 = self.net.switches[0]
+        s2 = self.net.switches[1]
+
+        s1SystemId = ''
+        s2SystemId = ''
+
+        # Getting System ID from both switches
+        # After splitting all words from
+        # 'show lacp configuration' command, the System ID
+        # for this switch is store in index 5.
+        # If the output for this command change in the future,
+        # this needs to be changed
+        out = s1.cmdCLI('show lacp configuration')
+        s1SystemId = out.split()[5]
+        out = s2.cmdCLI('show lacp configuration')
+        s2SystemId = out.split()[5]
+
+        # Configuring LAG 1 for S1
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('no shutdown')
+        s1.cmdCLI('interface 2')
+        s1.cmdCLI('no shutdown')
+
+        # Configuring LAG 1 for S2
+        s2.cmdCLI('configure terminal')
+        s2.cmdCLI('interface lag 1')
+        s2.cmdCLI('lacp mode active')
+        s2.cmdCLI('interface 1')
+        s2.cmdCLI('no shutdown')
+        s2.cmdCLI('lag 1')
+        s2.cmdCLI('interface 2')
+        s2.cmdCLI('lag 1')
+        s2.cmdCLI('no shutdown')
+
+        # Giving time to LAG to form correctly
+        time.sleep(15)
+
+        # Getting current info for LAG in both switches
+        s1Out = s1.cmdCLI('do show lacp interface')
+        s2Out = s2.cmdCLI('do show lacp interface')
+        s1Lines = s1Out.split('\n')
+        s2Lines = s2Out.split('\n')
+
+        # If the LAG is correclty formed,
+        # the systemID from the opposite switch
+        # will appear in the command
+        success = 0
+        for line in s1Lines:
+            if s2SystemId in line:
+                success += 1
+
+        for line in s2Lines:
+            if s1SystemId in line:
+                success += 1
+
+        assert (success == 4), \
+            'Test LACP connectivity - FAILED!'
+
+        return True
+
 
 class Test_lacp_cli:
 
@@ -439,6 +526,12 @@ class Test_lacp_cli:
             info('''
 ########## Test show interface lag command - SUCCESS! ##########
 ''')
+    def test_showLACPConnectivity(self):
+        if self.test.testLACPConnectivity():
+            info ('''
+########## Test LACP connectivity - SUCCESS! ##########
+''')
+
 
     def teardown_class(cls):
         Test_lacp_cli.test.net.stop()
