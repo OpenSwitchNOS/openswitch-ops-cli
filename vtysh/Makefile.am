@@ -32,7 +32,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
                  ping_handler.c sftp_vty.c \
-                 vtysh_ovsdb_sftp_context.c
+                 vtysh_ovsdb_sftp_context.c show_tech_vty.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -52,10 +52,10 @@ noinst_HEADERS += vtysh_ovsdb_if.h lldp_vty.h bgp_vty.h vrf_vty.h \
                   powersupply_vty.h vtysh_ovsdb_intf_lag_context.h\
                   lacp_vty.h vtysh_utils.h ecmp_vty.h dhcp_tftp_vty.h \
                   vtysh_ovsdb_dhcp_tftp_context.h ping.h sftp_vty.h \
-                  vtysh_ovsdb_sftp_context.h
+                  vtysh_ovsdb_sftp_context.h show_tech_vty.h
 endif
 
-vtysh_LDADD = ../lib/libzebra_cli.la @LIBCAP@ @LIBREADLINE@
+vtysh_LDADD = ../lib/libzebra_cli.la -lsupportability @LIBCAP@ @LIBREADLINE@
 if ENABLE_OVSDB
 vtysh_LDADD += -lovscommon -lovsdb -lpthread
 endif

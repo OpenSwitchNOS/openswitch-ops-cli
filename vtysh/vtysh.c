@@ -68,6 +68,7 @@
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
 #include "led_vty.h"
+#include "show_tech_vty.h"
 #include "mgmt_intf_vty.h"
 #include "system_vty.h"
 #include "lacp_vty.h"
@@ -4716,5 +4717,7 @@ vtysh_init_vty (void)
 
   /* Initialize ping CLI */
   ping_vty_init();
+
+  show_tech_vty_init();
 #endif
 }
