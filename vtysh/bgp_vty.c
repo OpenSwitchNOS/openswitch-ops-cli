@@ -529,6 +529,7 @@ static void show_routes(struct vty *vty,
     route_psd_bgp_t psd, *ppsd = NULL;
     struct ovsrec_bgp_route *rib_sorted = NULL;
     int count = bgp_get_rib_count();
+    int ip_count = 0;
 
     ppsd = &psd;
     bgp_rib_sort_init(&rib_sorted, count);
@@ -536,17 +537,19 @@ static void show_routes(struct vty *vty,
     /* Read BGP routes from BGP local RIB. */
     for (kk = 0; kk < count; kk++) {
         rib_row = &rib_sorted[kk];
-        bgp_get_rib_path_attributes(rib_row, ppsd);
-        print_route_status(vty, ppsd);
         if (rib_row->prefix) {
-            int len = 0;
-            len = strlen(rib_row->prefix);
-            vty_out(vty, "%s", rib_row->prefix);
-            if (len < NET_BUFSZ)
-                vty_out (vty, "%*s", NET_BUFSZ-len-1, " ");
             /* Nexthop. */
             if (!strcmp(rib_row->address_family,
                         OVSREC_ROUTE_ADDRESS_FAMILY_IPV4)) {
+                bgp_get_rib_path_attributes(rib_row, ppsd);
+                print_route_status(vty, ppsd);
+
+                int len = 0;
+                len = strlen(rib_row->prefix);
+                vty_out(vty, "%s", rib_row->prefix);
+                if (len < NET_BUFSZ)
+                    vty_out (vty, "%*s", NET_BUFSZ-len-1, " ");
+
                 /* Get the nexthop list. */
                 VLOG_DBG("No. of next hops : %d", (int)rib_row->n_bgp_nexthops);
                 for (ii = 0; ii < rib_row->n_bgp_nexthops; ii++) {
@@ -577,14 +580,84 @@ static void show_routes(struct vty *vty,
                 /* Print origin. */
                 if (ppsd->origin)
                     vty_out(vty, "%s", ppsd->origin);
-            } else {
-                /* TODO: Add ipv6 later. */
-                VLOG_INFO("Address family not supported yet\n");
+
+                ip_count++;
+                vty_out (vty, VTY_NEWLINE);
             }
-            vty_out (vty, VTY_NEWLINE);
         }
     }
-    vty_out(vty, "Total number of entries %d\n", count);
+    vty_out(vty, "Total number of entries %d\n", ip_count);
+    bgp_rib_sort_fin(&rib_sorted);
+}
+
+/* Function to print ipv6 route status code.*/
+static void show_ipv6_routes(struct vty *vty,
+                             const struct ovsrec_bgp_router *bgp_row)
+{
+    const struct ovsrec_bgp_route *rib_row = NULL;
+    int ii = 0, def_metric = 0, kk = 0;
+    const struct ovsrec_bgp_nexthop *nexthop_row = NULL;
+    route_psd_bgp_t psd, *ppsd = NULL;
+    struct ovsrec_bgp_route *rib_sorted = NULL;
+    int count = bgp_get_rib_count();
+    int ipv6_count = 0;
+
+    ppsd = &psd;
+    bgp_rib_sort_init(&rib_sorted, count);
+
+    /* Read BGP routes from BGP local RIB. */
+    for (kk = 0; kk < count; kk++) {
+        rib_row = &rib_sorted[kk];
+        if (rib_row->prefix) {
+            /* Nexthop. */
+            if (!strcmp(rib_row->address_family,
+                        OVSREC_ROUTE_ADDRESS_FAMILY_IPV6)) {
+                bgp_get_rib_path_attributes(rib_row, ppsd);
+                print_route_status(vty, ppsd);
+
+                int len = 0;
+                len = strlen(rib_row->prefix);
+                vty_out(vty, "%s", rib_row->prefix);
+                if (len < NET_BUFSZ)
+                    vty_out (vty, "%*s", NET_BUFSZ-len-1, " ");
+
+                /* Get the nexthop list. */
+                VLOG_DBG("No. of next hops : %d", (int)rib_row->n_bgp_nexthops);
+                for (ii = 0; ii < rib_row->n_bgp_nexthops; ii++) {
+                    if (ii != 0) {
+                        vty_out (vty, VTY_NEWLINE);
+                        vty_out (vty, "%*s", NET_BUFSZ, " ");
+                    }
+                    nexthop_row = rib_row->bgp_nexthops[ii];
+                    vty_out (vty, "%-19s", nexthop_row->ip_address);
+                }
+                if (!rib_row->n_bgp_nexthops)
+                    vty_out (vty, "%-19s", "::");
+                if (rib_row->n_metric)
+                    vty_out (vty, "%7d", (int)*rib_row->metric);
+                else
+                    vty_out (vty, "%7d", def_metric);
+                /* Print local preference. */
+                vty_out (vty, "%7d", ppsd->local_pref);
+                /* Print weight for non-static routes. */
+                vty_out (vty, "%7d ", bgp_get_peer_weight(bgp_row,
+                                                          rib_row,
+                                                          rib_row->peer));
+                /* Print AS path. */
+                if (ppsd->aspath) {
+                    vty_out(vty, "%s", ppsd->aspath);
+                    vty_out(vty, " ");
+                }
+                /* Print origin. */
+                if (ppsd->origin)
+                    vty_out(vty, "%s", ppsd->origin);
+
+                ipv6_count++;
+                vty_out (vty, VTY_NEWLINE);
+            }
+        }
+    }
+    vty_out(vty, "Total number of entries %d\n", ipv6_count);
     bgp_rib_sort_fin(&rib_sorted);
 }
 
@@ -7747,6 +7820,36 @@ DEFUN(show_ipv6_mbgp_summary,
     report_unimplemented_command(vty, argc, argv);
     return CMD_SUCCESS;
 }
+
+DEFUN(show_ipv6_bgp,
+      show_ipv6_bgp_cmd,
+      "show ipv6 bgp",
+      SHOW_STR
+      IPV6_STR
+      BGP_STR)
+{
+    const struct ovsrec_bgp_router *bgp_row = NULL;
+
+    vty_out (vty, BGP_SHOW_SCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
+    vty_out (vty, BGP_SHOW_OCODE_HEADER, VTY_NEWLINE, VTY_NEWLINE);
+
+    bgp_row = ovsrec_bgp_router_first(idl);
+    if (!bgp_row) {
+        vty_out(vty, "%% No bgp router configured\n");
+        return CMD_SUCCESS;
+    }
+
+    /* TODO: Need to update this when multiple BGP routers are supported. */
+    char *id = bgp_row->router_id;
+    if (id) {
+        vty_out (vty, "Local router-id %s\n", id);
+    } else {
+        vty_out (vty, "Router-id not configured\n");
+    }
+    vty_out (vty, BGP_SHOW_HEADER, VTY_NEWLINE);
+    show_ipv6_routes(vty, bgp_row);
+    return CMD_SUCCESS;
+}
 #endif /* HAVE_IPV6 */
 
 static void
@@ -9675,8 +9778,10 @@ bgp_vty_init(void)
     /* Old commands.  */
     install_element(VIEW_NODE, &show_ipv6_bgp_summary_cmd);
     install_element(VIEW_NODE, &show_ipv6_mbgp_summary_cmd);
+    install_element(VIEW_NODE, &show_ipv6_bgp_cmd);
     install_element(ENABLE_NODE, &show_ipv6_bgp_summary_cmd);
     install_element(ENABLE_NODE, &show_ipv6_mbgp_summary_cmd);
+    install_element(ENABLE_NODE, &show_ipv6_bgp_cmd);
 #endif /* HAVE_IPV6 */
 
     /* "Show ip bgp rsclient" commands. */
