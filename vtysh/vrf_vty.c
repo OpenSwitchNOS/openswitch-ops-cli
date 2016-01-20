@@ -45,6 +45,7 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "intf_vty.h"
+#include "vlan_vty.h"
 #include "smap.h"
 #include "openswitch-dflt.h"
 
@@ -785,6 +786,10 @@ vrf_no_routing (const char *if_name)
   enum ovsdb_idl_txn_status status;
   struct ovsrec_port **vrf_ports;
   struct ovsrec_port **bridge_ports;
+  int64_t* trunks = NULL;
+  int trunk_count = 0;
+  int64_t* tag = NULL;
+  int tag_count = 0;
   size_t i, n;
 
   status_txn = cli_do_config_start ();
@@ -824,6 +829,16 @@ vrf_no_routing (const char *if_name)
       port_row = port_check_and_add (if_name, true, false, status_txn);
     }
 
+  ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
+
+  ovsrec_port_set_trunks(port_row, trunks, trunk_count);
+
+  tag = xmalloc(sizeof *port_row->tag);
+  tag_count = 1;
+  tag[0] = DEFAULT_VLAN;
+
+  ovsrec_port_set_tag(port_row, tag, tag_count);
+
   default_bridge_row = ovsrec_bridge_first (idl);
   bridge_ports = xmalloc (
       sizeof *default_bridge_row->ports * (default_bridge_row->n_ports + 1));
@@ -836,6 +851,7 @@ vrf_no_routing (const char *if_name)
   ovsrec_bridge_set_ports (default_bridge_row, bridge_ports,
                            default_bridge_row->n_ports + 1);
   free (bridge_ports);
+  free(tag);
 
   status = cli_do_config_finish (status_txn);
   if (status == TXN_SUCCESS)
@@ -1448,7 +1464,7 @@ DEFUN (cli_vrf_no_routing,
     NO_STR
     "Configure interface as L3\n")
 {
-  return vrf_no_routing((char*) vty->index);
+    return vrf_no_routing((char*) vty->index);
 }
 
 DEFUN (cli_vrf_config_ip,
