@@ -40,7 +40,6 @@
 #include "ecmp_vty.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
-
 char globalconfigclientname[] = "vtysh_config_context_global_clientcallback";
 char vrfconfigclientname[]= "vtysh_config_context_vrf_clientcallback";
 char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback";
@@ -672,8 +671,19 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
                 if (row_route->n_nexthops && row_route->nexthops[i]->ip_address &&
                     row_route->distance) {
                     if (*row_route->distance == 1) {
+                        #ifdef VRF_ENABLE
+                        if (strcmp(row_route->vrf->name, "vrf_default")) {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s vrf %s", str_temp,
+                               row_route->nexthops[i]->ip_address,row_route->vrf->name);
+                        } else {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                               row_route->nexthops[i]->ip_address);
+                        }
+                        #else
                         vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
                             row_route->nexthops[i]->ip_address);
+                        #endif
+
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
                             row_route->nexthops[i]->ip_address, *row_route->distance);
@@ -682,8 +692,19 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
                 } else if (row_route->n_nexthops && row_route->nexthops[i]->ports
                     && row_route->distance) {
                     if (*row_route->distance == 1) {
+                        #ifdef VRF_ENABLE
+                        if (strcmp(row_route->vrf->name, "vrf_default")) {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s vrf %s", str_temp,
+                                row_route->nexthops[i]->ports[0]->name,row_route->vrf->name);
+                        } else {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                                row_route->nexthops[i]->ports[0]->name);
+                        }
+                        #else
                         vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
                             row_route->nexthops[i]->ports[0]->name);
+                        #endif
+
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
                             row_route->nexthops[i]->ports[0]->name, *row_route->distance);
