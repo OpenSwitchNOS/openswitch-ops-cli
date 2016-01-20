@@ -154,11 +154,11 @@ static int vlan_int_range_add(const char *min_vlan,
 /* vlan internal configuration command */
 DEFUN  (cli_vlan_int_range_add,
         cli_vlan_int_range_add_cmd,
-        "vlan internal range <1-4094> <1-4094> (ascending|descending)",
+        "vlan internal range <2-4094> <2-4094> (ascending|descending)",
         VLAN_STR
         VLAN_INT_STR
         VLAN_INT_RANGE_STR
-        "Start VLAN, between 1 and 4094\n"
+        "Start VLAN, between 2 and 4094\n"
         "End VLAN, between Start VLAN and 4094\n"
         "Assign VLANs in ascending order (Default)\n"
         "Assign VLANs in descending order\n")
@@ -277,12 +277,12 @@ DEFUN  (cli_vlan_int_range_del,
 /* Deleting vlan internal configuration. Default config takes effect */
 DEFUN  (cli_vlan_int_range_del_arg,
         cli_vlan_int_range_del_cmd_arg,
-        "no vlan internal range <1-4094> <1-4094> (ascending|descending)",
+        "no vlan internal range <2-4094> <2-4094> (ascending|descending)",
         NO_STR
         VLAN_STR
         VLAN_INT_STR
         VLAN_INT_RANGE_STR
-        "Start VLAN, between 1 and 4094\n"
+        "Start VLAN, between 2 and 4094\n"
         "End VLAN, between Start VLAN and 4094\n"
         "Assign VLANs in ascending order (Default)\n"
         "Assign VLANs in descending order\n")
@@ -489,7 +489,7 @@ DEFUN(cli_no_vlan_admin,
 
 DEFUN(cli_intf_vlan_access,
     cli_intf_vlan_access_cmd,
-    "vlan access <1-4094>",
+    "vlan access <2-4094>",
     VLAN_STR
     "Access configuration\n"
     "VLAN identifier\n")
@@ -613,7 +613,7 @@ DEFUN(cli_intf_vlan_access,
 
 DEFUN(cli_intf_no_vlan_access,
     cli_intf_no_vlan_access_cmd,
-    "no vlan access [<1-4094>]",
+    "no vlan access [<2-4094>]",
     NO_STR
     VLAN_STR
     "Access configuration\n"
@@ -717,7 +717,7 @@ DEFUN(cli_intf_no_vlan_access,
 
 DEFUN(cli_intf_vlan_trunk_allowed,
     cli_intf_vlan_trunk_allowed_cmd,
-    "vlan trunk allowed <1-4094>",
+    "vlan trunk allowed <2-4094>",
     VLAN_STR
     TRUNK_STR
     "Allowed VLANs on the trunk port\n"
@@ -877,7 +877,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
 
 DEFUN(cli_intf_no_vlan_trunk_allowed,
     cli_intf_no_vlan_trunk_allowed_cmd,
-    "no vlan trunk allowed <1-4094>",
+    "no vlan trunk allowed <2-4094>",
     NO_STR
     VLAN_STR
     TRUNK_STR
@@ -1018,7 +1018,7 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
 
 DEFUN(cli_intf_vlan_trunk_native,
     cli_intf_vlan_trunk_native_cmd,
-    "vlan trunk native <1-4094>",
+    "vlan trunk native <2-4094>",
     VLAN_STR
     TRUNK_STR
     "Native VLAN on the trunk port\n"
@@ -1155,7 +1155,7 @@ DEFUN(cli_intf_vlan_trunk_native,
 
 DEFUN(cli_intf_no_vlan_trunk_native,
     cli_intf_no_vlan_trunk_native_cmd,
-    "no vlan trunk native [<1-4094>]",
+    "no vlan trunk native [<2-4094>]",
     NO_STR
     VLAN_STR
     TRUNK_STR
@@ -1454,7 +1454,7 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
 
 DEFUN(cli_lag_vlan_access,
     cli_lag_vlan_access_cmd,
-    "vlan access <1-4094>",
+    "vlan access <2-4094>",
     VLAN_STR
     "Access Configuration\n"
     "VLAN identifier\n")
@@ -1543,7 +1543,7 @@ DEFUN(cli_lag_vlan_access,
 
 DEFUN(cli_lag_no_vlan_access,
     cli_lag_no_vlan_access_cmd,
-    "no vlan access [<1-4094>]",
+    "no vlan access [<2-4094>]",
     NO_STR
     VLAN_STR
     "Access configuration\n"
@@ -1611,7 +1611,7 @@ DEFUN(cli_lag_no_vlan_access,
 
 DEFUN(cli_lag_vlan_trunk_allowed,
     cli_lag_vlan_trunk_allowed_cmd,
-    "vlan trunk allowed <1-4094>",
+    "vlan trunk allowed <2-4094>",
     VLAN_STR
     TRUNK_STR
     "Allowed vlans on the trunk port\n"
@@ -1736,7 +1736,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
 
 DEFUN(cli_lag_no_vlan_trunk_allowed,
     cli_lag_no_vlan_trunk_allowed_cmd,
-    "no vlan trunk allowed <1-4094>",
+    "no vlan trunk allowed <2-4094>",
     NO_STR
     VLAN_STR
     TRUNK_STR
@@ -1829,7 +1829,7 @@ DEFUN(cli_lag_no_vlan_trunk_allowed,
 
 DEFUN(cli_lag_vlan_trunk_native,
     cli_lag_vlan_trunk_native_cmd,
-    "vlan trunk native <1-4094>",
+    "vlan trunk native <2-4094>",
     VLAN_STR
     TRUNK_STR
     "Native VLAN on the trunk port\n"

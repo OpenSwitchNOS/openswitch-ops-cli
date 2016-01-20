@@ -1597,7 +1597,7 @@ DEFUN (vtysh_interface_vlan,
        "interface vlan VLANID",
        "Select an interface to configure\n"
         VLAN_STR
-       "Vlan id within <1-4094> and should not be an internal vlan\n")
+       "Vlan id within <2-4094> and should not be an internal vlan\n")
 {
    vty->node = VLAN_INTERFACE_NODE;
    static char vlan_if[MAX_IFNAME_LENGTH];
@@ -1654,7 +1654,7 @@ DEFUN (no_vtysh_interface_vlan,
        NO_STR
        "Delete a pseudo interface's configuration\n"
        "VLAN interface\n"
-       "Vlan id within <1-4094> and should not be an internal vlan\n")
+       "Vlan id within <2-4094> and should not be an internal vlan\n")
 {
    vty->node = CONFIG_NODE;
    static char vlan_if[MAX_IFNAME_LENGTH];
@@ -1677,7 +1677,7 @@ DEFUN (no_vtysh_interface_vlan,
 
 DEFUN(vtysh_vlan,
     vtysh_vlan_cmd,
-    "vlan <1-4094>",
+    "vlan <2-4094>",
     VLAN_STR
     "VLAN identifier\n")
 {
@@ -1792,7 +1792,7 @@ DEFUN(vtysh_vlan,
 
 DEFUN(vtysh_no_vlan,
     vtysh_no_vlan_cmd,
-    "no vlan <1-4094>",
+    "no vlan <2-4094>",
     NO_STR
     VLAN_STR
     "VLAN Identifier\n")
