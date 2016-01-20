@@ -1792,7 +1792,7 @@ DEFUN(vtysh_vlan,
 
 DEFUN(vtysh_no_vlan,
     vtysh_no_vlan_cmd,
-    "no vlan <1-4094>",
+    "no vlan <2-4094>",
     NO_STR
     VLAN_STR
     "VLAN Identifier\n")
