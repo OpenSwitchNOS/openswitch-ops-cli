@@ -1786,7 +1786,7 @@ DEFUN(vtysh_vlan,
 
 DEFUN(vtysh_no_vlan,
     vtysh_no_vlan_cmd,
-    "no vlan <1-4094>",
+    "no vlan <2-4094>",
     NO_STR
     VLAN_STR
     "VLAN Identifier\n")
@@ -1894,7 +1894,17 @@ DEFUN(vtysh_no_vlan,
             {
                 int64_t* tag = NULL;
                 int tag_count = 0;
-                ovsrec_port_set_tag(port_row, tag, tag_count);
+                if ( trunk_count ) {
+                    ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
+                    ovsrec_port_set_tag(port_row, tag, tag_count);
+                } else {
+                    ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
+                    tag = xmalloc(sizeof *port_row->tag);
+                    tag_count = 1;
+                    tag[0] = DEFAULT_VLAN;
+                    ovsrec_port_set_tag(port_row, tag, tag_count);
+                    free(tag);
+                }
             }
         }
 
