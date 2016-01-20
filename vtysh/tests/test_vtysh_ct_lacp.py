@@ -305,6 +305,15 @@ class LACPCliTest(OpsVsiTest):
         assert success == 1,\
             'Test show interface lag4 brief command - FAILED!'
 
+        info('''
+########## Test show interface lag transceiver command ##########
+''')
+        success = 0;
+        out = s1.cmdCLI('show interface lag5 transceiver')
+        if 'Invalid switch interface ID.' in out:
+            success += 1
+        assert(success != 0),\
+            'transceiver in lag command failed'
         return True
 
     def showInterfaceLag(self):
