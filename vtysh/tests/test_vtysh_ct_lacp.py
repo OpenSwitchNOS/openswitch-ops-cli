@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2015-2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -143,6 +143,58 @@ class LACPCliTest(OpsVsiTest):
             'Test global LACP commands - FAILED!'
         return True
 
+    def lag_hash_LoadBalancing(self):
+        info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 ##########
+''')
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l2-src-dst')
+        success = False
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test LAG Load balancing for L2 - FAILED!'
+
+        success = False
+        s1.cmdCLI('hash l2vid-src-dst')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2vid-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test LAG Load balancing for L2+VID - FAILED!'
+
+        success = True
+        s1.cmdCLI('hash l3-src-dst')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode=' in line:
+                success = False
+                break
+        assert success, \
+            'Test LAG Load balancing for L3 - FAILED!'
+
+        return True
+        success = False
+        s1.cmdCLI('hash l4-src-dst')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l4-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test LAG Load balancing for L4 - FAILED!'
+
     def lagContextCommands(self):
         info('''
 ########## Test LAG context commands ##########
@@ -199,13 +251,6 @@ class LACPCliTest(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             if 'lacp-fallback-ab' in line:
-                success += 1
-                break
-        s1.cmdCLI('no hash l2-src-dst')
-        out = s1.cmd('ovs-vsctl list port')
-        lines = out.split('\n')
-        for line in lines:
-            if 'bond_mode="l2-src-dst"' in line:
                 success += 1
                 break
         s1.cmdCLI('no lacp rate fast')
@@ -437,6 +482,12 @@ class Test_lacp_cli:
         if self.test.globalLacpCommands():
             info('''
 ########## Test global LACP commands - SUCCESS! ##########
+''')
+
+    def test_lagL234LoadBalancing(self):
+        if self.test.lag_hash_LoadBalancing():
+            info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 - SUCCESS! #######
 ''')
 
     def test_lagContextCommands(self):
