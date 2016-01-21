@@ -64,6 +64,9 @@
 
 int64_t timeout_start;
 struct termios tp;
+unsigned int last_idl_seq_no;
+long long int next_poll_msec;
+int64_t session_timeout_period;
 
 typedef unsigned char boolean;
 
@@ -79,11 +82,38 @@ boolean exiting = false;
 volatile boolean vtysh_exit = false;
 extern struct vty *vty;
 
+/* Function checks if timeout period has
+*  exceeded. If yes, exits cli session.
+*/
+static void
+vtysh_session_timeout_run()
+{
+    if (last_idl_seq_no != ovsdb_idl_get_seqno(idl))
+    {
+        last_idl_seq_no = ovsdb_idl_get_seqno(idl);
+        session_timeout_period = 60 * vtysh_ovsdb_session_timeout_get();
+    }
+    if (time_msec() > next_poll_msec) {
+        next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
+        if ((session_timeout_period > 0) &&
+            ((time_now() - timeout_start) > session_timeout_period))
+        {
+            tcsetattr(STDIN_FILENO, TCSANOW, &tp);
+            vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+            vty_out(vty, "Idle session timeout reached, logging out.%s",
+                    VTY_NEWLINE);
+            vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+            exit(0);
+        }
+    }
+}
+
 /* Running idl run and wait to fetch the data from the DB. */
 static void
 vtysh_run()
 {
     ovsdb_idl_run (idl);
+    vtysh_session_timeout_run();
 }
 
 static void
@@ -997,14 +1027,13 @@ vtysh_regex_match(const char *regString, const char *inp)
 void *
 vtysh_ovsdb_main_thread(void *arg)
 {
-    long long int next_poll_msec = 0;
-    int64_t session_timeout_period = DEFAULT_SESSION_TIMEOUT_PERIOD;
-
     /* Detach thread to avoid memory leak upon exit. */
     pthread_detach(pthread_self());
 
     vtysh_exit = false;
     next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
+    last_idl_seq_no = ovsdb_idl_get_seqno(idl);
+    session_timeout_period = DEFAULT_SESSION_TIMEOUT_PERIOD;
 
     while (!vtysh_exit) {
 
@@ -1033,25 +1062,6 @@ vtysh_ovsdb_main_thread(void *arg)
          * conditions while commiting the transaction.
          */
             poll_block();
-
-            /* Idle session timeout block. Checks if timeout period has
-             * exceeded. If yes, exits cli session.
-             */
-            session_timeout_period = 60 * vtysh_ovsdb_session_timeout_get();
-            if (time_msec() > next_poll_msec) {
-                next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
-                if ((session_timeout_period > 0) &&
-                    ((time_now() - timeout_start) > session_timeout_period))
-                {
-                    tcsetattr(STDIN_FILENO, TCSANOW, &tp);
-                    vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
-                    vty_out(vty,
-                            "Idle session timeout reached, logging out.%s",
-                            VTY_NEWLINE);
-                    vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
-                    exit(0);
-                }
-            }
         }
         /* Resets the latch. */
         latch_poll(&ovsdb_latch);
