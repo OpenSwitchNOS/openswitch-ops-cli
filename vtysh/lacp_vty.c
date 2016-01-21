@@ -343,8 +343,8 @@ lacp_set_hash(const char *lag_name, const char *hash)
   }
 }
 
-DEFUN (cli_lacp_set_hash,
-       lacp_set_hash_cmd,
+DEFUN (cli_lacp_set_l2_hash,
+       lacp_set_l2_hash_cmd,
        "hash l2-src-dst",
        "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
        "Base the hash on l2-src-dst\n")
@@ -352,23 +352,31 @@ DEFUN (cli_lacp_set_hash,
   return lacp_set_hash((char*) vty->index, "l2-src-dst");
 }
 
-DEFUN (cli_lacp_set_no_hash,
-       lacp_set_no_hash_cmd,
-       "no hash l2-src-dst",
-       NO_STR
+DEFUN (cli_lacp_set_l2vid_hash,
+       lacp_set_l2vid_hash_cmd,
+       "hash l2vid-src-dst",
        "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
-       "Base the hash on l2-src-dst\n")
+       "Base the hash on l2vid-src-dst\n")
+{
+  return lacp_set_hash((char*) vty->index, "l2vid-src-dst");
+}
+
+DEFUN (cli_lacp_set_l3_hash,
+       lacp_set_l3_hash_cmd,
+       "hash l3-src-dst",
+       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
+       "Base the hash on l3-src-dst\n")
 {
   return lacp_set_hash((char*) vty->index, "l3-src-dst");
 }
 
-DEFUN (cli_lacp_set_no_hash_shortform,
-       lacp_set_no_hash_shortform_cmd,
-       "no hash",
-       NO_STR
-       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n")
+DEFUN (cli_lacp_set_l4_hash,
+       lacp_set_l4_hash_cmd,
+       "hash l4-src-dst",
+       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
+       "Base the hash on l4-src-dst\n")
 {
-  return lacp_set_hash((char*) vty->index, "l3-src-dst");
+  return lacp_set_hash((char*) vty->index, "l4-src-dst");
 }
 
 static int
@@ -1706,9 +1714,10 @@ lacp_vty_init (void)
   install_element (LINK_AGGREGATION_NODE, &lacp_set_mode_no_cmd);
   install_element (LINK_AGGREGATION_NODE, &cli_lag_routing_cmd);
   install_element (LINK_AGGREGATION_NODE, &cli_lag_no_routing_cmd);
-  install_element (LINK_AGGREGATION_NODE, &lacp_set_hash_cmd);
-  install_element (LINK_AGGREGATION_NODE, &lacp_set_no_hash_cmd);
-  install_element (LINK_AGGREGATION_NODE, &lacp_set_no_hash_shortform_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l2_hash_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l2vid_hash_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l3_hash_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l4_hash_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_fallback_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_no_fallback_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_heartbeat_rate_cmd);

@@ -143,6 +143,66 @@ class LACPCliTest(OpsVsiTest):
             'Test global LACP commands - FAILED!'
         return True
 
+    def lag_hash_LoadBalancing(self):
+        info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 ##########
+''')
+        lag_context_cmds_found = True
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l2-src-dst')
+        success = 0
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2-src-dst"' in line:
+                success += 1
+                break
+        if success == 0:
+            lag_context_cmds_found = False
+        assert (lag_context_cmds_found is True), \
+            'Test LAG Load balancing for L2 - FAILED!'
+        success = 0
+        s1.cmdCLI('hash l2vid-src-dst')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2vid-src-dst"' in line:
+                success += 1
+                break
+        if success == 0:
+            lag_context_cmds_found = False
+        assert (lag_context_cmds_found is True), \
+            'Test LAG Load balancing for L2+VID - FAILED!'
+        success = 0
+        s1.cmdCLI('hash l4-src-dst')
+        success = 0
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l4-src-dst"' in line:
+                success += 1
+                break
+        if success == 0:
+            lag_context_cmds_found = False
+        assert (lag_context_cmds_found is True), \
+            'Test LAG Load balancing for L4 - FAILED!'
+        success = 0
+        s1.cmdCLI('hash l3-src-dst')
+        success = 0
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode=' in line:
+                success += 1
+                break
+        if success == 1:
+            lag_context_cmds_found = False
+        assert (lag_context_cmds_found is True), \
+            'Test LAG Load balancing for L3 - FAILED!'
+        return True
+
     def lagContextCommands(self):
         info('''
 ########## Test LAG context commands ##########
@@ -203,13 +263,6 @@ class LACPCliTest(OpsVsiTest):
             if 'lacp-fallback-ab' in line:
                 success += 1
                 break
-        s1.cmdCLI('no hash l2-src-dst')
-        out = s1.cmd('ovs-vsctl list port')
-        lines = out.split('\n')
-        for line in lines:
-            if 'bond_mode="l2-src-dst"' in line:
-                success += 1
-                break
         s1.cmdCLI('no lacp rate fast')
         out = s1.cmd('ovs-vsctl list port')
         lines = out.split('\n')
@@ -251,7 +304,6 @@ class LACPCliTest(OpsVsiTest):
             'Test interface context commands - FAILED!'
         return True
 
-
     def showInterfaceLagBrief(self):
         info('''
 ########## Test show interface lag brief command ##########
@@ -282,11 +334,14 @@ class LACPCliTest(OpsVsiTest):
         # info('''%s \n''', out)
         lines = out.split('\n')
         for line in lines:
-            if 'lag3         --      --  --      --     --                        auto     --' in line:
+            if 'lag3         --      --  --      --     --           '\
+               '             auto     --' in line:
                 success += 1
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4         --      --  passive --     --           '\
+               '             auto     --' in line:
                 success += 1
-            if 'lag5         --      --  active  --     --                        auto     --' in line:
+            if 'lag5         --      --  active  --     --           '\
+               '             auto     --' in line:
                 success += 1
         if success != 3:
             show_interface_brief = False
@@ -294,13 +349,15 @@ class LACPCliTest(OpsVsiTest):
             'Test show interface brief command - FAILED!'
 
         # Verify show interface lag4 brief shows only lag 4
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag4 brief')
         lines = out.split('\n')
         for line in lines:
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4         --      --  passive --     --           '\
+               '             auto     --' in line:
                 success += 1
-            if 'lag1' in line or 'lag2' in line or 'lag3' in line or 'lag5' in line:
+            if 'lag1' in line or 'lag2' in line or \
+               'lag3' in line or 'lag5' in line:
                 success -= 1
         if success != 1:
             show_interface_lag_brief = False
@@ -319,7 +376,7 @@ class LACPCliTest(OpsVsiTest):
         s1 = self.net.switches[0]
 
         # Verify 'show interface lag1' shows correct  information about lag1
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag1')
         lines = out.split('\n')
         for line in lines:
@@ -337,7 +394,7 @@ class LACPCliTest(OpsVsiTest):
             'Test show interface lag1 command - FAILED!'
 
         # Verify 'show interface lag4' shows correct  information about lag4
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag4')
         lines = out.split('\n')
         for line in lines:
@@ -355,7 +412,7 @@ class LACPCliTest(OpsVsiTest):
             'Test show interface lag4 command - FAILED!'
 
         # Verify 'show interface lag5' shows correct  information about lag5
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag5')
         lines = out.split('\n')
         for line in lines:
@@ -414,6 +471,12 @@ class Test_lacp_cli:
         if self.test.globalLacpCommands():
             info('''
 ########## Test global LACP commands - SUCCESS! ##########
+''')
+
+    def test_lagL234LoadBalancing(self):
+        if self.test.lag_hash_LoadBalancing():
+            info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 - SUCCESS! #######
 ''')
 
     def test_lagContextCommands(self):
