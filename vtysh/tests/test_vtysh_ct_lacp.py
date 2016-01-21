@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2015-2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -219,27 +219,89 @@ class LACPCliTest(OpsVsiTest):
             'Test LAG context commands - FAILED!'
         return True
 
-    def interfaceContext(self):
+    def interfaceSetPortId(self):
         info('''
-########## Test interface context commands ##########
+########## Test interface set port-id command ##########
 ''')
         s1 = self.net.switches[0]
-        s1.cmdCLI('conf t')
+        s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
         s1.cmdCLI('lacp port-id 999')
-        s1.cmdCLI('lacp port-priority 111')
-        success = 0
+
+        success = False
         out = s1.cmd('ovs-vsctl list interface 1')
         lines = out.split('\n')
         for line in lines:
-            if 'lacp-port-id="999"' in line:
-                success += 1
-            if 'lacp-port-priority="111"' in line:
-                success += 1
-            if 'lacp-aggregation-key="1"' in line:
-                success += 1
-        assert success == 3,\
-            'Test interface context commands - FAILED!'
+            if 'other_config' in line and 'lacp-port-id="999"' in line:
+                success = True
+                break
+
+        assert success, \
+            'Test interface set port-priority command - FAILED!'
+        return True
+
+    def interfaceRemovePortId(self):
+        info('''
+########## Test interface remove port-id command ##########
+''')
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('no lacp port-id')
+
+        success = False
+        out = s1.cmd('ovs-vsctl list interface 1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'other_config' in line and 'lacp-port-id="999"' not in line:
+                success = True
+                break
+
+        assert success, \
+            'Test interface set port-priority command - FAILED!'
+        return True
+
+    def interfaceSetPortPriority(self):
+        info('''
+########## Test interface set port-priority command ##########
+''')
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('lacp port-priority 111')
+
+        success = False
+        out = s1.cmd('ovs-vsctl list interface 1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'other_config' in line and 'lacp-port-priority="111"' in line:
+                success = True
+                break
+
+        assert success, \
+            'Test interface set port-priority command - FAILED!'
+        return True
+
+    def interfaceRemovePortPriority(self):
+        info('''
+########## Test interface remove port-priority command ##########
+''')
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('no lacp port-priority')
+
+        success = False
+        out = s1.cmd('ovs-vsctl list interface 1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'other_config' in line \
+                    and 'lacp-port-priority="111"' not in line:
+                success = True
+                break
+
+        assert success, \
+            'Test interface remove port-priority command - FAILED!'
         return True
 
     def showInterfaceLagBrief(self):
@@ -445,8 +507,27 @@ class Test_lacp_cli:
 ########## Test LAG context commands - SUCCESS! ##########
 ''')
 
-    def test_interfaceContext(self):
-        if self.test.interfaceContext():
+    def test_interfaceSetPortId(self):
+        if self.test.interfaceSetPortId():
+            info('''
+########## Test interface context commands - SUCCESS! ##########
+''')
+
+    def test_interfaceRemovePortId(self):
+        if self.test.interfaceRemovePortId():
+            info('''
+########## Test interface context commands - SUCCESS! ##########
+''')
+
+
+    def test_interfaceSetPortPriority(self):
+        if self.test.interfaceSetPortPriority():
+            info('''
+########## Test interface context commands - SUCCESS! ##########
+''')
+
+    def test_interfaceRemovePortPriority(self):
+        if self.test.interfaceRemovePortPriority():
             info('''
 ########## Test interface context commands - SUCCESS! ##########
 ''')
