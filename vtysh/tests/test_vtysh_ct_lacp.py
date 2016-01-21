@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2015-2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -219,27 +219,123 @@ class LACPCliTest(OpsVsiTest):
             'Test LAG context commands - FAILED!'
         return True
 
-    def interfaceContext(self):
+    def lacpPortId(self):
         info('''
-########## Test interface context commands ##########
+########## Test lacp port-id commands ##########
 ''')
+
+        test_interface = 1
+        test_port_id = 999
+
+        test_commands = ["no lacp port-id",
+                         "no lacp port-id %s" % test_port_id]
+
+        # Configure port-id
         s1 = self.net.switches[0]
-        s1.cmdCLI('conf t')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface %s' % test_interface)
+
+        for command in test_commands:
+            # info("########## Setting port-id ##########\n")
+            s1.cmdCLI('lacp port-id %s' % test_port_id)
+
+            # Verify if lacp port-id was modified within DB
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-id="%s"' % test_port_id in line:
+                    success = True
+                    break
+
+            assert success, \
+                'Test interface set port-priority command - FAILED!'
+
+            # info("########## Executing command: %s ##########\n" % command)
+            s1.cmdCLI(command)
+
+            # Validate if lacp port-id was removed from DB
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-id="%s"' % test_port_id not in line:
+                    success = True
+                    break
+
+            assert success, \
+                'Test interface set port-priority command - FAILED!'
+
+        # Check that command fails when port-id does not exist
+        out = s1.cmdCLI(test_commands[0])
+        assert "Command failed" not in out, \
+            "Test interface remove port-priority command - FAILED!"
+
+        out = s1.cmdCLI(test_commands[1])
+        assert "Command failed" in out, \
+            "Test interface remove port-priority command - FAILED!"
+
+        return True
+
+    def lacpPortPriority(self):
+        info('''
+########## Test interface set port-priority command ##########
+''')
+
+        test_interface = 1
+        test_port_priority = 111
+        test_commands = ["no lacp port-priority",
+                         "no lacp port-priority %s" % test_port_priority]
+
+        # Configure port-priority
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
-        s1.cmdCLI('lacp port-id 999')
-        s1.cmdCLI('lacp port-priority 111')
-        success = 0
-        out = s1.cmd('ovs-vsctl list interface 1')
-        lines = out.split('\n')
-        for line in lines:
-            if 'lacp-port-id="999"' in line:
-                success += 1
-            if 'lacp-port-priority="111"' in line:
-                success += 1
-            if 'lacp-aggregation-key="1"' in line:
-                success += 1
-        assert success == 3,\
-            'Test interface context commands - FAILED!'
+
+        for command in test_commands:
+            # info("########## Setting port-priority ##########\n")
+            s1.cmdCLI('lacp port-priority %s' % test_port_priority)
+
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-priority="%s"' % test_port_priority \
+                        in line:
+                    success = True
+                    break
+
+            assert success, \
+                "Test interface set port-priority command - FAILED!"
+
+            # info("########## Executing command: %s ##########\n" % command)
+            s1.cmdCLI(command)
+
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-priority="%s"' % test_port_priority \
+                        not in line:
+                    success = True
+                    break
+
+            assert success, \
+                "Test interface remove port-priority command - FAILED!"
+
+        # Check that command fails when port-id does not exist
+        out = s1.cmdCLI(test_commands[0])
+        assert "Command failed" not in out, \
+            "Test interface remove port-priority command - FAILED!"
+
+        out = s1.cmdCLI(test_commands[1])
+        assert "Command failed" in out, \
+            "Test interface remove port-priority command - FAILED!"
+
         return True
 
     def showInterfaceLagBrief(self):
@@ -445,10 +541,16 @@ class Test_lacp_cli:
 ########## Test LAG context commands - SUCCESS! ##########
 ''')
 
-    def test_interfaceContext(self):
-        if self.test.interfaceContext():
+    def test_lacpPortId(self):
+        if self.test.lacpPortId():
             info('''
-########## Test interface context commands - SUCCESS! ##########
+########## Test lacp port-id commands - SUCCESS! ##########
+''')
+
+    def test_lacpPortPriority(self):
+        if self.test.lacpPortPriority():
+            info('''
+########## Test lacp port-priority commands - SUCCESS! ##########
 ''')
 
     def test_showInterfaceLagBrief(self):
