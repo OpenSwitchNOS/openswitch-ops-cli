@@ -143,6 +143,194 @@ class LACPCliTest(OpsVsiTest):
             'Test global LACP commands - FAILED!'
         return True
 
+    def lag_hash_LoadBalancing(self):
+        info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 ##########
+''')
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l2-src-dst')
+        s1.cmdCLI('end')
+        success = False
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L2 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running-config) LAG Load balancing for L2 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L2'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l2-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L2 - FAILED!'
+
+        success = False
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l2vid-src-dst')
+        s1.cmdCLI('end')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2vid-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L2+VID - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2vid-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running config) LAG Load balancing for L2+VID'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2vid-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L2+VID '\
+            '- FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l2vid-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L2+VID'\
+            ' - FAILED!'
+
+        success = True
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l3-src-dst')
+        s1.cmdCLI('end')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode=' in line:
+                success = False
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L3 - FAILED!'
+
+        success = True
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l3-src-dst' in line:
+                success = False
+                break
+        assert success, \
+            'Test (show running-config) LAG Load balancing for L3 - FAILED!'
+
+        success = True
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l3-src-dst' in line:
+                success = False
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L3'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l3-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L3 - FAILED!'
+
+        success = False
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l4-src-dst')
+        s1.cmdCLI('end')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l4-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L4 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l4-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running-config) LAG Load balancing for L4 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l4-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L4'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l4-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L4 - FAILED!'
+        return True
+
     def lagContextCommands(self):
         info('''
 ########## Test LAG context commands ##########
@@ -199,13 +387,6 @@ class LACPCliTest(OpsVsiTest):
         lines = out.split('\n')
         for line in lines:
             if 'lacp-fallback-ab' in line:
-                success += 1
-                break
-        s1.cmdCLI('no hash l2-src-dst')
-        out = s1.cmd('ovs-vsctl list port')
-        lines = out.split('\n')
-        for line in lines:
-            if 'bond_mode="l2-src-dst"' in line:
                 success += 1
                 break
         s1.cmdCLI('no lacp rate fast')
@@ -542,6 +723,12 @@ class Test_lacp_cli:
         if self.test.globalLacpCommands():
             info('''
 ########## Test global LACP commands - SUCCESS! ##########
+''')
+
+    def test_lagL234LoadBalancing(self):
+        if self.test.lag_hash_LoadBalancing():
+            info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 - SUCCESS! #######
 ''')
 
     def test_lagContextCommands(self):
