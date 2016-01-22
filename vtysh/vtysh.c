@@ -2984,6 +2984,17 @@ DEFUN (vtysh_copy_startupconfig,
   execute_command ("cfgdbutil", 3, (const char **)arguments);
   return CMD_SUCCESS;
 }
+
+DEFUN (vtysh_erase_startupconfig,
+       vtysh_erase_startupconfig_cmd,
+       "erase startup-config",
+       ERASE_STR
+       "Contents of startup configuration\n")
+{
+    char *arguments[] = {"delete", "startup-config"};
+    execute_command ("cfgdbutil", 2, (const char **)arguments);
+    return CMD_SUCCESS;
+}
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_ping,
       vtysh_ping_cmd,
@@ -4578,6 +4589,7 @@ vtysh_init_vty (void)
    install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
+  install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
 #endif /* ENABLE_OVSDB */
