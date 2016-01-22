@@ -30,7 +30,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  powersupply_vty.c vtysh_ovsdb_intf_lag_context.c \
                  lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
-                 ping_handler.c sftp_vty.c \
+                 ping_handler.c sftp_vty.c ospf_vty.c \
                  vtysh_ovsdb_sftp_context.c
 endif
 
@@ -41,7 +41,6 @@ vtysh_LDADD = ../lib/libzebra_cli.la @LIBCAP@ @LIBREADLINE@
 if ENABLE_OVSDB
 vtysh_LDADD += -lovscommon -lovsdb -lpthread
 endif
-
 vtyshincludedir = $(includedir)/vtysh
 vtyshinclude_HEADERS = vtysh_utils.h vtysh.h \
         vtysh_ovsdb_if.h vtysh_user.h \
