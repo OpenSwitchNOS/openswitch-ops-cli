@@ -4263,8 +4263,13 @@ DEFUN (vtysh_show_session_timeout_cli,
 {
     int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
 
+    vty_out(vty, "session-timeout: %d minute", timeout_period);
+    if (timeout_period > 1)
+        vty_out(vty, "s");
     if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)
-        vty_out(vty, "session-timeout %d%s", timeout_period, VTY_NEWLINE);
+        vty_out(vty, "%s", VTY_NEWLINE);
+    else
+        vty_out(vty, " (Default)%s", VTY_NEWLINE);
 
     return CMD_SUCCESS;
 }
