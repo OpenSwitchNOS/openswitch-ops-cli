@@ -2805,7 +2805,7 @@ DEFUN (cli_dhcp_server_static_host_delete,
        "Match DHCP client-id\n"
        "Enter DHCP client-id\n"
        "DHCP lease duration\n"
-       "Enter DHCP lease duration time\n")
+       "Enter DHCP lease duration time (Default: 60 minutes)\n")
 {
     int ret_code = CMD_SUCCESS;
     dhcp_srv_static_host_params_t static_host_params;
@@ -2908,7 +2908,7 @@ DEFUN (cli_dhcp_server_static_host_add,
        "Match DHCP client-id\n"
        "Enter DHCP client-id\n"
        "DHCP lease duration\n"
-       "Enter DHCP lease duration time\n")
+       "Enter DHCP lease duration time (Default: 60 minutes)\n")
 {
     int ret_code = CMD_SUCCESS;
     dhcp_srv_static_host_params_t static_host_params;
@@ -3017,9 +3017,10 @@ DEFUN (cli_dhcp_server_range_delete,
        "Broadcast IP address for the IP address range\n"
        "Enter broadcast IP address for the IP address range\n"
        "Prefix length for IPv6 address\n"
-       "Enter prefix length for IPv6 address\n"
+       "Enter prefix length for IPv6 address (Default: 64)\n"
        "DHCP lease duration\n"
-       "Enter DHCP lease duration in minutes, 0 for \"infinite\"\n")
+       "Enter DHCP lease duration in minutes, 0 "\
+       "for \"infinite\",(Default: 60 minutes)\n")
 
 {
 
@@ -3231,9 +3232,10 @@ DEFUN (cli_dhcp_server_range_add,
        "Broadcast IP address for the IP address range\n"
        "Enter broadcast IP address for the IP address range\n"
        "Prefix length for IPv6 address\n"
-       "Enter prefix length for IPv6 address\n"
+       "Enter prefix length for IPv6 address (Default: 64)\n"
        "DHCP lease duration\n"
-       "Enter DHCP lease duration in minutes, 0 for \"infinite\"\n")
+       "Enter DHCP lease duration in minutes, 0 "\
+       "for \"infinite\",(Default: 60 minutes)\n")
 {
     bool start_ip_ipv4 = false;
     bool start_ip_ipv6 = false;

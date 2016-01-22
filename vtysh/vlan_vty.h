@@ -53,10 +53,6 @@
 
 #define INTERNAL_VLAN_ID_INVALID    -1
 
-#define VLAN_DESCRIPTION_LENGTH 256
-#define VLAN_DESCRIPTION_LENGTH_ERROR "The input description must be less than 250 characters.%s"
-#define OVSDB_VLAN_SET_DESCRIPTION_ERROR "Failed to set VLAN description%s"
-#define OVSDB_VLAN_REMOVE_DESCRIPTION_ERROR "Failed to remove VLAN description%s"
 #define OVSDB_VLAN_SHUTDOWN_ERROR "Failed to shutdown VLAN%s"
 #define OVSDB_VLAN_NO_SHUTDOWN_ERROR "Failed to enable VLAN%s"
 #define OVSDB_INTF_VLAN_ACCESS_ERROR "Failed to set access VLAN %d%s"
@@ -69,5 +65,9 @@
 #define OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_TAG_ERROR "Failed to remove native VLAN tagging on the interface%s"
 
 void vlan_vty_init(void);
+extern int
+compare_nodes_by_vlan_id_in_numerical(const void *a_, const void *b_);
+extern const struct shash_node **
+sort_vlan_id(const struct shash *sh);
 
 #endif /* _VLAN_VTY_H */

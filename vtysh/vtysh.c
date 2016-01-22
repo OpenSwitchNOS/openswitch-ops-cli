@@ -72,10 +72,15 @@
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
+#include "source_interface_selection_vty.h"
 #include "dhcp_tftp_vty.h"
+#include "ping.h"
+#include "traceroute.h"
+
 #endif
 
 #include "aaa_vty.h"
+#include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
 
@@ -95,6 +100,8 @@ int vtysh_show_startup = 0;
                                     IN6_IS_ADDR_LINKLOCAL(i))
 
 #define MINIMUM(x,y) (x < y) ? x : y
+
+#define MAX_DEFAULT_SESSION_TIMEOUT_LEN 10
 
 /* Struct VTY. */
 struct vty *vty;
@@ -721,6 +728,49 @@ vtysh_rl_describe (void)
  * and used in new_completion() in order to put the space in
  * correct places only. */
 int complete_status;
+
+/* This function creates a port for an interface. If the interface is
+  not configured , a default port will be created for the interface and
+  it will be attached to the default VRF.*/
+static int
+default_port_add (const char *if_name)
+{
+    const struct ovsrec_port *port_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+
+    status_txn = cli_do_config_start ();
+
+    if (status_txn == NULL)
+      {
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort (status_txn);
+        return CMD_OVSDB_FAILURE;
+      }
+    port_row = port_check_and_add (if_name, true, true, status_txn);
+    status = cli_do_config_finish (status_txn);
+
+    if (status == TXN_SUCCESS)
+      {
+        VLOG_INFO("%s The command succeeded and port \"%s\" was added "
+                  "successfully.\n", __func__, if_name);
+        return CMD_SUCCESS;
+      }
+    else if (status == TXN_UNCHANGED)
+      {
+        VLOG_INFO("%s The command resulted in no change. "
+                 "Check if port \"%s\" "
+                 "was already added", __func__, if_name);
+
+        return CMD_SUCCESS;
+      }
+    else
+      {
+        VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+        return CMD_OVSDB_FAILURE;
+      }
+
+}
 
 static char *
 command_generator (const char *text, int state)
@@ -1531,6 +1581,7 @@ DEFUN (vtysh_interface,
   else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
   {
     strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+    default_port_add(ifnumber);
   }
   else
   {
@@ -2933,6 +2984,17 @@ DEFUN (vtysh_copy_startupconfig,
   execute_command ("cfgdbutil", 3, (const char **)arguments);
   return CMD_SUCCESS;
 }
+
+DEFUN (vtysh_erase_startupconfig,
+       vtysh_erase_startupconfig_cmd,
+       "erase startup-config",
+       ERASE_STR
+       "Contents of startup configuration\n")
+{
+    char *arguments[] = {"delete", "startup-config"};
+    execute_command ("cfgdbutil", 2, (const char **)arguments);
+    return CMD_SUCCESS;
+}
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_ping,
       vtysh_ping_cmd,
@@ -3653,6 +3715,17 @@ DEFUN (vtysh_demo_mac_tok,
 
 #ifdef ENABLE_OVSDB
 
+
+void
+vtysh_periodic_refresh(void)
+{
+  /* This function is called before all command exection.
+     Keep it light for execution */
+
+  vty_refresh_aliases();
+  return;
+}
+
 int vtysh_alias_count = 0;
 struct vtysh_alias_data *vtysh_aliases[VTYSH_MAX_ALIAS_SUPPORTED] = {NULL};
 char vtysh_alias_cmd_help_string[] = VTYSH_ALIAS_CMD_HELPSTRING;
@@ -3665,14 +3738,37 @@ char vtysh_alias_cmd_help_string[] = VTYSH_ALIAS_CMD_HELPSTRING;
   * Return         : success/failure
  */
 int
-vty_alias_load_alias_table(void)
+vty_refresh_aliases(void)
 {
     const struct ovsrec_cli_alias *alias_row = NULL;
+    int i = 0;
+    bool alias_exist = false;
+    static int refresh_count = 0;
 
-    vtysh_alias_count = 0;
+    refresh_count = (refresh_count + 1) % 100;
 
     OVSREC_CLI_ALIAS_FOR_EACH(alias_row, idl)
     {
+        alias_exist = false;
+        for (i = 0; i < vtysh_alias_count; i++)
+        {
+            if (vtysh_aliases[i]->refresh_count == refresh_count)
+            {
+                continue;
+            }
+            if (strcmp(vtysh_aliases[i]->alias_def_str,
+                    alias_row->alias_name) == 0)
+            {
+                vtysh_aliases[i]->refresh_count = refresh_count;
+                alias_exist = true;
+                break;
+            }
+        }
+        if (true == alias_exist)
+        {
+            continue;
+        }
+
         vtysh_aliases[vtysh_alias_count] =
             (struct vtysh_alias_data*) malloc(sizeof(struct vtysh_alias_data));
         memset(vtysh_aliases[vtysh_alias_count], 0,
@@ -3680,8 +3776,6 @@ vty_alias_load_alias_table(void)
 
         strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str,
                 alias_row->alias_name, VTYSH_MAX_ALIAS_DEF_LEN);
-        strncpy(vtysh_aliases[vtysh_alias_count]->alias_list_str,
-                alias_row->alias_definition, VTYSH_MAX_ALIAS_LIST_LEN);
 
         strncpy(vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args,
                 vtysh_aliases[vtysh_alias_count]->alias_def_str,
@@ -3696,7 +3790,8 @@ vty_alias_load_alias_table(void)
             vtysh_alias_callback;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element.doc    =
             vtysh_alias_cmd_help_string;
-        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr   = CMD_ATTR_NOLOCK;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element.attr   =
+            CMD_ATTR_NOLOCK;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element.daemon = 0;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.string =
             vtysh_aliases[vtysh_alias_count]->alias_def_str_with_args;
@@ -3704,7 +3799,8 @@ vty_alias_load_alias_table(void)
             vtysh_alias_callback;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
             vtysh_alias_cmd_help_string;
-        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
+        vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr =
+            CMD_ATTR_NOLOCK;
         vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
         /* install the new commands with alias definition as token */
@@ -3712,8 +3808,33 @@ vty_alias_load_alias_table(void)
                &vtysh_aliases[vtysh_alias_count]->alias_cmd_element);
         install_element(CONFIG_NODE,
                &vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args);
+        vtysh_aliases[vtysh_alias_count]->refresh_count = refresh_count;
         vtysh_alias_count++;
     }
+
+    for (i = 0; i < vtysh_alias_count; i++)
+    {
+        if (vtysh_aliases[i]->refresh_count != refresh_count)
+        {
+            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_HIDDEN;
+            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_NOT_ENABLED;
+            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_DISABLED;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_HIDDEN;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_NOT_ENABLED;
+            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
+                CMD_ATTR_DISABLED;
+            //TODO :
+            /* free cannot be done as cmd element is still referred by vector
+               */
+            //free(vtysh_aliases[i]);
+            vtysh_aliases[i] = vtysh_aliases[vtysh_alias_count-1];
+            vtysh_aliases[vtysh_alias_count-1] = NULL;
+            vtysh_alias_count--;
+        }
+    }
+
 
     return CMD_SUCCESS;
 }
@@ -3804,6 +3925,7 @@ DEFUN (vtysh_alias_cli,
       "Extra arguments are appended at the end. (Max length 400 characters)\n")
 {
    int i = 0, ret_val = 0;
+   char alias_list_str[VTYSH_MAX_ALIAS_LIST_LEN] = {0};
 
    if (argc == 0) return CMD_WARNING;
 
@@ -3822,31 +3944,12 @@ DEFUN (vtysh_alias_cli,
          if(strcmp(vtysh_aliases[i]->alias_def_str, argv[0]) == 0)
          {
             vtysh_alias_delete_alias(vtysh_aliases[i]->alias_def_str);
-#ifdef VTY_INFRA_FIXED
-            cmd_terminate_element(&vtysh_aliases[i]->alias_cmd_element);
-            cmd_terminate_element(&vtysh_aliases[i]->alias_cmd_element_with_args);
+            cmd_terminate_node_element(&vtysh_aliases[i]->alias_cmd_element, ELEMENT);
+            cmd_terminate_node_element(&vtysh_aliases[i]->alias_cmd_element_with_args, ELEMENT);
             free(vtysh_aliases[i]);
             vtysh_aliases[i] = vtysh_aliases[vtysh_alias_count-1];
             vtysh_aliases[vtysh_alias_count-1] = NULL;
             vtysh_alias_count--;
-#else
-            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_HIDDEN;
-            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_NOT_ENABLED;
-            vtysh_aliases[i]->alias_cmd_element.attr |= CMD_ATTR_DISABLED;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
-                CMD_ATTR_HIDDEN;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
-                CMD_ATTR_NOT_ENABLED;
-            vtysh_aliases[i]->alias_cmd_element_with_args.attr |=
-                CMD_ATTR_DISABLED;
-            //TODO :
-            /* free cannot be done as cmd element is still referred by vector
-               */
-            //free(vtysh_aliases[i]);
-            vtysh_aliases[i] = vtysh_aliases[vtysh_alias_count-1];
-            vtysh_aliases[vtysh_alias_count-1] = NULL;
-            vtysh_alias_count--;
-#endif
             found = 1;
             break;
          }
@@ -3900,16 +4003,15 @@ DEFUN (vtysh_alias_cli,
    {
       /* Read each args, and append to the command string */
       if(VTYSH_MAX_ALIAS_LIST_LEN <=
-              strlen(vtysh_aliases[vtysh_alias_count]->alias_list_str) +
-              strlen(argv[i]) + 2)
+              strlen(alias_list_str) + strlen(argv[i]) + 2)
       {
          free(vtysh_aliases[vtysh_alias_count]);
          vtysh_aliases[vtysh_alias_count] = NULL;
          vty_out(vty, VTYSH_ERROR_MAX_ALIAS_LEN_EXCEEDED);
          return CMD_SUCCESS;
       }
-      strcat(vtysh_aliases[vtysh_alias_count]->alias_list_str, argv[i]);
-      strcat(vtysh_aliases[vtysh_alias_count]->alias_list_str, " ");
+      strcat(alias_list_str, argv[i]);
+      strcat(alias_list_str, " ");
    }
 
    /* Prepare the command element and install the command in config node */
@@ -3927,11 +4029,12 @@ DEFUN (vtysh_alias_cli,
        vtysh_alias_callback;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.doc =
        vtysh_alias_cmd_help_string;
-   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr = CMD_ATTR_NOLOCK;
+   vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.attr =
+       CMD_ATTR_NOLOCK;
    vtysh_aliases[vtysh_alias_count]->alias_cmd_element_with_args.daemon = 0;
 
    vtysh_alias_save_alias(vtysh_aliases[vtysh_alias_count]->alias_def_str,
-         vtysh_aliases[vtysh_alias_count]->alias_list_str);
+                           alias_list_str);
 
    /* install the new commands with alias definition as token */
    install_element(CONFIG_NODE,
@@ -3998,6 +4101,7 @@ vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
    int arg_count = 0, max_arg_count = 0;
    char current_cmd[VTYSH_MAX_ALIAS_LIST_LEN] = {0};
    char *prev_buf = vty->buf;
+   const struct ovsrec_cli_alias *alias_row = NULL;
 
    for(len = 0; len <= vty->length && vty->buf[len] != ' '; len++)
    {
@@ -4005,17 +4109,11 @@ vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
    }
    cmd_now[len] = '\0';
 
-   for (i = 0; i < vtysh_alias_count; i++)
+   OVSREC_CLI_ALIAS_FOR_EACH (alias_row, idl)
    {
-      if(NULL == vtysh_aliases[i])
+      if(strcmp(alias_row->alias_name, cmd_now) == 0)
       {
-         assert(0);
-         /* Data integrity failure */
-      }
-      if(strncmp(vtysh_aliases[i]->alias_def_str, cmd_now,
-              strlen(cmd_now)) == 0)
-      {
-         found_cmd = vtysh_aliases[i]->alias_list_str;
+         found_cmd = alias_row->alias_definition;
          break;
       }
    }
@@ -4125,28 +4223,62 @@ DEFUN (vtysh_show_alias_cli,
       SHOW_STR
       "Short names configured for a set of commands\n")
 {
-   int i = 0;
+   const struct ovsrec_cli_alias *alias_row = NULL;
 
    vty_out(vty, " %-30s %s %s", "Alias Name", "Alias Definition", VTY_NEWLINE);
    vty_out(vty, " ----------------------------------------"
            "---------------------------------------%s", VTY_NEWLINE);
 
-   for (i = 0; i < vtysh_alias_count; i++)
+   OVSREC_CLI_ALIAS_FOR_EACH (alias_row, idl)
    {
-      if(NULL == vtysh_aliases[i])
-      {
-         assert(0);
-         /* Data integrity failure */
-      }
-
-      {
-         vty_out(vty, " %-30s %s %s", vtysh_aliases[i]->alias_def_str,
-               vtysh_aliases[i]->alias_list_str, VTY_NEWLINE);
-      }
+      vty_out(vty, " %-30s %s %s", alias_row->alias_name,
+         alias_row->alias_definition, VTY_NEWLINE);
    }
+
    return CMD_SUCCESS;
 }
 
+/* Configure idle session timeout value. */
+DEFUN (vtysh_session_timeout_cli,
+       vtysh_session_timeout_cli_cmd,
+       "session-timeout <0-43200>",
+       "Configures the idle session timeout in minutes\n"
+       "Idle timeout range in minutes. "
+       "Value 0 disables the timeout (Default: 30)\n")
+{
+    if (argv[0])
+        return vtysh_ovsdb_session_timeout_set(argv[0]);
+    else
+        return CMD_ERR_INCOMPLETE;
+}
+
+/* Configure idle session timeout to default value 30 mins. */
+DEFUN (vtysh_no_session_timeout_cli,
+       vtysh_no_session_timeout_cli_cmd,
+       "no session-timeout",
+       NO_STR
+       "Idle session timeout in minutes\n")
+{
+    char def_session_timeout[MAX_DEFAULT_SESSION_TIMEOUT_LEN] = {0};
+    snprintf(def_session_timeout, MAX_DEFAULT_SESSION_TIMEOUT_LEN,
+             "%d", DEFAULT_SESSION_TIMEOUT_PERIOD);
+    return vtysh_ovsdb_session_timeout_set(def_session_timeout);
+}
+
+/* Display the session timeout value if its not default value. */
+DEFUN (vtysh_show_session_timeout_cli,
+       vtysh_show_session_timeout_cli_cmd,
+       "show session-timeout",
+       SHOW_STR
+       "Idle session timeout in minutes\n")
+{
+    int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
+
+    if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)
+        vty_out(vty, "session-timeout %d%s", timeout_period, VTY_NEWLINE);
+
+    return CMD_SUCCESS;
+}
 
 /*
  * Function : alias_vty_init
@@ -4161,7 +4293,7 @@ alias_vty_init()
    install_element(CONFIG_NODE, &no_vtysh_alias_cli_cmd);
    install_element(ENABLE_NODE, &vtysh_show_alias_cli_cmd);
 
-   vty_alias_load_alias_table();
+   vtysh_alias_count = 0;
 }
 
 int is_valid_ip_address(const char *ip_value)
@@ -4441,6 +4573,8 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
+   install_element (CONFIG_NODE, &vtysh_session_timeout_cli_cmd);
+   install_element (CONFIG_NODE, &vtysh_no_session_timeout_cli_cmd);
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
@@ -4455,6 +4589,7 @@ vtysh_init_vty (void)
    install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
+  install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
 #endif /* ENABLE_OVSDB */
@@ -4481,6 +4616,7 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
   install_element (ENABLE_NODE, &show_startup_config_json_cmd);
+  install_element (ENABLE_NODE, &vtysh_show_session_timeout_cli_cmd);
 #endif /* ENABLE_OVSDB */
 
 #ifndef ENABLE_OVSDB
@@ -4575,11 +4711,22 @@ vtysh_init_vty (void)
   alias_vty_init();
   logrotate_vty_init();
 
+  /* Initialize source interface selection CLI*/
+  source_interface_selection_vty_init();
+
+  /* Initialise tracerouote CLI */
+  traceroute_vty_init();
+  /* Initialise SFTP CLI */
+  sftp_vty_init();
+
   /* Initialise power supply cli */
   powersupply_vty_init();
   lacp_vty_init();
 
   /* Initialize ECMP CLI */
   ecmp_vty_init();
+
+  /* Initialize ping CLI */
+  ping_vty_init();
 #endif
 }

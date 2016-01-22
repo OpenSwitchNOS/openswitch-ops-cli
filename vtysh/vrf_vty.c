@@ -45,85 +45,85 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "intf_vty.h"
+#include "smap.h"
+#include "openswitch-dflt.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
 
 /*
- * Check for presence of VRF and return VRF row.
+ * Check for split validations on a specific interface.
+ * 1. If interface has split capability(split parent interface)
+ *    - Check if split.
+ *      Dont allow layer 3 configurations if split.
+ * 2. If interface is a split child interface
+ *    - Check if parent is split.
+ *      Dont allow layer 3 configurations if parent is not split.
  */
-const struct ovsrec_vrf*
-vrf_lookup (const char *vrf_name)
+bool
+check_split_iface_conditions (const char *ifname)
 {
-  const struct ovsrec_vrf *vrf_row = NULL;
-  OVSREC_VRF_FOR_EACH (vrf_row, idl)
-    {
-      if (strcmp (vrf_row->name, vrf_name) == 0)
-        return vrf_row;
-    }
-  return NULL;
-}
+  const struct ovsrec_interface *if_row, *next, *parent_iface;
+  char *lanes_split_value = NULL;
+  char *split_value = NULL;
+  bool allowed = true;
 
-/*
- * This functions is used to check if port row exists.
- *
- * Variables:
- * port_name -> name of port to check
- * create -> flag to create port if not found
- * attach_to_default_vrf -> attach newly created port to default VRF
- */
-const struct ovsrec_port*
-port_check_and_add (const char *port_name, bool create,
-                    bool attach_to_default_vrf, struct ovsdb_idl_txn *txn)
-{
-  const struct ovsrec_port *port_row = NULL;
-  OVSREC_PORT_FOR_EACH (port_row, idl)
+  OVSREC_INTERFACE_FOR_EACH_SAFE(if_row, next, idl)
     {
-      if (strcmp (port_row->name, port_name) == 0)
-        return port_row;
+      if (strcmp(ifname, if_row->name) == 0)
+        break;
     }
 
-  if (!port_row && create)
+  if (!if_row)
     {
-      const struct ovsrec_interface *if_row = NULL;
-      struct ovsrec_interface **ifs;
+      /* Interface row is not present */
+      return false;
+    }
 
-      OVSREC_INTERFACE_FOR_EACH (if_row, idl)
+  split_value = smap_get(&if_row->hw_intf_info,
+          INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
+  lanes_split_value = smap_get(&if_row->user_config,
+          INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+  /* Check for split_4 attribute */
+  if ((split_value != NULL) &&
+      (strcmp(split_value,
+               INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) == 0))
+    {
+      /* Must be a split parent interface */
+      if ((lanes_split_value != NULL) &&
+          (strcmp(lanes_split_value,
+                   INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT) == 0))
         {
-          if (strcmp (if_row->name, port_name) == 0)
+          vty_out(vty,
+                  "This interface has been split. Operation"
+                  " not allowed%s", VTY_NEWLINE);
+          allowed = false;
+        }
+    }
+  else
+    {
+      parent_iface = if_row->split_parent;
+      if (parent_iface != NULL)
+        {
+          lanes_split_value = smap_get(&parent_iface->user_config,
+                                       INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+          if ((lanes_split_value == NULL) ||
+              (strcmp(lanes_split_value,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT) != 0))
             {
-              port_row = ovsrec_port_insert (txn);
-              ovsrec_port_set_name (port_row, port_name);
-              ifs = xmalloc (sizeof *if_row);
-              ifs[0] = (struct ovsrec_interface *) if_row;
-              ovsrec_port_set_interfaces (port_row, ifs, 1);
-              free (ifs);
-              break;
+              /* Parent interface is not split.*/
+              vty_out(vty,
+                      "This is a QSFP child interface whose"
+                      " parent interface has not been split."
+                      " Operation not allowed%s", VTY_NEWLINE);
+              allowed = false;
             }
         }
-      if (attach_to_default_vrf)
-        {
-          const struct ovsrec_vrf *default_vrf_row = NULL;
-          struct ovsrec_port **ports = NULL;
-          size_t i;
-          default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
-          ports = xmalloc (
-              sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
-          for (i = 0; i < default_vrf_row->n_ports; i++)
-            ports[i] = default_vrf_row->ports[i];
-
-          struct ovsrec_port
-          *temp_port_row = CONST_CAST(struct ovsrec_port*,
-              port_row);
-          ports[default_vrf_row->n_ports] = temp_port_row;
-          ovsrec_vrf_set_ports (default_vrf_row, ports,
-                                default_vrf_row->n_ports + 1);
-          free (ports);
-        }
-      return port_row;
     }
-  return NULL;
+
+  return allowed;
 }
+
 
 /*
  * Check if port is part of any VRF and return the VRF row.
@@ -449,6 +449,12 @@ vrf_add_port (const char *if_name, const char *vrf_name)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, true, status_txn);
   if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
     {
@@ -705,6 +711,12 @@ vrf_routing (const char *if_name)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, false, false, status_txn);
   if (!port_row)
     {
@@ -784,6 +796,12 @@ vrf_no_routing (const char *if_name)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, false, status_txn);
   if (check_iface_in_bridge (if_name))
     {
@@ -864,6 +882,12 @@ vrf_config_ip (const char *if_name, const char *ip4, bool secondary)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, true, status_txn);
 
   if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
@@ -1095,6 +1119,12 @@ vrf_config_ipv6 (const char *if_name, const char *ipv6, bool secondary)
       return CMD_OVSDB_FAILURE;
     }
 
+  /* Check for spit interface conditions */
+  if (!check_split_iface_conditions (if_name))
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
   port_row = port_check_and_add (if_name, true, true, status_txn);
 
   if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
@@ -1331,10 +1361,10 @@ show_vrf_info ()
    * ------------------
    * VRF Name : vrf_default
    *
-   *         Interfaces :
-   *         ------------
-   *         1
-   *         2
+   *         Interfaces :     Status :
+   *         -------------------------
+   *         1                up
+   *         2                error: no_internal_vlan
    *
    */
 
@@ -1343,13 +1373,25 @@ show_vrf_info ()
   OVSREC_VRF_FOR_EACH (vrf_row, idl)
     {
       vty_out (vty, "VRF Name : %s%s\n", vrf_row->name, VTY_NEWLINE);
-      vty_out (vty, "\tInterfaces : %s", VTY_NEWLINE);
-      vty_out (vty, "\t------------%s", VTY_NEWLINE);
+      vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
+      vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
       for (i = 0; i < vrf_row->n_ports; i++)
-        vty_out (vty, "\t%s%s", vrf_row->ports[i]->name, VTY_NEWLINE);
+        {
+        if (smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR) == NULL)
+          {
+            vty_out (vty, "\t%s                %s%s", vrf_row->ports[i]->name,
+                     PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
+          }
+        else
+          {
+            vty_out (vty, "\t%s                error: %s%s", vrf_row->ports[i]->name,
+                     smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR),
+                     VTY_NEWLINE);
+          }
+        }
+  return CMD_SUCCESS;
     }
 
-  return CMD_SUCCESS;
 }
 
 DEFUN (cli_vrf_add,

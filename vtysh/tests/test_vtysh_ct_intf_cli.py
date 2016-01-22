@@ -50,9 +50,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         assert 'mtu 2500' in out, \
             'Test to verify interface configuration clis - FAILED!'
 
-        s1.cmdCLI('speed 4000')
+        s1.cmdCLI('speed 1000')
         out = s1.cmdCLI('do show running-conf interface 2')
-        assert 'speed 4000' in out, \
+        assert 'speed 1000' in out, \
             'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('duplex half')
@@ -81,13 +81,143 @@ class InterfaceCommandsTests(OpsVsiTest):
             'Test to verify interface configuration clis - FAILED!'
 
         s1.cmdCLI('interface 49')
-        s1.cmdCLI('split')
+        s1.cmdCLI('split', False)
+        s1.cmdCLI('y')
         out = s1.cmdCLI('do show running-config interface 49')
         assert 'split' in out, \
             'Test to verify interface configuration clis - FAILED!'
         out = s1.cmdCLI('end')
         return True
 
+    def dynHelpStr_intfSpeedTest(self):
+        print '''
+########## Test to verify dynamic helpstr for interface speed cli  ##########
+'''
+
+        s1 = self.net.switches[0]
+        s1.ovscmd('ovs-vsctl set interface 1 hw_intf_info:speeds="1000"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('speed ?')
+        assert '1000   Mb/s supported' in out and \
+            '10000  Mb/s not supported' in out and \
+            '40000  Mb/s not supported' in out, \
+            'Test to verify dyn helpstr for int speeds=1000 - FAILED!'
+        out = s1.cmdCLI('end')
+
+        s1.ovscmd('ovs-vsctl set interface 1 hw_intf_info:speeds="1000,10000"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('speed ?')
+        assert '1000   Mb/s supported' in out and \
+            '10000  Mb/s supported' in out and \
+            '40000  Mb/s not supported' in out, \
+            'Test to verify dyn helpstr for int speeds="1000,10000" - FAILED!'
+        out = s1.cmdCLI('end')
+
+        s1.ovscmd('ovs-vsctl set interface 1 hw_intf_info:speeds="40000"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('speed ?')
+        assert '1000   Mb/s not supported' in out and \
+            '10000  Mb/s not supported' in out and \
+            '40000  Mb/s supported' in out, \
+            'Test to verify dynamic helpstr for interface speed cli - FAILED!'
+        out = s1.cmdCLI('end')
+        return True
+
+    def display_interface_in_numerical_order(self):
+        s1 = self.net.switches[0]
+        s1.cmdCLI('end')
+        out = s1.cmdCLI('show interface brief')
+        list_interface = out.split("\n")
+        result_sortted = []
+        result_orig = []
+        for x in list_interface:
+            test = re.match('(\d+|.+\d+)\s+', x)
+            if test:
+                test_number = test.group(0)
+                if '-' in test_number:
+                    test_number = test_number.strip(" ")
+                    number = re.match('\d+.\d+', test_number).group(0)
+                    number = number.replace('-', '.')
+                    result_orig.append(float(number))
+                    result_sortted.append(float(number))
+                else:
+                    result_orig.append(int(test_number))
+                    result_sortted.append(int(test_number))
+
+        result_sortted.sort()
+
+        assert(result_orig == result_sortted), 'Test to display \
+               interface in numerical order -FAILED'
+        return True
+
+    def dynHelpStr_intfmtuTest(self):
+        print '''
+########## Test to verify dynamic helpstr for mtu  ##########
+'''
+
+        s1 = self.net.switches[0]
+        s1.ovscmd('ovs-vsctl set Subsystem base other_info:max_transmission_unit="2500"')
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+        out = s1.cmdCLI('mtu ?')
+        assert 'WORD  Enter MTU (in bytes) in the range <576-2500>' in out, \
+            'Test to verify dyn helpstr for mtu 2500 - FAILED!'
+        out = s1.cmdCLI('end')
+
+        return True
+
+    def showlacpPortPriority(self):
+        info('''
+########## Test show running-config interface Port Priority ##########
+''')
+        lag_interface = False
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface 2')
+        s1.cmdCLI('lacp port-priority 1')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('exit')
+        out = s1.cmdCLI('show running-config')
+        if "lacp port-priority 1" in out:
+            lag_interface = True
+        assert (lag_interface is True), \
+            'Test show running-config lacp port priority showed - FAIL!'
+
+        return True
+
+    def showRunInterfaceLag(self):
+        info('''
+########## Test show running-config interface with LAG ##########
+''')
+        lag_interface = False
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('no routing')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('hash l2-src-dst')
+        s1.cmdCLI('lacp fallback')
+        s1.cmdCLI('lacp rate fast')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('interface 2')
+        s1.cmdCLI('lag 1')
+        s1.cmdCLI('lacp port-id 2')
+        s1.cmdCLI('lacp port-priority 2')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('exit')
+        out = s1.cmdCLI('show run interface')
+        if "interface lag 1" in out and "no routing" in out \
+            and "lacp mode active" in out \
+            and "hash l2-src-dst" in out and "lacp fallback" in out \
+            and "lacp rate fast" in out and "lacp port-id 2" in out \
+            and "lacp port-priority 2" in out and "lag 1" in out:
+            lag_interface = True
+        assert (lag_interface is True), \
+            'Test show running-config interface with LAG port - FAILED!'
+        return True
 
 class Test_interfaceCommands:
 
@@ -106,6 +236,34 @@ class Test_interfaceCommands:
 ########## Test to verify interface configuration clis - SUCCESS! ##########
 '''
 
+    def test_dynHelpStr_intfSpeed(self):
+        if self.test.dynHelpStr_intfSpeedTest():
+            print '''
+########## Test to verify dyn helpstr for int speed cli - SUCCESS! ##########
+'''
+
+    def test_display_interface_in_numerical_order(self):
+        if self.test.display_interface_in_numerical_order():
+            info('''
+########## Test to verify that interface id displaying in numerical order \
+##########\n ''')
+
+    def test_dynHelpStr_intfmtu(self):
+        if self.test.dynHelpStr_intfmtuTest():
+            print '''
+########## Test to verify dyn helpstr for mtu - SUCCESS! ##########
+'''
+    def showlacpPortPriority(self):
+        if self.test.showlacpPortPriority():
+            info('''
+########## Test show running-config port priority default - SUCCESS! ##########
+''')
+
+    def test_showRunInterfaceLag(self):
+        if self.test.showRunInterfaceLag():
+            info('''
+########## Test show running-config interface with LAG - SUCCESS! ##########
+''')
     def teardown_class(cls):
 
         # Stop the Docker containers, and

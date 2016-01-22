@@ -40,6 +40,7 @@
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
 #include "intf_vty.h"
+#include "lacp_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openswitch-idl.h"
@@ -47,11 +48,73 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "vtysh/mgmt_intf_vty.h"
 #include "vtysh/vtysh_ovsdb_intf_context.h"
+#include "lacp_vty.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_interface_cli);
 extern struct ovsdb_idl *idl;
 
 #define INTF_NAME_SIZE 50
+
+
+/* qsort comparator function.
+ * This may need to be modified depending on the format of interface name
+ * Currently interface name format is[interface_number-split interface_number]
+ */
+static int
+compare_nodes_by_interface_in_numerical(const void *a_, const void *b_)
+{
+    const struct shash_node *const *a = a_;
+    const struct shash_node *const *b = b_;
+    uint i1=0,i2=0,i3=0,i4=0;
+
+    sscanf((*a)->name,"%d-%d",&i1,&i2);
+    sscanf((*b)->name,"%d-%d",&i3,&i4);
+
+    if(i1 == i3)
+    {
+        if(i2 == i4)
+            return 0;
+        else if(i2 < i4)
+            return -1;
+        else
+            return 1;
+    }
+    else if (i1 < i3)
+        return -1;
+    else
+        return 1;
+
+    return 0;
+}
+
+/*
+ * Sorting function for interface
+ * on success, returns sorted interface list.
+ */
+const struct shash_node **
+sort_interface(const struct shash *sh)
+{
+    if (shash_is_empty(sh)) {
+        return NULL;
+    } else {
+        const struct shash_node **nodes;
+        struct shash_node *node;
+
+        size_t i, n;
+
+        n = shash_count(sh);
+        nodes = xmalloc(n * sizeof *nodes);
+        i = 0;
+        SHASH_FOR_EACH (node, sh) {
+            nodes[i++] = node;
+        }
+        ovs_assert(i == n);
+
+        qsort(nodes, n, sizeof *nodes, compare_nodes_by_interface_in_numerical);
+        return nodes;
+    }
+}
+
 
 /*
  * CLI "shutdown"
@@ -144,22 +207,72 @@ DEFUN_NO_FORM (cli_intf_shutdown,
         "Enable/disable an interface\n");
 
 
+void
+dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
+                     char * const helpstr, int max_strlen)
+{
+    const struct ovsrec_interface * row = NULL;
+    const char *speeds_list = NULL;
+    char * tmp = NULL;
+    int len = 0;
+    row = ovsrec_interface_first(idl);
+    if (!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return NULL;
+    }
+
+    OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+        if(strcmp(row->name, vty->index) != 0)
+            continue;
+
+        speeds_list = smap_get(&row->hw_intf_info, "speeds");
+        if (speeds_list != NULL)
+        {
+            char * cur_state = calloc(strlen(speeds_list) + 1, sizeof(char));
+            strcpy(cur_state, speeds_list);
+            tmp = strtok(cur_state, ",");
+            while (tmp != NULL)
+            {
+                if (strcmp(tmp, token->cmd) == 0)
+                {
+                    snprintf(helpstr, max_strlen, "Mb/s supported");
+                    free(cur_state);
+                    return;
+                }
+                tmp = strtok(NULL, ",");
+            }
+            snprintf(helpstr, max_strlen, "Mb/s not supported");
+            free(cur_state);
+        }
+        else
+            snprintf(helpstr, max_strlen, "Mb/s not configured");
+    }
+    return;
+}
+
 /*
  * CLI "speed"
  * default : auto
  * Maximum speed is consitent with maximum speed mentioned in ports.yaml.
  */
-DEFUN (cli_intf_speed,
+DEFUN_DYN_HELPSTR (cli_intf_speed,
       cli_intf_speed_cmd,
       "speed (auto|1000|10000|40000)",
       "Configure the interface speed\n"
       "Auto negotiate speed (Default)\n"
-      "1Gb/s\n10Gb/s\n40Gb/s")
+      "1Gb/s\n10Gb/s\n40Gb/s",
+      "\n\ndyncb_helpstr_1G\ndyncb_helpstr_10G\ndyncb_helpstr_40G")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     struct smap smap_user_config;
+    const char *speeds_list = NULL;
+    char *tmp = NULL;
+    int support_flag = 0;
+    char *cur_state = NULL;
 
     if (status_txn == NULL)
     {
@@ -196,8 +309,37 @@ DEFUN (cli_intf_speed,
                 }
                 else
                 {
-                    smap_replace(&smap_user_config,
-                            INTERFACE_USER_CONFIG_MAP_SPEEDS, argv[0]);
+                    speeds_list = smap_get(&row->hw_intf_info, "speeds");
+                    support_flag = 0;
+                    if (speeds_list != NULL)
+                    {
+                        cur_state = calloc(strlen(speeds_list) + 1,
+                                                           sizeof(char));
+                        strcpy(cur_state, speeds_list);
+                        tmp = strtok(cur_state, ",");
+                        while (tmp != NULL)
+                        {
+                            if (strcmp(tmp, argv[0]) == 0)
+                            {
+                                support_flag = 1;
+                                break;
+                            }
+                            tmp = strtok(NULL, ",");
+                        }
+                        free(cur_state);
+                        if (support_flag == 0)
+                        {
+                            vty_out(vty, "Interface doesn't support %s (Mb/s). "
+                                        "Supported speed(s) : %s (Mb/s).%s",
+                                        argv[0], speeds_list, VTY_NEWLINE);
+                            cli_do_config_abort(status_txn);
+                            smap_destroy(&smap_user_config);
+                            return CMD_SUCCESS;
+                         }
+                            smap_replace(&smap_user_config,
+                                         INTERFACE_USER_CONFIG_MAP_SPEEDS,
+                                         argv[0]);
+                      }
                 }
             }
             ovsrec_interface_set_user_config(row, &smap_user_config);
@@ -226,17 +368,41 @@ DEFUN_NO_FORM (cli_intf_speed,
         "speed",
         "Enter the interface speed\n");
 
+void
+dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
+                  char * const helpstr, int max_strlen)
+{
+    const struct ovsrec_subsystem * row = NULL;
+    char * mtu = NULL;
+
+    row = ovsrec_subsystem_first(idl);
+    if (!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        return NULL;
+    }
+
+    OVSREC_SUBSYSTEM_FOR_EACH(row, idl)
+    {
+        mtu = smap_get(&row->other_info, "max_transmission_unit");
+        if (mtu != NULL)
+            snprintf(helpstr, max_strlen, \
+                     "Enter MTU (in bytes) in the range <576-%s>", mtu);
+    }
+    return;
+}
 
 /*
  * CLI "mtu"
  * default : auto
  */
-DEFUN (cli_intf_mtu,
+DEFUN_DYN_HELPSTR (cli_intf_mtu,
         cli_intf_mtu_cmd,
-        "mtu (auto|<576-9216>)",
-        "Configure mtu for the interface\n"
+        "mtu (auto|WORD)",
+        "Configure MTU for the interface\n"
         "Set MTU to system default (Default)\n"
-        "Enter MTU (in bytes)\n")
+        "Enter MTU (in bytes) in the range <576-9216>\n",
+        "\n\ndyncb_helpstr_mtu\n")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();
@@ -534,9 +700,9 @@ DEFUN_NO_FORM (cli_intf_flowcontrol,
  */
 DEFUN (cli_intf_autoneg,
         cli_intf_autoneg_cmd,
-        "autonegotiation (on|off)",
+        "autonegotiation (off|on)",
         "Configure auto-negotiation process for the interface\n"
-        "Turn on autonegotiation\nTurn off autonegotiation\n")
+        "Turn off autonegotiation\nTurn on autonegotiation (Default)\n")
 {
     const struct ovsrec_interface * row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
@@ -606,127 +772,7 @@ DEFUN (cli_intf_autoneg,
 DEFUN_NO_FORM (cli_intf_autoneg,
         cli_intf_autoneg_cmd,
         "autonegotiation",
-        "Configure autonegotiation process\n");
-
-/*
- * CLI "split"
- * default : no split
- */
-DEFUN (cli_intf_split,
-        cli_intf_split_cmd,
-        "split",
-        "Configure QSFP interface for 4x 10Gb operation "
-        "or 1x 40Gb operation.\n")
-{
-    const struct ovsrec_interface * row = NULL;
-    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
-    enum ovsdb_idl_txn_status status;
-
-    if (status_txn == NULL)
-    {
-        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
-        cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
-    }
-
-    row = ovsrec_interface_first(idl);
-    if (!row)
-    {
-        cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
-    }
-
-    OVSREC_INTERFACE_FOR_EACH(row, idl)
-    {
-        if (strcmp(row->name, (char*)vty->index) == 0)
-        {
-            /* if not splittable, warn */
-            const char *split_value = NULL;
-            struct smap smap_user_config;
-
-            smap_clone(&smap_user_config,&row->user_config);
-
-            split_value = smap_get(&row->hw_intf_info,
-                    INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
-            if ((split_value == NULL) ||
-                    (strcmp(split_value,
-                            INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) != 0))
-            {
-                if ((vty_flags & CMD_FLAG_NO_CMD) == 0)
-                {
-                    vty_out(vty, "Warning: split operation only applies to"
-                            " QSFP interfaces with split capability%s",
-                            VTY_NEWLINE);
-                }
-            }
-            if (vty_flags & CMD_FLAG_NO_CMD)
-            {
-                smap_remove(&smap_user_config,
-                        INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
-            }
-            else
-            {
-                smap_replace(&smap_user_config,
-                        INTERFACE_USER_CONFIG_MAP_LANE_SPLIT,
-                        INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT);
-            }
-            ovsrec_interface_set_user_config(row, &smap_user_config);
-
-            smap_destroy(&smap_user_config);
-            break;
-        }
-    }
-
-    status = cli_do_config_finish(status_txn);
-
-    if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
-    {
-        return CMD_SUCCESS;
-    }
-    else
-    {
-        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
-    }
-
-    return CMD_OVSDB_FAILURE;
-}
-
-DEFUN_NO_FORM (cli_intf_split,
-        cli_intf_split_cmd,
-        "split",
-        "Configure QSFP interface for 4x 10Gb "
-        "operation or 1x 40Gb operation\n");
-
-#define PRINT_INT_HEADER_IN_SHOW_RUN if (!bPrinted) \
-{ \
-bPrinted = true;\
-vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
-}
-
-
-/*
- * Function : port_match_in_vrf
- * Responsibility : Lookup VRF to which interface is connected
- * Parameters :
- *   const struct ovsrec_port *port_row: pointer to port_row for looking up VRF
- * Return : pointer to VRF row
- */
-const struct ovsrec_vrf*
-port_match_in_vrf(const struct ovsrec_port *port_row)
-{
-    const struct ovsrec_vrf *vrf_row = NULL;
-    size_t i;
-    OVSREC_VRF_FOR_EACH(vrf_row, idl)
-    {
-        for (i = 0; i < vrf_row->n_ports; i++) {
-            if (vrf_row->ports[i] == port_row) {
-                return vrf_row;
-            }
-        }
-    }
-    return NULL;
-}
-
+        "Configure autonegotiation process (Default: off)\n");
 
 /*
  *  Function : port_find
@@ -748,6 +794,249 @@ port_find(const char *if_name)
     return NULL;
 }
 
+/*
+ * Function : port_match_in_vrf
+ * Responsibility : Lookup VRF to which interface is connected
+ * Parameters :
+ *   const struct ovsrec_port *port_row: pointer to port_row
+ *                                       for looking up VRF
+ * Return : pointer to VRF row
+ */
+const struct ovsrec_vrf*
+port_match_in_vrf (const struct ovsrec_port *port_row)
+{
+  const struct ovsrec_vrf *vrf_row = NULL;
+  size_t i;
+  OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    {
+      for (i = 0; i < vrf_row->n_ports; i++)
+        {
+          if (vrf_row->ports[i] == port_row)
+            return vrf_row;
+        }
+    }
+  return NULL;
+}
+
+/*
+ * Function : remove_port_reference
+ * Responsibility : Remove port reference from VRF / bridge
+ *
+ * Parameters :
+ *   const struct ovsrec_port *port_row: port to be deleted
+ */
+static void
+remove_port_reference (const struct ovsrec_port *port_row)
+{
+  struct ovsrec_port **ports;
+  const struct ovsrec_vrf *vrf_row = NULL;
+  const struct ovsrec_bridge *default_bridge_row = NULL;
+  int i,n;
+
+  if (check_port_in_vrf(port_row->name))
+    {
+      vrf_row = port_match_in_vrf (port_row);
+      ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
+      for (i = n = 0; i < vrf_row->n_ports; i++)
+        {
+          if (vrf_row->ports[i] != port_row)
+            ports[n++] = vrf_row->ports[i];
+        }
+      ovsrec_vrf_set_ports (vrf_row, ports, n);
+    }
+
+  if (check_port_in_bridge(port_row->name))
+    {
+      default_bridge_row = ovsrec_bridge_first (idl);
+      ports = xmalloc (
+          sizeof *default_bridge_row->ports *
+          (default_bridge_row->n_ports - 1));
+      for (i = n = 0; i < default_bridge_row->n_ports; i++)
+        {
+          if (default_bridge_row->ports[i] != port_row)
+            ports[n++] = default_bridge_row->ports[i];
+        }
+      ovsrec_bridge_set_ports (default_bridge_row, ports, n);
+    }
+  free (ports);
+}
+
+/*
+ * Function : handle_port_config
+ * Responsibility : Handle deletion of all configuration
+ *                  for split/no split cases
+ * Parameters :
+ *   const struct ovsrec_port *if_row: pointer to interface row
+ *   bool split: Boolean to identify if parent interface is split or not
+ */
+static void
+handle_port_config (const struct ovsrec_interface *if_row, bool split)
+{
+  const struct ovsrec_port *port_row = NULL;
+  int i;
+  if (split)
+    {
+      port_row = port_find (if_row->name);
+      if (port_row)
+        {
+          remove_port_reference (port_row);
+          ovsrec_port_delete (port_row);
+        }
+    }
+  else
+    {
+      for (i = 0; i < if_row->n_split_children; i++)
+        {
+          port_row = port_find (if_row->split_children[i]->name);
+          if (port_row)
+            {
+              remove_port_reference (port_row);
+              ovsrec_port_delete (port_row);
+            }
+        }
+    }
+}
+
+/*
+ * CLI "split"
+ * default : no split
+ */
+DEFUN (cli_intf_split,
+        cli_intf_split_cmd,
+        "split",
+        "Configure QSFP interface for 4x 10Gb operation "
+        "or 1x 40Gb operation.\n")
+{
+  const struct ovsrec_interface * row = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  enum ovsdb_idl_txn_status status;
+  char flag = '0';
+  bool proceed = false;
+
+  if (status_txn == NULL)
+    {
+      VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  row = ovsrec_interface_first (idl);
+  if (!row)
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+      if (strcmp(row->name, (char*)vty->index) == 0)
+        {
+          /* if not splittable, warn */
+          const char *split_value = NULL;
+          struct smap smap_user_config;
+
+          smap_clone(&smap_user_config,&row->user_config);
+
+          split_value = smap_get(&row->hw_intf_info,
+                  INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
+          if ((split_value == NULL) ||
+                  (strcmp(split_value,
+                          INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) != 0))
+            {
+              if ((vty_flags & CMD_FLAG_NO_CMD) == 0)
+                {
+                  vty_out(vty, "Warning: split operation only applies to"
+                          " QSFP interfaces with split capability%s",
+                          VTY_NEWLINE);
+                }
+            }
+          if (vty_flags & CMD_FLAG_NO_CMD)
+            {
+              smap_remove(&smap_user_config,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
+            }
+          else
+            {
+              smap_replace(&smap_user_config,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT,
+                      INTERFACE_USER_CONFIG_MAP_LANE_SPLIT_SPLIT);
+            }
+          ovsrec_interface_set_user_config (row, &smap_user_config);
+          /* Reconfiguration should only be done when split/no split commands
+           * are entered on split parent interfaces */
+          if ((split_value != NULL) &&
+              (strcmp(split_value,
+                      INTERFACE_HW_INTF_INFO_MAP_SPLIT_4_TRUE) == 0))
+            {
+              if (vty_flags & CMD_FLAG_NO_CMD)
+                {
+                  vty_out (vty, "Warning: This will remove all L2/L3 configuration"
+                           " on child interfaces.\nDo you want to continue [y/n]? ");
+                }
+              else
+                {
+                  vty_out (vty, "Warning: This will remove all L2/L3 configuration"
+                           " on parent interface.\nDo you want to continue [y/n]? ");
+                }
+              while (1)
+                {
+                  scanf (" %c", &flag);
+                  if (flag == 'y' || flag == 'Y')
+                    {
+                      handle_port_config (row,
+                                          (vty_flags & CMD_FLAG_NO_CMD) ? false : true);
+                      proceed = true;
+                      break;
+                    }
+                  else if (flag == 'n' || flag == 'N')
+                    {
+                      vty_out (vty,"%s",VTY_NEWLINE);
+                      proceed = false;
+                      break;
+                    }
+                  else
+                    {
+                      vty_out (vty, "\r                                  ");
+                      vty_out (vty, "\rDo you wish to continue [y/n]? ");
+                    }
+                }
+            }
+          smap_destroy(&smap_user_config);
+          break;
+        }
+    }
+
+  if (!proceed)
+    {
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  status = cli_do_config_finish (status_txn);
+
+  if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+      return CMD_SUCCESS;
+    }
+  else
+    {
+      VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+    }
+
+  return CMD_OVSDB_FAILURE;
+}
+
+DEFUN_NO_FORM (cli_intf_split,
+        cli_intf_split_cmd,
+        "split",
+        "Configure QSFP interface for 4x 10Gb "
+        "operation or 1x 40Gb operation\n");
+
+#define PRINT_INT_HEADER_IN_SHOW_RUN if (!bPrinted) \
+{ \
+bPrinted = true;\
+vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
+}
 
 /*
  *  Function : parse_vlan
@@ -871,6 +1160,126 @@ parse_l3config(const char *if_name, struct vty *vty)
 }
 
 static int
+print_interface_lag(const char *if_name, struct vty *vty, bool *bPrinted)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_interface *if_row = NULL;
+    int k=0;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if (strncmp(port_row->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
+        {
+            for (k = 0; k < port_row->n_interfaces; k++)
+            {
+                if_row = port_row->interfaces[k];
+                if(strncmp(if_name, if_row->name, MAX_IFNAME_LENGTH) == 0)
+                {
+                    if (!(*bPrinted))
+                    {
+                        *bPrinted = true;
+                        vty_out (vty, "interface %s %s", if_name, VTY_NEWLINE);
+                    }
+                    vty_out(vty, "%3s%s %s%s", "", "lag",
+                            &port_row->name[LAG_PORT_NAME_PREFIX_LENGTH], VTY_NEWLINE);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+static int
+parse_lacp_othercfg(const struct smap *ifrow_config, const char *if_name,
+                                                struct vty *vty, bool *bPrinted)
+{
+    const char *data = NULL;
+
+    data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_ID);
+
+    if (data)
+    {
+        if (!(*bPrinted))
+        {
+            *bPrinted = true;
+            vty_out (vty, "interface %s%s", if_name, VTY_NEWLINE);
+        }
+
+        vty_out (vty, "%3s%s %s%s", "", "lacp port-id", data, VTY_NEWLINE);
+    }
+
+    data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
+
+    if (data)
+    {
+        if (!(*bPrinted))
+        {
+            *bPrinted = true;
+            vty_out (vty, "interface %s%s", if_name, VTY_NEWLINE);
+        }
+
+            vty_out (vty, "%3s%s %s%s", "", "lacp port-priority", data, VTY_NEWLINE);
+
+    }
+
+    return 0;
+}
+
+static int
+parse_lag(struct vty *vty)
+{
+    const char *data = NULL;
+    const struct ovsrec_port *port_row = NULL;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if(strncmp(port_row->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) == 0)
+        {
+            /* Print the LAG port name because lag port is present. */
+            vty_out (vty, "interface lag %s%s", &port_row->name[LAG_PORT_NAME_PREFIX_LENGTH], VTY_NEWLINE);
+
+            if (check_port_in_bridge(port_row->name))
+            {
+                vty_out (vty, "%3s%s%s", "", "no routing", VTY_NEWLINE);
+                parse_vlan(port_row->name, vty);
+            }
+
+            data = port_row->lacp;
+            if(data && strcmp(data, OVSREC_PORT_LACP_OFF) != 0)
+            {
+                vty_out (vty, "%3slacp mode %s%s"," ",data, VTY_NEWLINE);
+            }
+
+            data = smap_get(&port_row->other_config, "bond_mode");
+
+            if(data)
+            {
+                vty_out (vty, "%3shash %s%s"," ",data, VTY_NEWLINE);
+            }
+
+            data = smap_get(&port_row->other_config, "lacp-fallback-ab");
+
+            if(data)
+            {
+                if(VTYSH_STR_EQ(data, "true"))
+                {
+                    vty_out (vty, "%3slacp fallback%s"," ", VTY_NEWLINE);
+                }
+            }
+
+            data = smap_get(&port_row->other_config, "lacp-time");
+
+            if(data)
+            {
+                vty_out (vty, "%3slacp rate %s%s"," ", data, VTY_NEWLINE);
+            }
+        }
+    }
+
+    return 0;
+}
+
+static int
 cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
         int flags, int argc, const char *argv[])
 {
@@ -983,11 +1392,17 @@ cli_show_run_interface_exec (struct cmd_element *self, struct vty *vty,
 
         parse_l3config(row->name, vty);
 
+        parse_lacp_othercfg(&row->other_config, row->name, vty, &bPrinted);
+
+        print_interface_lag(row->name, vty, &bPrinted);
+
         if (bPrinted)
         {
             vty_out(vty, "   exit%s", VTY_NEWLINE);
         }
     }
+
+    parse_lag(vty);
 
     return CMD_SUCCESS;
 }
@@ -1145,7 +1560,7 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
         shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
     }
 
-    nodes = shash_sort(&sorted_interfaces);
+    nodes = sort_interface(&sorted_interfaces);
 
     count = shash_count(&sorted_interfaces);
 
@@ -1383,6 +1798,178 @@ show_ip_addresses(const char *if_name, struct vty *vty)
 }
 
 
+void
+show_lacp_interfaces_brief (struct vty *vty, const char *argv[])
+{
+    const struct ovsrec_port *lag_port = NULL;
+    const struct ovsrec_interface *if_row = NULL;
+    const char *aggregate_mode = NULL;
+    const struct ovsdb_datum *datum;
+
+    int64_t lag_speed = 0;
+
+    // Index for loops
+    int interface_index = 0;
+
+    OVSREC_PORT_FOR_EACH(lag_port, idl)
+    {
+        if ((NULL != argv[0]) && (0 != strcmp(argv[0],lag_port->name)))
+        {
+            continue;
+        }
+
+        if(strncmp(lag_port->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) != 0)
+        {
+            continue;
+        }
+
+        vty_out(vty, " %-12s ", lag_port->name);
+        vty_out(vty, "--      "); /*VLAN */
+        vty_out(vty, "--  "); /*type */
+
+        aggregate_mode = lag_port->lacp;
+        if(aggregate_mode)
+            vty_out(vty, "%-7s ", aggregate_mode); /* mode -  active, passive*/
+        else
+            vty_out(vty, "--      "); /* mode -  active, passive */
+
+        vty_out(vty, "--     ");/* Status */
+        vty_out(vty, "--                       "); /*Reason*/
+
+        /* Speed calculation: Adding speed of all aggregated interfaces*/
+        lag_speed = 0;
+        for (interface_index = 0; interface_index < lag_port->n_interfaces; interface_index++)
+        {
+            if_row = lag_port->interfaces[interface_index];
+
+            datum = ovsrec_interface_get_link_speed(if_row, OVSDB_TYPE_INTEGER);
+            if ((NULL!=datum) && (datum->n >0))
+            {
+                lag_speed += datum->keys[0].integer;
+            }
+        }
+        if(lag_speed == 0)
+        {
+            vty_out(vty, " %-6s", "auto");
+        }
+        else
+        {
+            vty_out(vty, " %-6ld", lag_speed/1000000);
+        }
+
+        vty_out(vty, "   -- ");  /* Port channel */
+        vty_out(vty, "%s", VTY_NEWLINE);
+    }
+}
+
+void
+show_lacp_interfaces (struct vty *vty, char* interface_statistics_keys[],
+                      const char *argv[])
+{
+    const struct ovsrec_port *lag_port = NULL;
+    const struct ovsrec_interface *if_row = NULL;
+    const char *aggregate_mode = NULL;
+    const struct ovsdb_datum *datum;
+    unsigned int index;
+
+    int64_t lag_speed = 0;
+
+    // Indexes for loops
+    int interface_index = 0;
+    int stat_index = 0;
+    int other_config_index = 0;
+
+    // Array to keep the statistics for each lag while adding the
+    // stats for each interface in the lag.
+    int lag_statistics [12] = {0};
+
+    // Aggregation-key variables
+    size_t aggr_key_len = 6;
+    char aggr_key[aggr_key_len];
+
+    OVSREC_PORT_FOR_EACH(lag_port, idl)
+    {
+        union ovsdb_atom atom;
+
+        if ((NULL != argv[0]) && (0 != strcmp(argv[0],lag_port->name)))
+        {
+            continue;
+        }
+
+        if(strncmp(lag_port->name, LAG_PORT_NAME_PREFIX, LAG_PORT_NAME_PREFIX_LENGTH) != 0)
+        {
+            continue;
+        }
+
+        vty_out(vty, "Aggregate-name %s %s", lag_port->name, VTY_NEWLINE);
+        vty_out(vty, " Aggregated-interfaces : ");
+
+        lag_speed = 0;
+        for (interface_index = 0; interface_index < lag_port->n_interfaces; interface_index++)
+        {
+            if_row = lag_port->interfaces[interface_index];
+            vty_out(vty, "%s ", if_row->name);
+
+            datum = ovsrec_interface_get_link_speed(if_row, OVSDB_TYPE_INTEGER);
+            if ((NULL!=datum) && (datum->n >0))
+            {
+                lag_speed += datum->keys[0].integer;
+            }
+
+            datum = ovsrec_interface_get_statistics(if_row,
+                                OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
+
+            // Adding statistic value for each interface in the lag
+            for (stat_index = 0; stat_index < sizeof(lag_statistics)/sizeof(int); stat_index++)
+            {
+                atom.string = interface_statistics_keys[stat_index];
+                index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+                lag_statistics[stat_index] += (index == UINT_MAX)? 0 : datum->values[index].integer;
+            }
+        }
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        /* Retrieve aggregation-key from lag name */
+        snprintf(aggr_key,
+                 aggr_key_len,
+                 "%s",
+                 lag_port->name + LAG_PORT_NAME_PREFIX_LENGTH);
+
+        vty_out(vty, " Aggregation-key : %s", aggr_key);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        aggregate_mode = lag_port->lacp;
+        if(aggregate_mode)
+            vty_out(vty, " Aggregate mode : %s %s", aggregate_mode, VTY_NEWLINE);
+        vty_out(vty, " Speed %ld Mb/s %s",lag_speed/1000000 , VTY_NEWLINE);
+        vty_out(vty, " RX%s", VTY_NEWLINE);
+        vty_out(vty, "   %10ld input packets  ", lag_statistics[0]);
+        vty_out(vty, "   %10ld bytes  ",lag_statistics[1]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld input error    ",lag_statistics[8]);
+        vty_out(vty, "   %10ld dropped  ",lag_statistics[4]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld CRC/FCS  ",lag_statistics[7]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, " TX%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld output packets ",lag_statistics[2]);
+        vty_out(vty, "   %10ld bytes  ",lag_statistics[3]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld input error    ",lag_statistics[11]);
+        vty_out(vty, "   %10ld dropped  ",lag_statistics[9]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, "   %10ld collision  ",lag_statistics[10]);
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, "%s", VTY_NEWLINE);
+    }
+}
+
+
 int
 cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
         int flags, int argc, const char *argv[], bool brief)
@@ -1433,7 +2020,7 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
         shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
     }
 
-    nodes = shash_sort(&sorted_interfaces);
+    nodes = sort_interface(&sorted_interfaces);
 
     count = shash_count(&sorted_interfaces);
 
@@ -1668,6 +2255,15 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
     shash_destroy(&sorted_interfaces);
     free(nodes);
+
+    if(brief)
+    {
+        show_lacp_interfaces_brief(vty, argv);
+    }
+    else
+    {
+        show_lacp_interfaces(vty, interface_statistics_keys, argv);
+    }
 
     return CMD_SUCCESS;
 }

@@ -23,6 +23,10 @@ from opsvsi.opsvsitest import *
 first_interface = '12'
 second_interface = '13'
 third_interface = '14'
+split_parent_1 = '49'
+split_parent_2 = '50'
+split_child_1 = '50-1'
+split_child_2 = '50-2'
 
 
 class vrfCLITest(OpsVsiTest):
@@ -178,6 +182,58 @@ class vrfCLITest(OpsVsiTest):
         s1.cmdCLI('no routing')
         s1.cmdCLI('exit')
         intf_cmd = 'interface ' + third_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('no routing')
+        s1.cmdCLI('exit')
+
+        s1.cmdCLI('exit')
+
+    def test_vrf_no_internal_vlan(self):
+        '''
+            Test VRF status for up/no internal vlan
+        '''
+
+        info("\n########## VRF status up/no_internal_vlan validations"
+             " ##########\n")
+        s1 = self.net.switches[0]
+
+        # ovs-vsctl command to create vlans
+        s1.cmd("ovs-vsctl set Subsystem base "
+               "other_info:l3_port_requires_internal_vlan=1")
+
+        # Configurig vlan range for a single vlan
+        s1.cmdCLI("configure terminal")
+        s1.cmdCLI("vlan internal range 1024 1024 ascending")
+        intf_cmd = 'interface ' + first_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('routing')
+        s1.cmdCLI('ip address 10.1.1.1/8')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + second_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('routing')
+        s1.cmdCLI('ip address 11.1.1.1/8')
+        s1.cmdCLI('exit')
+
+        # Checking to see if up and no_internal_vlan cases are handled
+        ret = s1.cmdCLI('do show vrf')
+        ret = ret.replace(' ', '')
+        expected_output = '\t' + first_interface + 'up'
+        assert expected_output in ret, 'Interface status up failed'
+        info('### Interface status up passed ###\n')
+        expected_output = '\t' + second_interface \
+            + 'error:no_internal_vlan'
+        assert expected_output in ret, \
+            'Interface status no_internal_vlan failed'
+        info('### Interface status no_internal_vlan passed ###\n')
+
+        # Cleanup
+
+        intf_cmd = 'interface ' + first_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('no routing')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + second_interface
         s1.cmdCLI(intf_cmd)
         s1.cmdCLI('no routing')
         s1.cmdCLI('exit')
@@ -603,6 +659,145 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI('exit')
 
+    def test_split_interfaces(self):
+        '''
+            Test Layer 3 operations on split interfaces
+        '''
+
+        info("\n########## Validate Layer 3 configurations "
+             "on split interfaces ##########\n")
+        s1 = self.net.switches[0]
+
+        # Configure IP address on a parent interface that has been split
+
+        s1.cmdCLI('configure terminal')
+        intf_cmd = 'interface ' + split_parent_1
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('split', False)
+        s1.cmdCLI('y')
+        ret = s1.cmdCLI('ip address 11.1.1.1/8')
+        assert 'This interface has been split. ' \
+               'Operation not allowed' in ret, \
+               'Split parent interface validation failed'
+        info('### Split parent interface validation passed ###\n')
+
+        # Configure IP address on a parent interface that has not been split
+
+        s1.cmdCLI('no split', False)
+        s1.cmdCLI('y')
+        s1.cmdCLI('ip address 11.1.1.1/8')
+        ret_vrf = s1.cmdCLI('do show vrf')
+        expected_output = '\t' + split_parent_1
+        intf_cmd = 'do show interface ' + split_parent_1
+        ret_ip = s1.cmdCLI(intf_cmd)
+        assert expected_output in ret_vrf \
+               and '11.1.1.1/8' in ret_ip, \
+               'Split parent interface configuration failed'
+        info('### Split parent interface configured successfully ###\n')
+
+        # Split a parent interface that already has an IP address configured
+
+        s1.cmdCLI('split', False)
+        s1.cmdCLI('y')
+        ret_vrf = s1.cmdCLI('do show vrf')
+        unexpected_output = '\t' + split_parent_1
+        intf_cmd = 'do show interface ' + split_parent_1
+        ret_ip = s1.cmdCLI(intf_cmd)
+        assert unexpected_output not in ret_vrf and \
+               '11.1.1.1/8' not in ret_ip, \
+               'Split parent interface configuration removal failed'
+        info('### Split parent interface layer 3 '
+             'configuration removed successfully ###\n')
+        s1.cmdCLI('exit')
+
+        # Configure IP address on a child interface
+        # whose parent has not been split
+
+        intf_cmd = 'interface ' + split_child_1
+        s1.cmdCLI(intf_cmd)
+        ret = s1.cmdCLI('ip address 12.1.1.1/8')
+        assert 'This is a QSFP child interface whose ' \
+               'parent interface has not been split. ' \
+               'Operation not allowed' in ret, \
+               'Split child interface validation failed'
+        info('### Split child interface validation passed ###\n')
+        s1.cmdCLI('exit')
+
+        # Configure IP address on a child interface
+        # whose parent has been split
+
+        intf_cmd = 'interface ' + split_parent_2
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('split', False)
+        s1.cmdCLI('y')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + split_child_1
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('ip address 12.1.1.1/8')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + split_child_2
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('ip address 13.1.1.1/8')
+        s1.cmdCLI('exit')
+        ret_vrf = s1.cmdCLI('do show vrf')
+        intf_cmd = 'do show interface ' + split_child_1
+        ret_ip1 = s1.cmdCLI(intf_cmd)
+        intf_cmd = 'do show interface ' + split_child_2
+        ret_ip2 = s1.cmdCLI(intf_cmd)
+        expected_output_1 = '\t' + split_child_1
+        expected_output_2 = '\t' + split_child_2
+        assert expected_output_1 in ret_vrf and \
+               expected_output_2 in ret_vrf and \
+               '12.1.1.1/8' in ret_ip1 and '13.1.1.1/8' in ret_ip2, \
+               'Split child interface configuration failed'
+        info('### Split child interface configured successfully ###\n')
+
+        # No Split a parent interface that has
+        # child interfaces with Layer 3 configurations
+
+        intf_cmd = 'interface ' + split_parent_2
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('no split', False)
+        s1.cmdCLI('y')
+        s1.cmdCLI('exit')
+        ret_vrf = s1.cmdCLI('do show vrf')
+        intf_cmd = 'do show interface ' + split_child_1
+        ret_ip1 = s1.cmdCLI(intf_cmd)
+        intf_cmd = 'do show interface ' + split_child_2
+        ret_ip2 = s1.cmdCLI(intf_cmd)
+        unexpected_output_1 = '\t' + split_child_1
+        unexpected_output_2 = '\t' + split_child_2
+
+        assert unexpected_output_1 not in ret_vrf and \
+               unexpected_output_2 not in ret_vrf and \
+               '12.1.1.1/8' not in ret_ip1 and \
+               '13.1.1.1/8' not in ret_ip2, \
+               'Split child interface configuration removal failed'
+        info('### Split child interface layer 3 '
+             'configurations removed successfully ###\n')
+
+        # Check "no routing" case to see if port
+        # row is removed on split
+        intf_cmd = 'interface ' + split_parent_2
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('no routing')
+        ovs_get_port_cmd = 'ovs-vsctl get port ' + split_parent_2 + ' name'
+        ret_port = s1.ovscmd(ovs_get_port_cmd)
+        assert split_parent_2 in ret_port, \
+               'No routing command failed on split parent'
+        s1.cmdCLI('split', False)
+        s1.cmdCLI('y')
+        ret_port = s1.ovscmd(ovs_get_port_cmd)
+        expected_output = 'ovs-vsctl: no row ' + split_parent_2 + \
+                          ' in table Port'
+        assert expected_output in ret_port, \
+               'Port row deletion failed on split command'
+        info('### Port row deleted successfully on split command ###\n')
+
+        # Cleanup
+
+        s1.cmdCLI('exit')
+
 
 class Test_vtysh_vrf:
 
@@ -625,6 +820,9 @@ class Test_vtysh_vrf:
     def test_interface(self):
         self.test.test_interface()
 
+    def test_vrf_no_internal_vlan(self):
+        self.test.test_vrf_no_internal_vlan()
+
     def test_ip(self):
         self.test.test_ip()
 
@@ -636,6 +834,9 @@ class Test_vtysh_vrf:
 
     def test_show_running_config(self):
         self.test.test_show_running_config()
+
+    def test_split_interfaces(self):
+        self.test.test_split_interfaces()
 
     def __del__(self):
         del self.test

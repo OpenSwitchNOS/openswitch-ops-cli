@@ -32,6 +32,12 @@
 #include "vty.h"
 #include "lib/route_types.h"
 
+
+enum data_type{
+  NODE=0,
+  ELEMENT
+};
+
 /* Host configuration variable */
 struct host
 {
@@ -78,6 +84,8 @@ struct format_parser_state
                      parsing */
   const char *dp;  /* pointer in description string, moved along while
                      parsing */
+  const char *dyn_cbp;  /* pointer to dynamic callback string, moved
+                           along while parsing */
 
   int in_keyword; /* flag to remember if we are in a keyword group */
   int in_multiple; /* flag to remember if we are in a multiple group */
@@ -179,6 +187,7 @@ struct cmd_element
   int daemon;                   /* Daemon to which this command belong. */
   vector tokens;		/* Vector of cmd_tokens */
   int attr;			/* Command attributes */
+  const char *dyn_cb_str;       /* Callback funcname list for dynamic helpstr */
 };
 
 
@@ -203,6 +212,10 @@ struct cmd_token
   /* Used for type == TERMINAL */
   char *cmd;                    /* Command string. */
   char *desc;                    /* Command's description. */
+  char *dyn_cb;                  /* Command's dynamic callback func name. */
+  void (*dyn_cb_func)(struct cmd_token *token, struct vty *vty, \
+                      char * const dyn_helpstr_ptr, int max_strlen);
+                                 /* Command's dynamic callback func pointer. */
 };
 
 /* Return value of the commands. */
@@ -228,7 +241,7 @@ struct cmd_token
 #ifndef VTYSH_EXTRACT_PL  
 
 /* helper defines for end-user DEFUN* macros */
-#define DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attrs, dnum) \
+#define DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attrs, dnum, dyn_cbstr) \
   struct cmd_element cmdname = \
   { \
     .string = cmdstr, \
@@ -236,6 +249,7 @@ struct cmd_token
     .doc = helpstr, \
     .attr = attrs, \
     .daemon = dnum, \
+    .dyn_cb_str = dyn_cbstr, \
   };
 
 #define DEFUN_CMD_FUNC_DECL(funcname) \
@@ -415,17 +429,22 @@ struct cmd_token
  */
 #define DEFUN(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_CMD_FUNC_DECL(funcname) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0) \
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0, NULL) \
+  DEFUN_CMD_FUNC_TEXT(funcname)
+
+#define DEFUN_DYN_HELPSTR(funcname, cmdname, cmdstr, helpstr, dyn_cbstr) \
+  DEFUN_CMD_FUNC_DECL(funcname) \
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0, dyn_cbstr) \
   DEFUN_CMD_FUNC_TEXT(funcname)
 
 #define DEFUN_ATTR(funcname, cmdname, cmdstr, helpstr, attr) \
   DEFUN_CMD_FUNC_DECL(funcname) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, 0) \
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, 0, NULL) \
   DEFUN_CMD_FUNC_TEXT(funcname)
 
 #define DEFUN_NO_FORM(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_CMD_FUNC_DECL(no_##funcname) \
-  DEFUN_CMD_ELEMENT(no_##funcname, no_##cmdname, "no " cmdstr, NO_STR helpstr, 0, 0) \
+  DEFUN_CMD_ELEMENT(no_##funcname, no_##cmdname, "no " cmdstr, NO_STR helpstr, 0, 0, NULL) \
   DEFUN_CMD_FUNC_TEXT(no_##funcname) \
 { \
    return funcname(self, vty, CMD_FLAG_NO_CMD, argc, argv); \
@@ -445,18 +464,18 @@ struct cmd_token
 
 /* DEFSH for vtysh. */
 #define DEFSH(daemon, cmdname, cmdstr, helpstr) \
-  DEFUN_CMD_ELEMENT(NULL, cmdname, cmdstr, helpstr, 0, daemon) \
+  DEFUN_CMD_ELEMENT(NULL, cmdname, cmdstr, helpstr, 0, daemon, NULL) \
 
 /* DEFUN + DEFSH */
 #define DEFUNSH(daemon, funcname, cmdname, cmdstr, helpstr) \
   DEFUN_CMD_FUNC_DECL(funcname) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, daemon) \
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, daemon, NULL) \
   DEFUN_CMD_FUNC_TEXT(funcname)
 
 /* DEFUN + DEFSH with attributes */
 #define DEFUNSH_ATTR(daemon, funcname, cmdname, cmdstr, helpstr, attr) \
   DEFUN_CMD_FUNC_DECL(funcname) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, daemon) \
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, daemon, NULL) \
   DEFUN_CMD_FUNC_TEXT(funcname)
 
 #define DEFUNSH_HIDDEN(daemon, funcname, cmdname, cmdstr, helpstr) \
@@ -467,25 +486,25 @@ struct cmd_token
 
 /* ALIAS macro which define existing command's alias. */
 #define ALIAS(funcname, cmdname, cmdstr, helpstr) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0)
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0, NULL)
 
 #define ALIAS_ATTR(funcname, cmdname, cmdstr, helpstr, attr) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, 0)
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, 0, NULL)
 
 #define ALIAS_HIDDEN(funcname, cmdname, cmdstr, helpstr) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN, 0)
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN, 0, NULL)
 
 #define ALIAS_DEPRECATED(funcname, cmdname, cmdstr, helpstr) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_DEPRECATED, 0)
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_DEPRECATED, 0, NULL)
 
 #define ALIAS_SH(daemon, funcname, cmdname, cmdstr, helpstr) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, daemon)
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, daemon, NULL)
 
 #define ALIAS_SH_HIDDEN(daemon, funcname, cmdname, cmdstr, helpstr) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN, daemon)
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN, daemon, NULL)
 
 #define ALIAS_SH_DEPRECATED(daemon, funcname, cmdname, cmdstr, helpstr) \
-  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_DEPRECATED, daemon)
+  DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, CMD_ATTR_DEPRECATED, daemon, NULL)
 
 #endif /* VTYSH_EXTRACT_PL */
 
@@ -512,8 +531,12 @@ struct cmd_token
 #endif
 
 /* Common descriptions. */
+#define HOSTNAME_SET_STR "Configure hostname\n"
+#define HOSTNAME_GET_STR "Display hostname\n"
+#define HOSTNAME_NO_STR "Reset hostname\n"
 #define SHOW_STR    "Show running system information\n"
 #define COPY_STR    "Copy from one config to another\n"
+#define ERASE_STR   "Erase configuration\n"
 #define AAA_STR     "Authentication, Authorization and Accounting\n"
 #define IP_STR      "IP information\n"
 #define IPV6_STR    "IPv6 information\n"
@@ -575,7 +598,7 @@ struct cmd_token
 #ifdef HAVE_IPV6
 #define NEIGHBOR_CMD       "neighbor (A.B.C.D|X:X::X:X) "
 #define NO_NEIGHBOR_CMD    "no neighbor (A.B.C.D|X:X::X:X) "
-#define NEIGHBOR_ADDR_STR  "Neighbor address\nIPv6 address\n"
+#define NEIGHBOR_ADDR_STR  "Neighbor address\nNeighbor IPv6 address\n"
 #define NEIGHBOR_CMD2      "neighbor (A.B.C.D|X:X::X:X|WORD) "
 #define NO_NEIGHBOR_CMD2   "no neighbor (A.B.C.D|X:X::X:X|WORD) "
 #define NEIGHBOR_ADDR_STR2 "Neighbor address\nNeighbor IPv6 address\nNeighbor tag\n"
@@ -617,9 +640,10 @@ extern int cmd_execute_command_strict (vector, struct vty *, struct cmd_element 
 extern void cmd_init (int);
 extern void cmd_terminate (void);
 extern int cmd_try_execute_command (struct vty *vty, char *buf);
-extern void cmd_terminate_element(struct cmd_element *cmd);
+extern struct cmd_element *cmd_terminate_element(struct cmd_element *cmd);
+extern void cmd_terminate_node_element (void *del_ptr, enum data_type del_type);
 
-extern vector cmd_parse_format(const char* string, const char *desc);
+extern vector cmd_parse_format(const char* string, const char *desc, const char *dyn_cb);
 extern void format_parser_read_word(struct format_parser_state *state);
 extern char *format_parser_desc_str(struct format_parser_state *state);
 

@@ -37,11 +37,13 @@ Boston, MA 02111-1307, USA.  */
 #include "lib_vtysh_ovsdb_if.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
+#include "dyn_helpstr.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
 
 #define MAX_CMD_LEN 256
+#define MAX_DYN_HELPSTR_LEN 256
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec = NULL;
@@ -112,6 +114,7 @@ static struct cmd_node config_node =
   "%s(config)# ",
   1
 };
+
 
 /* Default motd string. */
 static const char *default_motd =
@@ -314,6 +317,8 @@ struct format_parser_state
                      parsing */
   const char *dp;  /* pointer in description string, moved along while
                      parsing */
+  const char *dyn_cbp;  /* pointer in dynamic callback string, moved
+                           along while parsing */
 
   int in_keyword; /* flag to remember if we are in a keyword group */
   int in_multiple; /* flag to remember if we are in a multiple group */
@@ -365,6 +370,48 @@ format_parser_desc_str(struct format_parser_state *state)
   *(token + strlen) = '\0';
 
   state->dp = cp;
+
+  return token;
+}
+
+char *
+format_parser_dyn_cb_str(struct format_parser_state *state)
+{
+  const char *cp, *start;
+  char *token;
+  int strlen;
+
+  cp = state->dyn_cbp;
+
+  if (cp == NULL)
+    return NULL;
+
+  /* Skip white spaces. */
+  while (*cp == ' ' && *cp != '\0')
+    cp++;
+
+  /* Return if there is only white spaces */
+  if (*cp == '\0')
+    return NULL;
+
+  start = cp;
+  while (!(*cp == '\r' || *cp == '\n') && *cp != '\0')
+    cp++;
+
+  strlen = cp - start;
+  if (strlen > 0)
+  {
+    token = XMALLOC (MTYPE_CMD_TOKENS, strlen + 1);
+    memcpy (token, start, strlen);
+    *(token + strlen) = '\0';
+  }
+  else
+    token = NULL;
+
+  if (*cp == '\n')
+    cp++;
+
+  state->dyn_cbp = cp;
 
   return token;
 }
@@ -499,7 +546,7 @@ void
 format_parser_read_word(struct format_parser_state *state)
 {
   const char *start;
-  int len;
+  int len, i;
   char *cmd;
   struct cmd_token *token;
 
@@ -519,6 +566,21 @@ format_parser_read_word(struct format_parser_state *state)
   token->type = TOKEN_TERMINAL;
   token->cmd = cmd;
   token->desc = format_parser_desc_str(state);
+
+  if ((state->dyn_cbp != NULL) && (token->dyn_cb == NULL))
+  {
+    token->dyn_cb = format_parser_dyn_cb_str(state);
+
+    if (token->dyn_cb != NULL)
+    {
+      for (i = 0; i < (sizeof(dyn_cb_lookup)/sizeof(dyn_cb_lookup[0])); i++)
+      {
+        if(!strcmp(dyn_cb_lookup[i].funcname, token->dyn_cb))
+          token->dyn_cb_func = dyn_cb_lookup[i].funcptr;
+      }
+    }
+  }
+
   vector_set(state->curvect, token);
 
   if (state->in_keyword == 1)
@@ -533,11 +595,12 @@ format_parser_read_word(struct format_parser_state *state)
  *
  * @param string Command format string.
  * @param descstr Description string.
+ * @param dyn_cb_str Dynamic helpstr callback functions string
  * @return A vector of struct cmd_token representing the given command,
  *         or NULL on error.
  */
 vector
-cmd_parse_format(const char *string, const char *descstr)
+cmd_parse_format(const char *string, const char *descstr, const char *dyn_cb_str)
 {
   struct format_parser_state state;
 
@@ -548,6 +611,7 @@ cmd_parse_format(const char *string, const char *descstr)
   state.topvect = state.curvect = vector_init(VECTOR_MIN_SIZE);
   state.cp = state.string = string;
   state.dp = descstr;
+  state.dyn_cbp = dyn_cb_str;
 
   while (1)
     {
@@ -618,9 +682,9 @@ install_element (enum node_type ntype, struct cmd_element *cmd)
   vector_set (cnode->cmd_vector, cmd);
   if (cmd->tokens == NULL)
 #ifndef ENABLE_OVSDB
-    cmd->tokens = cmd_parse_format(cmd->string, cmd->doc);
+    cmd->tokens = cmd_parse_format(cmd->string, cmd->doc, cmd->dyn_cb_str);
 #else
-    cmd->tokens = utils_cmd_parse_format(cmd->string, cmd->doc);
+    cmd->tokens = utils_cmd_parse_format(cmd->string, cmd->doc, cmd->dyn_cb_str);
 #endif
 }
 
@@ -1802,31 +1866,32 @@ cmd_element_match(struct cmd_element *cmd_element,
 
   if (argc != NULL)
     *argc = 0;
+  if (cmd_element->tokens) {
+      for (token_index = 0;
+           token_index < vector_active(cmd_element->tokens);
+           token_index++)
+     {
+          struct cmd_token *token = vector_slot(cmd_element->tokens, token_index);
 
-  for (token_index = 0;
-       token_index < vector_active(cmd_element->tokens);
-       token_index++)
-    {
-      struct cmd_token *token = vector_slot(cmd_element->tokens, token_index);
+          switch (token->type)
+         {
+             case TOKEN_TERMINAL:
+                 rv = cmd_matcher_match_terminal(&matcher, token, argc, argv);
+                 break;
+             case TOKEN_MULTIPLE:
+                 rv = cmd_matcher_match_multiple(&matcher, token, argc, argv);
+                 break;
+             case TOKEN_KEYWORD:
+                 rv = cmd_matcher_match_keyword(&matcher, token, argc, argv);
+         }
 
-      switch (token->type)
-        {
-        case TOKEN_TERMINAL:
-          rv = cmd_matcher_match_terminal(&matcher, token, argc, argv);
-          break;
-        case TOKEN_MULTIPLE:
-          rv = cmd_matcher_match_multiple(&matcher, token, argc, argv);
-          break;
-        case TOKEN_KEYWORD:
-          rv = cmd_matcher_match_keyword(&matcher, token, argc, argv);
-        }
+         if (MATCHER_ERROR(rv))
+             return rv;
 
-      if (MATCHER_ERROR(rv))
-        return rv;
-
-      if (matcher.word_index > index)
-        return MATCHER_OK;
-    }
+         if (matcher.word_index > index)
+             return MATCHER_OK;
+      }
+  }
 
   /* return MATCHER_COMPLETE if all words were consumed */
   if (matcher.word_index >= vector_active(vline))
@@ -2434,9 +2499,25 @@ cmd_describe_command_real (vector vline, struct vty *vty, int *status)
           for (j = 0; j < vector_active(match_vector); j++)
             {
               struct cmd_token *token = vector_slot(match_vector, j);
-              const char *string;
+              const char *string = NULL;
+              static char dyn_helpstr[MAX_DYN_HELPSTR_LEN];
+              int len = 0;
 
               string = cmd_entry_function_desc(command, token->cmd);
+
+              if (token->dyn_cb != NULL)
+              {
+                memset(dyn_helpstr, '\0', MAX_DYN_HELPSTR_LEN);
+                token->dyn_cb_func(token, vty, dyn_helpstr, MAX_DYN_HELPSTR_LEN);
+                len = strlen(dyn_helpstr);
+                if (len > 0)
+                {
+                  token->desc = XREALLOC(MTYPE_CMD_TOKENS, token->desc, len + 1);
+                  memcpy (token->desc, dyn_helpstr, len);
+                  *(token->desc + len) = '\0';
+                }
+              }
+
               if (string && desc_unique_string(matchvec, string))
                 vector_set(matchvec, token);
 #ifndef NDEBUG
@@ -3610,57 +3691,71 @@ DEFUN (config_no_hostname,
 }
 #else
 #define MAX_HOSTNAME_LEN 32
-#define HOSTNAME_STR "Set or get hostname\n"
 extern void  vtysh_ovsdb_hostname_set(const char * in);
+extern int vtysh_ovsdb_hostname_reset(char *hostname_arg);
 extern const char* vtysh_ovsdb_hostname_get();
-/* Hostname configuration */
+
+/* CLI for hostname configuration */
 DEFUN (config_hostname,
        hostname_cmd,
-       "hostname [HOSTNAME]",
-       HOSTNAME_STR
+       "hostname HOSTNAME",
+       HOSTNAME_SET_STR
        "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
- char* hostname = NULL;
- int   ret = 0;
- if (argv[0])
- {
-     if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
-     {
-        vty_out (vty, "Please specify string of maximum %d character%s",MAX_HOSTNAME_LEN, VTY_NEWLINE);
+    if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
+    {
+        vty_out (vty, "Specify string of max %d character.\n", MAX_HOSTNAME_LEN);
         return CMD_SUCCESS;
-     }
-     if (!isalpha((int) *argv[0]))
-     {
-        vty_out (vty, "Please specify string starting with alphabet%s", VTY_NEWLINE);
+    }
+    if (!isalpha((int) *argv[0]))
+    {
+        vty_out (vty, "Please specify string starting with alphabet.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
-     }
-
-     vtysh_ovsdb_hostname_set(argv[0]);
- }
- else
- {
-     hostname = vtysh_ovsdb_hostname_get();
-     if (hostname)
-     {
-        vty_out (vty,"%s%s",hostname,VTY_NEWLINE);
-     }
-     else
-     {
-        vty_out (vty,"%s%s","",VTY_NEWLINE);
-     }
- }
- return CMD_SUCCESS;
+    }
+    vtysh_ovsdb_hostname_set(argv[0]);
+    return CMD_SUCCESS;
 }
 
+/* CLI for dislplaying hostname */
+DEFUN (config_show_hostname,
+       show_hostname_cmd,
+       "show hostname",
+       SHOW_STR
+       HOSTNAME_GET_STR)
+{
+    const char* hostname = NULL;
+    hostname = vtysh_ovsdb_hostname_get();
+    if (hostname)
+    {
+        vty_out (vty, "%s%s", hostname, VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "%s%s", "", VTY_NEWLINE);
+    }
+    return CMD_SUCCESS;
+}
+
+/* CLI for resetting hostname without argument  */
 DEFUN (config_no_hostname,
        no_hostname_cmd,
-       "no hostname [HOSTNAME]",
+       "no hostname",
        NO_STR
-       HOSTNAME_STR
-       "Hostname string(Max Length 32), first letter must be alphabet\n")
+       HOSTNAME_NO_STR)
 {
     vtysh_ovsdb_hostname_set("");
     return CMD_SUCCESS;
+}
+
+/* CLI for resetting hostname with argument */
+DEFUN (config_no_hostname_arg,
+       no_hostname_cmd_arg,
+       "no hostname HOSTNAME",
+       NO_STR
+       HOSTNAME_NO_STR
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
+{
+    return vtysh_ovsdb_hostname_reset(argv[0]);
 }
 
 #endif //ENABLE_OVSDB
@@ -4508,7 +4603,9 @@ cmd_init (int terminal)
     }
 
   install_element (CONFIG_NODE, &hostname_cmd);
+  install_element (ENABLE_NODE, &show_hostname_cmd);
   install_element (CONFIG_NODE, &no_hostname_cmd);
+  install_element (CONFIG_NODE, &no_hostname_cmd_arg);
 
   if (terminal)
     {
@@ -4589,23 +4686,26 @@ cmd_terminate_token(struct cmd_token *token)
 
   XFREE(MTYPE_CMD_TOKENS, token->cmd);
   XFREE(MTYPE_CMD_TOKENS, token->desc);
+  XFREE(MTYPE_CMD_TOKENS, token->dyn_cb);
 
   XFREE(MTYPE_CMD_TOKENS, token);
 }
 
-void
+struct cmd_element *
 cmd_terminate_element(struct cmd_element *cmd)
 {
   unsigned int i;
 
   if (cmd->tokens == NULL)
-    return;
+    return cmd;
 
   for (i = 0; i < vector_active(cmd->tokens); i++)
     cmd_terminate_token(vector_slot(cmd->tokens, i));
 
   vector_free(cmd->tokens);
   cmd->tokens = NULL;
+  cmd = NULL;
+  return cmd;
 }
 
 void
@@ -4654,4 +4754,49 @@ cmd_terminate ()
     XFREE (MTYPE_HOST, host.motdfile);
   if (host.config)
     XFREE (MTYPE_HOST, host.config);
+}
+
+/*
+ * This function will remove the cli installed node/element based on the
+ * type which is passed by caller.
+ */
+
+void
+cmd_terminate_node_element (void *del_ptr, enum data_type del_type)
+{
+  unsigned int i, j;
+  struct cmd_node *cmd_node;
+  struct cmd_element *cmd_element;
+  vector cmd_node_v;
+
+  if (cmdvec)
+  {
+      for (i = 0; i < vector_active (cmdvec); i++)
+        if ((cmd_node = vector_slot (cmdvec, i)) != NULL)
+        {
+            if ((del_type == NODE) && (cmd_node == del_ptr)) {
+                    cmd_node_v = cmd_node->cmd_vector;
+                    for (j = 0; j < vector_active (cmd_node_v); j++) {
+                      if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL) {
+                                vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
+                          }
+                      }
+                vector_free (cmd_node_v);
+                cmdvec->index[i] = NULL;
+                break;
+
+            } else if ((del_type == ELEMENT)) {
+                cmd_node_v = cmd_node->cmd_vector;
+                for (j = 0; j < vector_active (cmd_node_v); j++) {
+                        if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL) {
+                                if (cmd_element == del_ptr) {
+                                        vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
+                                        break;
+                                }
+                        }
+                }
+
+            }
+       }
+   }
 }
