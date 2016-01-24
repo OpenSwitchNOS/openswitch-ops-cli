@@ -74,6 +74,8 @@
 #include "ecmp_vty.h"
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
+#include "traceroute.h"
+
 #endif
 
 #include "aaa_vty.h"
@@ -722,6 +724,49 @@ vtysh_rl_describe (void)
  * and used in new_completion() in order to put the space in
  * correct places only. */
 int complete_status;
+
+/* This function creates a port for an interface. If the interface is
+  not configured , a default port will be created for the interface and
+  it will be attached to the default VRF.*/
+static int
+default_port_add (const char *if_name)
+{
+    const struct ovsrec_port *port_row = NULL;
+    struct ovsdb_idl_txn *status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+
+    status_txn = cli_do_config_start ();
+
+    if (status_txn == NULL)
+      {
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort (status_txn);
+        return CMD_OVSDB_FAILURE;
+      }
+    port_row = port_check_and_add (if_name, true, true, status_txn);
+    status = cli_do_config_finish (status_txn);
+
+    if (status == TXN_SUCCESS)
+      {
+        VLOG_INFO("%s The command succeeded and port \"%s\" was added "
+                  "successfully.\n", __func__, if_name);
+        return CMD_SUCCESS;
+      }
+    else if (status == TXN_UNCHANGED)
+      {
+        VLOG_INFO("%s The command resulted in no change. "
+                 "Check if port \"%s\" "
+                 "was already added", __func__, if_name);
+
+        return CMD_SUCCESS;
+      }
+    else
+      {
+        VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+        return CMD_OVSDB_FAILURE;
+      }
+
+}
 
 static char *
 command_generator (const char *text, int state)
@@ -1532,6 +1577,7 @@ DEFUN (vtysh_interface,
   else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
   {
     strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+    default_port_add(ifnumber);
   }
   else
   {
@@ -4604,6 +4650,9 @@ vtysh_init_vty (void)
   temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
+
+  /* Initialise tracerouote CLI */
+  traceroute_vty_init();
 
   /* Initialise power supply cli */
   powersupply_vty_init();

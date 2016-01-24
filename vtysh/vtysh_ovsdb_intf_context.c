@@ -139,8 +139,10 @@ vtysh_ovsdb_intftable_parse_lacp_othercfg(const struct smap *ifrow_config,
   data = smap_get(ifrow_config, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
   if (data)
   {
-    PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
-    vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-priority", atoi(data));
+    if (atoi(data) != LACP_DEFAULT_PORT_PRIORITY) {
+       PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+       vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "lacp port-priority", atoi(data));
+    }
   }
 
   return e_vtysh_ok;

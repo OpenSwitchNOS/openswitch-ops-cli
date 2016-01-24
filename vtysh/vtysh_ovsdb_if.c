@@ -47,6 +47,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 
+
 #ifdef HAVE_GNU_REGEX
 #include <regex.h>
 #else
@@ -161,6 +162,7 @@ bgp_ovsdb_init()
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_nexthop);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_nexthop_col_ip_address);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_nexthop_col_type);
+
 }
 
 static void
@@ -193,7 +195,9 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_vlan_mode);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_trunks);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_tag);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_bgp_routers);
@@ -202,7 +206,6 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_vrfs);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_bridges);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
@@ -965,6 +968,83 @@ check_port_in_bridge(const char *port_name)
     }
     return false;
 }
+
+
+/*
+ * Check for presence of VRF and return VRF row.
+ */
+const struct ovsrec_vrf*
+vrf_lookup (const char *vrf_name)
+{
+    const struct ovsrec_vrf *vrf_row = NULL;
+    OVSREC_VRF_FOR_EACH (vrf_row, idl)
+      {
+        if (strcmp (vrf_row->name, vrf_name) == 0)
+        return vrf_row;
+      }
+    return NULL;
+}
+
+/*
+ * This functions is used to check if port row exists.
+ *
+ * Variables:
+ * port_name -> name of port to check
+ * create -> flag to create port if not found
+ * attach_to_default_vrf -> attach newly created port to default VRF
+ */
+const struct ovsrec_port*
+port_check_and_add (const char *port_name, bool create,
+                    bool attach_to_default_vrf, struct ovsdb_idl_txn *txn)
+{
+    const struct ovsrec_port *port_row = NULL;
+    OVSREC_PORT_FOR_EACH (port_row, idl)
+      {
+        if (strcmp (port_row->name, port_name) == 0)
+        return port_row;
+      }
+    if (!port_row && create)
+      {
+        const struct ovsrec_interface *if_row = NULL;
+        struct ovsrec_interface **ifs;
+
+      OVSREC_INTERFACE_FOR_EACH (if_row, idl)
+        {
+          if (strcmp (if_row->name, port_name) == 0)
+            {
+              port_row = ovsrec_port_insert (txn);
+              ovsrec_port_set_name (port_row, port_name);
+              ifs = xmalloc (sizeof *if_row);
+              ifs[0] = (struct ovsrec_interface *) if_row;
+              ovsrec_port_set_interfaces (port_row, ifs, 1);
+              free (ifs);
+              break;
+            }
+        }
+      if (attach_to_default_vrf)
+        {
+          const struct ovsrec_vrf *default_vrf_row = NULL;
+          struct ovsrec_port **ports = NULL;
+          size_t i;
+          default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
+          ports = xmalloc (
+              sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
+          for (i = 0; i < default_vrf_row->n_ports; i++)
+            ports[i] = default_vrf_row->ports[i];
+
+          struct ovsrec_port
+          *temp_port_row = CONST_CAST(struct ovsrec_port*,
+              port_row);
+          ports[default_vrf_row->n_ports] = temp_port_row;
+          ovsrec_vrf_set_ports (default_vrf_row, ports,
+                                default_vrf_row->n_ports + 1);
+          free (ports);
+        }
+      return port_row;
+    }
+    return NULL;
+}
+
 
 /* Checks if interface is already part of a VRF. */
 bool
