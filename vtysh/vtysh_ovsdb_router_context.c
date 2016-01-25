@@ -459,6 +459,30 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                                  value_route_map_entries[j]->
                                                  match), "prefix_list"));
 
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "ipv6_prefix_list"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match ipv6 address prefix-list",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "ipv6_prefix_list"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "community"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match community",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "community"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "extcommunity"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match extcommunity",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "extcommunity"));
+
             if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
                 "community"))
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community",
