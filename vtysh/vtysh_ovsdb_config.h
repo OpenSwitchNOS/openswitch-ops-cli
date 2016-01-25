@@ -28,7 +28,7 @@
 #ifndef VTYSH_OVSDB_CONFIG_H
 #define VTYSH_OVSDB_CONFIG_H
 
-#include "lib/vty.h"
+#include "vty.h"
 
 /* general vtysh return type */
 typedef enum vtysh_ret_val_enum
@@ -44,11 +44,13 @@ typedef enum vtysh_context_idenum
   e_vtysh_config_context = 0,
   e_vtysh_router_context,
   e_vtysh_vlan_context,
+  e_vtysh_interface_lag_context,
   e_vtysh_interface_context,
   e_vtysh_mgmt_interface_context,
-  e_vtysh_interface_lag_context,
   e_vtysh_dependent_config,
+  e_vtysh_source_interface_context,
   e_vtysh_dhcp_tftp_context,
+  e_vtysh_sftp_server_context,
   e_vtysh_context_id_max
 } vtysh_contextid;
 
@@ -71,6 +73,7 @@ typedef enum vtysh_router_context_client_idenum
 {
   e_vtysh_router_context_client_id_first = 0,
   e_vtysh_router_context_bgp_ip_prefix,
+  e_vtysh_router_context_bgp_ip_community_filter,
   e_vtysh_router_context_bgp_routemap,
   e_vtysh_router_context_bgp,
   e_vtysh_router_context_ospf,
@@ -122,6 +125,15 @@ typedef enum vtysh_dependent_config_client_idenum
   e_vtysh_dependent_config_client_id_max
 } vtysh_dependent_config_clientid;
 
+/* SFTP Context client-id type */
+typedef enum vtysh_sftp_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_sftp_context_client_id_first = 0,
+  e_vtysh_sftp_server_context_config,
+  e_vtysh_sftp_context_client_id_max
+} vtysh_sftp_context_clientid;
+
 /* Dependent Config Client ID type */
 typedef enum vtysh_dhcp_tftp_config_client_idenum
 {
@@ -131,6 +143,15 @@ typedef enum vtysh_dhcp_tftp_config_client_idenum
   e_vtysh_dhcp_tftp_context_tftp,
   e_vtysh_dhcp_tftp_context_client_id_max,
 } vtysh_dhcp_tftp_context_clientid;
+
+/* Source interface context client-id type */
+typedef enum vtysh_source_interface_context_client_idenum
+{
+  /* Client callback based on client-id value */
+  e_vtysh_source_interface_context_client_id_first = 0,
+  e_vtysh_source_interface_context_config,
+  e_vtysh_source_interface_context_client_id_max,
+} vtysh_source_interface_context_clientid;
 
 typedef struct vtysh_ovsdb_cbmsg_struct
 {

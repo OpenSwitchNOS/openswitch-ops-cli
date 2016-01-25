@@ -46,6 +46,7 @@
 #include "assert.h"
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
+#include <termios.h>
 
 
 #ifdef HAVE_GNU_REGEX
@@ -59,6 +60,14 @@
 #include "lib/vty_utils.h"
 #include "intf_vty.h"
 
+#define TMOUT_POLL_INTERVAL 20
+
+int64_t timeout_start;
+struct termios tp;
+unsigned int last_idl_seq_no;
+long long int next_poll_msec;
+int64_t session_timeout_period;
+
 typedef unsigned char boolean;
 
 VLOG_DEFINE_THIS_MODULE (vtysh_ovsdb_if);
@@ -70,14 +79,41 @@ static struct unixctl_server *appctl;
 static int cur_cfg_no = 0;
 
 boolean exiting = false;
-volatile boolean vtysh_exit = false;
+volatile boolean vtysh_exit_flag = false;
 extern struct vty *vty;
+
+/* Function checks if timeout period has
+*  exceeded. If yes, exits cli session.
+*/
+static void
+vtysh_session_timeout_run()
+{
+    if (last_idl_seq_no != ovsdb_idl_get_seqno(idl))
+    {
+        last_idl_seq_no = ovsdb_idl_get_seqno(idl);
+        session_timeout_period = 60 * vtysh_ovsdb_session_timeout_get();
+    }
+    if (time_msec() > next_poll_msec) {
+        next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
+        if ((session_timeout_period > 0) &&
+            ((time_now() - timeout_start) > session_timeout_period))
+        {
+            tcsetattr(STDIN_FILENO, TCSANOW, &tp);
+            vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+            vty_out(vty, "Idle session timeout reached, logging out.%s",
+                    VTY_NEWLINE);
+            vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+            exit(0);
+        }
+    }
+}
 
 /* Running idl run and wait to fetch the data from the DB. */
 static void
 vtysh_run()
 {
     ovsdb_idl_run (idl);
+    vtysh_session_timeout_run();
 }
 
 static void
@@ -104,6 +140,8 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_other_config);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_external_ids);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_fast_external_failover);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_log_neighbor_changes);
 
     /* BGP neighbor table. */
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_neighbor);
@@ -119,20 +157,20 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_tcp_port_number);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_advertisement_interval);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_maximum_prefix_limit);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_capability);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_override_capability);
     ovsdb_idl_add_column(idl,
                          &ovsrec_bgp_neighbor_col_inbound_soft_reconfiguration);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_remove_private_as);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_passive);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_password);
-    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_strict_capability_match);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_timers);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_route_maps);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_external_ids);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_ebgp_multihop);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_ttl_security_hops);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_update_source);
 
     /* RIB. */
     ovsdb_idl_add_table(idl, &ovsrec_table_route);
@@ -216,6 +254,11 @@ vrf_ovsdb_init()
 static void
 policy_ovsdb_init ()
 {
+    ovsdb_idl_add_table(idl, &ovsrec_table_community_filter);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_action);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_match);
+    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_type);
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_prefix_list_entries);
@@ -493,11 +536,16 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_enable_reconnect(idl);
     latch_init(&ovsdb_latch);
 
+    /* Add system table. */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+
+    /* Add software_info column */
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_software_info);
+
     /* Add switch version column */
-    ovsdb_idl_add_column(idl, &ovsrec_open_vswitch_col_switch_version);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_switch_version);
 
     /* Add hostname columns. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
     /* Add AAA columns. */
@@ -607,6 +655,42 @@ vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
 }
 
 /*
+ * The get command to read from the ovsdb system table
+ * software_info:os_name value.
+ */
+const char *
+vtysh_ovsdb_os_name_get(void)
+{
+    const struct ovsrec_system *ovs;
+    char *os_name = NULL;
+
+    ovs = ovsrec_system_first(idl);
+    if (ovs) {
+        os_name = smap_get(&ovs->software_info, SYSTEM_SOFTWARE_INFO_OS_NAME);
+    }
+
+    return os_name ? os_name : "OpenSwitch";
+}
+
+/*
+ * The get command to read from the ovsdb system table
+ * switch_version column.
+ */
+const char *
+vtysh_ovsdb_switch_version_get(void)
+{
+    const struct ovsrec_system *ovs;
+
+    ovs = ovsrec_system_first(idl);
+    if (ovs == NULL) {
+        VLOG_ERR("unable to retrieve any system table rows");
+        return "";
+    }
+
+    return ovs->switch_version ? ovs->switch_version : "";
+}
+
+/*
  * The set command to set the hostname column in the
  * system table from the set-hotname command.
  */
@@ -635,6 +719,43 @@ vtysh_ovsdb_hostname_set(const char* in)
 }
 
 /*
+ * Name : vtysh_ovsdb_hostname_reset
+ * Responsibility : To unset hostname set by CLI.
+ * Parameters : char *hostname_arg : Stores user's input value
+ * Return : CMD_SUCCESS for success, CMD_OVSDB_FAILURE for failure
+ */
+int
+vtysh_ovsdb_hostname_reset(char *hostname_arg)
+{
+    const struct ovsrec_system *row = NULL;
+    const struct ovsdb_datum *data = NULL;
+    char *ovsdb_hostname = NULL;
+    row = ovsrec_system_first(idl);
+
+    if (row != NULL)
+    {
+        data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
+        ovsdb_hostname = data->keys->string;
+
+        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        {
+            vtysh_ovsdb_hostname_set("");
+        }
+        else
+        {
+            vty_out(vty, "Hostname %s not configured. %s", hostname_arg,
+                    VTY_NEWLINE);
+        }
+    }
+    else
+    {
+        vty_out(vty, "Error in retrieving hostname.%s", VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+    return CMD_SUCCESS;
+}
+
+/*
  * The get command to read from the ovsdb system table
  * hostname column from the vtysh get-hostname command.
  */
@@ -652,6 +773,82 @@ vtysh_ovsdb_hostname_get()
     }
 
     return NULL;
+}
+
+/*
+ * Function: vtysh_ovsdb_session_timeout_set
+ * Responsibility: To set CLI idle session timeout value.
+ * Parameters:
+ *     duration: session timeout value configured by user.
+ * Return: On success returns CMD_SUCCESS,
+ *         On failure returns CMD_OVSDB_FAILURE
+ */
+
+int
+vtysh_ovsdb_session_timeout_set(const char * duration)
+{
+    const struct ovsrec_system *ovs= NULL;
+    enum ovsdb_idl_txn_status status = TXN_ERROR;
+    struct smap smap_other_config;
+    struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+
+    if (status_txn == NULL)
+    {
+        VLOG_ERR("Couldn't create the OVSDB transaction");
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    ovs = ovsrec_system_first(idl);
+    if (!ovs)
+    {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    smap_clone(&smap_other_config, &ovs->other_config);
+    smap_replace(&smap_other_config,
+                 SYSTEM_OTHER_CONFIG_MAP_CLI_SESSION_TIMEOUT, duration);
+    ovsrec_system_set_other_config(ovs, &smap_other_config);
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_other_config);
+
+    if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        return CMD_SUCCESS;
+    }
+    else
+    {
+        VLOG_ERR("Committing transaction to DB failed");
+    }
+
+    return CMD_OVSDB_FAILURE;
+}
+
+/*
+ * Function: vtysh_ovsdb_session_timeout_get
+ * Responsibility: To get CLI idle session timeout value.
+ * Return:
+ *    Returns the idle session timeout value.
+ */
+
+int64_t
+vtysh_ovsdb_session_timeout_get()
+{
+    const struct ovsrec_system *ovs= NULL;
+    int64_t timeout = 0;
+
+    ovs = ovsrec_system_first(idl);
+    if (!ovs)
+    {
+        return CMD_OVSDB_FAILURE;
+    }
+
+    timeout = smap_get_int(&ovs->other_config,
+                           SYSTEM_OTHER_CONFIG_MAP_CLI_SESSION_TIMEOUT,
+                           DEFAULT_SESSION_TIMEOUT_PERIOD);
+
+    return timeout;
 }
 
 /* Wait for database sysnchronization in case *
@@ -882,8 +1079,13 @@ vtysh_ovsdb_main_thread(void *arg)
     /* Detach thread to avoid memory leak upon exit. */
     pthread_detach(pthread_self());
 
-    vtysh_exit = false;
-    while (!vtysh_exit) {
+    vtysh_exit_flag = false;
+    next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
+    last_idl_seq_no = ovsdb_idl_get_seqno(idl);
+    session_timeout_period = DEFAULT_SESSION_TIMEOUT_PERIOD;
+
+    while (!vtysh_exit_flag) {
+        poll_timer_wait_until(next_poll_msec);
         VTYSH_OVSDB_LOCK;
 
         /* This function updates the Cache by running
@@ -897,7 +1099,7 @@ vtysh_ovsdb_main_thread(void *arg)
         vtysh_periodic_refresh();
 
         VTYSH_OVSDB_UNLOCK;
-        if (vtysh_exit) {
+        if (vtysh_exit_flag) {
             poll_immediate_wake();
         } else {
         /* The poll function polls on the OVSDB socket
@@ -998,49 +1200,59 @@ port_check_and_add (const char *port_name, bool create,
                     bool attach_to_default_vrf, struct ovsdb_idl_txn *txn)
 {
     const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_interface *intf_row = NULL;
+    int i = 0;
+
     OVSREC_PORT_FOR_EACH (port_row, idl)
-      {
+    {
         if (strcmp (port_row->name, port_name) == 0)
-        return port_row;
-      }
+            return port_row;
+        /* The interface can be associated with another port */
+        for (i = 0; i < port_row->n_interfaces; i++) {
+            intf_row = port_row->interfaces[i];
+            if (!strcmp(intf_row->name, port_name)) {
+                return port_row;
+            }
+        }
+    }
     if (!port_row && create)
-      {
+    {
         const struct ovsrec_interface *if_row = NULL;
         struct ovsrec_interface **ifs;
 
-      OVSREC_INTERFACE_FOR_EACH (if_row, idl)
+        OVSREC_INTERFACE_FOR_EACH (if_row, idl)
         {
-          if (strcmp (if_row->name, port_name) == 0)
+            if (strcmp (if_row->name, port_name) == 0)
             {
-              port_row = ovsrec_port_insert (txn);
-              ovsrec_port_set_name (port_row, port_name);
-              ifs = xmalloc (sizeof *if_row);
-              ifs[0] = (struct ovsrec_interface *) if_row;
-              ovsrec_port_set_interfaces (port_row, ifs, 1);
-              free (ifs);
-              break;
+                port_row = ovsrec_port_insert (txn);
+                ovsrec_port_set_name (port_row, port_name);
+                ifs = xmalloc (sizeof *if_row);
+                ifs[0] = (struct ovsrec_interface *) if_row;
+                ovsrec_port_set_interfaces (port_row, ifs, 1);
+                free (ifs);
+                break;
             }
         }
-      if (attach_to_default_vrf)
+        if (attach_to_default_vrf)
         {
-          const struct ovsrec_vrf *default_vrf_row = NULL;
-          struct ovsrec_port **ports = NULL;
-          size_t i;
-          default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
-          ports = xmalloc (
-              sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
-          for (i = 0; i < default_vrf_row->n_ports; i++)
-            ports[i] = default_vrf_row->ports[i];
+            const struct ovsrec_vrf *default_vrf_row = NULL;
+            struct ovsrec_port **ports = NULL;
+            size_t i;
+            default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
+            ports = xmalloc (
+                    sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
+            for (i = 0; i < default_vrf_row->n_ports; i++)
+                ports[i] = default_vrf_row->ports[i];
 
-          struct ovsrec_port
-          *temp_port_row = CONST_CAST(struct ovsrec_port*,
-              port_row);
-          ports[default_vrf_row->n_ports] = temp_port_row;
-          ovsrec_vrf_set_ports (default_vrf_row, ports,
-                                default_vrf_row->n_ports + 1);
-          free (ports);
+            struct ovsrec_port
+                *temp_port_row = CONST_CAST(struct ovsrec_port*,
+                        port_row);
+            ports[default_vrf_row->n_ports] = temp_port_row;
+            ovsrec_vrf_set_ports (default_vrf_row, ports,
+                    default_vrf_row->n_ports + 1);
+            free (ports);
         }
-      return port_row;
+        return port_row;
     }
     return NULL;
 }
