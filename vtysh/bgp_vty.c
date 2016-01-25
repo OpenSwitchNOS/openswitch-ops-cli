@@ -10381,6 +10381,9 @@ bgp_vty_init(void)
 /* Prefix List. */
 const struct lookup_entry match_table[] = {
     {"ip address prefix-list", "prefix_list"},
+    {"ipv6 address prefix-list", "ipv6_prefix_list"},
+    {"community", "community"},
+    {"extcommunity", "extcommunity"},
     {NULL, NULL},
 };
 
@@ -11478,6 +11481,178 @@ ALIAS(no_match_ip_address_prefix_list,
       "Match entries of prefix-lists\n"
       "IP prefix-list name\n")
 
+DEFUN (match_ipv6_address_prefix_list,
+       match_ipv6_address_prefix_list_cmd,
+       "match ipv6 address prefix-list WORD",
+       MATCH_STR
+       IPV6_STR
+       "Match address of route\n"
+       "Match entries of prefix-lists\n"
+       "IP prefix-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 address prefix-list",
+                                               argv[0]);
+}
+
+DEFUN (no_match_ipv6_address_prefix_list,
+       no_match_ipv6_address_prefix_list_cmd,
+       "no match ipv6 address prefix-list WORD",
+       NO_STR
+       MATCH_STR
+       IPV6_STR
+       "Match address of route\n"
+       "Match entries of prefix-lists\n"
+       "IP prefix-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 address prefix-list",
+                                               NULL);
+}
+
+DEFUN (match_community,
+       match_community_cmd,
+       "match community (<1-99>|<100-500>|WORD)",
+       MATCH_STR
+       "Match BGP community list\n"
+       "Community-list number (standard)\n"
+       "Community-list number (expanded)\n"
+       "Community-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "community",
+                                               argv[0]);
+}
+
+DEFUN (match_community_exact,
+       match_community_exact_cmd,
+       "match community (<1-99>|<100-500>|WORD) exact-match",
+       MATCH_STR
+       "Match BGP community list\n"
+       "Community-list number (standard)\n"
+       "Community-list number (expanded)\n"
+       "Community-list name\n"
+       "Do exact matching of communities\n")
+{
+    int ret;
+    char *argstr;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    argstr = XMALLOC (MTYPE_ROUTE_MAP_COMPILED,
+                      strlen (argv[0]) + strlen ("exact-match") + 2);
+
+    sprintf (argstr, "%s exact-match", argv[0]);
+
+    ret = policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "community",
+                                               argstr);
+
+    XFREE (MTYPE_ROUTE_MAP_COMPILED, argstr);
+    return ret;
+}
+
+DEFUN (no_match_community,
+       no_match_community_cmd,
+       "no match community",
+       NO_STR
+       MATCH_STR
+       "Match BGP community list\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "community",
+                                               NULL);
+}
+
+ALIAS (no_match_community,
+       no_match_community_val_cmd,
+       "no match community (<1-99>|<100-500>|WORD)",
+       NO_STR
+       MATCH_STR
+       "Match BGP community list\n"
+       "Community-list number (standard)\n"
+       "Community-list number (expanded)\n"
+       "Community-list name\n")
+
+ALIAS (no_match_community,
+       no_match_community_exact_cmd,
+       "no match community (<1-99>|<100-500>|WORD) exact-match",
+       NO_STR
+       MATCH_STR
+       "Match BGP community list\n"
+       "Community-list number (standard)\n"
+       "Community-list number (expanded)\n"
+       "Community-list name\n"
+       "Do exact matching of communities\n")
+
+DEFUN (match_ecommunity,
+       match_ecommunity_cmd,
+       "match extcommunity (<1-99>|<100-500>|WORD)",
+       MATCH_STR
+       "Match BGP/VPN extended community list\n"
+       "Extended community-list number (standard)\n"
+       "Extended community-list number (expanded)\n"
+       "Extended community-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "extcommunity",
+                                               argv[0]);
+}
+
+DEFUN (no_match_ecommunity,
+       no_match_ecommunity_cmd,
+       "no match extcommunity",
+       NO_STR
+       MATCH_STR
+       "Match BGP/VPN extended community list\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "extcommunity",
+                                               NULL);
+}
+
+ALIAS (no_match_ecommunity,
+       no_match_ecommunity_val_cmd,
+       "no match extcommunity (<1-99>|<100-500>|WORD)",
+       NO_STR
+       MATCH_STR
+       "Match BGP/VPN extended community list\n"
+       "Extended community-list number (standard)\n"
+       "Extended community-list number (expanded)\n"
+       "Extended community-list name\n")
+
 DEFUN(set_metric,
       set_metric_cmd,
       "set metric <0-4294967295>",
@@ -11833,6 +12008,16 @@ void policy_vty_init(void)
     install_element(RMAP_NODE, &match_ip_address_prefix_list_cmd);
     install_element(RMAP_NODE, &no_match_ip_address_prefix_list_cmd);
     install_element(RMAP_NODE, &no_match_ip_address_prefix_list_val_cmd);
+    install_element(RMAP_NODE, &match_ipv6_address_prefix_list_cmd);
+    install_element(RMAP_NODE, &no_match_ipv6_address_prefix_list_cmd);
+    install_element(RMAP_NODE, &match_community_cmd);
+    install_element(RMAP_NODE, &match_community_exact_cmd);
+    install_element(RMAP_NODE, &no_match_community_cmd);
+    install_element(RMAP_NODE, &no_match_community_val_cmd);
+    install_element(RMAP_NODE, &no_match_community_exact_cmd);
+    install_element(RMAP_NODE, &match_ecommunity_cmd);
+    install_element(RMAP_NODE, &no_match_ecommunity_cmd);
+    install_element(RMAP_NODE, &no_match_ecommunity_val_cmd);
     install_element(RMAP_NODE, &set_metric_cmd);
     install_element(RMAP_NODE, &no_set_metric_cmd);
     install_element(RMAP_NODE, &no_set_metric_val_cmd);
