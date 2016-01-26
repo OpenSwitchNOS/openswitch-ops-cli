@@ -201,8 +201,10 @@ ntp_sanitize_auth_key(const char *pkey, struct ovsrec_ntp_key **pntp_auth_key_ro
     }
 
     if (password) {
-        if (strlen(password) < NTP_KEY_KEY_PASSWORD_LEN_MIN) {
-            vty_out(vty, "Password should be at least %d chars\n", NTP_KEY_KEY_PASSWORD_LEN_MIN);
+        int pwdlen = strlen(password);
+
+        if ((pwdlen < NTP_KEY_KEY_PASSWORD_LEN_MIN) || (pwdlen > NTP_KEY_KEY_PASSWORD_LEN_MAX)) {
+            vty_out(vty, "Password length should be between %d & %d chars\n", NTP_KEY_KEY_PASSWORD_LEN_MIN, NTP_KEY_KEY_PASSWORD_LEN_MAX);
             return CMD_ERR_NOTHING_TODO;
         }
     }
