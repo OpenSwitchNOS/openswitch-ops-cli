@@ -1,0 +1,9 @@
+Code-Review+2: Jia Chen <jia.chen2@hpe.com>
+Workflow+1: Sagar Bhanagay <sagar.bhanagay@hpe.com>
+Verified+2: Sagar Bhanagay <sagar.bhanagay@hpe.com>
+Code-Review+2: Sagar Bhanagay <sagar.bhanagay@hpe.com>
+Submitted-by: Sagar Bhanagay <sagar.bhanagay@hpe.com>
+Submitted-at: Tue, 26 Jan 2016 01:39:19 +0000
+Reviewed-on: https://review.openswitch.net/3195
+Project: openswitch/ops-cli
+Branch: refs/heads/feature/ntp_client
