@@ -1579,7 +1579,7 @@ DEFUN (vtysh_interface,
 {
   static char ifnumber[MAX_IFNAME_LENGTH];
 
-  if (strchr(argv[0],'.'))
+  if (strchr(argv[0], '.'))
      vty->node = SUB_INTERFACE_NODE;
   else
      vty->node = INTERFACE_NODE;
@@ -1643,7 +1643,7 @@ DEFUN (no_vtysh_interface,
   vty->node = CONFIG_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
 
-  if (strchr(argv[0],'.'))
+  if (strchr(argv[0], '.'))
   {
      delete_sub_intf(argv[0]);
      return CMD_SUCCESS;
@@ -2049,7 +2049,7 @@ DEFUNSH (VTYSH_INTERFACE,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
-  if (strchr(argv[0],'.'))
+  if (strchr(argv[0], '.'))
     vty->node = SUB_INTERFACE_NODE
   else
     vty->node = INTERFACE_NODE;
@@ -4394,6 +4394,9 @@ vtysh_init_vty (void)
    install_node (&loopback_interface_node, NULL);
    install_node (&link_aggregation_node, NULL);
    install_node (&vlan_interface_node, NULL);
+   /* Sub-interafce and Loopback nodes. */
+   install_node (&sub_interface_node, NULL);
+   install_node (&loopback_interface_node, NULL);
 #endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
@@ -4437,6 +4440,9 @@ vtysh_init_vty (void)
    vtysh_install_default (LOOPBACK_INTERFACE_NODE);
    vtysh_install_default (DHCP_SERVER_NODE);
    vtysh_install_default (TFTP_SERVER_NODE);
+   /* Sub-interafce and Loopback nodes. */
+   vtysh_install_default (SUB_INTERFACE_NODE);
+   vtysh_install_default (LOOPBACK_INTERFACE_NODE);
 #endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
@@ -4551,6 +4557,7 @@ vtysh_init_vty (void)
 #endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
+   /* Sub-interafce and Loopback elements. */
    install_element (SUB_INTERFACE_NODE, &vtysh_exit_sub_interface_cmd);
    install_element (SUB_INTERFACE_NODE, &vtysh_quit_sub_interface_cmd);
    install_element (SUB_INTERFACE_NODE, &vtysh_end_all_cmd);

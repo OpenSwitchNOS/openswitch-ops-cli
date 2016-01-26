@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -45,6 +45,8 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "loopback_vty.h"
 #include "vtysh/vtysh_utils.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
+#include "vtysh/utils/intf_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_loopback_if_cli);
 extern struct ovsdb_idl *idl;
@@ -110,12 +112,12 @@ DEFUN (vtysh_loopback_interface,
         if (txn == NULL)
         {
             VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d",
-                    " cli_do_config_start()", __func__, __LINE__);
+                    " cli_do_config_start()", __FILE__, __func__, __LINE__);
             cli_do_config_abort(txn);
             return CMD_OVSDB_FAILURE;
         }
 
-        /* create interface table entry */
+        /* Create interface table entry. */
         intf_row = ovsrec_interface_insert(txn);
         ovsrec_interface_set_name(intf_row, ifname);
         ovsrec_interface_set_type(intf_row, OVSREC_INTERFACE_TYPE_LOOPBACK);
@@ -125,14 +127,17 @@ DEFUN (vtysh_loopback_interface,
                 OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
         ovsrec_interface_set_user_config(intf_row, &smap_user_config);
 
-        /*create port table entry*/
+        /*Create port table entry.*/
         port_row = ovsrec_port_insert(txn);
         ovsrec_port_set_name(port_row, ifname);
 
         iface_list = xmalloc(sizeof(struct ovsrec_interface));
-        iface_list[0] = (struct ovsrec_interface *)intf_row;
-        ovsrec_port_set_interfaces(port_row, iface_list, 1);
-        free(iface_list);
+        if (iface_list != NULL)
+        {
+            iface_list[0] = (struct ovsrec_interface *)intf_row;
+            ovsrec_port_set_interfaces(port_row, iface_list, 1);
+            free(iface_list);
+        }
         ovsrec_port_set_admin(port_row,
                         OVSREC_INTERFACE_ADMIN_STATE_UP);
 
@@ -156,21 +161,23 @@ DEFUN (vtysh_loopback_interface,
 
         ports = xmalloc(sizeof *default_vrf_row->ports *
                 (default_vrf_row->n_ports + 1));
-        for (i = 0; i < default_vrf_row->n_ports; i++)
+        if (ports != NULL)
         {
-            ports[i] = default_vrf_row->ports[i];
-        }
-        ports[default_vrf_row->n_ports] =
+            for (i = 0; i < default_vrf_row->n_ports; i++)
+            {
+                ports[i] = default_vrf_row->ports[i];
+            }
+            ports[default_vrf_row->n_ports] =
             CONST_CAST(struct ovsrec_port*,port_row);
-        ovsrec_vrf_set_ports(default_vrf_row, ports,
+            ovsrec_vrf_set_ports(default_vrf_row, ports,
                 default_vrf_row->n_ports + 1);
-        free(ports);
-
+            free(ports);
+        }
         status_txn = cli_do_config_finish(txn);
         if ((status_txn != TXN_SUCCESS) && (status_txn != TXN_UNCHANGED))
         {
-            VLOG_ERR("Transaction commit failed in function=%s, line=%d",
-                    __func__,__LINE__);
+            VLOG_ERR("Transaction commit failed in function=%s, line=%d.%s",
+                    __func__, __LINE__, VTY_NEWLINE);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -198,14 +205,14 @@ mask_ip4_subnet(const char* ip4)
 
     snprintf(ip_add, strchr(ip4, '/') - ip4 + 1, "%s", ip4);
     snprintf(subnet_bits, strlen(strchr(ip4, '/')), "%s", strchr(ip4, '/') +1);
-    for (i=0; i<4; i++)
+    for (i = 0; i < 4; i++)
     {
         address[i] = atoi(ip_add);
         if (strchr(ip_add,'.') != 0)
             strcpy(ip_add,strchr(ip_add, '.') + 1);
     }
 
-    for (i=0; i< atoi(subnet_bits)/8; i++)
+    for (i = 0; i < atoi(subnet_bits) / 8; i++)
     {
         subnet_mask[i] = address[i];
         ip_subnet_mask += subnet_mask[i];
@@ -214,7 +221,7 @@ mask_ip4_subnet(const char* ip4)
     if ((atoi(subnet_bits) % 8) != 0)
     {
         subnet_mask[i] = address[i];
-        subnet_mask[i] >>= (8 - (atoi(subnet_bits) %8));
+        subnet_mask[i] >>= (8 - (atoi(subnet_bits) % 8));
         ip_subnet_mask += subnet_mask[i];
     }
     return ip_subnet_mask;
@@ -417,7 +424,7 @@ loopback_if_config_ipv6 (const char *if_name, const char *ipv6)
         return CMD_OVSDB_FAILURE;
     }
 
-    /* Check for spit interface conditions */
+    /* Check for split interface conditions. */
     if (!check_split_iface_conditions (if_name))
     {
         cli_do_config_abort (status_txn);
@@ -430,7 +437,7 @@ loopback_if_config_ipv6 (const char *if_name, const char *ipv6)
             (VERIFY_VLAN_IFNAME (if_name) != 0))
     {
         vty_out (vty, "Interface %s is not L3.%s", if_name, VTY_NEWLINE);
-        VLOG_DBG ("%s Interface \"%s\" is not attached to any SUB_IF. "
+        VLOG_DBG ("%s interface \"%s\" is not attached to any SUB_IF. "
                 "It is attached to default bridge",
                 __func__, if_name);
         cli_do_config_abort (status_txn);
@@ -439,10 +446,10 @@ loopback_if_config_ipv6 (const char *if_name, const char *ipv6)
 
     if (check_ip_addr_duplicate (ipv6, port_row, true, &is_secondary))
     {
-        vty_out (vty, "IP address is already assigned to interface %s"
+        vty_out (vty, "IP address is already assigned to interface. %s"
                 " as %s.%s",
                 if_name, is_secondary ? "secondary" : "primary", VTY_NEWLINE);
-        VLOG_DBG ("%s Interface \"%s\" already has the IP address \"%s\""
+        VLOG_DBG ("%s interface \"%s\" already has the IP address \"%s\""
                 " assigned to it as \"%s\".",
                 __func__, if_name, ipv6,
                 is_secondary ? "secondary" : "primary");
@@ -494,10 +501,10 @@ loopback_if_del_ipv6 (const char *if_name, const char *ipv6)
 
     if (!port_row)
     {
-        vty_out (vty,"%s Interface does not have any port configuration.%s",
+        vty_out (vty,"%s interface does not have any port configuration.%s",
                 if_name, VTY_NEWLINE);
-        VLOG_DBG ("%s Interface \"%s\" does not have any port configuration",
-                __func__, if_name);
+        VLOG_DBG ("%s interface \"%s\" does not have any port configuration.%s",
+                __func__, if_name, VTY_NEWLINE);
         cli_do_config_abort (status_txn);
         return CMD_SUCCESS;
     }
@@ -505,7 +512,7 @@ loopback_if_del_ipv6 (const char *if_name, const char *ipv6)
     if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
     {
         vty_out (vty, "Interface %s is not L3.%s", if_name, VTY_NEWLINE);
-        VLOG_DBG ("%s Interface \"%s\" is not attached to any VRF. "
+        VLOG_DBG ("%s interface \"%s\" is not attached to any VRF. "
                 "It is attached to default bridge",
                 __func__, if_name);
         cli_do_config_abort (status_txn);
@@ -517,8 +524,8 @@ loopback_if_del_ipv6 (const char *if_name, const char *ipv6)
     {
         vty_out (vty, "IPv6 address %s not configured.%s", ipv6, VTY_NEWLINE);
         VLOG_DBG ("%s IPv6 address \"%s\" not configured on interface"
-                " \"%s\".",
-                __func__, ipv6, if_name);
+                " \"%s\".%s",
+                __func__, ipv6, if_name, VTY_NEWLINE);
         cli_do_config_abort (status_txn);
         return CMD_SUCCESS;
     }
@@ -539,7 +546,7 @@ loopback_if_del_ipv6 (const char *if_name, const char *ipv6)
 }
 
 /*
- * This function will delete the created loopback interface
+ * This function will delete the created loopback interface.
  * Parameter 1 : interface name
  * Return      : CMD_OVSDB_FAILURE on failure
  *               CMD_SUCCESS on pass
@@ -557,7 +564,7 @@ delete_loopback_intf(const char *if_name)
 
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    char loopback_if_name[8]={0};
+    char loopback_if_name[8] = {0};
     bool port_found = false;
     struct ovsrec_interface **interfaces;
     const struct ovsrec_port *loopback_if_port = NULL;
@@ -591,7 +598,7 @@ delete_loopback_intf(const char *if_name)
     status_txn = cli_do_config_start();
     if (status_txn == NULL)
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
+        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -605,18 +612,22 @@ delete_loopback_intf(const char *if_name)
             loopback_row = vrf_row->ports[k];
             if (strcmp(loopback_row->name, if_name) == 0)
             {
-                ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports-1));
-                for (i = n = 0; i < vrf_row->n_ports; i++)
+                ports = xmalloc(sizeof *vrf_row->ports *
+                                      (vrf_row->n_ports - 1));
+                if (ports != NULL)
                 {
-                    if (vrf_row->ports[i] != loopback_row)
+                    for (i = n = 0; i < vrf_row->n_ports; i++)
                     {
-                        ports[n++] = vrf_row->ports[i];
+                        if (vrf_row->ports[i] != loopback_row)
+                        {
+                            ports[n++] = vrf_row->ports[i];
+                        }
                     }
+                    ovsrec_vrf_set_ports(vrf_row, ports, n);
+                    free(ports);
                 }
-                ovsrec_vrf_set_ports(vrf_row, ports, n);
-                free(ports);
-            }
-        }
+             }
+         }
     }
     ovsrec_port_delete(loopback_if_port);
 
@@ -628,21 +639,21 @@ delete_loopback_intf(const char *if_name)
     }
     else
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
+        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__, __LINE__);
         return CMD_OVSDB_FAILURE;
     }
 }
 
-DEFUN (cli_intf_show_intferface_loopback_if,
-        cli_intf_show_intferface_loopback_if_cmd,
-        "show interface loopback <0-2147483647>",
+DEFUN (cli_intf_show_interface_loopback_if,
+        cli_intf_show_interface_loopback_if_cmd,
+        "show interface loopback <1-2147483647>",
         SHOW_STR
         INTERFACE_STR
         "Show details of a loopback interface\n"
         "Select a loopback interface\n")
 {
     const struct ovsrec_interface *ifrow = NULL;
-    const char *cur_state =NULL;
+    const char *cur_state = NULL;
     struct shash sorted_interfaces;
     const struct shash_node **nodes;
     int idx, count;
@@ -705,7 +716,7 @@ DEFUN (cli_intf_show_intferface_loopback_if,
 
         vty_out (vty, " Hardware: Loopback %s", VTY_NEWLINE);
 
-        /* Displaying ipv4 and ipv6 primary and secondary addresses*/
+        /* Displaying IPv4 and IPv6 primary and secondary addresses.*/
         show_ip_addresses(ifrow->name, vty);
 
         datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
@@ -716,65 +727,6 @@ DEFUN (cli_intf_show_intferface_loopback_if,
 
         datum = ovsrec_interface_get_statistics(ifrow,
                 OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
-#if 0
-        if (NULL==datum) continue;
-
-        vty_out(vty, " RX%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[0];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld input packets  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[1];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld bytes  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[8];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld input error    ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[4];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld dropped  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[7];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld CRC/FCS  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        vty_out(vty, " TX%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[2];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld output packets ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[3];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld bytes  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[11];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld input error    ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[9];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld dropped  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[10];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld collision  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-#endif
     }
 
     shash_destroy(&sorted_interfaces);
@@ -784,15 +736,14 @@ DEFUN (cli_intf_show_intferface_loopback_if,
 }
 
 
-DEFUN (cli_intf_show_intferface_loopback,
-        cli_intf_show_intferface_loopback_cmd,
+DEFUN (cli_intf_show_interface_loopback,
+        cli_intf_show_interface_loopback_cmd,
         "show interface loopback",
         SHOW_STR
         INTERFACE_STR
-        "Show details of a loopback interface\n"
-        "Select a loopback interface\n")
+        "Show details of a loopback interface\n")
 {
-    return cli_intf_show_intferface_loopback_if (self, vty,
+    return cli_intf_show_interface_loopback_if (self, vty,
             vty_flags, 0, argv);
 }
 
@@ -801,8 +752,7 @@ DEFUN (cli_loopback_if_config_ip4,
         "ip address A.B.C.D/M",
         IP_STR
         "Set IP address\n"
-        "Interface IP address\n"
-        "Set as secondary IP address\n")
+        "Interface IP address\n")
 {
     return loopback_if_config_ip((char*) vty->index, argv[0]);
 }
@@ -813,8 +763,7 @@ DEFUN (cli_loopback_if_del_ip4,
         NO_STR
         IP_STR
         "Set IP address\n"
-        "Interface IP address\n"
-        "Set as secondary IP address\n")
+        "Interface IP address\n")
 {
     return loopback_if_del_ip4((char*) vty->index, argv[0]);
 }
@@ -824,8 +773,7 @@ DEFUN (cli_loopback_if_config_ipv6,
         "ipv6 address X:X::X:X/M",
         IPV6_STR
         "Set IP address\n"
-        "Interface IPv6 address\n"
-        "Set as secondary IPv6 address\n")
+        "Interface IPv6 address\n")
 {
     return loopback_if_config_ipv6((char*) vty->index, argv[0]);
 }
@@ -834,10 +782,9 @@ DEFUN (cli_loopback_if_del_ipv6,
         cli_loopback_if_del_ipv6_cmd,
         "no ipv6 address X:X::X:X/M",
         NO_STR
-        IP_STR
+        IPV6_STR
         "Set IP address\n"
-        "Interface IP address\n"
-        "Set as secondary IP address\n")
+        "Interface IP address\n")
 {
     return loopback_if_del_ipv6((char*) vty->index, argv[0]);
 }
@@ -872,6 +819,6 @@ loopback_intf_vty_init (void)
     install_element (LOOPBACK_INTERFACE_NODE, &cli_loopback_if_del_ipv6_cmd);
 
     /*show cammands at enable node */
-    install_element (ENABLE_NODE, &cli_intf_show_intferface_loopback_cmd);
-    install_element (ENABLE_NODE, &cli_intf_show_intferface_loopback_if_cmd);
+    install_element (ENABLE_NODE, &cli_intf_show_interface_loopback_cmd);
+    install_element (ENABLE_NODE, &cli_intf_show_interface_loopback_if_cmd);
 }

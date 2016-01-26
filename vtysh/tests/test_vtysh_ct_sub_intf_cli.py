@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -18,152 +18,179 @@
 # 02111-1307, USA.
 
 import pytest
-from time import sleep
-from opsvsi.docker import *
-from opsvsi.opsvsitest import *
+import re
+from opstestfw import *
+from opstestfw.switch.CLI import *
+from opstestfw.switch import *
+
+# Topology definition
+topoDict = {"topoExecution": 1000,
+            "topoTarget": "dut01",
+            "topoDevices": "dut01 wrkston01",
+            "topoLinks": "lnk01:dut01:wrkston01",
+            "topoFilters": "dut01:system-category:switch,\
+                            wrkston01:system-category:workstation"}
 
 
-class InterfaceCommandsTests(OpsVsiTest):
+def subintf_cli(**kwargs):
 
-    def setupNet(self):
+    device1 = kwargs.get('device1', None)
+    device2 = kwargs.get('device2', None)
 
-        # if you override this function, make sure to
-        # either pass getNodeOpts() into hopts/sopts of the topology that
-        # you build or into addHost/addSwitch calls
+# creating a sub interface and verifying in port and interface table
+    retStruct = InterfaceEnable(deviceObj=device1, enable=True,
+                                interface="4.2")
 
-        host_opts = self.getHostOpts()
-        switch_opts = self.getSwitchOpts()
-        intf_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
-        self.net = Mininet(intf_topo, switch=VsiOpenSwitch,
-                           host=Host, link=OpsVsiLink,
-                           controller=None, build=True)
+    if retStruct.returnCode() != 0:
+        LogOutput('error', "Failed to enable interface")
+        assert(False)
 
-    def createSubInterface(self):
-        info('''
-########## Test to create Sub Interface ##########
-''')
-        sub_if_port_found = False
-        sub_if_interface_found = False
-        s1 = self.net.switches[0]
-        s1.cmdCLI('conf t')
-        s1.cmdCLI('interface 2.5')
-        out = s1.cmd('ovs-vsctl list port')
-        lines = out.split('\n')
-        for line in lines:
-            if '"2.5"' in line:
-                sub_if_port_found = True
-        assert (sub_if_port_found is True), \
-            'Test to create Sub Interface - FAILED!!'
+    LogOutput('info', "### Verify the interface is created with'\
+              same name for L3 port ###")
+    devIntReturn = device1.DeviceInteract(command=
+                                          "ovs-vsctl get interface 4.2 name")
+    retCode = devIntReturn.get('buffer')
+    assert "4.2" in retCode, "Failed to retrieve ovs-vsctl command"
+    LogOutput('info', "### interface 4.2 created successfully ###")
 
-        out = s1.cmd('ovs-vsctl list interface')
-        lines = out.split('\n')
-        for line in lines:
-            if '"2.5"' in line:
-                sub_if_interface_found = True
-        assert (sub_if_interface_found is True), \
-            'Test to create Sub Interface - FAILED!!'
-        return True
+    devIntReturn = device1.DeviceInteract(command=
+                                          "ovs-vsctl get port 4.2 name")
+    retCode = devIntReturn.get('buffer')
+    assert "4.2" in retCode, "Failed to retrieve ovs-vsctl command"
+    LogOutput('info', "### interface 4.2 created successfully ###")
 
-    def interfaceConfigCliTest(self):
-        print '''
-########## Test to verify sub interface configuration clis  ##########
-'''
-        s1 = self.net.switches[0]
-        out = s1.cmdCLI('configure terminal')
-        s1.cmdCLI('interface 2.5')
+# configuring the ip address and verifying ip address in port table
+    retStruct = InterfaceIpConfig(deviceObj=device1,
+                                  interface="4.3",
+                                  addr="192.168.1.2", mask=24, config=True)
 
-        out = s1.cmdCLI('ip address 192.168.16.10/24')
-        out = s1.cmdCLI('do show running-conf')
-        assert 'ip address 192.168.16.10/24' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    if retStruct.returnCode() != 0:
+        LogOutput('error',
+                  "### Failed to configure interface IPV4 address ###")
+        assert(False)
 
-        s1.cmdCLI('ipv6 address 10:10::10:10/23')
-        out = s1.cmdCLI('do show running-conf')
-        assert 'ipv6 address 10:10::10:10/23' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    devIntReturn = device1.DeviceInteract(command=
+                                          "ovs-vsctl get port 4.3 ip4_address")
+    retCode = devIntReturn.get('buffer')
+    assert '192.168.1.2/24' in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
 
-        s1.cmdCLI('no shutdown')
-        out = s1.cmdCLI('do show running-conf')
-        assert 'no shutdown' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+# verifying in assigning Invalid Ip address
+    retStruct = InterfaceIpConfig(deviceObj=device1,
+                                  interface="4.5",
+                                  addr="0.0.0.0", mask=24, config=True)
+    retCode = retStruct.buffer()
+    assert 'Invalid IP address' in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
 
-        s1.cmdCLI('encapsulation dot1Q 12')
-        out = s1.cmdCLI('do show running-conf')
-        assert 'encapsulation dot1Q 12' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+# verifying in assigning Invalid Ip address
+    retStruct = InterfaceIpConfig(deviceObj=device1,
+                                  interface="4.4",
+                                  addr="255.255.255.255", mask=24, config=True)
+    retCode = retStruct.buffer()
+    assert 'Invalid IP address' in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
 
-        s1.cmdCLI('exit')
+# configuring the ipv6 address and verifying in port table
+    retStruct = InterfaceIpConfig(deviceObj=device1,
+                                  interface="4.4",
+                                  addr="10:10::10:10", ipv6flag=True,
+                                  mask=24, config=True)
+    devIntReturn = device1.DeviceInteract(command=
+                                          "ovs-vsctl get port 4.4 ip6_address")
+    retCode = devIntReturn.get('buffer')
+    assert "10:10::10:10/24" in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
 
-        out = s1.cmdCLI('interface 0.1025')
-        assert 'Parent interface does not exist' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+# verifying same vlan for different subinterface
+    retStruct = Dot1qEncapsulation(deviceObj=device1, subInterface="4.3",
+                                   dot1q=True, vlan=100)
+    if retStruct.returnCode() != 0:
+        LogOutput('error', "failed to configure vlan")
+        assert(False)
 
-        out = s1.cmdCLI('interface 12.4294967294')
-        assert 'Invalid input' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    retStruct = Dot1qEncapsulation(deviceObj=device1, subInterface="4.8",
+                                   dot1q=True, vlan=100)
+    retCode = retStruct.buffer()
+    assert "Encapsulation VLAN is already configured on interface 4.3." \
+        in retCode, 'Test to verify sub-interface configuration clis - FAILED!'
 
-        out = s1.cmdCLI('interface 2.6')
-        assert 'config-subif' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    retStruct = InterfaceIpConfig(deviceObj=device1,
+                                  interface="4.8",
+                                  addr="192.168.1.2", mask=24, config=True)
 
-        out = s1.cmdCLI('ip address 0.0.0.0/23')
-        assert 'Invalid IP address' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    retCode = retStruct.buffer()
+    assert "Duplicate IP Address." in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
 
-        out = s1.cmdCLI('ip address 255.255.255.255/23')
-        assert 'Invalid IP address' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    retStruct = Dot1qEncapsulation(deviceObj=device1, subInterface="4.8",
+                                   dot1q=False, vlan=100)
+    devIntReturn = device1.DeviceInteract(command="do show running-config")
+    retCode = retStruct.buffer()
+    assert "encapsulation dot1Q 100" in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
 
-        out = s1.cmdCLI('ip address 192.168.16.1/24')
-        assert 'Duplicate IP Address' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    retStruct = InterfaceEnable(deviceObj=device1, enable=True,
+                                interface="4")
+    retStruct = InterfaceIpConfig(deviceObj=device1,
+                                  interface="4",
+                                  routing=True, config=False)
 
-        out = s1.cmdCLI('ipv6 address 0:0::0:0/23')
-        assert 'Invalid IP address' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    devIntReturn = device1.DeviceInteract(command="vtysh")
+    devIntReturn = device1.DeviceInteract(command="conf t")
 
-        out = s1.cmdCLI('exit')
-        out = s1.cmdCLI('no interface 2.7')
-        assert 'Interface does not exist' in out, \
-            'Test to verify sub-interface configuration clis - FAILED!'
+    devIntReturn = device1.DeviceInteract(command="int 12.24545435612431562")
+    retCode = devIntReturn.get('buffer')
+    assert "Invalid input" in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
 
-        out = s1.cmdCLI('end')
-        return True
+    devIntReturn = device1.DeviceInteract(command="no int 12.2")
+    retCode = devIntReturn.get('buffer')
+    assert "Interface does not exist" in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
+
+    devIntReturn = device1.DeviceInteract(command="int 4.9")
+    retCode = devIntReturn.get('buffer')
+    assert "Parent interface is not L3" in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
+
+    devIntReturn = device1.DeviceInteract(command="no int 4.2")
+    devIntReturn = device1.DeviceInteract(command="no int 4.2")
+    retCode = devIntReturn.get('buffer')
+    assert "Interface does not exist" in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
+
+    devIntReturn = device1.DeviceInteract(command="int 100.1025")
+    retCode = devIntReturn.get('buffer')
+    assert "Parent interface does not exist" in retCode, \
+           'Test to verify sub-interface configuration clis - FAILED!'
+
+    devIntReturn = device1.DeviceInteract(command="exit")
+    devIntReturn = device1.DeviceInteract(command="exit")
+
+    devIntReturn = device1.DeviceInteract(command=
+                                          "ovs-vsctl get interface 4.2 name")
+    lines_list= devIntReturn.get('buffer').splitlines()
+    list = filter(None, lines_list)
+    if len(list) >= 2:
+        list = list[1]
+    assert "no row \"4.2\" in table Interface" in list, \
+           'Test to verify sub-interface configuration clis - FAILED!'
+    LogOutput('info', "4.2  deleted successfully")
 
 
-class Test_interfaceCommands:
-    def setup(self):
-        pass
-
-    def teardown(self):
-        pass
+class Test_subintf_cli:
 
     def setup_class(cls):
-        Test_interfaceCommands.test = InterfaceCommandsTests()
-
-    def test_createSubInterface(self):
-        if self.test.createSubInterface():
-            print'''
-########## Test to create Sub Interface - SUCCESS ##########
-'''
-
-    def test_interfaceConfigCli(self):
-        if self.test.interfaceConfigCliTest():
-            print '''
-########## Test to verify sub-interface configuration clis
-- SUCCESS! ########## '''
+        # Test object will parse command line and formulate the env
+        Test_subintf_cli.testObj = testEnviron(topoDict=topoDict)
+        # Get topology object
+        Test_subintf_cli.topoObj = Test_subintf_cli.testObj.topoObjGet()
 
     def teardown_class(cls):
-        # Stop the Docker containers, and
-        # mininet topology
+        Test_subintf_cli.topoObj.terminate_nodes()
 
-        Test_interfaceCommands.test.net.stop()
-
-    def setup_method(self, method):
-        pass
-
-    def teardown_method(self, method):
-        pass
-
-    def __del__(self):
-        del self.test
+    def test_subintf_cli(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        wrkston1Obj = self.topoObj.deviceObjGet(device="wrkston01")
+        retValue = subintf_cli(device1=dut01Obj, device2=wrkston1Obj)

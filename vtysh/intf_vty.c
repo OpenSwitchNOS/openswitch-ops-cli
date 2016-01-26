@@ -2003,10 +2003,14 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
     {
         /* Display the brief information */
         vty_out(vty, "%s", VTY_NEWLINE);
-        vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason                   Speed    Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                                          (Mb/s)   Ch#%s", VTY_NEWLINE);
-        vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
+        vty_out(vty, "--------------------------------------------------"
+                     "------------------------------%s", VTY_NEWLINE);
+        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason  "
+                     "                 Speed    Port%s", VTY_NEWLINE);
+        vty_out(vty, "Interface                                         "
+                     "                 (Mb/s)   Ch#%s", VTY_NEWLINE);
+        vty_out(vty, "--------------------------------------------------"
+                     "------------------------------%s", VTY_NEWLINE);
     }
     else
     {
