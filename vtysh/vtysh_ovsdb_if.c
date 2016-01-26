@@ -1,7 +1,7 @@
 /* Vtysh daemon ovsdb integration.
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015 - 2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,6 +47,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include <termios.h>
+#include <vrf-utils.h>
 
 
 #ifdef HAVE_GNU_REGEX
@@ -1171,21 +1172,6 @@ check_port_in_bridge(const char *port_name)
     return false;
 }
 
-
-/*
- * Check for presence of VRF and return VRF row.
- */
-const struct ovsrec_vrf*
-vrf_lookup (const char *vrf_name)
-{
-    const struct ovsrec_vrf *vrf_row = NULL;
-    OVSREC_VRF_FOR_EACH (vrf_row, idl)
-      {
-        if (strcmp (vrf_row->name, vrf_name) == 0)
-        return vrf_row;
-      }
-    return NULL;
-}
 
 /*
  * This functions is used to check if port row exists.

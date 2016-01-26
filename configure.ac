@@ -336,9 +336,9 @@ fi
 
 if test "${enable_ovsdb}" = "yes"; then
   AC_DEFINE(ENABLE_OVSDB,,Quagga OVSDB integration)
-  PKG_CHECK_MODULES([OVSDB], [libovscommon], [
+  PKG_CHECK_MODULES([OVSDB], [libovscommon], [OPSUTILS] [
        CFLAGS="$CFLAGS $OVSDB_CFLAGS"
-       LIBS="$LIBS $OVSDB_LIBS"
+       LIBS="$LIBS $OVSDB_LIBS $UTILS_LIBS"
     ], [
        AC_MSG_ERROR([unable to find libovsdb])
     ])

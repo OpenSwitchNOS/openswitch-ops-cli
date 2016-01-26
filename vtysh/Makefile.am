@@ -39,7 +39,7 @@ CLEANFILES = vtysh_cmd.c
 
 vtysh_LDADD = ../lib/libzebra_cli.la @LIBCAP@ @LIBREADLINE@
 if ENABLE_OVSDB
-vtysh_LDADD += -lovscommon -lovsdb -lpthread
+vtysh_LDADD += -lovscommon -lovsdb -lopsutils -lpthread
 endif
 
 vtyshincludedir = $(includedir)/vtysh

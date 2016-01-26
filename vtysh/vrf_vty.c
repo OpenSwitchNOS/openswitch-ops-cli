@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015  - 2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,6 +47,7 @@
 #include "intf_vty.h"
 #include "smap.h"
 #include "openswitch-dflt.h"
+#include "vrf-utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -224,7 +225,7 @@ vrf_add (const char *vrf_name)
 
   /* OPS_TODO: In case multiple vrfs. */
 #if 0
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (vrf_row)
     {
       vty_out (vty, "VRF already exists.%s", VTY_NEWLINE);
@@ -345,7 +346,7 @@ vrf_delete (const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #if 0
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -483,7 +484,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #if 0
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -594,7 +595,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #if 0
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
