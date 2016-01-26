@@ -1045,7 +1045,7 @@ vty_out (vty, "interface %s %s", row->name, VTY_NEWLINE);\
  *      const char *if_name           : Name of interface
  *      struct vty* vty               : Used for ouput
  */
-static int
+int
 parse_vlan(const char *if_name, struct vty* vty)
 {
     const struct ovsrec_port *port_row;
@@ -1763,7 +1763,7 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
   |     const char *if_name           : Name of interface
   |     struct vty* vty               : Used for ouput
   -----------------------------------------------------------------------------*/
-static int
+int
 show_ip_addresses(const char *if_name, struct vty *vty)
 {
     const struct ovsrec_port *port_row;
@@ -2008,8 +2008,8 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
         /* Display the brief information */
         vty_out(vty, "%s", VTY_NEWLINE);
         vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason                   Speed     Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                                          (Mb/s)    Ch#%s", VTY_NEWLINE);
+        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason                   Speed    Port%s", VTY_NEWLINE);
+        vty_out(vty, "Interface                                                          (Mb/s)   Ch#%s", VTY_NEWLINE);
         vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
     }
     else
@@ -2021,6 +2021,23 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
 
     OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
     {
+        if ((NULL != argv[0]) && (0 != strcmp(argv[0],ifrow->name)))
+        {
+            continue;
+        }
+        else if ((NULL != argv[0]) &&
+            (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) == 0))
+        {
+             cli_show_subinterface_row(ifrow, brief);
+             shash_destroy(&sorted_interfaces);
+             return CMD_SUCCESS;
+        }
+
+        if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM) != 0)
+        {
+            continue;
+        }
+
         shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
     }
 
@@ -2033,17 +2050,6 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
         union ovsdb_atom atom;
 
         ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
-
-        if ((NULL != argv[0]) && (0 != strcmp(argv[0],ifrow->name)))
-        {
-            continue;
-        }
-
-        if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_INTERNAL) == 0)
-        {
-            /* Skipping internal interfaces */
-            continue;
-        }
 
         if (brief)
         {
@@ -2080,7 +2086,7 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
             {
                 vty_out(vty, " %-6ld", intVal/1000000);
             }
-            vty_out(vty, "   -- ");  /* Port channel */
+            vty_out(vty, "  -- ");  /* Port channel */
             vty_out (vty, "%s", VTY_NEWLINE);
         }
         else
@@ -2249,11 +2255,6 @@ cli_show_interface_exec (struct cmd_element *self, struct vty *vty,
             vty_out(vty, "%s", VTY_NEWLINE);
 
             vty_out(vty, "%s", VTY_NEWLINE);
-
-            if (NULL != argv[0])
-            {
-                break;
-            }
         }
     }
 

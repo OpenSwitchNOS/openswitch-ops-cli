@@ -51,6 +51,8 @@ void dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
 void dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
                        char * const helpstr, int max_strlen);
 const struct shash_node **sort_interface(const struct shash *sh);
+
+int show_ip_addresses(const char *if_name, struct vty *vty);
 #endif
 
 #endif /* _INFT_VTY_H */

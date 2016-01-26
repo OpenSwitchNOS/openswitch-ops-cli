@@ -817,6 +817,54 @@ vrf_no_routing (const char *if_name)
     }
   else if ((vrf_row = port_vrf_lookup (port_row)) != NULL)
     {
+        /* Delete subinterfaces configured, if any */
+        const struct ovsrec_port *tmp_port_row = NULL,
+            *sub_intf_port_row =  NULL;
+        const struct ovsrec_vrf *tmp_vrf_row = NULL;
+        const struct ovsrec_interface *tmp_intf_row = NULL,
+            *tmp_parent_intf_row = NULL;
+        struct ovsrec_port **ports;
+        int k=0, n=0, i=0;
+
+        tmp_parent_intf_row = port_row->interfaces[0];
+
+        OVSREC_PORT_FOR_EACH(tmp_port_row, idl)
+        {
+            tmp_intf_row = tmp_port_row->interfaces[0];
+            if(tmp_intf_row->n_subintf_parent > 0)
+            {
+                if(tmp_intf_row->value_subintf_parent[0] == tmp_parent_intf_row)
+                {
+                    /* This is a subinterface created for the parent
+                       being configured as L2 interface, need to remove */
+                    ovsrec_interface_delete(tmp_intf_row);
+
+                    OVSREC_VRF_FOR_EACH (tmp_vrf_row, idl)
+                    {
+                        for (k = 0; k < tmp_vrf_row->n_ports; k++)
+                        {
+                            if(tmp_port_row == tmp_vrf_row->ports[k])
+                            {
+                                ports = xmalloc(sizeof *tmp_vrf_row->ports
+                                        * (tmp_vrf_row->n_ports-1));
+                                for (i = n = 0; i < tmp_vrf_row->n_ports; i++)
+                                {
+                                    if (tmp_vrf_row->ports[i] != tmp_port_row)
+                                    {
+                                        ports[n++] = tmp_vrf_row->ports[i];
+                                    }
+                                }
+                                ovsrec_vrf_set_ports(tmp_vrf_row, ports, n);
+                                free(ports);
+                                break;
+                            }
+                        }
+                    }
+                    ovsrec_port_delete(tmp_port_row);
+                }
+            }
+        }
+
       vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
       for (i = n = 0; i < vrf_row->n_ports; i++)
         {
