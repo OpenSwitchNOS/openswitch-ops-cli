@@ -49,7 +49,6 @@
 #include "log.h"
 #include "bgp_vty.h"
 #include "logrotate_vty.h"
-#include "fan_vty.h"
 #include "temperature_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
@@ -4668,7 +4667,6 @@ vtysh_init_vty (void)
   dhcp_tftp_vty_init();
   /* Initialise System cli */
   system_vty_init();
-  fan_vty_init();
   temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
