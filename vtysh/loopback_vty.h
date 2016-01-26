@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,15 +33,14 @@
 #define MAX_LOOPBACK_INTF_RANGE         2147483647
 #define MAX_LOOPBACK_INTF_COUNT         1024
 
-#define SUB_IF_OVSDB_TXN_COMMIT_ERROR "Committing transaction to DB failed.Function=%s Line=%d"
-#define SUB_IF_OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction.Function=%s Line=%d"
+#define SUB_IF_OVSDB_TXN_COMMIT_ERROR  "Committing transaction to DB failed."\
+                                       "Function=%s Line=%d"
+#define SUB_IF_OVSDB_TXN_CREATE_ERROR  "Couldn't create the OVSDB transaction."\
+                                       "Function=%s Line=%d"
 
 #define INTF_HELP_STR                 "Select loopback interface"
 
 const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                              bool attach_to_default_sub_if,
                                              struct ovsdb_idl_txn *txn);
-extern int
-show_ip_addresses(const char *if_name, struct vty *vty);
-
 #endif /* _VTY_LOOPBACK_INTF_H */

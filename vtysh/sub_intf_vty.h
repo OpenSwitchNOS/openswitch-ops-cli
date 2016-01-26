@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -54,8 +54,5 @@ const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
 const struct ovsrec_sub_if* port_sub_if_lookup(const struct ovsrec_port *port_row);
 
 const struct ovsrec_sub_if* sub_if_lookup(const char *sub_if_name);
-
-extern int
-show_ip_addresses(const char *if_name, struct vty *vty);
 
 #endif /* _VTY_SUB_INTF_H */

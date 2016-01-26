@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -53,13 +53,12 @@
 #include "vrf_vty.h"
 #include "vtysh/vtysh_utils.h"
 
-
 VLOG_DEFINE_THIS_MODULE (vtysh_sub_intf_cli);
 extern struct ovsdb_idl *idl;
 
 
 /*
- * This function mask subnet from the entered ip address
+ * This function mask subnet from the entered IP address
  * using subnet bits.
  * Parameter 1 : IPv4 address
  * Return      : subnet_mask for the ip4 address
@@ -76,14 +75,14 @@ mask_ip4_subnet(const char* ip4)
 
     snprintf(ip_add, strchr(ip4, '/') - ip4 + 1, "%s", ip4);
     snprintf(subnet_bits, strlen(strchr(ip4, '/')), "%s", strchr(ip4, '/') +1);
-    for (i=0; i<4; i++)
+    for (i = 0; i < 4; i++)
     {
         address[i] = atoi(ip_add);
-        if (strchr(ip_add,'.') != 0)
+        if (strchr(ip_add, '.') != 0)
             strcpy(ip_add,strchr(ip_add, '.') + 1);
     }
 
-    for (i=0; i< atoi(subnet_bits)/8; i++)
+    for (i = 0; i < atoi(subnet_bits) / 8; i++)
     {
         subnet_mask[i] = address[i];
         ip_subnet_mask += subnet_mask[i];
@@ -92,12 +91,11 @@ mask_ip4_subnet(const char* ip4)
     if ((atoi(subnet_bits) % 8) != 0)
     {
         subnet_mask[i] = address[i];
-        subnet_mask[i] >>= (8 - (atoi(subnet_bits) %8));
+        subnet_mask[i] >>= (8 - (atoi(subnet_bits) % 8));
         ip_subnet_mask += subnet_mask[i];
     }
     return ip_subnet_mask;
 }
-
 
 /*
  * CLI "shutdown"
@@ -106,7 +104,7 @@ mask_ip4_subnet(const char* ip4)
 DEFUN (cli_sub_intf_shutdown,
         cli_sub_intf_shutdown_cmd,
         "shutdown",
-        "Enable/disable an interface\n")
+        "Enable/disable an interface. Default Enabled.\n")
 {
     const struct ovsrec_interface * row = NULL;
     const struct ovsrec_port * port_row = NULL;
@@ -153,9 +151,9 @@ DEFUN (cli_sub_intf_shutdown,
 
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
-        if(strcmp(port_row->name, (char*)vty->index) == 0)
+        if (strcmp(port_row->name, (char*)vty->index) == 0)
         {
-            if(vty_flags & CMD_FLAG_NO_CMD)
+            if (vty_flags & CMD_FLAG_NO_CMD)
             {
                 ovsrec_port_set_admin(port_row,
                         OVSREC_INTERFACE_ADMIN_STATE_UP);
@@ -186,9 +184,7 @@ DEFUN_NO_FORM (cli_sub_intf_shutdown,
         "shutdown",
         "Enable/disable an interface\n");
 
-
-
-/*vlan encapsulation configuration*/
+/*VLAN Encapsulation configuration.*/
 DEFUN  (cli_encapsulation_dot1Q_vlan,
         cli_encapsulation_dot1Q_vlan_cmd,
         "encapsulation dot1Q <1-4094>",
@@ -196,8 +192,8 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
         "IEEE 802.1Q  VLAN\n"
         "VLAN identifier\n")
 {
-    const struct ovsrec_interface * row = NULL, *parent_intf_row = NULL,
-        * tmp_row = NULL;
+    const struct ovsrec_interface * row = NULL, *parent_intf_row = NULL;
+    const struct ovsrec_interface * tmp_row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int64_t *key_subintf_parent;
@@ -217,8 +213,9 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
     {
         if (check_internal_vlan(atoi(argv[0])) == 0)
         {
-        vty_out(vty, "Error : Vlanid is an internal vlan\n");
-        return 0;
+           vty_out(vty, "Error : Vlan ID is an internal vlan.%s",
+                   VTY_NEWLINE);
+           return 0;
         }
     }
 
@@ -239,7 +236,7 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
     {
         if (strcmp(tmp_row->name, (char*)vty->index) != 0)
         {
-            if((tmp_row->n_subintf_parent > 0)
+            if ((tmp_row->n_subintf_parent > 0)
                     && (tmp_row->value_subintf_parent[0] == parent_intf_row)
                     && (tmp_row->key_subintf_parent[0] == atoi(argv[0])))
             {
@@ -267,17 +264,22 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
     }
 
     key_subintf_parent = xmalloc(sizeof(int64_t) * new_size);
-    val_subintf_parent = xmalloc(sizeof(struct ovsrec_interface *)
-            * new_size);
+    if (key_subintf_parent != NULL)
+    {
+        val_subintf_parent = xmalloc(sizeof(struct ovsrec_interface *)
+                * new_size);
+        if (val_subintf_parent != NULL)
+        {
+            key_subintf_parent[0] = enc_vlan;
+            val_subintf_parent[0] = parent_intf_row;
 
-    key_subintf_parent[0] = enc_vlan;
-    val_subintf_parent[0] = parent_intf_row;
+            ovsrec_interface_set_subintf_parent(row, key_subintf_parent,
+                    val_subintf_parent, new_size);
 
-    ovsrec_interface_set_subintf_parent(row, key_subintf_parent,
-            val_subintf_parent, new_size);
-
-    free(key_subintf_parent);
-    free(val_subintf_parent);
+            free(val_subintf_parent);
+        }
+        free(key_subintf_parent);
+    }
 
     status = cli_do_config_finish(status_txn);
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -305,8 +307,8 @@ DEFUN_NO_FORM  (cli_encapsulation_dot1Q_vlan,
  * This function accepts 2 arguments both as const char type.
  * Parameter 1 : sub-intf name
  * Parameter 2 : ipv4 address
- * Return      :  On Success it returns CMD_SUCCESS
- *                On Failure it returns CMD_OVSDB_FAILURE
+ * Return      : On Success it returns CMD_SUCCESS
+ *               On Failure it returns CMD_OVSDB_FAILURE
  */
 static int
 sub_intf_config_ip (const char *if_name, const char *ip4)
@@ -368,16 +370,16 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
 
     if (!port_found)
     {
-        vty_out(vty, "Port %s not found\n", if_name);
+        vty_out(vty, "Port %s not found.%s", if_name, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
     if (check_iface_in_bridge (if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
     {
         vty_out (vty, "Interface %s is not L3.%s", if_name, VTY_NEWLINE);
-        VLOG_DBG ("%s Interface \"%s\" is not attached to any SUB_IF. "
+        VLOG_DBG ("%s Interface \"%s\" is not attached to any SUB_IF.%s"
                 "It is attached to default bridge",
-                __func__, if_name);
+                __func__, if_name, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -403,7 +405,6 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
     }
 }
 
-
 DEFUN (cli_sub_intf_config_ip4,
         cli_sub_intf_config_ip4_cmd,
         "ip address A.B.C.D/M",
@@ -413,7 +414,6 @@ DEFUN (cli_sub_intf_config_ip4,
 {
     return sub_intf_config_ip((char*) vty->index, argv[0]);
 }
-
 
 DEFUN (cli_sub_intf_del_ip4,
         cli_sub_intf_del_ip4_cmd,
@@ -447,14 +447,14 @@ DEFUN (cli_sub_intf_del_ip4,
 
     if (!port_found)
     {
-        vty_out(vty,"Port %s not found\n",if_name);
+        vty_out(vty,"Port %s not found.%s", if_name, VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
     }
 
     if (!port_row->ip4_address)
     {
-        VLOG_DBG ("%s No IPv4 address configured on interface \"%s\".",
-                __func__, if_name);
+        VLOG_DBG ("%s No IPv4 address configured on interface \"%s\".%s",
+                  __func__, if_name, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -463,7 +463,7 @@ DEFUN (cli_sub_intf_del_ip4,
     {
         vty_out (vty, "IPv4 address %s not configured.%s", ip4, VTY_NEWLINE);
         VLOG_DBG ("%s IPv4 address \"%s\" not configured on interface "
-                "\"%s\".", __func__, ip4, if_name);
+                "\"%s\".%s", __func__, ip4, if_name, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -491,7 +491,6 @@ DEFUN (cli_sub_intf_del_ip4,
     return CMD_SUCCESS;
 }
 
-
 DEFUN (cli_sub_intf_config_ipv6,
         cli_sub_intf_config_ipv6_cmd,
         "ipv6 address X:X::X:X/M",
@@ -510,7 +509,7 @@ DEFUN (cli_sub_intf_config_ipv6,
 
     if (!is_valid_ip_address(argv[0]))
     {
-        vty_out(vty, "Invalid IP address %s", VTY_NEWLINE);
+        vty_out(vty, "Invalid IP address.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -536,9 +535,9 @@ DEFUN (cli_sub_intf_config_ipv6,
                 " as %s.%s",
                 if_name, is_secondary ? "secondary" : "primary", VTY_NEWLINE);
         VLOG_DBG ("%s Interface \"%s\" already has the IP address \"%s\""
-                " assigned to it as \"%s\".",
+                " assigned to it as \"%s\".%s",
                 __func__, if_name, ipv6,
-                is_secondary ? "secondary" : "primary");
+                is_secondary ? "secondary" : "primary", VTY_NEWLINE);
         cli_do_config_abort (status_txn);
         return CMD_SUCCESS;
     }
@@ -557,12 +556,11 @@ DEFUN (cli_sub_intf_config_ipv6,
     }
 }
 
-
 DEFUN (cli_sub_intf_del_ipv6,
         cli_sub_intf_del_ipv6_cmd,
         "no ipv6 address X:X::X:X/M",
         NO_STR
-        IP_STR
+        IPV6_STR
         "Set IP address\n"
         "Interface IP address\n")
 {
@@ -591,8 +589,8 @@ DEFUN (cli_sub_intf_del_ipv6,
 
     if (!port_row)
     {
-        VLOG_DBG ("%s Interface \"%s\" does not have any port configuration",
-                __func__, if_name);
+        VLOG_DBG ("%s Interface \"%s\" does not have any port configuration.%s",
+                __func__, if_name, VTY_NEWLINE);
         cli_do_config_abort (status_txn);
         return CMD_SUCCESS;
     }
@@ -602,7 +600,7 @@ DEFUN (cli_sub_intf_del_ipv6,
         vty_out (vty, "No IPv6 address configured on interface"
                 " %s.%s", if_name, VTY_NEWLINE);
         VLOG_DBG ("%s No IPv6 address configured on interface"
-                " \"%s\".",__func__, if_name);
+                " \"%s\".%s", __func__, if_name, VTY_NEWLINE);
         cli_do_config_abort (status_txn);
         return CMD_SUCCESS;
     }
@@ -611,7 +609,7 @@ DEFUN (cli_sub_intf_del_ipv6,
     {
         vty_out (vty, "IPv6 address %s not found.%s", ipv6, VTY_NEWLINE);
         VLOG_DBG ("%s IPv6 address \"%s\" not configured on interface"
-                " \"%s\".",__func__, ipv6, if_name);
+                " \"%s\".%s", __func__, ipv6, if_name, VTY_NEWLINE);
         cli_do_config_abort (status_txn);
         return CMD_SUCCESS;
     }
@@ -630,6 +628,13 @@ DEFUN (cli_sub_intf_del_ipv6,
     }
 }
 
+/*
+ * This function is used to display subinterface configurations.
+ * This function accepts 2 arguments.
+ * Parameter 1 : interface row
+ * Parameter 2 : bool for breif description
+ * Return      : It returns CMD_SUCCESS
+ */
 int
 cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
 {
@@ -674,9 +679,9 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
             key_subintf_parent = ifrow->key_subintf_parent[0];
         }
 
-        /* Display the brief information */
+        /* Display brief information. */
         vty_out (vty, " %-12s ", ifrow->name);
-        vty_out(vty, "%4d    ", key_subintf_parent ); /*vVLAN */
+        vty_out(vty, "%4d    ", key_subintf_parent ); /*VLAN */
         vty_out(vty, "eth  "); /*type */
         vty_out(vty, "routed "); /* mode - routed or not */
 
@@ -721,12 +726,12 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
     {
         intVal = 0;
 
-        vty_out (vty, "Interface %s is %s ", ifrow->name,
+        vty_out (vty, "Interface %s is %s.%s", ifrow->name,
                 ((strcmp(if_parent_row->link_state,
                         OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
                 (smap_get(&ifrow->user_config, "admin") != NULL)) ?
                 OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP :
-                OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN);
+                OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN, VTY_NEWLINE);
 
         if ((NULL != ifrow->admin_state)
                 && strcmp(ifrow->admin_state,
@@ -742,7 +747,7 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
             vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
         }
 
-        vty_out (vty, " Parent interface is: %s %s",
+        vty_out (vty, " Parent interface is %s %s",
                 if_parent_row->name, VTY_NEWLINE);
         if (parent_intf_down)
         {
@@ -776,7 +781,7 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
         vty_out (vty, " Hardware: Ethernet, MAC Address: %s %s",
                 if_parent_row->mac_in_use, VTY_NEWLINE);
 
-        /* Displaying ipv4 and ipv6 primary and secondary addresses*/
+        /* Displaying IPV4 and IPV6 primary and secondary addresses. */
         show_ip_addresses(ifrow->name, vty);
 
         datum = ovsrec_interface_get_mtu(if_parent_row, OVSDB_TYPE_INTEGER);
@@ -784,40 +789,6 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
         {
             intVal = datum->keys[0].integer;
         }
-
-        /*vty_out(vty, " MTU %ld %s", intVal, VTY_NEWLINE);
-
-        if ((NULL != if_parent_row->duplex) &&
-                (strcmp(if_parent_row->duplex, "half") == 0))
-        {
-            vty_out(vty, " Half-duplex %s", VTY_NEWLINE);
-        }
-        else
-        {
-            vty_out(vty, " Full-duplex %s", VTY_NEWLINE);
-        }
-
-        intVal = 0;
-        datum = ovsrec_interface_get_link_speed(if_parent_row,
-                OVSDB_TYPE_INTEGER);
-        if ((NULL!=datum) && (datum->n >0))
-        {
-            intVal = datum->keys[0].integer;
-        }
-        vty_out(vty, " Speed %ld Mb/s %s",intVal/1000000 , VTY_NEWLINE);
-
-        cur_state = smap_get(&if_parent_row->user_config,
-                INTERFACE_USER_CONFIG_MAP_AUTONEG);
-        if ((NULL == cur_state) ||
-                strcmp(cur_state, "off") !=0)
-        {
-            vty_out(vty, " Auto-Negotiation is turned on %s", VTY_NEWLINE);
-        }
-        else
-        {
-            vty_out(vty, " Auto-Negotiation is turned off %s",
-                    VTY_NEWLINE);
-        }*/
 
         cur_state = if_parent_row->pause;
         if (NULL != cur_state)
@@ -920,15 +891,13 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
     return CMD_SUCCESS;
 }
 
-
-
 DEFUN (cli_intf_show_subintferface_ifname,
         cli_intf_show_subintferface_ifname_cmd,
         "show interface A.B {brief}",
         SHOW_STR
         INTERFACE_STR
-        "Show subinterface details\n"
-        "Show brief info of interface\n")
+        "Show sub-interface details\n"
+        "Show brief information of a sub-interface\n")
 {
     const struct ovsrec_interface *ifrow = NULL;
     bool brief = false;
@@ -936,12 +905,16 @@ DEFUN (cli_intf_show_subintferface_ifname,
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;
-        /* Display the brief information */
+        /* Display the brief information. */
         vty_out(vty, "%s", VTY_NEWLINE);
-        vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason                   Speed    Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                                          (Mb/s)   Ch# %s", VTY_NEWLINE);
-        vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
+        vty_out(vty, "---------------------------------------------------"
+                     "-----------------------------%s", VTY_NEWLINE);
+        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason   "
+                     "                Speed    Port%s", VTY_NEWLINE);
+        vty_out(vty, "Interface                                          "
+                     "                (Mb/s)   Ch# %s", VTY_NEWLINE);
+        vty_out(vty, "----------------------------------------------------"
+                     "----------------------------%s", VTY_NEWLINE);
     }
 
     OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
@@ -957,7 +930,6 @@ DEFUN (cli_intf_show_subintferface_ifname,
         cli_show_subinterface_row(ifrow, brief);
     }
 }
-
 
 DEFUN (cli_intf_show_subintferface_if_all,
         cli_intf_show_subintferface_if_all_cmd,
@@ -978,12 +950,16 @@ DEFUN (cli_intf_show_subintferface_if_all,
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;
-        /* Display the brief information */
+        /* Display the brief information. */
         vty_out(vty, "%s", VTY_NEWLINE);
-        vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason                   Speed    Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                                          (Mb/s)   Ch# %s", VTY_NEWLINE);
-        vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
+        vty_out(vty, "---------------------------------------------------"
+                     "-----------------------------%s", VTY_NEWLINE);
+        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason   "
+                     "                Speed    Port%s", VTY_NEWLINE);
+        vty_out(vty, "Interface                                          "
+                     "                (Mb/s)   Ch# %s", VTY_NEWLINE);
+        vty_out(vty, "----------------------------------------------------"
+                     "----------------------------%s", VTY_NEWLINE);
     }
 
     if (NULL != argv[0])
@@ -1007,7 +983,6 @@ DEFUN (cli_intf_show_subintferface_if_all,
     }
 }
 
-
 DEFUN (vtysh_sub_interface,
         vtysh_sub_interface_cmd,
         "interface A.B",
@@ -1016,6 +991,7 @@ DEFUN (vtysh_sub_interface,
 {
     return create_sub_interface(argv[0]);
 }
+
 /*
  * This function will create sub interface in port table and interface
  * table. It accepts only one argument of char pointer type.
@@ -1029,27 +1005,30 @@ create_sub_interface(char* subifname)
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_interface *intf_row, *parent_intf_row = NULL;
     struct ovsrec_interface **iface_list;
-    bool port_found = false, parent_intf_found = false;
     struct ovsdb_idl_txn *txn = NULL;
     enum ovsdb_idl_txn_status status_txn;
     static char ifnumber[MAX_IFNAME_LENGTH]={0};
     const struct ovsrec_vrf *default_vrf_row = NULL;
     const struct ovsrec_vrf *vrf_row = NULL;
-    int i=0;
+    struct ovsrec_interface  **val_subintf_parent;
     struct ovsrec_port **ports = NULL;
-    char  phy_intf[MAX_IFNAME_LENGTH];
+    int64_t *key_subintf_parent;
+    bool port_found = false, parent_intf_found = false;
+    char phy_intf[MAX_IFNAME_LENGTH];
     char sub_intf[MAX_IFNAME_LENGTH];
     long long int sub_intf_number;
     int max_sub_intf = 0;
+    int new_size = 1;
+    int i = 0;
 
-    if(NULL == strchr(subifname,'.'))
+    if(NULL == strchr(subifname, '.'))
     {
-        /* Wrong format */
+        /* Wrong format. */
         return CMD_ERR_NO_MATCH;
     }
     memcpy(ifnumber, subifname, MAX_IFNAME_LENGTH);
 
-    sub_intf_number = (long long int)atoi(strchr(subifname,'.') + 1);
+    sub_intf_number = (long long int)atoi(strchr(subifname, '.') + 1);
 
     if ((sub_intf_number < MIN_SUB_INTF_RANGE) ||
             (sub_intf_number > MAX_SUB_INTF_RANGE)){
@@ -1060,16 +1039,16 @@ create_sub_interface(char* subifname)
     memcpy(phy_intf, subifname, MAX_IFNAME_LENGTH);
     for (i = 0; i < strlen(phy_intf); i++)
     {
-        if(phy_intf[i] =='.')
+        if(phy_intf[i] == '.')
         {
-            phy_intf[i] ='\0';
+            phy_intf[i] = '\0';
         }
     }
 
     sprintf(sub_intf, "%s.%d", phy_intf, sub_intf_number);
     if (strcmp(sub_intf, subifname) != 0)
     {
-        vty_out (vty, "Invalid input %s", VTY_NEWLINE);
+        vty_out (vty, "Invalid input.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -1100,11 +1079,11 @@ create_sub_interface(char* subifname)
 
     if (!parent_intf_found)
     {
-        vty_out (vty, "Parent interface does not exist%s", VTY_NEWLINE);
+        vty_out (vty, "Parent interface does not exist.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
-    /* Check if port row is part of bridge */
+    /* Check if port row is part of bridge. */
     if (check_iface_in_bridge(phy_intf))
     {
         vty_out(vty, "Parent interface is not L3. "
@@ -1131,49 +1110,51 @@ create_sub_interface(char* subifname)
         txn = cli_do_config_start();
         if (txn == NULL)
         {
-            VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d",
-                    " cli_do_config_start()", __func__, __LINE__);
+            VLOG_DBG("Transaction creation failed by %s.%s",
+                    " cli_do_config_start()", VTY_NEWLINE);
             cli_do_config_abort(txn);
             return CMD_OVSDB_FAILURE;
         }
 
-        /* adding an interface  table entry */
+        /* Adding an interface  table entry. */
         intf_row = ovsrec_interface_insert(txn);
         ovsrec_interface_set_name(intf_row, ifnumber);
         ovsrec_interface_set_type(intf_row, OVSREC_INTERFACE_TYPE_VLANSUBINT);
 
-        /* set the parent interface & encapsulation vlan id */
+        /* Set the parent interface & encapsulation vlan id. */
+        key_subintf_parent = xmalloc(sizeof(int64_t) * new_size);
+        if (key_subintf_parent != NULL)
         {
-            int64_t *key_subintf_parent;
-            struct ovsrec_interface  **val_subintf_parent;
-            int new_size = 1;
+           val_subintf_parent = xmalloc(sizeof(struct ovsrec_interface *)
+                   * new_size);
+           if (val_subintf_parent != NULL)
+           {
+              key_subintf_parent[0] = 0;
+              val_subintf_parent[0] = parent_intf_row;
 
-            key_subintf_parent = xmalloc(sizeof(int64_t) * new_size);
-            val_subintf_parent = xmalloc(sizeof(struct ovsrec_interface *)
-                    * new_size);
+              ovsrec_interface_set_subintf_parent(intf_row, key_subintf_parent,
+                      val_subintf_parent, new_size);
 
-            key_subintf_parent[0] = 0;
-            val_subintf_parent[0] = parent_intf_row;
-
-            ovsrec_interface_set_subintf_parent(intf_row, key_subintf_parent,
-                    val_subintf_parent, new_size);
-
-            free(key_subintf_parent);
-            free(val_subintf_parent);
+              free(val_subintf_parent);
+           }
+           free(key_subintf_parent);
         }
 
-        /* Create parent port row, if not present */
+        /* Create parent port row, if not present. */
         port_row = port_check_and_add (phy_intf, true, true, txn);
 
-        /* Create port table entry */
+        /* Create port table entry. */
         port_row = ovsrec_port_insert(txn);
         ovsrec_port_set_name(port_row, ifnumber);
 
-        /* Adding a port to the corresponding interface*/
+        /* Adding a port to the corresponding interface. */
         iface_list = xmalloc(sizeof(struct ovsrec_interface));
-        iface_list[0] = (struct ovsrec_interface *)intf_row;
-        ovsrec_port_set_interfaces(port_row, iface_list, 1);
-        free(iface_list);
+        if (iface_list != NULL)
+        {
+           iface_list[0] = (struct ovsrec_interface *)intf_row;
+           ovsrec_port_set_interfaces(port_row, iface_list, 1);
+           free(iface_list);
+        }
 
         OVSREC_VRF_FOR_EACH (vrf_row, idl)
         {
@@ -1186,25 +1167,29 @@ create_sub_interface(char* subifname)
         if (default_vrf_row == NULL)
         {
             assert(0);
-            VLOG_DBG("Couldn't fetch default VRF row. Function=%s, Line=%d",
-                    __func__, __LINE__);
+            VLOG_DBG("Couldn't fetch default VRF row. Function=%s, Line=%d.%s",
+                    __func__, __LINE__, VTY_NEWLINE);
             cli_do_config_abort(txn);
             return CMD_OVSDB_FAILURE;
         }
 
         ports = xmalloc(sizeof *default_vrf_row->ports *
                 (default_vrf_row->n_ports + 1));
-        for (i = 0; i < default_vrf_row->n_ports; i++)
+        if (ports != NULL)
         {
-            ports[i] = default_vrf_row->ports[i];
+           for (i = 0; i < default_vrf_row->n_ports; i++)
+           {
+               ports[i] = default_vrf_row->ports[i];
+           }
+           ports[default_vrf_row->n_ports] =
+               CONST_CAST(struct ovsrec_port*, port_row);
+           ovsrec_vrf_set_ports(default_vrf_row, ports,
+                   default_vrf_row->n_ports + 1);
+           free(ports);
         }
-        ports[default_vrf_row->n_ports] =
-            CONST_CAST(struct ovsrec_port*,port_row);
-        ovsrec_vrf_set_ports(default_vrf_row, ports,
-                default_vrf_row->n_ports + 1);
-        free(ports);
 
         status_txn = cli_do_config_finish(txn);
+
         if (status_txn == TXN_SUCCESS || status_txn == TXN_UNCHANGED)
         {
             vty->index = ifnumber;
@@ -1213,8 +1198,8 @@ create_sub_interface(char* subifname)
         }
         else
         {
-            VLOG_ERR("Transaction commit failed in function=%s, line=%d",
-                    __func__,__LINE__);
+            VLOG_ERR("Transaction commit failed in function=%s, line=%d.%s",
+                    __func__, __LINE__, VTY_NEWLINE);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -1237,6 +1222,13 @@ DEFUN (cli_del_sub_intf,
     return delete_sub_intf(argv[0]);
 }
 
+/*
+ * This function is used to delete subinterface
+ * This function accepts 1 argument as const char type.
+ * Parameter 1 : sub-intf name
+ * Return      :  On Success it returns CMD_SUCCESS
+ *                On Failure it returns CMD_OVSDB_FAILURE
+ */
 int
 delete_sub_intf(const char *sub_intf_name)
 {
@@ -1250,7 +1242,7 @@ delete_sub_intf(const char *sub_intf_name)
     enum ovsdb_idl_txn_status status;
     bool port_found = false;
 
-    /* Find the interface table entry and delete it */
+    /* Find the interface table entry and delete it. */
     OVSREC_INTERFACE_FOR_EACH(if_row, idl)
     {
         if (strcmp(if_row->name, sub_intf_name) == 0)
@@ -1261,13 +1253,13 @@ delete_sub_intf(const char *sub_intf_name)
     }
     if (NULL == interface_row)
     {
-        vty_out(vty, "Interface does not exist%s", VTY_NEWLINE);
+        vty_out(vty, "Interface does not exist.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
     if (strcmp(interface_row->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) != 0)
     {
-        vty_out(vty, "Interface does not exist%s", VTY_NEWLINE);
+        vty_out(vty, "Interface does not exist.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -1281,7 +1273,7 @@ delete_sub_intf(const char *sub_intf_name)
 
     ovsrec_interface_delete(interface_row);
 
-    /* find the port table entry and delete it */
+    /* Find the port table entry and delete it. */
     OVSREC_PORT_FOR_EACH(sub_intf_port_row, idl)
     {
         if (strcmp(sub_intf_port_row->name, sub_intf_name) == 0)
@@ -1292,7 +1284,7 @@ delete_sub_intf(const char *sub_intf_name)
 
     if (!port_found)
     {
-        /* commit the interface row deletion and return */
+        /* Commit the interface row deletion and return. */
         status = cli_do_config_finish(status_txn);
 
         if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -1301,12 +1293,12 @@ delete_sub_intf(const char *sub_intf_name)
         }
         else
         {
-            VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
+            VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR, __func__, __LINE__);
             return CMD_OVSDB_FAILURE;
         }
     }
 
-    /* Check if the given sub interface port is part of VRF */
+    /* Check if the given sub interface port is part of VRF. */
     OVSREC_VRF_FOR_EACH (vrf_row, idl)
     {
         for (k = 0; k < vrf_row->n_ports; k++)
@@ -1315,15 +1307,18 @@ delete_sub_intf(const char *sub_intf_name)
             if (strcmp(sub_intf_port_row->name, sub_intf_name) == 0)
             {
                 ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports-1));
-                for (i = n = 0; i < vrf_row->n_ports; i++)
+                if (ports != NULL)
                 {
-                    if (vrf_row->ports[i] != sub_intf_port_row)
-                    {
-                        ports[n++] = vrf_row->ports[i];
-                    }
-                }
-                ovsrec_vrf_set_ports(vrf_row, ports, n);
-                free(ports);
+                   for (i = n = 0; i < vrf_row->n_ports; i++)
+                   {
+                       if (vrf_row->ports[i] != sub_intf_port_row)
+                       {
+                           ports[n++] = vrf_row->ports[i];
+                       }
+                   }
+                   ovsrec_vrf_set_ports(vrf_row, ports, n);
+                   free(ports);
+               }
             }
         }
     }
@@ -1338,7 +1333,7 @@ delete_sub_intf(const char *sub_intf_name)
     }
     else
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__,__LINE__);
+        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR, __func__, __LINE__);
         return CMD_OVSDB_FAILURE;
     }
 
