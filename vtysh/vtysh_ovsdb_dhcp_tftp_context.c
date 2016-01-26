@@ -470,7 +470,7 @@ vtysh_init_dhcp_tftp_context_clients(void)
     if (e_vtysh_ok != retval) {
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                     "dhcp-tftpcontext unable to add dhcp client callback");
-        assert(0);
+        //assert(0);
         return retval;
     }
 
@@ -485,7 +485,7 @@ vtysh_init_dhcp_tftp_context_clients(void)
     if (e_vtysh_ok != retval) {
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                         "dhcp-tftp context unable to tftp client callback");
-        assert(0);
+        //assert(0);
         return retval;
     }
 
