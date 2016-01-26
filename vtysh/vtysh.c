@@ -76,6 +76,7 @@
 void ospf_vty_init(void);
 #endif
 
+#include "sub_intf_vty.h"
 #include "aaa_vty.h"
 #include "sftp_vty.h"
 #include "vtysh_utils.h"
@@ -873,6 +874,18 @@ static struct cmd_node interface_node =
    };
 
 #ifdef ENABLE_OVSDB
+static struct cmd_node sub_interface_node =
+{
+  SUB_INTERFACE_NODE,
+  "%s(config-subif)# ",
+};
+
+static struct cmd_node loopback_interface_node =
+{
+  LOOPBACK_INTERFACE_NODE,
+  "%s(config-loopback-if)# ",
+};
+
 
 static struct cmd_node link_aggregation_node =
 {
@@ -1288,6 +1301,8 @@ vtysh_exit (struct vty *vty)
       vty->node = ENABLE_NODE;
       break;
     case INTERFACE_NODE:
+    case SUB_INTERFACE_NODE:
+    case LOOPBACK_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
@@ -1558,8 +1573,12 @@ DEFUN (vtysh_interface,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
-  vty->node = INTERFACE_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
+
+  if (strchr(argv[0], '.'))
+     vty->node = SUB_INTERFACE_NODE;
+  else
+     vty->node = INTERFACE_NODE;
 
   if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
   vty->node = VLAN_INTERFACE_NODE;
@@ -1619,6 +1638,12 @@ DEFUN (no_vtysh_interface,
 {
   vty->node = CONFIG_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
+
+  if (strchr(argv[0], '.'))
+  {
+     delete_sub_intf(argv[0]);
+     return CMD_SUCCESS;
+  }
 
   if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
       GET_VLANIF(ifnumber, argv[0]);
@@ -2030,7 +2055,11 @@ DEFUNSH (VTYSH_INTERFACE,
       "Select an interface to configure\n"
       "Interface's name\n")
 {
-  vty->node = INTERFACE_NODE;
+  if (strchr(argv[0], '.'))
+    vty->node = SUB_INTERFACE_NODE
+  else
+    vty->node = INTERFACE_NODE;
+
   static char ifnumber[5];
   if (strlen(argv[0]) < 5)
     memcpy(ifnumber, argv[0], strlen(argv));
@@ -2060,6 +2089,34 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
       NO_STR
       "Interface specific description\n")
 #endif
+
+DEFUNSH (VTYSH_INTERFACE,
+      vtysh_exit_loopback_interface,
+      vtysh_exit_loopback_interface_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_loopback_interface,
+      vtysh_quit_loopback_interface_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
+DEFUNSH (VTYSH_INTERFACE,
+      vtysh_exit_sub_interface,
+      vtysh_exit_sub_interface_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_sub_interface,
+      vtysh_quit_sub_interface_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
 
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_exit_interface,
@@ -4338,6 +4395,9 @@ vtysh_init_vty (void)
    install_node (&vlan_node, NULL);
    install_node (&link_aggregation_node, NULL);
    install_node (&vlan_interface_node, NULL);
+   /* Sub-interafce and Loopback nodes. */
+   install_node (&sub_interface_node, NULL);
+   install_node (&loopback_interface_node, NULL);
 #endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
@@ -4380,6 +4440,9 @@ vtysh_init_vty (void)
    vtysh_install_default (VLAN_INTERFACE_NODE);
    vtysh_install_default (DHCP_SERVER_NODE);
    vtysh_install_default (TFTP_SERVER_NODE);
+   /* Sub-interafce and Loopback nodes. */
+   vtysh_install_default (SUB_INTERFACE_NODE);
+   vtysh_install_default (LOOPBACK_INTERFACE_NODE);
 #endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
@@ -4498,6 +4561,13 @@ vtysh_init_vty (void)
 #endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
+   /* Sub-interafce and Loopback elements. */
+   install_element (SUB_INTERFACE_NODE, &vtysh_exit_sub_interface_cmd);
+   install_element (SUB_INTERFACE_NODE, &vtysh_quit_sub_interface_cmd);
+   install_element (SUB_INTERFACE_NODE, &vtysh_end_all_cmd);
+   install_element (LOOPBACK_INTERFACE_NODE, &vtysh_exit_loopback_interface_cmd);
+   install_element (LOOPBACK_INTERFACE_NODE, &vtysh_quit_loopback_interface_cmd);
+   install_element (LOOPBACK_INTERFACE_NODE, &vtysh_end_all_cmd);
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
    install_element (CONFIG_NODE, &router_ospf_cmd);
@@ -4676,6 +4746,10 @@ vtysh_init_vty (void)
   vlan_vty_init();
   aaa_vty_init();
   dhcp_tftp_vty_init();
+  /* Sub-interafce and Loopback init. */
+  sub_intf_vty_init();
+  loopback_intf_vty_init();
+
   /* Initialise System cli */
   system_vty_init();
   alias_vty_init();
