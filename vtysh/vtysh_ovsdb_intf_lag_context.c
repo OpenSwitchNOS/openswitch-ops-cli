@@ -29,9 +29,8 @@
 #include "openswitch-idl.h"
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
-#include "vtysh_ovsdb_intf_context.h"
-#include "lacp_vty.h"
 #include "vrf_vty.h"
+#include "utils/lacp_utils.h"
 
 char intflagcontextclientname[] = "vtysh_intf_lag_context_clientcallback";
 

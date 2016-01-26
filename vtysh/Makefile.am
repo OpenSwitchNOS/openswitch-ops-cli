@@ -19,7 +19,7 @@ vtysh_SOURCES = vtysh_main.c vtysh.c vtysh_user.c vtysh_config.c
 if ENABLE_OVSDB
 vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_config.c vtysh_ovsdb_config_context.c \
-                 vtysh_ovsdb_intf_context.c vlan_vty.c intf_vty.c \
+                 vlan_vty.c \
                  l3routes_vty.c led_vty.c system_vty.c fan_vty.c \
                  temperature_vty.c vtysh_ovsdb_vlan_context.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
@@ -31,7 +31,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
                  ping_handler.c sftp_vty.c \
-                 vtysh_ovsdb_sftp_context.c
+                 vtysh_ovsdb_sftp_context.c utils/vlan_utils.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -45,7 +45,8 @@ endif
 vtyshincludedir = $(includedir)/vtysh
 vtyshinclude_HEADERS = vtysh_utils.h vtysh.h \
         vtysh_ovsdb_if.h vtysh_user.h \
-        vtysh_ovsdb_config.h
+        vtysh_ovsdb_config.h utils/vlan_utils.h \
+        utils/lacp_utils.h
 
 examplesdir = $(exampledir)
 dist_examples_DATA = vtysh.conf.sample

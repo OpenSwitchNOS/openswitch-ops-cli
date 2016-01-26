@@ -663,4 +663,7 @@ extern struct host host;
 
 /* "<cr>" global */
 extern char *command_cr;
+void install_dyn_helpstr_funcptr(char *funcname, void (*funcptr) \
+                   (struct cmd_token *token, struct vty *vty, \
+                  char * const dyn_helpstr_ptr, int max_strlen));
 #endif /* _ZEBRA_COMMAND_H */

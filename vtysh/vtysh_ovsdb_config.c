@@ -33,7 +33,7 @@
 #include "vtysh_ovsdb_if.h"
 #include "lib/vty.h"
 #include "vtysh_ovsdb_config_context.h"
-#include "vtysh_ovsdb_intf_context.h"
+#include "utils/vlan_utils.h"
 #include "vtysh_ovsdb_vlan_context.h"
 #include "vtysh_ovsdb_router_context.h"
 #include "vtysh_ovsdb_intf_lag_context.h"
@@ -522,7 +522,6 @@ vtysh_ovsdb_init_clients(void)
   vtysh_init_config_context_clients();
   vtysh_init_router_context_clients();
   vtysh_init_vlan_context_clients();
-  vtysh_init_intf_context_clients();
   vtysh_init_intf_lag_context_clients();
   vtysh_init_source_interface_context_clients();
   vtysh_init_dhcp_tftp_context_clients();

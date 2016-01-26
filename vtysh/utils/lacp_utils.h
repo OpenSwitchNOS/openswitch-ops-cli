@@ -1,6 +1,6 @@
-/* LACP CLI commands header file
+/* LACP CLI utils commands header file
  *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: lacp_vty.h
+ * File: lacp_utils.h
  *
- * Purpose:  To add declarations required for lacp_vty.c
+ * Purpose: This file contains comman macro for lacp CLI.
  */
 
-#ifndef _LACP_VTY_H
-#define _LACP_VTY_H
+#ifndef _LACP_UTILS_H
+#define _LACP_UTILS_H
 
 #define LACP_STATUS_FIELD_COUNT 8
 #define LACP_DEFAULT_SYS_PRIORITY_LENGTH 6
@@ -38,7 +38,5 @@
 #define LACP_DEFAULT_PORT_PRIORITY 1
 
 extern int maximum_lag_interfaces;
-void
-lacp_vty_init (void);
 
-#endif /* _LACP_VTY_H */
+#endif /* _LACP_UTILS_H */

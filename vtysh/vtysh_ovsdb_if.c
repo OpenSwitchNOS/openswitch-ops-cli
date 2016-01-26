@@ -58,7 +58,6 @@
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
-#include "intf_vty.h"
 
 #define TMOUT_POLL_INTERVAL 20
 

@@ -58,23 +58,22 @@
 #include "vswitch-idl.h"
 
 #ifdef ENABLE_OVSDB
-#include "intf_vty.h"
 #include "vswitch-idl.h"
 #include "smap.h"
 #include "lldp_vty.h"
 #include "vrf_vty.h"
 #include "neighbor_vty.h"
-#include "intf_vty.h"
+#include "utils/vlan_utils.h"
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
 #include "led_vty.h"
 #include "system_vty.h"
-#include "lacp_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
+#include "utils/lacp_utils.h"
 
 #endif
 
@@ -868,12 +867,6 @@ static struct cmd_node isis_node =
       "%s(config-router)# ",
    };
 #endif
-
-static struct cmd_node interface_node =
-   {
-      INTERFACE_NODE,
-      "%s(config-if)# ",
-   };
 
 #ifdef ENABLE_OVSDB
 
@@ -2054,6 +2047,7 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
       NO_STR
       "Interface specific description\n")
 #endif
+
 
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_exit_interface,
@@ -4330,7 +4324,6 @@ vtysh_init_vty (void)
 #ifndef ENABLE_OVSDB
    install_node (&rip_node, NULL);
 #endif
-   install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
    install_node (&vlan_node, NULL);
    install_node (&link_aggregation_node, NULL);
@@ -4369,7 +4362,6 @@ vtysh_init_vty (void)
 #ifndef ENABLE_OVSDB
    vtysh_install_default (RIP_NODE);
 #endif
-   vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
    vtysh_install_default (VLAN_NODE);
    vtysh_install_default (LINK_AGGREGATION_NODE);
@@ -4430,7 +4422,6 @@ vtysh_init_vty (void)
    install_element (KEYCHAIN_KEY_NODE, &vtysh_quit_ripd_cmd);
    install_element (VIEW_NODE, &vtysh_quit_all_cmd);
    install_element (RMAP_NODE, &vtysh_quit_rmap_cmd);
-   install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
    install_element (VTY_NODE, &vtysh_quit_line_vty_cmd);
 #endif
    /* "exit" command. */
@@ -4485,11 +4476,7 @@ vtysh_init_vty (void)
    install_element (RMAP_NODE, &vtysh_end_all_cmd);
    install_element (VTY_NODE, &vtysh_end_all_cmd);
 #ifndef ENABLE_OVSDB
-   install_element (INTERFACE_NODE, &interface_desc_cmd);
-   install_element (INTERFACE_NODE, &no_interface_desc_cmd);
 #endif
-   install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
-   install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
 #ifdef HAVE_IPV6
@@ -4662,7 +4649,6 @@ vtysh_init_vty (void)
   lldp_vty_init();
   vrf_vty_init();
   neighbor_vty_init();
-  intf_vty_init();
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();

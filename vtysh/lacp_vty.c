@@ -39,7 +39,6 @@
 #include "vtysh/vtysh_user.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
-#include "lacp_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openswitch-idl.h"
@@ -47,6 +46,7 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "openswitch-dflt.h"
 #include "vrf_vty.h"
+#include "utils/lacp_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lacp_cli);
 extern struct ovsdb_idl *idl;
