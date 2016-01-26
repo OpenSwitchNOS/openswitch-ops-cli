@@ -67,7 +67,6 @@
 #include "intf_vty.h"
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
-#include "led_vty.h"
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
@@ -4667,8 +4666,6 @@ vtysh_init_vty (void)
   vlan_vty_init();
   aaa_vty_init();
   dhcp_tftp_vty_init();
-  /* Initialise System LED cli */
-  led_vty_init();
   /* Initialise System cli */
   system_vty_init();
   fan_vty_init();
