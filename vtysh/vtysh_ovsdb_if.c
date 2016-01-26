@@ -457,6 +457,7 @@ intf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_pm_info);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_lacp_status);
+    ovsdb_idl_add_column(idl, &ovsrec_interface_col_subintf_parent);
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
