@@ -620,6 +620,9 @@ vtysh_ovsdb_show_ntp_status()
     status = smap_get_bool(&ovs_system->ntp_config, SYSTEM_NTP_CONFIG_AUTHENTICATION_ENABLE, false);
     vty_out(vty, "NTP Authentication has been %s\n", ((status) ? SYSTEM_NTP_CONFIG_AUTHENTICATION_ENABLED : SYSTEM_NTP_CONFIG_AUTHENTICATION_DISABLED));
 
+    buf = smap_get(&ovs_system->ntp_status, SYSTEM_NTP_STATUS_UPTIME);
+    vty_out(vty, "Uptime: %s hrs\n", ((buf) ? buf : NTP_DEFAULT_STR));
+
     OVSREC_NTP_ASSOCIATION_FOR_EACH(ntp_assoc_row, idl) {
         buf = smap_get(&ntp_assoc_row->association_status, NTP_ASSOC_STATUS_PEER_STATUS_WORD);
         if (buf) {
@@ -654,9 +657,6 @@ vtysh_ovsdb_show_ntp_statistics()
          vty_out(vty, "Could not access the System Table\n");
          return;
     }
-
-    buf = smap_get(&ovs_system->ntp_status, SYSTEM_NTP_STATUS_UPTIME);
-    vty_out(vty, "%20s    %s\n", "Uptime", ((buf) ? buf : NTP_DEFAULT_STR));
 
     buf = smap_get(&ovs_system->ntp_statistics, SYSTEM_NTP_STATS_PKTS_RCVD);
     vty_out(vty, "%20s    %s\n", "Rx-pkts", ((buf) ? buf : NTP_DEFAULT_STR));
