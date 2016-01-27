@@ -35,6 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "workqueue.h"
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_if.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
 #include "dyn_helpstr.h"
@@ -3392,6 +3393,7 @@ DEFUN (config_end,
 }
 
 /* Show version. */
+#ifndef ENABLE_OVSDB
 DEFUN (show_version,
        show_version_cmd,
        "show version",
@@ -3406,6 +3408,18 @@ DEFUN (show_version,
 
   return CMD_SUCCESS;
 }
+#else
+DEFUN (show_version,
+       show_version_cmd,
+       "show version",
+       SHOW_STR
+       "Displays switch version\n")
+{
+  vty_out (vty, "%s %s%s", vtysh_ovsdb_os_name_get(),
+           vtysh_ovsdb_switch_version_get(), VTY_NEWLINE);
+  return CMD_SUCCESS;
+}
+#endif /* ENABLE_OVSDB */
 
 /* Help display function for all node. */
 DEFUN (config_help,
@@ -3691,57 +3705,71 @@ DEFUN (config_no_hostname,
 }
 #else
 #define MAX_HOSTNAME_LEN 32
-#define HOSTNAME_STR "Set or get hostname\n"
 extern void  vtysh_ovsdb_hostname_set(const char * in);
+extern int vtysh_ovsdb_hostname_reset(char *hostname_arg);
 extern const char* vtysh_ovsdb_hostname_get();
-/* Hostname configuration */
+
+/* CLI for hostname configuration */
 DEFUN (config_hostname,
        hostname_cmd,
-       "hostname [HOSTNAME]",
-       HOSTNAME_STR
+       "hostname HOSTNAME",
+       HOSTNAME_SET_STR
        "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
- char* hostname = NULL;
- int   ret = 0;
- if (argv[0])
- {
-     if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
-     {
-        vty_out (vty, "Please specify string of maximum %d character%s",MAX_HOSTNAME_LEN, VTY_NEWLINE);
+    if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
+    {
+        vty_out (vty, "Specify string of max %d character.\n", MAX_HOSTNAME_LEN);
         return CMD_SUCCESS;
-     }
-     if (!isalpha((int) *argv[0]))
-     {
-        vty_out (vty, "Please specify string starting with alphabet%s", VTY_NEWLINE);
+    }
+    if (!isalpha((int) *argv[0]))
+    {
+        vty_out (vty, "Please specify string starting with alphabet.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
-     }
-
-     vtysh_ovsdb_hostname_set(argv[0]);
- }
- else
- {
-     hostname = vtysh_ovsdb_hostname_get();
-     if (hostname)
-     {
-        vty_out (vty,"%s%s",hostname,VTY_NEWLINE);
-     }
-     else
-     {
-        vty_out (vty,"%s%s","",VTY_NEWLINE);
-     }
- }
- return CMD_SUCCESS;
+    }
+    vtysh_ovsdb_hostname_set(argv[0]);
+    return CMD_SUCCESS;
 }
 
+/* CLI for dislplaying hostname */
+DEFUN (config_show_hostname,
+       show_hostname_cmd,
+       "show hostname",
+       SHOW_STR
+       HOSTNAME_GET_STR)
+{
+    const char* hostname = NULL;
+    hostname = vtysh_ovsdb_hostname_get();
+    if (hostname)
+    {
+        vty_out (vty, "%s%s", hostname, VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "%s%s", "", VTY_NEWLINE);
+    }
+    return CMD_SUCCESS;
+}
+
+/* CLI for resetting hostname without argument  */
 DEFUN (config_no_hostname,
        no_hostname_cmd,
-       "no hostname [HOSTNAME]",
+       "no hostname",
        NO_STR
-       HOSTNAME_STR
-       "Hostname string(Max Length 32), first letter must be alphabet\n")
+       HOSTNAME_NO_STR)
 {
     vtysh_ovsdb_hostname_set("");
     return CMD_SUCCESS;
+}
+
+/* CLI for resetting hostname with argument */
+DEFUN (config_no_hostname_arg,
+       no_hostname_cmd_arg,
+       "no hostname HOSTNAME",
+       NO_STR
+       HOSTNAME_NO_STR
+       "Hostname string(Max Length 32), first letter must be alphabet\n")
+{
+    return vtysh_ovsdb_hostname_reset(argv[0]);
 }
 
 #endif //ENABLE_OVSDB
@@ -4589,7 +4617,9 @@ cmd_init (int terminal)
     }
 
   install_element (CONFIG_NODE, &hostname_cmd);
+  install_element (ENABLE_NODE, &show_hostname_cmd);
   install_element (CONFIG_NODE, &no_hostname_cmd);
+  install_element (CONFIG_NODE, &no_hostname_cmd_arg);
 
   if (terminal)
     {

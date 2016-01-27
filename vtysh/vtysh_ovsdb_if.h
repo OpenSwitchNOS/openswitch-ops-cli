@@ -23,13 +23,26 @@
 #ifndef VTYSH_OVSDB_IF_H
 #define VTYSH_OVSDB_IF_H 1
 
+#include <stdbool.h>
+
 #define MAX_MACADDR_LEN 17
+#define DEFAULT_SESSION_TIMEOUT_PERIOD 30
 
 void vtysh_ovsdb_init(int argc, char *argv[], char *db_name);
 
+const char *vtysh_ovsdb_os_name_get(void);
+
+const char *vtysh_ovsdb_switch_version_get(void);
+
 void vtysh_ovsdb_hostname_set(const char * in);
 
+int vtysh_ovsdb_hostname_reset(char *hostname_arg);
+
 const char* vtysh_ovsdb_hostname_get(void);
+
+int vtysh_ovsdb_session_timeout_set(const char * duration);
+
+int64_t vtysh_ovsdb_session_timeout_get(void);
 
 void vtysh_ovsdb_exit(void);
 

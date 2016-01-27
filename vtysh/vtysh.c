@@ -68,10 +68,10 @@
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
 #include "led_vty.h"
-#include "mgmt_intf_vty.h"
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
+#include "source_interface_selection_vty.h"
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
@@ -79,6 +79,7 @@
 #endif
 
 #include "aaa_vty.h"
+#include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
 
@@ -89,7 +90,7 @@ VLOG_DEFINE_THIS_MODULE(vtysh);
 int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 int vtysh_show_startup = 0;
-
+#define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 #endif
 
 
@@ -98,6 +99,8 @@ int vtysh_show_startup = 0;
                                     IN6_IS_ADDR_LINKLOCAL(i))
 
 #define MINIMUM(x,y) (x < y) ? x : y
+
+#define MAX_DEFAULT_SESSION_TIMEOUT_LEN 10
 
 /* Struct VTY. */
 struct vty *vty;
@@ -873,11 +876,6 @@ static struct cmd_node interface_node =
    };
 
 #ifdef ENABLE_OVSDB
-static struct cmd_node mgmt_interface_node =
-{
-  MGMT_INTERFACE_NODE,
-  "%s(config-if-mgmt)# ",
-};
 
 static struct cmd_node link_aggregation_node =
 {
@@ -1279,7 +1277,7 @@ DEFUNSH (VTYSH_ALL,
    return CMD_SUCCESS;
 }
 
-static int
+int
 vtysh_exit (struct vty *vty)
 {
   switch (vty->node)
@@ -2018,16 +2016,6 @@ DEFUN (vtysh_intf_link_aggregation,
     return CMD_SUCCESS;
   }
 }
-
-DEFUN (vtysh_interface_mgmt,
-       vtysh_interface_mgmt_cmd,
-       "interface mgmt",
-       "Select an interface to configure\n"
-       "Configure management interface\n")
-{
-  vty->node = MGMT_INTERFACE_NODE;
-  return CMD_SUCCESS;
-}
 #else
 DEFUNSH (VTYSH_INTERFACE,
       vtysh_interface,
@@ -2083,22 +2071,6 @@ ALIAS (vtysh_exit_interface,
       "Exit current mode and down to previous mode\n")
 #endif
 
-#ifdef ENABLE_OVSDB
-DEFUNSH (VTYSH_MGMT_INTF,
-             vtysh_exit_mgmt_interface,
-             vtysh_exit_mgmt_interface_cmd,
-             "exit",
-             "Exit current mode and down to previous mode\n")
-{
-  return vtysh_exit (vty);
-}
-#ifndef ENABLE_OVSDB
-ALIAS (vtysh_exit_mgmt_interface,
-       vtysh_quit_mgmt_interface_cmd,
-       "quit",
-       "Exit current mode and down to previous mode\n")
-#endif /* ifndef ENABLE_OVSDB */
-#endif
 /* Memory */
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_memory,
@@ -2980,6 +2952,17 @@ DEFUN (vtysh_copy_startupconfig,
   execute_command ("cfgdbutil", 3, (const char **)arguments);
   return CMD_SUCCESS;
 }
+
+DEFUN (vtysh_erase_startupconfig,
+       vtysh_erase_startupconfig_cmd,
+       "erase startup-config",
+       ERASE_STR
+       "Contents of startup configuration\n")
+{
+    char *arguments[] = {"delete", "startup-config"};
+    execute_command ("cfgdbutil", 2, (const char **)arguments);
+    return CMD_SUCCESS;
+}
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_ping,
       vtysh_ping_cmd,
@@ -3313,7 +3296,7 @@ DEFUN (vtysh_start_zsh,
 }
 #endif
 
-static void
+void
 vtysh_install_default (enum node_type node)
 {
    install_element (node, &config_list_cmd);
@@ -4223,6 +4206,47 @@ DEFUN (vtysh_show_alias_cli,
    return CMD_SUCCESS;
 }
 
+/* Configure idle session timeout value. */
+DEFUN (vtysh_session_timeout_cli,
+       vtysh_session_timeout_cli_cmd,
+       "session-timeout <0-43200>",
+       "Configures the idle session timeout in minutes\n"
+       "Idle timeout range in minutes. "
+       "Value 0 disables the timeout (Default: 30)\n")
+{
+    if (argv[0])
+        return vtysh_ovsdb_session_timeout_set(argv[0]);
+    else
+        return CMD_ERR_INCOMPLETE;
+}
+
+/* Configure idle session timeout to default value 30 mins. */
+DEFUN (vtysh_no_session_timeout_cli,
+       vtysh_no_session_timeout_cli_cmd,
+       "no session-timeout",
+       NO_STR
+       "Idle session timeout in minutes\n")
+{
+    char def_session_timeout[MAX_DEFAULT_SESSION_TIMEOUT_LEN] = {0};
+    snprintf(def_session_timeout, MAX_DEFAULT_SESSION_TIMEOUT_LEN,
+             "%d", DEFAULT_SESSION_TIMEOUT_PERIOD);
+    return vtysh_ovsdb_session_timeout_set(def_session_timeout);
+}
+
+/* Display the session timeout value if its not default value. */
+DEFUN (vtysh_show_session_timeout_cli,
+       vtysh_show_session_timeout_cli_cmd,
+       "show session-timeout",
+       SHOW_STR
+       "Idle session timeout in minutes\n")
+{
+    int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
+
+    if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)
+        vty_out(vty, "session-timeout %d%s", timeout_period, VTY_NEWLINE);
+
+    return CMD_SUCCESS;
+}
 
 /*
  * Function : alias_vty_init
@@ -4309,7 +4333,6 @@ vtysh_init_vty (void)
    install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
    install_node (&vlan_node, NULL);
-   install_node (&mgmt_interface_node, NULL);
    install_node (&link_aggregation_node, NULL);
    install_node (&vlan_interface_node, NULL);
 #endif
@@ -4349,7 +4372,6 @@ vtysh_init_vty (void)
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
    vtysh_install_default (VLAN_NODE);
-   vtysh_install_default (MGMT_INTERFACE_NODE);
    vtysh_install_default (LINK_AGGREGATION_NODE);
    vtysh_install_default (VLAN_INTERFACE_NODE);
    vtysh_install_default (DHCP_SERVER_NODE);
@@ -4392,7 +4414,6 @@ vtysh_init_vty (void)
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
    install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
@@ -4402,7 +4423,6 @@ vtysh_init_vty (void)
    install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
    install_element (BGP_IPV6_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
@@ -4517,20 +4537,20 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
+   install_element (CONFIG_NODE, &vtysh_session_timeout_cli_cmd);
+   install_element (CONFIG_NODE, &vtysh_no_session_timeout_cli_cmd);
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_vlan_cmd);
-   install_element (CONFIG_NODE, &vtysh_interface_mgmt_cmd);
    install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_exit_mgmt_interface_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (CONFIG_NODE, &vtysh_intf_link_aggregation_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_exit_mgmt_interface_cmd);
+   install_element (LINK_AGGREGATION_NODE, &vtysh_exit_interface_cmd);
    install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
 #endif /* ENABLE_OVSDB */
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
+  install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
 #endif /* ENABLE_OVSDB */
@@ -4557,6 +4577,7 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
   install_element (ENABLE_NODE, &show_startup_config_json_cmd);
+  install_element (ENABLE_NODE, &vtysh_show_session_timeout_cli_cmd);
 #endif /* ENABLE_OVSDB */
 
 #ifndef ENABLE_OVSDB
@@ -4633,6 +4654,11 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_reboot_cmd);
 
 #ifdef ENABLE_OVSDB
+  /* Plugins_cli_init will install all the features
+   * CLI node and elements by using Libltdl-interface.
+   */
+  plugins_cli_init(FEATURES_CLI_PATH);
+
   lldp_vty_init();
   vrf_vty_init();
   neighbor_vty_init();
@@ -4640,10 +4666,9 @@ vtysh_init_vty (void)
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();
-   dhcp_tftp_vty_init();
+  dhcp_tftp_vty_init();
   /* Initialise System LED cli */
   led_vty_init();
-  mgmt_intf_vty_init();
   /* Initialise System cli */
   system_vty_init();
   fan_vty_init();
@@ -4651,8 +4676,13 @@ vtysh_init_vty (void)
   alias_vty_init();
   logrotate_vty_init();
 
+  /* Initialize source interface selection CLI*/
+  source_interface_selection_vty_init();
+
   /* Initialise tracerouote CLI */
   traceroute_vty_init();
+  /* Initialise SFTP CLI */
+  sftp_vty_init();
 
   /* Initialise power supply cli */
   powersupply_vty_init();

@@ -25,6 +25,10 @@
 
 typedef unsigned char boolean;
 
+
+#define MGMT_INTF_DEFAULT_IP          "0.0.0.0"
+#define MGMT_INTF_DEFAULT_IPV6        "::"
+
 #define TRUE 1
 #define FALSE 0
 
