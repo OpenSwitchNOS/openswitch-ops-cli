@@ -2675,13 +2675,13 @@ verify_ifname(char *str)
 
     /* The VLANID is outside valid vlan range */
     if (vlanid <= 0 || vlanid >= 4095) {
-        vty_out(vty, "Error : Vlanid outside valid vlan range <1-4094>\n");
+        vty_out(vty, "Error : Vlanid is outside the vlan range <1-4094>\n");
         return 0;
     }
 
     /* The VLANID is internal vlan */
     if (check_internal_vlan(vlanid) == 0) {
-        vty_out(vty, "Error : Vlanid is an internal vlan\n");
+        vty_out(vty, "Error : Vlanid is used as an internal vlan\n");
         return 0;
     }
 

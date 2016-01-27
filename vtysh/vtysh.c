@@ -1603,11 +1603,10 @@ DEFUN (vtysh_interface_vlan,
 
    if ((verify_ifname(vlan_if) == 0)) {
        vty->node = CONFIG_NODE;
-       return CMD_ERR_NO_MATCH;
+       return CMD_SUCCESS;
    }
 
    VLOG_DBG("%s vlan interface = %s\n", __func__, vlan_if);
-
    if (create_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
        vty->node = CONFIG_NODE;
        return CMD_ERR_NO_MATCH;
