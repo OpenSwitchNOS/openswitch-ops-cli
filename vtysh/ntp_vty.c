@@ -639,7 +639,7 @@ vtysh_ovsdb_show_ntp_status()
                 vty_out(vty, "Time accuracy is within %s seconds\n", ((buf) ? buf : ""));
 
                 buf = smap_get(&ntp_assoc_row->association_status, NTP_ASSOC_STATUS_REFERENCE_TIME);
-                vty_out(vty, "Reference time: %s\n", ((buf) ? buf : ""));
+                vty_out(vty, "Reference time: %s (UTC)\n", ((buf) ? buf : ""));
             }
         }
     }
@@ -814,6 +814,10 @@ DEFUN ( vtysh_set_ntp_server,
 
     if (vty_flags & CMD_FLAG_NO_CMD) {
         ntp_server_params.no_form = 1;
+
+        ntp_server_params.prefer = NULL;
+        ntp_server_params.version = NULL;
+        ntp_server_params.keyid = NULL;
     }
 
     /* Finally call the handler */
@@ -885,6 +889,7 @@ DEFUN ( vtysh_set_ntp_authentication_key,
 
     if (vty_flags & CMD_FLAG_NO_CMD) {
         ntp_auth_key_params.no_form = 1;
+        ntp_auth_key_params.md5_pwd = NULL;
     }
 
     /* Finally call the handler */
@@ -896,12 +901,10 @@ DEFUN ( vtysh_set_ntp_authentication_key,
 
 DEFUN_NO_FORM ( vtysh_set_ntp_authentication_key,
         vtysh_set_ntp_authentication_key_cmd,
-        "ntp authentication-key WORD md5 WORD",
+        "ntp authentication-key WORD",
         "ntp\n"
         "authentication-key\n"
         "NTP authentication-key number\n"
-        "md5\n"
-        "NTP authentication-key\n"
       );
 
 
