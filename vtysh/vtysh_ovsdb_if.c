@@ -64,9 +64,7 @@
 
 int64_t timeout_start;
 struct termios tp;
-unsigned int last_idl_seq_no;
 long long int next_poll_msec;
-int64_t session_timeout_period;
 
 typedef unsigned char boolean;
 
@@ -88,11 +86,14 @@ extern struct vty *vty;
 static void
 vtysh_session_timeout_run()
 {
-    if (last_idl_seq_no != ovsdb_idl_get_seqno(idl))
+    static int64_t session_timeout_period = 60 * DEFAULT_SESSION_TIMEOUT_PERIOD;
+
+    if (idl_seqno != ovsdb_idl_get_seqno(idl))
     {
-        last_idl_seq_no = ovsdb_idl_get_seqno(idl);
+        idl_seqno = ovsdb_idl_get_seqno(idl);
         session_timeout_period = 60 * vtysh_ovsdb_session_timeout_get();
     }
+
     if (time_msec() > next_poll_msec) {
         next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
         if ((session_timeout_period > 0) &&
@@ -1081,13 +1082,12 @@ vtysh_ovsdb_main_thread(void *arg)
 
     vtysh_exit_flag = false;
     next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
-    last_idl_seq_no = ovsdb_idl_get_seqno(idl);
-    session_timeout_period = DEFAULT_SESSION_TIMEOUT_PERIOD;
-
     while (!vtysh_exit_flag) {
+
         poll_timer_wait_until(next_poll_msec);
         VTYSH_OVSDB_LOCK;
-
+        /* idl global variable should not be accessed without the lock.
+         * Always access idl with lock VTYSH_OVSDB_LOCK. */
         /* This function updates the Cache by running
            ovsdb_idl_run. */
         vtysh_run();
@@ -1099,6 +1099,8 @@ vtysh_ovsdb_main_thread(void *arg)
         vtysh_periodic_refresh();
 
         VTYSH_OVSDB_UNLOCK;
+        /* Do not access idl global variable after VTYSH_OVSDB_UNLOCK. */
+
         if (vtysh_exit_flag) {
             poll_immediate_wake();
         } else {

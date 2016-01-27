@@ -873,7 +873,7 @@ DEFUN (vtysh_show_ipv6_route,
     vtysh_show_ipv6_route_cmd,
     "show ipv6 route",
     SHOW_STR
-    IP_STR
+    IPV6_STR
     ROUTE_STR)
 {
   int retval;
