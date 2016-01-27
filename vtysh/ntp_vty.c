@@ -825,16 +825,10 @@ DEFUN ( vtysh_set_ntp_server,
 
 DEFUN_NO_FORM ( vtysh_set_ntp_server,
         vtysh_set_ntp_server_cmd,
-        "ntp server WORD "
-        "{prefer | version WORD | key-id WORD}",
+        "ntp server WORD",
         "ntp\n"
         "server\n"
         "NTP server name or IPv4 address\n"
-        "Request priority for this server when switch selects a synchronizing server\n"
-        "NTP version number\n"
-        "Version can be 3 or 4\n"
-        "Key-id\n"
-        "Peer key number\n"
       );
 
 
