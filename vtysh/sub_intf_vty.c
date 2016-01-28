@@ -109,6 +109,7 @@ DEFUN (cli_sub_intf_shutdown,
         "Enable/disable an interface\n")
 {
     const struct ovsrec_interface * row = NULL;
+    const struct ovsrec_port * port_row = NULL;
     struct ovsdb_idl_txn* status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     struct smap smap_user_config;
@@ -146,6 +147,24 @@ DEFUN (cli_sub_intf_shutdown,
             }
             ovsrec_interface_set_user_config(row, &smap_user_config);
             smap_destroy(&smap_user_config);
+            break;
+        }
+    }
+
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if(strcmp(port_row->name, (char*)vty->index) == 0)
+        {
+            if(vty_flags & CMD_FLAG_NO_CMD)
+            {
+                ovsrec_port_set_admin(port_row,
+                        OVSREC_INTERFACE_ADMIN_STATE_UP);
+            }
+            else
+            {
+                ovsrec_port_set_admin(port_row,
+                        OVSREC_INTERFACE_ADMIN_STATE_DOWN);
+            }
             break;
         }
     }
