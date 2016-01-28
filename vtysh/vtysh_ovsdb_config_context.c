@@ -479,20 +479,11 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
 static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_ntp_cfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
 {
-    const char *data = NULL;
+    bool status = false;
 
-    if(NULL == ifrow_config)
-    {
-        return e_vtysh_error;
-    }
-
-    data = smap_get(ifrow_config, SYSTEM_NTP_CONFIG_AUTHENTICATION_ENABLE);
-    if (data)
-    {
-        if (!VTYSH_STR_EQ(data, SYSTEM_NTP_CONFIG_AUTHENTICATION_DEFAULT))
-        {
-            vtysh_ovsdb_cli_print(p_msg, "ntp authentication enable", data);
-        }
+    status = smap_get_bool(ifrow_config, SYSTEM_NTP_CONFIG_AUTHENTICATION_ENABLE, false);
+    if (status != SYSTEM_NTP_CONFIG_AUTHENTICATION_DEFAULT) {
+        vtysh_ovsdb_cli_print(p_msg, "ntp authentication enable");
     }
 
     return e_vtysh_ok;

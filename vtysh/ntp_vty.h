@@ -195,7 +195,7 @@ config_finish_result (enum ovsdb_idl_txn_status status)
 #define SYSTEM_NTP_CONFIG_AUTHENTICATION_ENABLE         "authentication_enable"
 #define SYSTEM_NTP_CONFIG_AUTHENTICATION_ENABLED        "enabled"
 #define SYSTEM_NTP_CONFIG_AUTHENTICATION_DISABLED       "disabled"
-#define SYSTEM_NTP_CONFIG_AUTHENTICATION_DEFAULT        SYSTEM_NTP_CONFIG_AUTHENTICATION_DISABLED
+#define SYSTEM_NTP_CONFIG_AUTHENTICATION_DEFAULT        false
 
 #define SYSTEM_NTP_STATS_PKTS_RCVD                      "ntp_pkts_received"
 #define SYSTEM_NTP_STATS_PKTS_CUR_VER                   "ntp_pkts_with_current_version"
