@@ -802,6 +802,35 @@ DEFUN (cli_lldp_show_intf_statistics,
 
   return CMD_SUCCESS;
 }
+/* qsort comparator function.
+ * This may need to be modified depending on the format of interface name
+ */
+static inline int compare_intf(const void*a, const void* b)
+{
+  lldp_neighbor_info* s1 = (lldp_neighbor_info*)a;
+  lldp_neighbor_info* s2 = (lldp_neighbor_info*)b;
+  uint i1=0,i2=0,i3=0,i4=0;
+
+  /* For sorting number with 21-1 etc. name */
+  sscanf(s1->name,"%d-%d",&i1,&i2);
+  sscanf(s2->name,"%d-%d",&i3,&i4);
+
+  if(i1 == i3)
+  {
+    if(i2 == i4)
+      return 0;
+    else if(i2 < i4)
+      return -1;
+    else
+      return 1;
+  }
+  else if (i1 < i3)
+    return -1;
+  else
+    return 1;
+
+  return 0;
+}
 
 DEFUN (cli_lldp_show_config,
        lldp_show_config_cmd,
@@ -816,16 +845,19 @@ DEFUN (cli_lldp_show_config,
   int tx_interval = 0;
   int hold_time = 0;
   lldp_intf_stats *intf_stats = NULL;
-  lldp_intf_stats *new_intf_stats = NULL;
-  lldp_intf_stats *temp = NULL, *current = NULL;
-
+  uint  iter = 0, nIntf = 0;
+  const struct ovsrec_subsystem *sub_row = NULL;
   row = ovsrec_system_first(idl);
-
+  sub_row = ovsrec_subsystem_first(idl);
   if(!row)
   {
-     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-     return CMD_OVSDB_FAILURE;
+    VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+    return CMD_OVSDB_FAILURE;
   }
+  if(sub_row) {
+    nIntf = sub_row->n_interfaces;
+  }
+  intf_stats = xcalloc(nIntf, sizeof(lldp_intf_stats));
 
   vty_out(vty, "LLDP Global Configuration:%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
@@ -859,90 +891,66 @@ DEFUN (cli_lldp_show_config,
   {
     if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
     {
-       /* Skipping internal interfaces */
-       continue;
+      /* Skipping internal interfaces */
+      continue;
     }
-    new_intf_stats = xcalloc(1, sizeof *new_intf_stats);
-    const char *lldp_enable_dir = smap_get(&ifrow->other_config , INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
+  const char *lldp_enable_dir = smap_get(&ifrow->other_config , INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
 
-    memset(new_intf_stats->name, '\0', INTF_NAME_SIZE);
-    strncpy(new_intf_stats->name, ifrow->name, INTF_NAME_SIZE);
-    if(!lldp_enable_dir)
-    {
-      new_intf_stats->lldp_dir = LLDP_TXRX;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_OFF;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_TX;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_RX;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_TXRX;
-    }
-    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
-    {
-      new_intf_stats->next = intf_stats;
-      intf_stats = new_intf_stats;
-    }
-    else
-    {
-      current = intf_stats;
-
-      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
-      {
-        current = current->next;
-      }
-      new_intf_stats->next = current->next;
-      current->next = new_intf_stats;
-    }
+  strncpy(intf_stats[iter].name, ifrow->name, INTF_NAME_SIZE);
+  if(!lldp_enable_dir)
+  {
+    intf_stats[iter].lldp_dir = LLDP_TXRX;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_OFF;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_TX;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_RX;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_TXRX;
+  }
+  iter++;
   }
 
-  current = intf_stats;
-  while(NULL != current)
+  qsort((void*)intf_stats,nIntf,sizeof(lldp_intf_stats),compare_intf);
+  iter = 0;
+  while(iter < nIntf)
   {
-    vty_out (vty, "%-6s", current->name);
+    vty_out (vty, "%-6s", intf_stats[iter].name);
 
-    if(current->lldp_dir == LLDP_OFF)
+    if(intf_stats[iter].lldp_dir == LLDP_OFF)
     {
       vty_out(vty, "%-25s", "No");
       vty_out(vty, "%-25s", "No");
     }
-    else if(current->lldp_dir == LLDP_TX)
+    else if(intf_stats[iter].lldp_dir == LLDP_TX)
     {
       vty_out(vty, "%-25s", "Yes");
       vty_out(vty, "%-25s", "No");
     }
-    else if(current->lldp_dir == LLDP_RX)
+    else if(intf_stats[iter].lldp_dir == LLDP_RX)
     {
       vty_out(vty, "%-25s", "No");
       vty_out(vty, "%-25s", "Yes");
     }
-    else if(current->lldp_dir == LLDP_TXRX)
+    else if(intf_stats[iter].lldp_dir == LLDP_TXRX)
     {
       vty_out(vty, "%-25s", "Yes");
       vty_out(vty, "%-25s", "Yes");
     }
     printf("\n");
-    current = current->next;
+    iter++;
   }
-
-  temp = intf_stats;
-  current = intf_stats;
-  while(NULL != current)
-  {
-    temp = current;
-    current = current->next;
-    free(temp);
-  }
-
+  if(intf_stats)
+    free(intf_stats);
   return CMD_SUCCESS;
 }
 
@@ -1078,10 +1086,11 @@ DEFUN (cli_lldp_show_statistics,
 {
   const struct ovsrec_interface *ifrow = NULL;
   const struct ovsrec_system *row = NULL;
-  lldp_intf_stats *intf_stats = NULL;
-  lldp_intf_stats *new_intf_stats = NULL;
-  lldp_intf_stats *temp = NULL, *current = NULL;
+  const struct ovsrec_subsystem *sub_row = NULL;
   const struct ovsdb_datum *datum = NULL;
+  lldp_intf_stats  *intf_stats = NULL;
+  uint  iter = 0, nIntf = 0;
+
   static char *lldp_interface_statistics_keys [] = {
     INTERFACE_STATISTICS_LLDP_TX_COUNT,
     INTERFACE_STATISTICS_LLDP_RX_COUNT,
@@ -1095,72 +1104,59 @@ DEFUN (cli_lldp_show_statistics,
   unsigned int index;
 
   row = ovsrec_system_first(idl);
-
+  sub_row=ovsrec_subsystem_first(idl);
   if(!row)
   {
-     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-     return CMD_OVSDB_FAILURE;
+    VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+    return CMD_OVSDB_FAILURE;
+  }
+  if(sub_row)
+  {
+    nIntf = sub_row->n_interfaces;
   }
 
+  intf_stats = xcalloc(nIntf, sizeof (lldp_neighbor_info));
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
   {
     if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
     {
-       /* Skipping internal interfaces */
-       continue;
+      /* Skipping internal interfaces */
+      continue;
     }
     union ovsdb_atom atom;
-    new_intf_stats = xcalloc(1, sizeof *new_intf_stats);
-
-    memset(new_intf_stats->name, '\0', INTF_NAME_SIZE);
-    strncpy(new_intf_stats->name, ifrow->name, INTF_NAME_SIZE);
+    strncpy(intf_stats[iter].name, ifrow->name,INTF_NAME_SIZE);
 
     datum = ovsrec_interface_get_lldp_statistics(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
 
     atom.string = lldp_interface_statistics_keys[0];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->tx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
+    intf_stats[iter].tx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
 
     atom.string = lldp_interface_statistics_keys [1];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->rx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
+    intf_stats[iter].rx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
 
     atom.string = lldp_interface_statistics_keys[2];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->rx_discared = (index == UINT_MAX)? 0 : datum->values[index].integer ;
+    intf_stats[iter].rx_discared = (index == UINT_MAX)? 0 : datum->values[index].integer ;
 
     atom.string = lldp_interface_statistics_keys[3];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->rx_unrecognized = (index == UINT_MAX)? 0 : datum->values[index].integer;
-
-    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
-    {
-      new_intf_stats->next = intf_stats;
-      intf_stats = new_intf_stats;
-    }
-    else
-    {
-      current = intf_stats;
-
-      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
-      {
-        current = current->next;
-      }
-      new_intf_stats->next = current->next;
-      current->next = new_intf_stats;
-    }
+    intf_stats[iter].rx_unrecognized = (index == UINT_MAX)? 0 : datum->values[index].integer;
+    iter++;
   }
 
-  current = intf_stats;
-  while(NULL != current)
+  iter =0;
+  while(iter < nIntf)
   {
-    total_tx_packets += current->tx_packets;
-    total_rx_packets += current->rx_packets;
-    total_rx_discared += current->rx_discared;
-    total_rx_unrecognized += current->rx_unrecognized;
-    current = current->next;
+    total_tx_packets += intf_stats[iter].tx_packets;
+    total_rx_packets += intf_stats[iter].rx_packets;
+    total_rx_discared += intf_stats[iter].rx_discared;
+    total_rx_unrecognized += intf_stats[iter].rx_unrecognized;
+    iter++;
   }
-
+  qsort((void*)intf_stats,nIntf,sizeof(lldp_intf_stats),compare_intf);
+  iter=0;
   vty_out(vty, "LLDP Global statistics:\n\n");
   vty_out(vty, "Total Packets transmitted : %u\n",total_tx_packets);
   vty_out(vty, "Total Packets received : %u\n",total_rx_packets);
@@ -1174,59 +1170,18 @@ DEFUN (cli_lldp_show_statistics,
   vty_out(vty, "%-20s","Rx-discarded");
   vty_out(vty, "%-20s","TLVs-Unknown");
   vty_out(vty, "%s", VTY_NEWLINE);
-
-  current = intf_stats;
-  while(NULL != current)
-  {
-    vty_out (vty, "%-10s", current->name);
-    vty_out (vty, "%-15d", current->tx_packets);
-    vty_out (vty, "%-15d", current->rx_packets);
-    vty_out (vty, "%-20d", current->rx_discared);
-    vty_out (vty, "%-20d", current->rx_unrecognized);
+  while(iter<nIntf) {
+    vty_out (vty, "%-10s", intf_stats[iter].name);
+    vty_out (vty, "%-15d", intf_stats[iter].tx_packets);
+    vty_out (vty, "%-15d", intf_stats[iter].rx_packets);
+    vty_out (vty, "%-20d", intf_stats[iter].rx_discared);
+    vty_out (vty, "%-20d", intf_stats[iter].rx_unrecognized);
     printf("\n");
-    current = current->next;
+    iter++;
   }
-
-  temp = intf_stats;
-  current = intf_stats;
-  while(NULL != current)
-  {
-    temp = current;
-    current = current->next;
-    free(temp);
-  }
-
+  if(intf_stats)
+    free(intf_stats);
   return CMD_SUCCESS;
-}
-
-/* qsort comparator function.
- * This may need to be modified depending on the format of interface name
- */
-static inline int compare_intf(const void*a, const void* b)
-{
-    lldp_neighbor_info* s1 = (lldp_neighbor_info*)a;
-    lldp_neighbor_info* s2 = (lldp_neighbor_info*)b;
-    uint i1=0,i2=0,i3=0,i4=0;
-
-    /* For sorting number with 21-1 etc. name */
-    sscanf(s1->name,"%d-%d",&i1,&i2);
-    sscanf(s2->name,"%d-%d",&i3,&i4);
-
-    if(i1 == i3)
-    {
-        if(i2 == i4)
-            return 0;
-        else if(i2 < i4)
-            return -1;
-        else
-            return 1;
-    }
-    else if (i1 < i3)
-        return -1;
-    else
-        return 1;
-
-    return 0;
 }
 
 DEFUN (cli_lldp_show_neighbor_info,
