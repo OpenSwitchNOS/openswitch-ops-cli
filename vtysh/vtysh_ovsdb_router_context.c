@@ -607,7 +607,7 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
     OVSREC_VRF_FOR_EACH(ovs_vrf, p_msg->idl)
     {
         for (j = 0; j < ovs_vrf->n_bgp_routers; j++) {
-            vtysh_ovsdb_cli_print(p_msg, "%s %d", "router bgp",
+            vtysh_ovsdb_cli_print(p_msg, "%s %lu", "router bgp",
                                   ovs_vrf->key_bgp_routers[j]);
 
             if (ovs_vrf->value_bgp_routers[j]->router_id)
