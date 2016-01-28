@@ -279,7 +279,7 @@ get_ovsrec_vrf_with_name(char *name)
  * Find the bgp router with matching asn.
  */
 static const struct ovsrec_bgp_router *
-get_ovsrec_bgp_router_with_asn(const struct ovsrec_vrf *vrf_row, int asn)
+get_ovsrec_bgp_router_with_asn(const struct ovsrec_vrf *vrf_row, int64_t asn)
 {
     int i = 0;
     for (i = 0; i < vrf_row->n_bgp_routers; i++) {
@@ -1085,7 +1085,11 @@ DEFUN(router_bgp,
       BGP_STR
       AS_STR)
 {
-    return cli_router_bgp_cmd_execute(NULL, atoi(argv[0]));
+    unsigned long asn;
+
+    asn = strtoul(argv[0], NULL, 10);
+
+    return cli_router_bgp_cmd_execute(NULL, asn);
 }
 
 ALIAS(router_bgp,
@@ -1163,7 +1167,11 @@ DEFUN(no_router_bgp,
       BGP_STR
       AS_STR)
 {
-    return cli_no_router_bgp_cmd_execute(NULL, atoi(argv[0]));
+    unsigned long asn;
+
+    asn = strtoul(argv[0], NULL, 10);
+
+    return cli_no_router_bgp_cmd_execute(NULL, asn);
 }
 
 ALIAS(no_router_bgp,
