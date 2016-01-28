@@ -1643,6 +1643,12 @@ DEFUN (no_vtysh_interface,
   vty->node = CONFIG_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
 
+  if (strchr(argv[0],'.'))
+  {
+     delete_sub_intf(argv[0]);
+     return CMD_SUCCESS;
+  }
+
   if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
       GET_VLANIF(ifnumber, argv[0]);
       if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
