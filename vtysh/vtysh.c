@@ -45,7 +45,6 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "powersupply_vty.h"
 #include "log.h"
 #include "bgp_vty.h"
 #include "logrotate_vty.h"
@@ -4684,8 +4683,6 @@ vtysh_init_vty (void)
   /* Initialise SFTP CLI */
   sftp_vty_init();
 
-  /* Initialise power supply cli */
-  powersupply_vty_init();
   lacp_vty_init();
 
   /* Initialize ECMP CLI */
