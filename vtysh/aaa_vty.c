@@ -51,6 +51,7 @@
 extern struct ovsdb_idl *idl;
 
 static int aaa_set_global_status (const char *status);
+static int aaa_set_radius_authentication(const char *auth);
 static int aaa_fallback_option (const char *value);
 static int aaa_show_aaa_authenctication ();
 static int radius_server_add_host (const char *ipv4);
@@ -103,10 +104,12 @@ aaa_set_global_status(const char *status)
     if (strcmp(SYSTEM_AAA_RADIUS, status) == 0)
     {
         smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS, OPS_TRUE_STR);
+        smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS_AUTH, RADIUS_PAP);
     }
     else if (strcmp(SYSTEM_AAA_RADIUS_LOCAL, status) == 0)
     {
         smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS, OPS_FALSE_STR);
+        smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS_AUTH, RADIUS_PAP);
     }
 
     ovsrec_system_set_aaa(row, &smap_aaa);
@@ -135,6 +138,72 @@ DEFUN(cli_aaa_set_global_status,
          Local authentication (Default)\n")
 {
     return aaa_set_global_status(argv[0]);
+}
+
+/* Set AAA radius authentication encoding to CHAP or PAP
+ * On success, returns CMD_SUCCESS. On failure, returns CMD_OVSDB_FAILURE.
+ */
+static int aaa_set_radius_authentication(const char *auth)
+{
+    const struct ovsrec_system *row = NULL;
+    enum ovsdb_idl_txn_status txn_status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    struct smap smap_aaa;
+
+    if (status_txn == NULL) {
+      VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+    row = ovsrec_system_first(idl);
+
+    if (!row) {
+       VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+       cli_do_config_abort(status_txn);
+       return CMD_OVSDB_FAILURE;
+    }
+
+    smap_clone(&smap_aaa, &row->aaa);
+
+    if (strcmp(RADIUS_CHAP, auth) == 0)
+    {
+        smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS, OPS_TRUE_STR);
+        smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS_AUTH, RADIUS_CHAP);
+    }
+    else if (strcmp(RADIUS_PAP, auth) == 0)
+    {
+        smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS, OPS_TRUE_STR);
+        smap_replace(&smap_aaa, SYSTEM_AAA_RADIUS_AUTH, RADIUS_PAP);
+    }
+
+    ovsrec_system_set_aaa(row, &smap_aaa);
+    smap_destroy(&smap_aaa);
+
+    txn_status = cli_do_config_finish(status_txn);
+
+    if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
+        return CMD_SUCCESS;
+    }
+    else {
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+/* CLI to set AAA radius authentication encoding to PAP or CHAP. */
+DEFUN (cli_aaa_set_radius_authentication,
+         aaa_set_radius_authentication_cmd,
+         "aaa authentication login radius radius-auth ( pap | chap)",
+         AAA_STR
+         "User authentication\n"
+         "Switch login\n"
+         "Radius authentication\n"
+         "Radius authentication type\n"
+         "Set PAP Radius authentication\n"
+         "set CHAP Radius authentication\n")
+{
+    return aaa_set_radius_authentication(argv[0]);
 }
 
 /* Set AAA fallback options to either True or False.
@@ -221,6 +290,8 @@ DEFUN(cli_aaa_no_remove_fallback,
 /* Displays AAA Authentication configuration.
  * Shows status of the local authentication [Enabled/Disabled]
  * Shows status of the Radius authentication [Enabled/Disabled]
+ * If Radius authentication is enabled, shows Radius authentication
+ * type [pap/chap]
  * Shows status of Fallback authenticaion to local [Enabled/Disabled]
  */
 static int
@@ -242,6 +313,8 @@ aaa_show_aaa_authenctication()
                 VTY_NEWLINE);
         vty_out(vty, "  Radius authentication\t\t\t: %s%s", "Enabled",
                 VTY_NEWLINE);
+        vty_out(vty, "  Radius authentication type\t\t: %s%s",
+                smap_get(&row->aaa, SYSTEM_AAA_RADIUS_AUTH), VTY_NEWLINE);
     }
     else
     {
@@ -1334,6 +1407,7 @@ aaa_vty_init(void)
 {
     install_element(ENABLE_NODE, &aaa_show_aaa_authenctication_cmd);
     install_element(CONFIG_NODE, &aaa_set_global_status_cmd);
+    install_element(CONFIG_NODE, &aaa_set_radius_authentication_cmd);
     install_element(CONFIG_NODE, &aaa_remove_fallback_cmd);
     install_element(CONFIG_NODE, &aaa_no_remove_fallback_cmd);
     install_element(CONFIG_NODE, &radius_server_add_host_cmd);

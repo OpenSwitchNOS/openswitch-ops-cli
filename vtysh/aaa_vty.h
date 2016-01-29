@@ -25,6 +25,9 @@
 #define SYSTEM_AAA_RADIUS               "radius"
 #define SYSTEM_AAA_FALLBACK             "fallback"
 #define SYSTEM_AAA_RADIUS_LOCAL         "local"
+#define SYSTEM_AAA_RADIUS_AUTH          "radius_auth"
+#define RADIUS_CHAP                     "chap"
+#define RADIUS_PAP                      "pap"
 #define OPS_TRUE_STR                        "true"
 #define OPS_FALSE_STR                       "false"
 
