@@ -33,12 +33,12 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_config_context.h"
-#include "fan_vty.h"
 #include "aaa_vty.h"
 #include "logrotate_vty.h"
 #include "openswitch-dflt.h"
 #include "ecmp_vty.h"
 #include "ntp_vty.h"
+#include "utils/system_vtysh_utils.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
 

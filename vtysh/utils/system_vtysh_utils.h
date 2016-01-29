@@ -1,6 +1,5 @@
-/* FAN CLI commands header file
- *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+/*
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,22 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: fan_vty.h
+ * File: system_vtysh_utils.h
  *
- * Purpose:  To add declarations required for fan_vty.c
+ * Purpose: header file for common system vtysh utility macros and functions
  */
 
-#ifndef _FAN_VTY_H
-#define _FAN_VTY_H
+#ifndef _SYSTEM_VTYSH_UTILS_H
+#define _SYSTEMVTYSH_UTILS_H
 
-#ifndef SYS_STR
-#define SYS_STR "System information\n"
-#endif
-
-#define FAN_STR "Fan information\n"
-#define FAN_SET_STR "Override fan speed\n"
 #define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
 
-void fan_vty_init (void);
-
-#endif /* _FAN_VTY_H */
+#endif /* _SYSTEM_VTYSH_UTILS_H  */
