@@ -165,6 +165,7 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_password);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_timers);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_route_maps);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_prefix_lists);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_external_ids);

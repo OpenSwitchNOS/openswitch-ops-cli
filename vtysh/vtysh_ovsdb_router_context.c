@@ -134,6 +134,19 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       key_route_maps[i]);
                 i++;
             }
+            while (i < bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                   n_prefix_lists) {
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
+                        "neighbor", bgp_router_context->
+                        key_bgp_neighbors[n_neighbors],
+                        "prefix-list", bgp_router_context->
+                        value_bgp_neighbors[n_neighbors]->
+                        value_prefix_lists[i]->name,
+                        bgp_router_context->
+                        value_bgp_neighbors[n_neighbors]->
+                        key_prefix_lists[i]);
+                i++;
+            }
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_allow_as_in)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
