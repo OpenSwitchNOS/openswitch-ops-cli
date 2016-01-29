@@ -58,6 +58,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
     const struct ovsrec_bgp_router *bgp_router_context=NULL;
     int i = 0, n_neighbors = 0, k = 0;
+    struct ovsrec_bgp_neighbor *nbr_table=NULL;
   /* To consider all router entries. */
     OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_context, p_msg->idl)
     {
@@ -74,6 +75,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 
         for (n_neighbors = 0; n_neighbors<bgp_router_context->n_bgp_neighbors;
              n_neighbors++) {
+            nbr_table =  bgp_router_context->value_bgp_neighbors[n_neighbors];
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_remote_as)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
@@ -132,6 +134,14 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       bgp_router_context->
                                       value_bgp_neighbors[n_neighbors]->
                                       key_route_maps[i]);
+                i++;
+            }
+            while (i < nbr_table->n_prefix_lists) {
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
+                                      "neighbor", bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "prefix-list", nbr_table->value_prefix_lists[i]->name,
+                                      nbr_table->key_prefix_lists[i]);
                 i++;
             }
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
