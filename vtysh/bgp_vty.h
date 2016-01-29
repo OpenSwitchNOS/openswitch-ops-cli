@@ -53,8 +53,7 @@ cli_command_result (enum ovsdb_idl_txn_status status)
     do {                                                        \
         txn = cli_do_config_start();                            \
         if (txn == NULL) {                                      \
-            vty_out(vty, "ovsdb_idl_txn_create failed: %s: %d\n",   \
-                    __FILE__, __LINE__);                            \
+            vty_out(vty, "OVSDB create transaction failed\n");  \
             cli_do_config_abort(txn);                               \
             return CMD_OVSDB_FAILURE;                               \
         }                                                           \
@@ -70,8 +69,7 @@ cli_command_result (enum ovsdb_idl_txn_status status)
 #define ERRONEOUS_DB_TXN(txn, error_message)                        \
     do {                                                            \
         cli_do_config_abort(txn);                                   \
-        vty_out(vty, "database transaction failed: %s: %d -- %s\n", \
-                __FILE__, __LINE__, error_message);                 \
+        vty_out(vty, "%s\n", error_message);                        \
         return CMD_WARNING;                                         \
     } while (0)
 
@@ -79,8 +77,7 @@ cli_command_result (enum ovsdb_idl_txn_status status)
 #define ABORT_DB_TXN(txn, message)                             \
     do {                                                       \
         cli_do_config_abort(txn);                                   \
-        vty_out(vty, "database transaction aborted: %s: %d, %s\n",  \
-                __FILE__, __LINE__, message);                       \
+        vty_out(vty, "%s\n", message);                              \
         return CMD_SUCCESS;                                         \
     } while (0)
 
