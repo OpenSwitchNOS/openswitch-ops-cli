@@ -2,7 +2,7 @@
 /* BGP CLI implementation with OPS vtysh.
  *
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -4886,6 +4886,108 @@ DEFUN(no_neighbor_distribute_list,
     return CMD_SUCCESS;
 }
 
+struct ovsrec_prefix_list *
+get_neighbor_prefix_list(const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
+                       char *name, char *direction)
+{
+    struct ovsrec_prefix_list *plist = NULL;
+    char *direct, *pl_name;
+
+    int i;
+    for (i = 0; i < ovs_bgp_neighbor->n_prefix_lists; i++)
+    {
+        direct = ovs_bgp_neighbor->key_prefix_lists[i];
+        pl_name = ovs_bgp_neighbor->value_prefix_lists[i]->name;
+
+        if (!strcmp(name, pl_name) && !strcmp(direction, direct))
+        {
+            plist = ovs_bgp_neighbor->value_prefix_lists[i];
+            break;
+        }
+    }
+
+    return plist;
+}
+
+
+static int
+cli_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr, char *name, char *dir)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    const struct ovsrec_prefix_list *pl_row;
+    bool pl_found = false;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "No vrf found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ERRONEOUS_DB_TXN(txn, "No existing neighbor found");
+    }
+
+    /* Since neighbor exists, we need to check the prefix-list name and
+     *        direction to identify if it's a duplicate. */
+    if (get_neighbor_prefix_list(ovs_bgp_neighbor, name, dir)) {
+        ABORT_DB_TXN(txn, "Configuration exists");
+    }
+
+    /* Check if the specified prefix-list exists. */
+    OVSREC_PREFIX_LIST_FOR_EACH(pl_row, idl) {
+        if (!strcmp(pl_row->name, name)) {
+            pl_found = true;
+            break;
+        }
+    }
+
+    if (!pl_found) {
+        ERRONEOUS_DB_TXN(txn, "Prefix filter doesn't exist");
+    }
+
+    int num_entries = ovs_bgp_neighbor->n_prefix_lists;
+    char **direction = xmalloc(sizeof(*direction) * (num_entries+1));
+    struct ovsrec_prefix_list **pl_table_entry = xmalloc(sizeof(*pl_table_entry) *
+            (num_entries+1));
+
+    int i;
+    bool dir_found = false;
+    for (i = 0; i < num_entries; i++) {
+        direction[i] = ovs_bgp_neighbor->key_prefix_lists[i];
+        pl_table_entry[i] = ovs_bgp_neighbor->value_prefix_lists[i];
+        if (!strcmp(dir, direction[i])) {
+            pl_table_entry[i] = CONST_CAST(struct ovsrec_prefix_list*, pl_row);
+            dir_found = true;
+        }
+    }
+
+    if (!dir_found) {
+        direction[num_entries] = dir;
+        pl_table_entry[num_entries] = CONST_CAST(struct ovsrec_route_map*, pl_row);
+        num_entries++;
+    }
+
+    ovsrec_bgp_neighbor_set_prefix_lists(ovs_bgp_neighbor, direction,
+            pl_table_entry, num_entries);
+
+    free(direction);
+    free(pl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
+}
+
 DEFUN(neighbor_prefix_list,
       neighbor_prefix_list_cmd,
       NEIGHBOR_CMD2 "prefix-list WORD (in|out)",
@@ -4896,8 +4998,82 @@ DEFUN(neighbor_prefix_list,
       "Filter incoming updates\n"
       "Filter outgoing updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_neighbor_prefix_list_cmd_execute(NULL,
+                                              CONST_CAST(char*, argv[0]),
+                                              CONST_CAST(char*, argv[1]),
+                                              CONST_CAST(char*, argv[2]));
+}
+
+static int
+cli_no_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr,
+                                              char *dir)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+            ERRONEOUS_DB_TXN(txn, "No vrf found");
+        }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+                                                                    (int64_t)vty->index);
+    if (!bgp_router_context) {
+            ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
+        }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+            ERRONEOUS_DB_TXN(txn, "No existing neighbor found");
+        }
+
+    if (!ovs_bgp_neighbor->n_prefix_lists) {
+            ABORT_DB_TXN(txn, "No existing neighbor prefix-list to unset");
+        }
+
+    /* Check to see if a prefix-list is configured for the direction. */
+    int num_entries = ovs_bgp_neighbor->n_prefix_lists;
+    char **direction = xmalloc(sizeof(*direction) * num_entries);
+    struct ovsrec_prefix_list **pl_table_entry = xmalloc(sizeof(*pl_table_entry) * num_entries);
+    char *direct;
+
+    int i, j;
+    bool dir_found = false;
+    for (i = 0, j = 0; i < num_entries; i++) {
+            direct = ovs_bgp_neighbor->key_prefix_lists[i];
+
+            if (!strcmp(dir, direct)) {
+                        /* If found, then we skip adding this prefix-list configuration. */
+                        dir_found = true;
+                        num_entries--;
+                        continue;
+                    } else {
+                                /* This is not the entry we are deleting, so make sure it remains
+                                 *                in the ovsdb. */
+                                direction[j] = direct;
+                                pl_table_entry[j++] = ovs_bgp_neighbor->value_prefix_lists[i];
+                            }
+        }
+
+    if (!dir_found) {
+            free(direction);
+            free(pl_table_entry);
+            ABORT_DB_TXN(txn, "neighbor prefix-list for the direction doesn't exist");
+        }
+
+    ovsrec_bgp_neighbor_set_prefix_lists (ovs_bgp_neighbor, direction, pl_table_entry,
+                                          num_entries);
+
+    free(direction);
+    free(pl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
 }
 
 DEFUN(no_neighbor_prefix_list,
@@ -4911,9 +5087,11 @@ DEFUN(no_neighbor_prefix_list,
       "Filter incoming updates\n"
       "Filter outgoing updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_neighbor_prefix_list_cmd_execute(NULL,
+                                                 CONST_CAST(char*, argv[0]),
+                                                 CONST_CAST(char*, argv[2]));
 }
+
 
 DEFUN(neighbor_filter_list,
       neighbor_filter_list_cmd,
@@ -4966,6 +5144,7 @@ get_neighbor_route_map(const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
 
     return rt_map;
 }
+
 
 static int
 cli_neighbor_route_map_cmd_execute(char *vrf_name, char *ipAddr, char *name,
