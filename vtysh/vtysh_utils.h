@@ -117,5 +117,6 @@ typedef unsigned char boolean;
          (*(const u_int32_t *)(const void *)(&(a)->s6_addr[8]) == ntohl(0x0000ffff)))
 #endif /* IN6_IS_ADDR_V4MAPPED */
 
-
+/*Common CLI Macro */
+#define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
 #endif /* _VTYSH_UTILS_H  */
