@@ -36,9 +36,9 @@
 #define TRACEROUTE_HOST \
 "Enter Hostname of the device to traceroute\n"
 #define TRACEROUTE_MAXTTL \
-"Maximum time to live <1-255>\n"
+"Specify maximum number of hops to reach the destination <1-255>\n"
 #define TRACEROUTE_MINTTL \
-"Minimum time to live <1-255>\n"
+"Specify minimum number of hops to reach the destination <1-255>\n"
 #define TRACEROUTE_TIMEOUT \
 "Traceroute timeout in seconds <1-60>\n"
 #define TRACEROUTE_PROBES \
@@ -48,9 +48,9 @@
 #define TRACEROUTE_IP_OPTION \
 "Specify the IP option\n"
 #define TRACEROUTE_LOOSEROUTE \
-"Loose Source Route\n"
+"Specify the route for loose source record route\n"
 #define LOOSEIP \
-"Enter the IP for looseroute\n"
+"Enter intermediate router's IP address for loose source routing\n"
 #define MAXTTL_INPUT \
 "Enter maximum TTL value (default: 30)\n"
 #define MINTTL_INPUT \
