@@ -548,6 +548,9 @@ ovsdb_init(const char *db_path)
     /* Add hostname columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
+    /* Add domain name column */
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_domain_name);
+
     /* Add AAA columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_aaa);
 
@@ -653,6 +656,91 @@ vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
 
     return;
 }
+
+/*
+ * The set command to set the domain_name column in the
+ * system table from the set-domainname command.
+ */
+void
+vtysh_ovsdb_domainname_set(const char* in)
+{
+    const struct ovsrec_system *ovs= NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status = TXN_ERROR;
+    ovs = ovsrec_system_first(idl);
+    if (ovs) {
+        status_txn = cli_do_config_start();
+        if(status_txn == NULL) {
+            cli_do_config_abort(status_txn);
+            VLOG_ERR("Couldn't create the OVSDB transaction.");
+        } else {
+            ovsrec_system_set_domain_name(ovs, in);
+            status = cli_do_config_finish(status_txn);
+        }
+        if(!(status == TXN_SUCCESS || status == TXN_UNCHANGED))
+            VLOG_ERR("Committing transaction to DB failed.");
+    } else {
+        VLOG_ERR("unable to retrieve any system table rows");
+    }
+}
+
+/*
+ * Name : vtysh_ovsdb_domainname_reset
+ * Responsibility : To unset domain name set by CLI.
+ * Parameters : char *domainname_arg : Stores user's input value
+ * Return : CMD_SUCCESS for success, CMD_OVSDB_FAILURE for failure
+ */
+int
+vtysh_ovsdb_domainname_reset(char *domainname_arg)
+{
+    const struct ovsrec_system *row = NULL;
+    const struct ovsdb_datum *data = NULL;
+    char *ovsdb_domainname = NULL;
+    row = ovsrec_system_first(idl);
+
+    if (row != NULL)
+    {
+        data = ovsrec_system_get_domain_name(row, OVSDB_TYPE_STRING);
+        ovsdb_domainname = data->keys->string;
+
+        if ((ovsdb_domainname != "") && (strcmp(ovsdb_domainname, domainname_arg) == 0))
+        {
+            vtysh_ovsdb_domainname_set("");
+	}
+        else
+        {
+            vty_out(vty, "Domainname %s not configured. %s", domainname_arg,
+                                                               VTY_NEWLINE);
+        }
+    }
+    else
+    {
+        vty_out(vty, "Error in retrieving domainname.%s", VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+    return CMD_SUCCESS;
+}
+
+/*
+ * The get command to read from the ovsdb system table
+ * domain_name column from the vtysh get-domain_name command.
+ */
+
+const char*
+vtysh_ovsdb_domainname_get()
+{
+    const struct ovsrec_system *ovs;
+    ovs = ovsrec_system_first(idl);
+
+    if (ovs) {
+      return smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_DOMAIN_NAME);
+    } else {
+      VLOG_ERR("unable to  retrieve any system table rows");
+    }
+
+    return NULL;
+}
+
 
 /*
  * The get command to read from the ovsdb system table
