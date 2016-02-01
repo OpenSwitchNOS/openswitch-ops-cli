@@ -34,6 +34,12 @@ const char *vtysh_ovsdb_os_name_get(void);
 
 const char *vtysh_ovsdb_switch_version_get(void);
 
+void vtysh_ovsdb_domainname_set(const char * in);
+
+int vtysh_ovsdb_domainname_reset(char *domainname_arg);
+
+const char* vtysh_ovsdb_domainname_get(void);
+
 void vtysh_ovsdb_hostname_set(const char * in);
 
 int vtysh_ovsdb_hostname_reset(char *hostname_arg);
