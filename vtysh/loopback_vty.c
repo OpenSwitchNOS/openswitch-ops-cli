@@ -133,6 +133,8 @@ DEFUN (vtysh_loopback_interface,
         iface_list[0] = (struct ovsrec_interface *)intf_row;
         ovsrec_port_set_interfaces(port_row, iface_list, 1);
         free(iface_list);
+        ovsrec_port_set_admin(port_row,
+                        OVSREC_INTERFACE_ADMIN_STATE_UP);
 
         OVSREC_VRF_FOR_EACH (vrf_row, idl)
         {
@@ -684,7 +686,9 @@ DEFUN (cli_intf_show_intferface_loopback_if,
 
         ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
 
-        vty_out (vty, "Interface %s is %s ", ifrow->name, ifrow->link_state);
+        vty_out (vty, "Interface %s is %s ", ifrow->name,
+                 OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
+
         if ((NULL != ifrow->admin_state)
                 && strcmp(ifrow->admin_state,
                         OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
@@ -709,8 +713,6 @@ DEFUN (cli_intf_show_intferface_loopback_if,
         {
             intVal = datum->keys[0].integer;
         }
-
-        vty_out(vty, " MTU %ld %s", intVal, VTY_NEWLINE);
 
         datum = ovsrec_interface_get_statistics(ifrow,
                 OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);

@@ -681,8 +681,10 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
         vty_out(vty, "routed "); /* mode - routed or not */
 
         vty_out (vty, "%-6s ",
-                (strcmp(if_parent_row->link_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) ?
+                ((strcmp(if_parent_row->link_state,
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
+                (strcmp(ifrow->admin_state,
+                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN))) ?
                 ifrow->link_state :
                 if_parent_row->link_state);
 
@@ -720,10 +722,11 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
         intVal = 0;
 
         vty_out (vty, "Interface %s is %s ", ifrow->name,
-                (strcmp(if_parent_row->link_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) ?
-                ifrow->link_state :
-                if_parent_row->link_state);
+                ((strcmp(if_parent_row->link_state,
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
+                (smap_get(&ifrow->user_config, "admin") != NULL)) ?
+                OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP :
+                OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN);
 
         if ((NULL != ifrow->admin_state)
                 && strcmp(ifrow->admin_state,
