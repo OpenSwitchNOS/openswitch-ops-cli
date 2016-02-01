@@ -29,6 +29,7 @@
 #define VTYSH_OVSDB_CONFIG_H
 
 #include "vty.h"
+#include <stdbool.h>
 
 /* general vtysh return type */
 typedef enum vtysh_ret_val_enum
@@ -160,6 +161,9 @@ typedef struct vtysh_ovsdb_cbmsg_struct
   struct ovsdb_idl *idl;
   vtysh_contextid contextid;
   int clientid;
+  bool disp_header_cfg;
+  void  *feature_row;
+  bool skip_subcontext_list;
 }vtysh_ovsdb_cbmsg;
 
 typedef struct vtysh_ovsdb_cbmsg_struct *vtysh_ovsdb_cbmsg_ptr;
@@ -223,5 +227,32 @@ struct ovsdb_idl_txn * cli_do_config_start(void);
 enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* txn);
 
 void cli_do_config_abort(struct ovsdb_idl_txn* txn);
+
+struct vtysh_context_feature_row_list {
+    void * row;
+    struct vtysh_context_feature_row_list *next;
+};
+typedef struct vtysh_context_feature_row_list feature_row_list;
+
+struct vtysh_contextlist_struct {
+    int index;
+    vtysh_ret_val (*vtysh_context_callback) (void* p_private);
+    feature_row_list * (*context_callback_init) (void* p_private);
+    void (*context_callback_exit) (feature_row_list * row_list);
+    struct vtysh_contextlist_struct * subcontext_list;
+    struct vtysh_contextlist_struct * next;
+};
+
+typedef struct vtysh_contextlist_struct vtysh_contextlist;
+
+void install_show_run_config_context(vtysh_contextid index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          feature_row_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (feature_row_list * head));
+void install_show_run_config_subcontext(vtysh_contextid index,
+                          vtysh_contextid subcontext_index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          feature_row_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (feature_row_list * head));
 
 #endif /* VTYSH_OVSDB_CONFIG_H */

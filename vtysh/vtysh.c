@@ -2625,6 +2625,23 @@ DEFUN (vtysh_show_running_config,
    return CMD_SUCCESS;
 }
 
+DEFUN_HIDDEN (vtysh_show_running_config_new,
+       vtysh_show_running_config_new_cmd,
+       "show test-running-config",
+       SHOW_STR
+       "Current running configuration\n")
+{
+   FILE *fp = NULL;
+
+   fp = stdout;
+   if (!vtysh_show_startup)
+   {
+       fprintf(fp, "Current configuration:\n");
+   }
+
+   vtysh_sh_run_iteratecontextlist(fp);
+   return CMD_SUCCESS;
+}
 
 DEFUN_HIDDEN (vtysh_show_context_client_list,
               vtysh_show_context_client_list_cmd,
@@ -4547,6 +4564,7 @@ vtysh_init_vty (void)
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
+   install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_vlan_cmd);
    install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);

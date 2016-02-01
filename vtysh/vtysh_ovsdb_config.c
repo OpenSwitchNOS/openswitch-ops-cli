@@ -42,6 +42,7 @@ VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
 #define MAX_WAIT_LOOPCNT 1000
 extern struct ovsdb_idl *idl;
+static vtysh_contextlist * contextlist_head_node = NULL;
 
 /* vtysh context client list defintions */
 vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {{NULL}};
@@ -323,6 +324,95 @@ vtysh_context_removeclient(vtysh_contextid contextid,
 }
 
 /*-----------------------------------------------------------------------------
+| Function: vtysh_sh_run_iteratecontextlist
+| Responsibility : Iterates over the show running context callback list.
+| Parameters:
+|     ip: File pointer to write data to.
+| Return:
+|     vtysh_ret_val: e_vtysh_ok if context callback invoked successfully
+|                    else e_vtysh_error.
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_sh_run_iteratecontextlist(FILE *fp)
+{
+    vtysh_contextlist *current = contextlist_head_node;
+    vtysh_contextlist *subcontext_list;
+    vtysh_ovsdb_cbmsg msg;
+    const struct ovsrec_interface *ifrow;
+    feature_row_list *row_list = NULL;
+    feature_row_list *temp_row_list= NULL;
+
+    VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl,
+             ovsdb_idl_get_seqno(idl));
+
+    msg.fp = fp;
+    msg.idl = idl;
+    msg.contextid = 0;
+    msg.clientid = 0;
+
+    VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl,
+             ovsdb_idl_get_seqno(idl));
+    fprintf(fp, "!\n");
+
+    while (current != NULL)
+    {
+        row_list = NULL;
+        if (current->context_callback_init != NULL)
+            row_list = current->context_callback_init(&msg);
+
+        temp_row_list = row_list;
+        do {
+            if (temp_row_list != NULL)
+                msg.feature_row = temp_row_list->row;
+
+            msg.disp_header_cfg = false;
+            msg.skip_subcontext_list= false;
+
+            if (current->vtysh_context_callback != NULL &&
+                e_vtysh_ok != current->vtysh_context_callback(&msg)) {
+                VLOG_ERR("Error in callback function with context id: %d\n",
+                         current->index);
+                return e_vtysh_ok;
+            }
+
+            /* Skip iteration over sub-context list. */
+            if (msg.skip_subcontext_list) {
+                msg.feature_row = NULL;
+                if (temp_row_list != NULL)
+                    temp_row_list = temp_row_list->next;
+                continue;
+            }
+
+            /* Iterate over sub-context list. */
+            subcontext_list = current->subcontext_list;
+            while (subcontext_list != NULL)
+            {
+                if (subcontext_list->vtysh_context_callback != NULL &&
+                    e_vtysh_ok != subcontext_list->vtysh_context_callback(&msg))
+                {
+                    VLOG_ERR("Error in subcontext callback function with"
+                             "subcontext id: %d\n", subcontext_list->index);
+                    return e_vtysh_ok;
+                }
+                subcontext_list = subcontext_list->next;
+            }
+
+            msg.feature_row = NULL;
+            if (temp_row_list != NULL)
+                temp_row_list = temp_row_list->next;
+
+        } while (temp_row_list != NULL);
+
+        if (current->context_callback_exit != NULL)
+            current->context_callback_exit(row_list);
+
+        current = current->next;
+    }
+    return e_vtysh_ok;
+}
+
+
+/*-----------------------------------------------------------------------------
 | Function: vtysh_context_iterateoverclients
 | Responsibility : iterates over the client callback for given contextid
 | Parameters:
@@ -527,4 +617,122 @@ vtysh_ovsdb_init_clients(void)
   vtysh_init_source_interface_context_clients();
   vtysh_init_dhcp_tftp_context_clients();
   vtysh_init_sftp_context_clients();
+}
+
+
+/*---------------------------------------------------------------------------
+| Function: install_show_run_config_context.
+| Responsibility: Registers running-config context with OPS-CLI.
+|                 Context to added to running-confif context list.
+| Parameters:
+|     index: running-config context id to be registered.
+|     funcptr: running-config context callback function pointer
+|     init_funcptr: To initialize anything required before
+|                   calling context callback function.
+|     exit_funcptr: To cleanup initialization done in init_funcptr.
+| Return: void
+---------------------------------------------------------------------------*/
+void
+install_show_run_config_context(vtysh_contextid index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          feature_row_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (feature_row_list * head))
+{
+    vtysh_contextlist *current;
+    vtysh_contextlist *new_node = (vtysh_contextlist *)
+                                malloc (sizeof(vtysh_contextlist));
+    new_node->index = index;
+    new_node->vtysh_context_callback = funcptr;
+    new_node->context_callback_init = init_funcptr;
+    new_node->context_callback_exit = exit_funcptr;
+    new_node->subcontext_list = NULL;
+
+    if (contextlist_head_node == NULL ||
+        contextlist_head_node->index > new_node->index)
+    {
+        new_node->next = contextlist_head_node;
+        contextlist_head_node = new_node;
+    }
+    else
+    {
+        current = contextlist_head_node;
+        while (current->next != NULL &&
+               current->next->index <= new_node->index)
+            current = current->next;
+
+        if (current->index != new_node->index)
+        {
+            new_node->next = current->next;
+            current->next = new_node;
+        }
+    }
+}
+
+
+/*---------------------------------------------------------------------------
+| Function: install_show_run_config_subcontext.
+| Responsibility: Registers sub-context with running-config context.
+|                 Sub-context is added to sub-context list.
+| Parameters:
+|     index: running-config context id to be registered.
+|     subcontext_index: subcontext id to be registered.
+|     funcptr: running-config context callback function pointer
+|     init_funcptr: To initialize anything required before
+|                   calling context callback function.
+|     exit_funcptr: To cleanup initialization done in init_funcptr.
+| Return: void
+---------------------------------------------------------------------------*/
+void
+install_show_run_config_subcontext(vtysh_contextid index,
+                          vtysh_contextid subcontext_index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          feature_row_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (feature_row_list * head))
+{
+    vtysh_contextlist *current, *new_node, *temp;
+
+    if (contextlist_head_node == NULL)
+    {
+        VLOG_ERR("No parent context to add subcontext\n");
+        return;
+    }
+    else
+    {
+        current = contextlist_head_node;
+        while (current->next != NULL &&
+               current->index != index)
+            current = current->next;
+
+        if (current->next == NULL && current->index != index)
+        {
+            printf("No parent context to add child context\n");
+            return;
+        }
+        new_node = (vtysh_contextlist *) malloc (sizeof(vtysh_contextlist));
+        new_node->index = subcontext_index;
+        new_node->vtysh_context_callback = funcptr;
+        new_node->context_callback_init = NULL;
+        new_node->context_callback_exit = NULL;
+        new_node->subcontext_list = NULL;
+
+        if (current->subcontext_list == NULL ||
+            current->subcontext_list->index > new_node->index)
+        {
+            new_node->next = current->subcontext_list;
+            current->subcontext_list = new_node;
+        }
+        else
+        {
+            temp = current->subcontext_list;
+            while (temp->next != NULL &&
+                   temp->next->index <= new_node->index)
+                temp = temp->next;
+
+            if (temp->index != new_node->index)
+            {
+                new_node->next = temp->next;
+                temp->next = new_node;
+            }
+        }
+    }
 }
