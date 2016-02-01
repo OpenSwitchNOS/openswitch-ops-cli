@@ -632,15 +632,41 @@ DEFUN(cli_intf_no_vlan_access,
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
     const struct ovsrec_interface *intf_row = NULL;
+    const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0;
+    int i = 0, found_vlan = 0;
+    int vlan_id = atoi((char *) argv[0]);
 
     if (NULL == status_txn)
     {
         VLOG_ERR("Failed to create transaction. Function:%s, Line:%d", __func__, __LINE__);
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_ACCESS_ERROR, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    vlan_row = ovsrec_vlan_first(idl);
+    if (NULL == vlan_row)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+    {
+        if (vlan_row->id == vlan_id)
+        {
+            found_vlan = 1;
+            break;
+        }
+    }
+
+    if (0 == found_vlan)
+    {
+        vty_out(vty, "VLAN %d is not configured%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
@@ -695,14 +721,21 @@ DEFUN(cli_intf_no_vlan_access,
         return CMD_SUCCESS;
     }
 
-    if (NULL != vlan_port_row->vlan_mode &&
-        strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) != 0)
-    {
+    if(NULL == vlan_port_row->vlan_mode){
         vty_out(vty, "The interface is not in access mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
+    if(vlan_port_row->tag[0]!=vlan_id)
+    {
+        vty_out(vty, "VLAN %d is not configured in interface access mode%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    ovsrec_port_set_vlan_mode(vlan_port_row, NULL);
+    
     int64_t* trunks = NULL;
     int trunk_count = 0;
     ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
