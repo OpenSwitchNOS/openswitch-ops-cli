@@ -146,4 +146,8 @@ cli_command_result (enum ovsdb_idl_txn_status status)
 
 void ospf_vty_init (void);
 
+/* OSPF KEYS */
+
+#define OSPF_KEY_STUB_ROUTER_STATE_ACTIVE       "stub_router_state_active"
+
 #endif /* _OSPF_VTY_H */

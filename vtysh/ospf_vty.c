@@ -326,7 +326,7 @@ ospf_nbr_options_print (const struct ovsrec_ospf_neighbor* nbr_row)
  * Find the vrf with matching the name.
  */
 static const struct ovsrec_vrf*
-ospf_get_ovsrec_vrf_with_name(char *name)
+ospf_get_vrf_by_name(char *name)
 {
     const struct ovsrec_vrf* vrf_row = NULL;
 
@@ -352,20 +352,27 @@ ospf_area_remove_from_router(const struct ovsrec_ospf_router *ospf_router_row,
     int64_t *area;
     struct ovsrec_ospf_area **area_list;
     int i = 0, j;
+    bool is_present = false;
 
     /* Remove OSPF_area table reference in OSPF_Router table. */
-    area = xmalloc(sizeof(int64_t) * (ospf_router_row->n_areas - 1));
+    area = xmalloc(sizeof(int64_t) * (ospf_router_row->n_areas));
     area_list = xmalloc(sizeof * ospf_router_row->key_areas *
-                              (ospf_router_row->n_areas - 1));
+                        (ospf_router_row->n_areas));
     for (i = 0, j = 0; i < ospf_router_row->n_areas; i++) {
         if(ospf_router_row->key_areas[i] !=  area_id) {
             area[j] = ospf_router_row->key_areas[i];
             area_list[j] = ospf_router_row->value_areas[i];
             j++;
         }
+        else
+        {
+            is_present = true;
+        }
     }
-    ovsrec_ospf_router_set_areas(ospf_router_row, area, area_list,
-                               (ospf_router_row->n_areas - 1));
+
+    if (is_present == true)
+        ovsrec_ospf_router_set_areas(ospf_router_row, area, area_list,
+                                   (ospf_router_row->n_areas - 1));
 
     free(area);
     free(area_list);
@@ -415,10 +422,11 @@ ospf_neighbor_remove_from_interface(const struct
 {
     struct ovsrec_ospf_neighbor **ospf_nbr_list;
     int i = 0, j = 0;
+    bool is_present = false;
 
     /* Insert OSPF_Router table reference in VRF table. */
     ospf_nbr_list = xmalloc(sizeof * interface_row->neighbors *
-                    (interface_row->n_neighbors - 1));
+                            (interface_row->n_neighbors));
     for (i = 0; i < interface_row->n_neighbors; i++)
     {
         if (interface_row->neighbors[i] != ospf_nbr_row)
@@ -426,13 +434,15 @@ ospf_neighbor_remove_from_interface(const struct
             ospf_nbr_list[j] = interface_row->neighbors[i];
             j++;
         }
+        else
+        {
+            is_present = true;
+        }
     }
 
-    /* Update the reference. */
-    ospf_nbr_list[interface_row->n_neighbors] =
-                      CONST_CAST(struct ovsrec_ospf_neighbor*, ospf_nbr_row);
-    ovsrec_ospf_interface_set_neighbors(interface_row, ospf_nbr_list,
-                               (interface_row->n_neighbors - 1));
+    if (is_present == true)
+        ovsrec_ospf_interface_set_neighbors(interface_row, ospf_nbr_list,
+                                            (interface_row->n_neighbors - 1));
 
     free(ospf_nbr_list);
 }
@@ -471,7 +481,7 @@ ospf_router_insert_to_vrf(const struct ovsrec_vrf *vrf_row,
 void
 ospf_router_tbl_default(const struct ovsrec_ospf_router *ospf_router_row)
 {
-    struct smap smap = SMAP_INITIALIZER(&smap);
+    struct smap smap;
     const bool passive_intf_default = false;
     char *keys[OSPF_NUM_SPF_KEYS];
     int64_t values[OSPF_NUM_SPF_KEYS];
@@ -483,7 +493,6 @@ ospf_router_tbl_default(const struct ovsrec_ospf_router *ospf_router_row)
 
     if (ospf_router_row == NULL)
     {
-        smap_destroy(&smap);
         return;
     }
 
@@ -491,6 +500,7 @@ ospf_router_tbl_default(const struct ovsrec_ospf_router *ospf_router_row)
     smap_init(&smap);
     smap_add(&smap, OSPF_KEY_ROUTER_ID_STATIC, OSPF_ROUTER_ID_STATIC_DEFAULT);
     ovsrec_ospf_router_set_router_id(ospf_router_row, &smap);
+    smap_destroy(&smap);
 
     /* Distance */
     distance_keys[OSPF_ROUTER_DISTANCE_ALL]          = OSPF_KEY_DISTANCE_ALL;
@@ -517,6 +527,7 @@ ospf_router_tbl_default(const struct ovsrec_ospf_router *ospf_router_row)
     smap_add(&smap, OSPF_KEY_DEFAULT_INFO_ORIG, OSPF_DEFAULT_INFO_ORIG_DEFAULT);
     smap_add(&smap, OSPF_KEY_ALWAYS, OSPF_ALWAYS_DEFAULT);
     ovsrec_ospf_router_set_default_information(ospf_router_row, &smap);
+    smap_destroy(&smap);
 
     /* Passive-interface-default */
     ovsrec_ospf_router_set_passive_interface_default(ospf_router_row,
@@ -546,11 +557,13 @@ ospf_router_tbl_default(const struct ovsrec_ospf_router *ospf_router_row)
     smap_add(&smap, OSPF_KEY_ENABLE_OPAQUE_LSA,
                 OSPF_ENABLE_OPAQUE_LSA_DEFAULT);
     ovsrec_ospf_router_set_other_config(ospf_router_row, &smap);
+    smap_destroy(&smap);
 
     /* Stub router configurations */
     smap_init(&smap);
     smap_add(&smap, OSPF_KEY_ROUTER_STUB_ADMIN, "false");
     ovsrec_ospf_router_set_stub_router_adv(ospf_router_row, &smap);
+    smap_destroy(&smap);
 
     /* LSA timers */
     lsa_keys[OSPF_LSA_ARRIVAL_INTERVAL]    = OSPF_KEY_ARRIVAL_INTERVAL;
@@ -560,7 +573,6 @@ ospf_router_tbl_default(const struct ovsrec_ospf_router *ospf_router_row)
     ovsrec_ospf_router_set_lsa_timers(ospf_router_row, lsa_keys,
                                         lsa_values, OSPF_NUM_LSA_TIMER_KEYS);
 
-    smap_destroy(&smap);
 }
 
 /* "router ospf" command handler. */
@@ -574,7 +586,7 @@ ospf_router_cmd_execute(char *vrf_name, int64_t instance_tag)
     /* Start of transaction. */
     OSPF_START_DB_TXN(ospf_router_txn);
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = ospf_get_vrf_by_name(vrf_name);
     if (vrf_row == NULL)
     {
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF not found");
@@ -603,11 +615,12 @@ ospf_router_remove_from_vrf(const struct ovsrec_vrf *vrf_row,
     int64_t *instance_list;
     struct ovsrec_ospf_router **ospf_routers_list;
     int i, j;
+    bool is_present = false;
 
     /* Remove OSPF_Router table reference in VRF table. */
-    instance_list = xmalloc(sizeof(int64_t) * (vrf_row->n_ospf_routers - 1));
+    instance_list = xmalloc(sizeof(int64_t) * (vrf_row->n_ospf_routers));
     ospf_routers_list = xmalloc(sizeof * vrf_row->key_ospf_routers *
-                              (vrf_row->n_ospf_routers - 1));
+                                (vrf_row->n_ospf_routers));
 
     for (i = 0, j = 0; i < vrf_row->n_ospf_routers; i++)
     {
@@ -617,10 +630,15 @@ ospf_router_remove_from_vrf(const struct ovsrec_vrf *vrf_row,
             ospf_routers_list[j] = vrf_row->value_ospf_routers[i];
             j++;
         }
+        else
+        {
+            is_present = true;
+        }
     }
 
-    ovsrec_vrf_set_ospf_routers(vrf_row, instance_list, ospf_routers_list,
-                               (vrf_row->n_ospf_routers - 1));
+    if (is_present == true)
+        ovsrec_vrf_set_ospf_routers(vrf_row, instance_list, ospf_routers_list,
+                                   (vrf_row->n_ospf_routers - 1));
 
     free(instance_list);
     free(ospf_routers_list);
@@ -634,10 +652,11 @@ ospf_interface_remove_from_area(const struct ovsrec_ospf_area *area_row,
 {
     struct ovsrec_ospf_interface **ospf_interface_list;
     int i, j;
+    bool is_present = false;
 
     /* Remove OSPF_Router table reference in VRF table. */
     ospf_interface_list = xmalloc(sizeof * area_row->ospf_interfaces *
-                              (area_row->n_ospf_interfaces - 1));
+                                  (area_row->n_ospf_interfaces));
     for (i = 0, j = 0; i < area_row->n_ospf_interfaces; i++)
     {
         if (area_row->ospf_interfaces[i] != interface_row)
@@ -645,9 +664,15 @@ ospf_interface_remove_from_area(const struct ovsrec_ospf_area *area_row,
             ospf_interface_list[j] = area_row->ospf_interfaces[i];
             j++;
         }
+        else
+        {
+            is_present = true;
+        }
     }
-    ovsrec_ospf_area_set_ospf_interfaces(area_row, ospf_interface_list,
-                               (area_row->n_ospf_interfaces - 1));
+
+    if (is_present == true)
+        ovsrec_ospf_area_set_ospf_interfaces(area_row, ospf_interface_list,
+                                   (area_row->n_ospf_interfaces - 1));
     free(ospf_interface_list);
 }
 
@@ -668,7 +693,7 @@ ospf_no_router_cmd_execute(char *vrf_name, int64_t instance_id)
     /* Start of transaction. */
     OSPF_START_DB_TXN(ospf_router_txn);
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = ospf_get_vrf_by_name(vrf_name);
     if (vrf_row == NULL) {
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found");
     }
@@ -710,8 +735,8 @@ ospf_no_router_cmd_execute(char *vrf_name, int64_t instance_id)
     }
 
         /* Delete the ospf row for matching instance id. */
-        ovsrec_ospf_router_delete(ospf_router_row);
         ospf_router_remove_from_vrf(vrf_row, instance_id);
+        ovsrec_ospf_router_delete(ospf_router_row);
 
 
     /* End of transaction. */
@@ -729,7 +754,6 @@ ospf_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
     struct ovsdb_idl_txn *ospf_router_txn=NULL;
     struct smap smap = SMAP_INITIALIZER(&smap);
 
-    smap_init(&smap);
     memset (&id, 0, sizeof (struct in_addr));
 
     /* convert the router id format to integer. */
@@ -748,7 +772,7 @@ ospf_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
 
         VLOG_DBG("vty_index for router_id: %ld\n",(int64_t)vty->index);
 
-        vrf_row = ospf_get_ovsrec_vrf_with_name(vrf_name);
+        vrf_row = ospf_get_vrf_by_name(vrf_name);
         if (vrf_row == NULL) {
             OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found.");
         }
@@ -758,10 +782,14 @@ ospf_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
         get_ovsrec_ospf_router_with_instance_id(vrf_row, (int64_t)vty->index);
 
         /* If does not exist, nothing to modify. */
-        if (ospf_router_row == NULL) {
+        if (ospf_router_row == NULL)
+		{
             OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not found.");
-        } else {
+        }
+		else
+		{
             /* Set the router-id with matching instance id. */
+            smap_clone(&smap, &ospf_router_row->router_id);
             smap_add(&smap, OSPF_KEY_ROUTER_ID_VAL, inet_ntoa(id));
             smap_add(&smap, OSPF_KEY_ROUTER_ID_STATIC, "true");
             ovsrec_ospf_router_set_router_id(ospf_router_row, &smap);
@@ -790,14 +818,12 @@ ospf_no_router_id_cmd_execute(char *vrf_name)
     struct ovsdb_idl_txn *ospf_router_txn=NULL;
     struct smap smap = SMAP_INITIALIZER(&smap);
 
-    smap_init(&smap);
-
     /* Start of transaction. */
     OSPF_START_DB_TXN(ospf_router_txn);
 
     VLOG_DBG("vty_index for router_id: %ld\n",(int64_t)vty->index);
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = ospf_get_vrf_by_name(vrf_name);
     if (vrf_row == NULL) {
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found.");
     }
@@ -809,7 +835,8 @@ ospf_no_router_id_cmd_execute(char *vrf_name)
     if (ospf_router_row == NULL) {
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not found.");
     } else {
-        /* Unset the router-id with matching asn. */
+        /* Unset the router-id. */
+        smap_clone(&smap, &ospf_router_row->router_id);
         smap_remove(&smap, OSPF_KEY_ROUTER_ID_VAL);
         smap_add(&smap, OSPF_KEY_ROUTER_ID_STATIC, "false");
         ovsrec_ospf_router_set_router_id(ospf_router_row, &smap);
@@ -966,28 +993,33 @@ ospf_network_remove_from_ospf_router(
     int64_t *area_list;
     char **network_list;
     int i, j;
+    bool is_present = false;
 
     network_list =
-        xmalloc(80 * (ospf_router_row->n_networks - 1));
+        xmalloc(OSPF_NETWORK_RANGE_LEN * ospf_router_row->n_networks);
     area_list =
         xmalloc(sizeof * ospf_router_row->value_networks *
-                (ospf_router_row->n_networks - 1));
+                (ospf_router_row->n_networks));
 
     for (i = 0, j = 0; i < ospf_router_row->n_networks; i++) {
-        if (ospf_router_row->value_networks[i] == area_id) {
+        if (ospf_router_row->value_networks[i] != area_id) {
             network_list[j] =
                 ospf_router_row->key_networks[i];
             area_list[j] =
                 ospf_router_row->value_networks[i];
             j++;
         }
+        else
+        {
+            is_present = true;
+        }
     }
 
-    ovsrec_ospf_router_set_networks(ospf_router_row,
+    if (is_present == true)
+        ovsrec_ospf_router_set_networks(ospf_router_row,
                                         network_list,
                                         area_list,
-                                        (ospf_router_row->n_networks -
-                                        1));
+                                        (ospf_router_row->n_networks - 1));
     free(network_list);
     free(area_list);
 }
@@ -1006,6 +1038,9 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
     int i = 0, j = 0;
 
     /* TO DO: Check the validity of network range.*/
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
 
     OVSREC_OSPF_ROUTER_FOR_EACH(ospf_router_row,idl)
     {
@@ -1030,7 +1065,7 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
         }
     }
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(DEFAULT_VRF_NAME);
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     if (vrf_row == NULL)
     {
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found.");
@@ -1040,14 +1075,10 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
     ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
                                                               instance_id);
 
-    /* If does not exist, create a new one. */
     if (ospf_router_row == NULL)
     {
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not found.");
     }
-
-    /* Start of transaction. */
-    OSPF_START_DB_TXN(ospf_router_txn);
 
     if (!no_flag)
     {
@@ -1115,6 +1146,14 @@ ospf_one_area_show(struct vty *vty,int64_t area_id,
     {
         vty_out(vty, "    Number of interfaces in this area: Total: %d,"
             " Active:0 %s", ospf_area_row->n_ospf_interfaces, VTY_NEWLINE);
+    }
+
+    /* Stub-router state for this area */
+    val = smap_get(&ospf_area_row->status, OSPF_KEY_STUB_ROUTER_STATE_ACTIVE);
+    if(val && (strcmp(val, "true") == 0))
+    {
+        vty_out(vty, "   Originating stub / maximum-distance Router-LSA "
+                     "is active%s", VTY_NEWLINE);
     }
 
     /* Fully adjacent neighbors */
@@ -1321,7 +1360,7 @@ ospf_get_SPF_calc_from_router(const struct ovsrec_ospf_router*
 }
 
 void
-ospf_ip_router_show(int br_flag)
+ospf_ip_router_show()
 {
     const struct ovsrec_ospf_router *ospf_router_row;
     const struct ovsrec_vrf *vrf_row;
@@ -1329,7 +1368,7 @@ ospf_ip_router_show(int br_flag)
     int64_t instance_tag = 1;
     int64_t int_val = 0;
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(DEFAULT_VRF_NAME);
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
 
     /* See if it already exists. */
     ospf_router_row =
@@ -1337,13 +1376,6 @@ ospf_ip_router_show(int br_flag)
     if (ospf_router_row == NULL)
     {
         vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
-        return;
-    }
-
-    /* Display only border router information */
-    if (br_flag == true)
-    {
-        /* To be implemented */
         return;
     }
 
@@ -1402,13 +1434,24 @@ ospf_ip_router_show(int br_flag)
         vty_out(vty, " %s", VTY_NEWLINE);
     }
 
-    /* Stub Startup  time */
+    val = smap_get(&ospf_router_row->stub_router_adv,
+                   OSPF_KEY_ROUTER_STUB_ADMIN);
+    if (val)
+    {
+        vty_out (vty, "  Stub router advertisement is configured "
+                      "administratively%s", VTY_NEWLINE);
+    }
+
+    /* Stub Startup time */
     int_val = smap_get_int(&ospf_router_row->stub_router_adv,
                            OSPF_KEY_ROUTER_STUB_ADV_STARTUP, 0);
     if(int_val)
     {
+       vty_out (vty, "  Stub router advertisement is configured%s",
+                VTY_NEWLINE);
+
        vty_out(vty, "      Enabled for %ds after start-up%s", int_val,
-            VTY_NEWLINE);
+               VTY_NEWLINE);
      }
 
     if (ospf_router_row->n_spf_calculation > 0)
@@ -1623,7 +1666,7 @@ ospf_interface_one_row_print(struct vty *vty,const char* ifname,
 
     memset (&id, 0, sizeof (struct in_addr));
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(DEFAULT_VRF_NAME);
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     ospf_router_row =
     get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_id);
 
@@ -1753,7 +1796,7 @@ ospf_interface_one_row_print(struct vty *vty,const char* ifname,
             ret = inet_aton (val, &id);
             if (!ret || (id.s_addr == 0))
             {
-                VLOG_DBG("Could not convert router id. Router id - %s", val);
+                VLOG_DBG("Invalid Router id - %s", val);
             }
             else
             {
@@ -2040,7 +2083,7 @@ ospf_neighbor_one_row_print(
 
     memset (&id, 0, sizeof (struct in_addr));
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(DEFAULT_VRF_NAME);
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     ospf_router_row =
     get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_id);
 
@@ -2176,7 +2219,7 @@ ospf_neighbor_one_row_detail_print(
 
     memset (&id, 0, sizeof (struct in_addr));
 
-    vrf_row = ospf_get_ovsrec_vrf_with_name(DEFAULT_VRF_NAME);
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     ospf_router_row =
     get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_id);
 
@@ -2657,7 +2700,8 @@ DEFUN (cli_ip_ospf_show,
        IP_STR
        OSPF_STR)
 {
-    ospf_ip_router_show(false);
+    ospf_ip_router_show();
+    return CMD_SUCCESS;
 }
 
 
@@ -2674,6 +2718,7 @@ DEFUN (cli_ip_ospf_interface_show,
         ospf_ip_router_interface_show(argv[0]);
     else
         ospf_ip_router_interface_show(NULL);
+    return CMD_SUCCESS;
 
 }
 
@@ -2691,6 +2736,7 @@ DEFUN (cli_ip_ospf_neighbor_show,
         ospf_ip_router_neighbor_show(NULL, 0, true);
     else
         ospf_ip_router_neighbor_show(NULL, 0, false);
+    return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_neighbor_detail_show,
@@ -2707,6 +2753,7 @@ DEFUN (cli_ip_ospf_neighbor_detail_show,
         ospf_ip_router_neighbor_detail_show(NULL, 0, true);
     else
         ospf_ip_router_neighbor_detail_show(NULL, 0, false);
+    return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_neighbor_ifname_show,
@@ -2723,6 +2770,7 @@ DEFUN (cli_ip_ospf_neighbor_ifname_show,
         ospf_ip_router_neighbor_show(argv[0], 0, true);
     else
         ospf_ip_router_neighbor_show(argv[0], 0, false);
+    return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_nbr_ifname_detail_show,
@@ -2740,6 +2788,7 @@ DEFUN (cli_ip_ospf_nbr_ifname_detail_show,
         ospf_ip_router_neighbor_detail_show(argv[0], 0, true);
     else
         ospf_ip_router_neighbor_detail_show(argv[0], 0, false);
+    return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_neighbor_nbrid_show,
@@ -2770,6 +2819,7 @@ DEFUN (cli_ip_ospf_neighbor_nbrid_show,
         ospf_ip_router_neighbor_show(NULL, id.s_addr, true);
     else
         ospf_ip_router_neighbor_show(NULL, id.s_addr, false);
+    return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_nbr_nbrid_detail_show,
@@ -2801,6 +2851,7 @@ DEFUN (cli_ip_ospf_nbr_nbrid_detail_show,
         ospf_ip_router_neighbor_detail_show(NULL, id.s_addr, true);
     else
         ospf_ip_router_neighbor_detail_show(NULL, id.s_addr, false);
+    return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_running_config_show,
@@ -2812,6 +2863,7 @@ DEFUN (cli_ip_ospf_running_config_show,
        OSPF_STR)
 {
     ospf_running_config_show();
+    return CMD_SUCCESS;
 }
 
 void
