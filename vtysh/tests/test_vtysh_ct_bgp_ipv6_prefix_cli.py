@@ -52,6 +52,146 @@ class bgp_prefixCLItest(OpsVsiTest):
             'configuration failed '
          return True
 
+    def test_validate_show_ipv6_prefix_list(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ipv6 prefix-list test#1: 1 entries" in lines[i] and \
+                 "seq 101 permit 2001:0DB8:0000::/48" in lines[i+1] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list'\
+            'configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_word(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " word configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list test#1");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ipv6 prefix-list test#1: 1 entries" in lines[i] and \
+                 "seq 101 permit 2001:0DB8:0000::/48" in lines[i+1] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list'\
+            ' word configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_seq(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " seq configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list test#1 seq 101");
+         lines = dump.split('\n')
+         for line in lines:
+            if "seq 101 permit 2001:0DB8:0000::/48" in line:
+                plist_created = True
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list seq'\
+            'configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_detail(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " detail configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list detail");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ipv6 prefix-list test#1:" in lines[i] and \
+                 "count: 1, sequences: 101 - 101" in lines[i+1] and \
+                 "seq 101 permit 2001:0DB8:0000::/48" in lines[i+2] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list'\
+            ' detail configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_detail_word(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " detail word configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list detail test#1");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ipv6 prefix-list test#1:" in lines[i] and \
+                 "count: 1, sequences: 101 - 101" in lines[i+1] and \
+                 "seq 101 permit 2001:0DB8:0000::/48" in lines[i+2] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list'\
+            ' detail word configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_summary(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " summary configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list summary");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ipv6 prefix-list test#1:" in lines[i] and \
+                 "count: 1, sequences: 101 - 101" in lines[i+1] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list'\
+            ' summary configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_summary_word(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " summary word configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list summary test#1");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ipv6 prefix-list test#1:" in lines[i] and \
+                 "count: 1, sequences: 101 - 101" in lines[i+1] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list'\
+            ' summary word configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_word_prefix(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " word prefix configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ipv6 prefix-list test#1 2001:0DB8:0000::/48");
+         lines = dump.split('\n')
+         for line in lines:
+            if "seq 101 permit 2001:0DB8:0000::/48" in line :
+                plist_created = True
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list'\
+            ' word prefix configuration failed '
+         return True
+
     def test_delete_bgp_ipv6_prefix_list_permit_prefix(self):
          info("\n##########  Test to delete ipv6 prefix-list permit prefix "
               "configurations ##########\n")
@@ -666,6 +806,48 @@ class bgp_prefixCLItest(OpsVsiTest):
             'description line configuration failed '
          return True
 
+    def test_validate_show_ipv6_prefix_list_word_prefix_first_match(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " word prefix first match configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         s1.cmdCLI("configure terminal")
+         s1.cmdCLI("ipv6 prefix-list test#1 seq 101 permit"
+                   "  2001:0DB8:0000::/48")
+         s1.cmdCLI("ipv6 prefix-list test#1 seq 102 permit"
+                   "  2001:0DB8:0000::/48 ge 50 le 60")
+         s1.cmdCLI("ipv6 prefix-list test#1 seq 103 permit"
+                   "  2001:0DB8:0000::/50")
+         s1.cmdCLI("ipv6 prefix-list test#1 seq 104 permit"
+                   "  2001:0DB8:0000::/47")
+         dump = s1.cmdCLI("do show ipv6 prefix-list test#1 2001:0DB8:0000::/48"
+                          " first-match");
+         lines = dump.split('\n')
+         for line in lines:
+            if "seq 101 permit 2001:0DB8:0000::/48 ge 50 le 60" not in line:
+                plist_created = True
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list word prefix first'\
+            ' match configuration failed '
+         return True
+
+    def test_validate_show_ipv6_prefix_list_word_prefix_longer(self):
+         info("\n##########  Test to validate show ipv6 prefix-list"
+              " word prefix longer configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         s1.cmdCLI("configure terminal")
+         dump = s1.cmdCLI("do show ipv6 prefix-list test#1 2001:0DB8:0000::/48"
+                          " longer");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "seq 101 permit 2001:0DB8:0000::/47" not in line:
+                plist_created = True
+         assert plist_created == True, \
+            'Test to Test to validate show ipv6 prefix-list word prefix '\
+            ' longer configuration failed '
+         return True
 
 class Test_vtysh_bgp_prefix:
 
@@ -685,6 +867,50 @@ class Test_vtysh_bgp_prefix:
         if self.test.test_add_bgp_ipv6_prefix_list_permit_prefix() :
            info("\n###  Test to add ipv6 prefix-list permit prefix "
                 "configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ipv6_prefix_list(self):
+        if self.test.test_validate_show_ipv6_prefix_list() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                "configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ipv6_prefix_list_word(self):
+        if self.test.test_validate_show_ipv6_prefix_list_word() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " word configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ipv6_prefix_list_seq(self):
+        if self.test.test_validate_show_ipv6_prefix_list_seq() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " seq configuration - SUCCESS! ###\n")
+    def test_validate_show_ipv6_prefix_list_seq(self):
+        if self.test.test_validate_show_ipv6_prefix_list_seq() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " seq configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_detail(self):
+        if self.test.test_validate_show_ipv6_prefix_list_detail() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " detail configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_detail_word(self):
+        if self.test.test_validate_show_ipv6_prefix_list_detail_word() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " detail word configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_summary(self):
+        if self.test.test_validate_show_ipv6_prefix_list_summary() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " summary configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_summary_word(self):
+        if self.test.test_validate_show_ipv6_prefix_list_summary_word() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " summary word configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_word_prefix(self):
+        if self.test.test_validate_show_ipv6_prefix_list_word_prefix() :
+           info("\n###  Test to validate show ipv6 prefix-list "
+                " word prefix configuration - SUCCESS! ###\n")
 
     def test_delete_bgp_ipv6_prefix_cli_permit_prefix(self):
         if self.test.test_delete_bgp_ipv6_prefix_list_permit_prefix() :
@@ -835,3 +1061,13 @@ class Test_vtysh_bgp_prefix:
         if self.test.test_delete_bgp_ipv6_prefix_list_line() :
            info("\n###  Test to delete ipv6 prefix-list  "
                 "WORD description line configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ipv6_prefix_list_word_prefix_first_match(self):
+        if self.test.test_validate_show_ipv6_prefix_list_word_prefix_first_match():
+            info("\n###  Test to validate show ipv6 prefix-list  "
+                "word prefix first match configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ipv6_prefix_list_word_prefix_longer(self):
+        if self.test.test_validate_show_ipv6_prefix_list_word_prefix_longer():
+            info("\n###  Test to validate show ipv6 prefix-list  "
+                "word prefix longer configuration - SUCCESS! ###\n")
