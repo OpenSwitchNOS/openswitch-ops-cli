@@ -3708,6 +3708,9 @@ DEFUN (config_no_hostname,
 extern void  vtysh_ovsdb_hostname_set(const char * in);
 extern int vtysh_ovsdb_hostname_reset(char *hostname_arg);
 extern const char* vtysh_ovsdb_hostname_get();
+extern void  vtysh_ovsdb_domainname_set(const char * in);
+extern int vtysh_ovsdb_domainname_reset(char *domainname_arg);
+extern const char* vtysh_ovsdb_domainname_get();
 
 /* CLI for hostname configuration */
 DEFUN (config_hostname,
@@ -3770,6 +3773,69 @@ DEFUN (config_no_hostname_arg,
        "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
     return vtysh_ovsdb_hostname_reset(argv[0]);
+}
+
+/* Domain name configuration */
+DEFUN (config_domainname,
+       domainname_cmd,
+       "domainname WORD",
+       DOMAINNAME_SET_STR
+       "Domain name string(Max Length 32), first letter must be alphabet\n")
+{
+
+    if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
+    {
+	vty_out (vty, "Specify string of max %d character.\n", MAX_HOSTNAME_LEN);
+	return CMD_SUCCESS;
+    }
+    if (!isalpha((int) *argv[0]))
+    {
+	vty_out (vty, "Please specify string starting with alphabet.%s", VTY_NEWLINE);
+	return CMD_SUCCESS;
+    }
+    vtysh_ovsdb_domainname_set(argv[0]);
+    return CMD_SUCCESS;
+}
+
+/* CLI for dislplaying domain name */
+DEFUN (config_show_domainname,
+       show_domainname_cmd,
+       "show domainname",
+       SHOW_STR
+       DOMAINNAME_GET_STR)
+{
+    const char* domainname = NULL;
+    domainname = vtysh_ovsdb_domainname_get();
+    if (domainname)
+    {
+	vty_out (vty, "%s%s", domainname, VTY_NEWLINE);
+    }
+    else
+    {
+	vty_out (vty, "%s%s", "", VTY_NEWLINE);
+    }
+    return CMD_SUCCESS;
+}
+
+/* CLI for resetting domain name, without argument  */
+DEFUN (config_no_domainname,
+       no_domainname_cmd,
+       "no domainname",
+       NO_STR
+       DOMAINNAME_NO_STR)
+{
+       vtysh_ovsdb_domainname_set("");
+       return CMD_SUCCESS;
+}
+/* CLI for resetting domain name with argument */
+DEFUN (config_no_domainname_arg,
+       no_domainname_cmd_arg,
+       "no domainname WORD",
+       NO_STR
+       DOMAINNAME_NO_STR
+       "Domain name string(Max Length 32), first letter must be alphabet\n")
+{
+    return vtysh_ovsdb_domainname_reset(argv[0]);
 }
 
 #endif //ENABLE_OVSDB
@@ -4620,6 +4686,10 @@ cmd_init (int terminal)
   install_element (ENABLE_NODE, &show_hostname_cmd);
   install_element (CONFIG_NODE, &no_hostname_cmd);
   install_element (CONFIG_NODE, &no_hostname_cmd_arg);
+  install_element (CONFIG_NODE, &domainname_cmd);
+  install_element (ENABLE_NODE, &show_domainname_cmd);
+  install_element (CONFIG_NODE, &no_domainname_cmd);
+  install_element (CONFIG_NODE, &no_domainname_cmd_arg);
 
   if (terminal)
     {
