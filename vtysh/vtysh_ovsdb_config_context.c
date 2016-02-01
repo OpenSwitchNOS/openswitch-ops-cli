@@ -513,6 +513,10 @@ vtysh_config_context_global_clientcallback(void *p_private)
     {
       vtysh_ovsdb_cli_print(p_msg, "hostname %s", vswrow->hostname);
     }
+    if (vswrow->domain_name[0] != '\0')
+    {
+      vtysh_ovsdb_cli_print(p_msg, "domain-name %s", vswrow->domain_name);
+    }
 
     /* parse the alias coumn */
     vtysh_ovsdb_ovstable_parse_alias(p_msg);
