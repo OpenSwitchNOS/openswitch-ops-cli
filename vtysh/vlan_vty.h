@@ -53,6 +53,8 @@
 
 #define INTERNAL_VLAN_ID_INVALID    -1
 
+#define DEFAULT_VLAN    1
+
 #define OVSDB_VLAN_SHUTDOWN_ERROR "Failed to shutdown VLAN%s"
 #define OVSDB_VLAN_NO_SHUTDOWN_ERROR "Failed to enable VLAN%s"
 #define OVSDB_INTF_VLAN_ACCESS_ERROR "Failed to set access VLAN %d%s"

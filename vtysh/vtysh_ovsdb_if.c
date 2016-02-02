@@ -64,9 +64,7 @@
 
 int64_t timeout_start;
 struct termios tp;
-unsigned int last_idl_seq_no;
 long long int next_poll_msec;
-int64_t session_timeout_period;
 
 typedef unsigned char boolean;
 
@@ -88,11 +86,14 @@ extern struct vty *vty;
 static void
 vtysh_session_timeout_run()
 {
-    if (last_idl_seq_no != ovsdb_idl_get_seqno(idl))
+    static int64_t session_timeout_period = 60 * DEFAULT_SESSION_TIMEOUT_PERIOD;
+
+    if (idl_seqno != ovsdb_idl_get_seqno(idl))
     {
-        last_idl_seq_no = ovsdb_idl_get_seqno(idl);
+        idl_seqno = ovsdb_idl_get_seqno(idl);
         session_timeout_period = 60 * vtysh_ovsdb_session_timeout_get();
     }
+
     if (time_msec() > next_poll_msec) {
         next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
         if ((session_timeout_period > 0) &&
@@ -204,6 +205,155 @@ bgp_ovsdb_init()
 }
 
 static void
+ospf_ovsdb_init()
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
+
+    /* Port table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_auth_md5_keys);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_auth_text_key);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_auth_type);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_if_out_cost);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_if_type);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_intervals);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_priority);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_ospf_mtu_ignore);
+
+
+    /* System table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_router_id);
+
+
+    /* OSPF Router */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_router);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_spf_calculation);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_distance);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_redistribute);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_default_information);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_nbma_nbrs);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_as_ext_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_passive_interface_default);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_stub_router_adv);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_router_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_ext_ospf_routes);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_passive_interfaces);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_opaque_as_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_areas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_lsa_timers);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_router_col_networks);
+
+
+    /* OSPF Area */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_area);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_inter_area_ospf_routes);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_router_ospf_routes);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_network_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_ospf_area_summary_addresses);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_opaque_area_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_opaque_link_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_as_nssa_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_abr_summary_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_area_type);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_intra_area_ospf_routes);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_asbr_summary_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_ospf_vlinks);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_ospf_interfaces);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_ospf_auth_type);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_router_lsas);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_prefix_lists);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_area_col_nssa_translator_role);
+
+
+    /* OSPF Interface */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_interface);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_interface_col_neighbors);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_interface_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_interface_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_interface_col_ifsm_state);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_interface_col_ospf_vlink);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_interface_col_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_interface_col_port);
+
+
+    /* OSPF Neighbor */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_neighbor);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_nfsm_state);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_nbr_if_addr);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_nbr_priority);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_nbr_options);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_bdr);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_nbma_nbr);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_dr);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_neighbor_col_nbr_router_id);
+
+    /* OSPF Neighbor NBMA */
+    ovsdb_idl_add_table(idl,
+                        &ovsrec_table_ospf_nbma_neighbor);
+    ovsdb_idl_add_column(idl,
+                        &ovsrec_ospf_nbma_neighbor_col_nbr_address);
+    ovsdb_idl_add_column(idl,
+                        &ovsrec_ospf_nbma_neighbor_col_interface_name);
+    ovsdb_idl_add_column(idl,
+                        &ovsrec_ospf_nbma_neighbor_col_status);
+    ovsdb_idl_add_column(idl,
+                        &ovsrec_ospf_nbma_neighbor_col_nbr_router_id);
+    ovsdb_idl_add_column(idl,
+                        &ovsrec_ospf_nbma_neighbor_col_other_config);
+
+
+    /* OSPF Summary Address  */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_summary_address);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_summary_address_col_prefix);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_summary_address_col_other_config);
+
+    /* OSPF Route  */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_route);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_route_col_route_info);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_route_col_path_type);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_route_col_prefix);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_route_col_route_info);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_route_col_paths);
+
+    /* OSPF LSA */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_lsa);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_area_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_ls_seq_num);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_lsa_data);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_length);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_num_router_links);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_ls_birth_time);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_prefix);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_lsa_type);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_flags);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_chksum);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_ls_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_adv_router);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_lsa_col_options);
+
+    /* OSPF Vlink */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ospf_vlink);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_vlink_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_vlink_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_vlink_col_area_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_vlink_col_ospf_auth_text_key);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_vlink_col_peer_router_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_vlink_col_ospf_auth_type);
+    ovsdb_idl_add_column(idl, &ovsrec_ospf_vlink_col_ospf_auth_md5_keys);
+
+}
+
+
+static void
 l3routes_ovsdb_init()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
@@ -239,6 +389,7 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_bgp_routers);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ospf_routers);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
@@ -254,11 +405,6 @@ vrf_ovsdb_init()
 static void
 policy_ovsdb_init ()
 {
-    ovsdb_idl_add_table(idl, &ovsrec_table_community_filter);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_action);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_match);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_type);
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_prefix_list_entries);
@@ -518,6 +664,42 @@ lacp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_port_col_lacp);
 }
 
+static void
+ntp_ovsdb_init()
+{
+    /* Add System Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+
+    /* Add columns in System Table */
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_config);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_status);
+
+    /* Add VRF Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
+
+    /* Add columns in VRF Table */
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
+
+    /* Add NTP Association Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ntp_association);
+
+    /* Add columns in NTP Association Table */
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_address);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_association_status);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_vrf);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_key_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_association_col_association_attributes);
+
+    /* Add NTP Keys Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_ntp_key);
+
+    /* Add columns in NTP Keys Table */
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_key_col_key_id);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_key_col_key_password);
+    ovsdb_idl_add_column(idl, &ovsrec_ntp_key_col_trust_enable);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -578,6 +760,9 @@ ovsdb_init(const char *db_path)
     bgp_ovsdb_init();
     l3routes_ovsdb_init();
 
+    /* OSPF tables */
+    ospf_ovsdb_init();
+
     /* VRF tables. */
     vrf_ovsdb_init();
 
@@ -609,6 +794,8 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
     ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 
+    /* Add tables/columns needed for NTP config commands. */
+    ntp_ovsdb_init();
 }
 
 static void
@@ -1082,13 +1269,12 @@ vtysh_ovsdb_main_thread(void *arg)
 
     vtysh_exit_flag = false;
     next_poll_msec = time_msec() + (TMOUT_POLL_INTERVAL * 1000);
-    last_idl_seq_no = ovsdb_idl_get_seqno(idl);
-    session_timeout_period = DEFAULT_SESSION_TIMEOUT_PERIOD;
-
     while (!vtysh_exit_flag) {
+
         poll_timer_wait_until(next_poll_msec);
         VTYSH_OVSDB_LOCK;
-
+        /* idl global variable should not be accessed without the lock.
+         * Always access idl with lock VTYSH_OVSDB_LOCK. */
         /* This function updates the Cache by running
            ovsdb_idl_run. */
         vtysh_run();
@@ -1100,6 +1286,8 @@ vtysh_ovsdb_main_thread(void *arg)
         vtysh_periodic_refresh();
 
         VTYSH_OVSDB_UNLOCK;
+        /* Do not access idl global variable after VTYSH_OVSDB_UNLOCK. */
+
         if (vtysh_exit_flag) {
             poll_immediate_wake();
         } else {

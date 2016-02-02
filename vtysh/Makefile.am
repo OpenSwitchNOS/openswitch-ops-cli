@@ -20,7 +20,7 @@ if ENABLE_OVSDB
 vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_config.c vtysh_ovsdb_config_context.c \
                  vtysh_ovsdb_intf_context.c vlan_vty.c intf_vty.c \
-                 l3routes_vty.c led_vty.c system_vty.c fan_vty.c \
+                 l3routes_vty.c system_vty.c \
                  temperature_vty.c vtysh_ovsdb_vlan_context.c \
                  sub_intf_vty.c loopback_vty.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
@@ -28,10 +28,11 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  traceroute_handler.c \
                  source_interface_selection_vty.c \
                  vtysh_ovsdb_source_interface_context.c \
-                 powersupply_vty.c vtysh_ovsdb_intf_lag_context.c \
+                 vtysh_ovsdb_intf_lag_context.c \
                  lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
                  ping_handler.c sftp_vty.c \
+                 ntp_vty.c ospf_vty.c \
                  vtysh_ovsdb_sftp_context.c
 endif
 
@@ -47,6 +48,9 @@ vtyshincludedir = $(includedir)/vtysh
 vtyshinclude_HEADERS = vtysh_utils.h vtysh.h \
         vtysh_ovsdb_if.h vtysh_user.h \
         vtysh_ovsdb_config.h
+
+vtyshutilsincludedir = $(includedir)/vtysh/utils
+vtyshutilsinclude_HEADERS = utils/system_vtysh_utils.h
 
 examplesdir = $(exampledir)
 dist_examples_DATA = vtysh.conf.sample
