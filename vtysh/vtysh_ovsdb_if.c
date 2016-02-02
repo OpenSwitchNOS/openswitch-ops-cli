@@ -677,6 +677,7 @@ ntp_ovsdb_init()
     /* Add columns in System Table */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_config);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_status);
 
     /* Add VRF Table */
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
