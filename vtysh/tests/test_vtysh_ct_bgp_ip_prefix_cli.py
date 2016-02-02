@@ -1,7 +1,7 @@
 
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -48,6 +48,76 @@ class bgp_prefixCLItest(OpsVsiTest):
          assert plist_created == True, \
             'Test to add ip prefix-list permit prefix'\
             'configuration failed '
+         return True
+
+    def test_validate_show_ip_prefix_list(self):
+         info("\n##########  Test to validate show ip prefix-list"
+              "configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ip prefix-list");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ip prefix-list test#1: 1 entries" in lines[i] and \
+                 "seq 101 permit 10.0.0.1/8" in lines[i+1] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to validate show ip prefix-list'\
+            'configuration failed '
+         return True
+
+    def test_validate_show_ip_prefix_list_seq(self):
+         info("\n##########  Test to validate show ip prefix-list"
+              " seq configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ip prefix-list test#1 seq 101");
+         lines = dump.split('\n')
+         for line in lines:
+            if "seq 101 permit 10.0.0.1/8" in line:
+                plist_created = True
+         assert plist_created == True, \
+            'Test to validate show ip prefix-list seq'\
+            'configuration failed '
+         return True
+
+    def test_validate_show_ip_prefix_list_detail(self):
+         info("\n##########  Test to validate show ip prefix-list"
+              " detail configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ip prefix-list detail test#1");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ip prefix-list test#1:" in lines[i] and \
+                 "count: 1, sequences: 101 - 101" in lines[i+1] and \
+                 "seq 101 permit 10.0.0.1/8" in lines[i+2] :
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to validate show ip prefix-list'\
+            ' detail configuration failed '
+         return True
+
+    def test_validate_show_ip_prefix_list_summary(self):
+         info("\n##########  Test to validate show ip prefix-list"
+              " summary configurations ##########\n")
+         plist_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("show ip prefix-list summary test#1");
+         lines = dump.split('\n')
+         i = 0
+         for line in lines:
+            if "ip prefix-list test#1:" in lines[i] and \
+                 "count: 1, sequences: 101 - 101" in lines[i+1]:
+                plist_created = True
+            i = i + 1
+         assert plist_created == True, \
+            'Test to validate show ip prefix-list'\
+            ' summary configuration failed '
          return True
 
     def test_delete_bgp_ip_prefix_list_permit_prefix(self):
@@ -606,6 +676,26 @@ class Test_vtysh_bgp_prefix:
         if self.test.test_add_bgp_ip_prefix_list_permit_prefix() :
            info("\n###  Test to add ip prefix-list permit prefix "
                 "configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list(self):
+        if self.test.test_validate_show_ip_prefix_list() :
+           info("\n###  Test to validate show ip prefix-list "
+                "configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_seq(self):
+        if self.test.test_validate_show_ip_prefix_list_seq() :
+           info("\n###  Test to validate show ip prefix-list "
+                " seq configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_detail(self):
+        if self.test.test_validate_show_ip_prefix_list_detail() :
+           info("\n###  Test to validate show ip prefix-list "
+                " detail configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_prefix_list_summary(self):
+        if self.test.test_validate_show_ip_prefix_list_summary() :
+           info("\n###  Test to validate show ip prefix-list "
+                " summary configuration - SUCCESS! ###\n")
 
     def test_delete_bgp_ip_prefix_cli_permit_prefix(self):
         if self.test.test_delete_bgp_ip_prefix_list_permit_prefix() :
