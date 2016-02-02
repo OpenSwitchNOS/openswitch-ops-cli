@@ -163,8 +163,18 @@ plugins_cli_init(const char *path)
         return;
     }
 
-    PLUGINS_CALL(cli_post_init);
-
     VLOG_INFO("Successfully initialized all plugins");
     return;
+}
+
+/*
+ * Function : vtysh_cli_post_init.
+ * Responsibility : Initialize all feature specific cli elements.
+ * Parameters : void.
+ * Return : void.
+ */
+void
+vtysh_cli_post_init(void)
+{
+    PLUGINS_CALL(cli_post_init);
 }

@@ -89,7 +89,6 @@ VLOG_DEFINE_THIS_MODULE(vtysh);
 int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 int vtysh_show_startup = 0;
-#define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 #endif
 
 
@@ -4330,14 +4329,6 @@ int is_valid_ip_address(const char *ip_value)
 void
 vtysh_init_vty (void)
 {
-   /* Make vty structure. */
-   vty = vty_new ();
-   vty->type = VTY_SHELL;
-   vty->node = VIEW_NODE;
-
-   /* Initialize commands. */
-   cmd_init (0);
-
    /* Install nodes. */
    install_node (&bgp_node, NULL);
 #ifndef ENABLE_OVSDB
@@ -4673,10 +4664,10 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_reboot_cmd);
 
 #ifdef ENABLE_OVSDB
-  /* Plugins_cli_init will install all the features
+  /* vtysh_cli_post_init will install all the features
    * CLI node and elements by using Libltdl-interface.
    */
-  plugins_cli_init(FEATURES_CLI_PATH);
+  vtysh_cli_post_init();
 
   lldp_vty_init();
   vrf_vty_init();

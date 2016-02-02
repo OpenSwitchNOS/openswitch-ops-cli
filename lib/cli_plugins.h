@@ -33,6 +33,7 @@ extern "C" {
 
 #ifdef __linux__
 void plugins_cli_init(const char *path);
+void vtysh_cli_post_init(void);
 #endif
 
 #ifdef  __cplusplus
