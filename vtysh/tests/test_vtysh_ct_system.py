@@ -174,6 +174,9 @@ class Test_sys:
 
     # show system test.
 
+    @pytest.mark.skipif(True, reason="Disabling this testcase "
+                        "due to ops-cli repo modularization for ops-tempd."
+                        "will be enabling once ops-tempd work is done.")
     def test_show_system_command(self):
         if self.test.showSystemTest():
             info('''
