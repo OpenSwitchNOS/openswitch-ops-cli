@@ -95,10 +95,10 @@ struct format_parser_state
 #endif
 
 /* There are some command levels which called from command node. */
-enum node_type 
+enum node_type
 {
   AUTH_NODE,			/* Authentication mode of vty interface. */
-  RESTRICTED_NODE,		/* Restricted view mode */ 
+  RESTRICTED_NODE,		/* Restricted view mode */
   VIEW_NODE,			/* View node. Default mode of vty interface. */
   AUTH_ENABLE_NODE,		/* Authentication mode for change enable. */
   ENABLE_NODE,			/* Enable node. */
@@ -111,7 +111,7 @@ enum node_type
   INTERFACE_NODE,		/* Interface mode node. */
   ZEBRA_NODE,			/* zebra connection node. */
   TABLE_NODE,			/* rtm_table selection node. */
-  RIP_NODE,			/* RIP protocol mode node. */ 
+  RIP_NODE,			/* RIP protocol mode node. */
   RIPNG_NODE,			/* RIPng protocol mode node. */
   BABEL_NODE,			/* Babel protocol mode node. */
   BGP_NODE,			/* BGP protocol mode which includes BGP4+ */
@@ -125,7 +125,7 @@ enum node_type
   ISIS_NODE,			/* ISIS protocol mode */
   PIM_NODE,			/* PIM protocol mode */
   MASC_NODE,			/* MASC for multicast.  */
-  IRDP_NODE,			/* ICMP Router Discovery Protocol mode. */ 
+  IRDP_NODE,			/* ICMP Router Discovery Protocol mode. */
   IP_NODE,			/* Static ip route node. */
   ACCESS_NODE,			/* Access list node. */
   PREFIX_NODE,			/* Prefix list node. */
@@ -151,22 +151,22 @@ enum node_type
 
 /* Node which has some commands and prompt string and configuration
    function pointer . */
-struct cmd_node 
+struct cmd_node
 {
   /* Node index. */
-  enum node_type node;		
+  enum node_type node;
 
   /* Prompt character at vty interface. */
-  const char *prompt;			
+  const char *prompt;
 
   /* Is this node's configuration goes to vtysh ? */
   int vtysh;
-  
+
   /* Node's configuration write function */
   int (*func) (struct vty *);
 
   /* Vector of this node's command list. */
-  vector cmd_vector;	
+  vector cmd_vector;
 };
 
 /* MACROS TO BE USED AS COMMAND ATTRIBUTES */
@@ -179,7 +179,7 @@ struct cmd_node
 #define CMD_FLAG_NO_CMD      1
 
 /* Structure of command element. */
-struct cmd_element 
+struct cmd_element
 {
   const char *string;			/* Command specification by string. */
   int (*func) (struct cmd_element *, struct vty *, int, int, const char *[]);
@@ -238,7 +238,7 @@ struct cmd_token
 #define CMD_ARGC_MAX   25
 
 /* Turn off these macros when uisng cpp with extract.pl */
-#ifndef VTYSH_EXTRACT_PL  
+#ifndef VTYSH_EXTRACT_PL
 
 /* helper defines for end-user DEFUN* macros */
 #define DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attrs, dnum, dyn_cbstr) \
@@ -573,6 +573,28 @@ struct cmd_token
 #define AREA_TAG_STR "[area tag]\n"
 #define RIB_STR    "Routing Information Base\n"
 
+/* NTP Help strings */
+#define NTP_STR                    "NTP Client configuration\n"
+#define NTP_SERVER_STR             "NTP Association configuration\n"
+#define NTP_SERVER_NAME_STR        "NTP Association name or IPv4 Address\n"
+#define NTP_SERVER_PREFER_STR      "NTP Association preference configuration\n"
+#define NTP_SERVER_VERSION_STR     "NTP Association version configuration\n"
+#define NTP_SERVER_VERSION_NUM_STR "Version can be 3 or 4\n"
+#define NTP_AUTH_STR               "NTP Authentication configuration\n"
+#define NTP_AUTH_ENABLE_STR        "NTP Authentication Enable/Disable\n"
+#define NTP_AUTH_KEY_STR           "NTP Authentication Key configuration\n"
+#define NTP_TRUST_KEY_STR          "NTP Trusted Key configuration\n"
+#define NTP_MD5_STR                "MD5 Password configuration\n"
+#define NTP_KEY_ID_STR             "NTP Key ID\n"
+#define NTP_KEY_NUM_STR            "NTP Key Number between 1-65534\n"
+#define NTP_MD5_PASSWORD_STR       "NTP MD5 Password <8-16> chars\n"
+#define NTP_SHOW_STR               "Show NTP information\n"
+#define NTP_SHOW_ASSOC_STR         "Show NTP Association summary\n"
+#define NTP_SHOW_STATUS_STR        "Show NTP Status information\n"
+#define NTP_SHOW_STATISTICS_STR    "Show NTP Statistics information\n"
+#define NTP_SHOW_AUTH_KEYS_STR     "Show NTP Authentication Keys information\n"
+#define NTP_SHOW_TRUST_KEYS_STR    "Show NTP Trusted Keys information\n"
+
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
 
@@ -658,7 +680,7 @@ extern void host_config_set (char *);
 extern void print_version (const char *);
 
 /* struct host global, ick */
-extern struct host host; 
+extern struct host host;
 
 /* "<cr>" global */
 extern char *command_cr;
