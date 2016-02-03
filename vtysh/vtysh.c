@@ -1152,7 +1152,7 @@ DEFUNSH (VTYSH_RIPD,
       key,
       key_cmd,
       "key <0-2147483647>",
-      "Configure a key\n"
+      "Authentication key management\n"
       "Key identifier number\n")
 {
    vty->node = KEYCHAIN_KEY_NODE;
