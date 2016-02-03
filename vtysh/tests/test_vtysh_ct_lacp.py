@@ -489,3 +489,72 @@ class Test_lacp_cli:
 
     def __del__(self):
         del self.test
+
+
+###############################################################################
+#
+#   Validates max number of lags added
+#
+#   Allowed MAX number 256
+#
+###############################################################################
+class LACPMaxNumberOfLags(OpsVsiTest):
+    def setupNet(self):
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        infra_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(infra_topo,
+                           switch=VsiOpenSwitch,
+                           host=Host,
+                           link=OpsVsiLink,
+                           controller=None,
+                           build=True)
+
+    def test_max_number_of_lags(self):
+        info("########## "
+             "Test max number of LAGs allowed "
+             "########## ")
+
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+
+        # Create allowed LAGs
+        for lag_num in range(1, 257):
+            s1.cmdCLI('interface lag %d' % lag_num)
+            s1.cmdCLI('exit')
+
+        # Crate LAG 257
+        s1.cmdCLI('configure terminal')
+        out = s1.cmdCLI('interface lag 257')
+
+        assert "Cannot create LAG interface." in out, \
+            "Failed test, new LAG cannot be created!"
+
+        info("DONE\n")
+
+
+class Test_lacp_max_lags:
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        pass
+
+    def setup_class(cls):
+        Test_lacp_max_lags.test = LACPMaxNumberOfLags()
+
+    def teardown_class(cls):
+        Test_lacp_max_lags.test.net.stop()
+
+    def test_max_number_of_lags(self):
+        self.test.test_max_number_of_lags()
+
+    def setup_method(self, method):
+        pass
+
+    def teardown_method(self, method):
+        pass
+
+    def __del__(self):
+        del self.test

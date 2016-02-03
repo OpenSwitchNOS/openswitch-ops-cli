@@ -37,8 +37,9 @@
 #define MAX_LAG_INTERFACES 256
 #define LACP_DEFAULT_PORT_PRIORITY 1
 
-extern int maximum_lag_interfaces;
 void
 lacp_vty_init (void);
 
+bool
+lacp_exceeded_maximum_lag(void);
 #endif /* _LACP_VTY_H */
