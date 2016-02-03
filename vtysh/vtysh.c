@@ -1958,7 +1958,7 @@ DEFUN (vtysh_intf_link_aggregation,
 
   if(!port_found)
   {
-    if(maximum_lag_interfaces == MAX_LAG_INTERFACES)
+    if(lacp_exceeded_maximum_lag())
     {
       vty_out(vty, "Cannot create LAG interface. Maximum LAG interface count is already reached.%s",VTY_NEWLINE);
       return CMD_SUCCESS;
@@ -2006,7 +2006,6 @@ DEFUN (vtysh_intf_link_aggregation,
     status_txn = cli_do_config_finish(txn);
     if(status_txn == TXN_SUCCESS || status_txn == TXN_UNCHANGED)
     {
-      maximum_lag_interfaces++;
       vty->node = LINK_AGGREGATION_NODE;
       vty->index = lag_number;
       return CMD_SUCCESS;
