@@ -209,4 +209,26 @@ config_finish_result (enum ovsdb_idl_txn_status status)
 
 #define SYSTEM_NTP_STATUS_UPTIME                        "uptime"
 
+/* NTP Help strings */
+#define NTP_STR                    "NTP Client configuration\n"
+#define NTP_SERVER_STR             "NTP Association configuration\n"
+#define NTP_SERVER_NAME_STR        "NTP Association name or IPv4 Address\n"
+#define NTP_SERVER_PREFER_STR      "NTP Association preference configuration\n"
+#define NTP_SERVER_VERSION_STR     "NTP Association version configuration\n"
+#define NTP_SERVER_VERSION_NUM_STR "Version can be 3 or 4\n"
+#define NTP_AUTH_STR               "NTP Authentication configuration\n"
+#define NTP_AUTH_ENABLE_STR        "NTP Authentication Enable/Disable\n"
+#define NTP_AUTH_KEY_STR           "NTP Authentication Key configuration\n"
+#define NTP_TRUST_KEY_STR          "NTP Trusted Key configuration\n"
+#define NTP_MD5_STR                "MD5 Password configuration\n"
+#define NTP_KEY_ID_STR             "NTP Key ID\n"
+#define NTP_KEY_NUM_STR            "NTP Key Number between 1-65534\n"
+#define NTP_MD5_PASSWORD_STR       "NTP MD5 Password <8-16> chars\n"
+#define NTP_SHOW_STR               "Show NTP information\n"
+#define NTP_SHOW_ASSOC_STR         "Show NTP Association summary\n"
+#define NTP_SHOW_STATUS_STR        "Show NTP Status information\n"
+#define NTP_SHOW_STATISTICS_STR    "Show NTP Statistics information\n"
+#define NTP_SHOW_AUTH_KEYS_STR     "Show NTP Authentication Keys information\n"
+#define NTP_SHOW_TRUST_KEYS_STR    "Show NTP Trusted Keys information\n"
+
 #endif // _NTPD_VTY_H

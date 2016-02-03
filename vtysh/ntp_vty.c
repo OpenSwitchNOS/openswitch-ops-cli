@@ -729,9 +729,9 @@ vtysh_ovsdb_show_ntp_authentication_keys()
 DEFUN ( vtysh_show_ntp_associations,
         vtysh_show_ntp_associations_cmd,
         "show ntp associations",
-        "show\n"
-        "ntp\n"
-        "NTP associations\n"
+        SHOW_STR
+        NTP_SHOW_STR
+        NTP_SHOW_ASSOC_STR
       )
 {
     vtysh_ovsdb_show_ntp_associations();
@@ -741,9 +741,9 @@ DEFUN ( vtysh_show_ntp_associations,
 DEFUN ( vtysh_show_ntp_status,
         vtysh_show_ntp_status_cmd,
         "show ntp status",
-        "show\n"
-        "ntp\n"
-        "NTP status information\n"
+        SHOW_STR
+        NTP_SHOW_STR
+        NTP_SHOW_STATUS_STR
       )
 {
     vtysh_ovsdb_show_ntp_status();
@@ -753,9 +753,9 @@ DEFUN ( vtysh_show_ntp_status,
 DEFUN ( vtysh_show_ntp_statistics,
         vtysh_show_ntp_statistics_cmd,
         "show ntp statistics",
-        "show\n"
-        "ntp\n"
-        "NTP statistics information\n"
+        SHOW_STR
+        NTP_SHOW_STR
+        NTP_SHOW_STATISTICS_STR
       )
 {
     vtysh_ovsdb_show_ntp_statistics();
@@ -765,9 +765,9 @@ DEFUN ( vtysh_show_ntp_statistics,
 DEFUN ( vtysh_show_ntp_trusted_keys,
         vtysh_show_ntp_trusted_keys_cmd,
         "show ntp trusted-keys",
-        "show\n"
-        "ntp\n"
-        "NTP trusted-Keys information\n"
+        SHOW_STR
+        NTP_SHOW_STR
+        NTP_SHOW_TRUST_KEYS_STR
       )
 {
     vtysh_ovsdb_show_ntp_trusted_keys();
@@ -777,9 +777,9 @@ DEFUN ( vtysh_show_ntp_trusted_keys,
 DEFUN ( vtysh_show_ntp_authentication_keys,
         vtysh_show_ntp_authentication_keys_cmd,
         "show ntp authentication-keys",
-        "show\n"
-        "ntp\n"
-        "NTP authentication-keys information\n"
+        SHOW_STR
+        NTP_SHOW_STR
+        NTP_SHOW_AUTH_KEYS_STR
       )
 {
     vtysh_ovsdb_show_ntp_authentication_keys();
@@ -791,14 +791,14 @@ DEFUN ( vtysh_set_ntp_server,
         vtysh_set_ntp_server_cmd,
         "ntp server WORD "
         "{prefer | version WORD | key-id WORD}",
-        "ntp\n"
-        "server\n"
-        "NTP server name or IPv4 address\n"
-        "Request priority for this server when switch selects a synchronizing server\n"
-        "NTP version number\n"
-        "Version can be 3 or 4\n"
-        "Key-id\n"
-        "Peer key number\n"
+        NTP_STR
+        NTP_SERVER_STR
+        NTP_SERVER_NAME_STR
+        NTP_SERVER_PREFER_STR
+        NTP_SERVER_VERSION_STR
+        NTP_SERVER_VERSION_NUM_STR
+        NTP_KEY_ID_STR
+        NTP_KEY_NUM_STR
       )
 {
     int ret_code = CMD_SUCCESS;
@@ -830,18 +830,18 @@ DEFUN ( vtysh_set_ntp_server,
 DEFUN_NO_FORM ( vtysh_set_ntp_server,
         vtysh_set_ntp_server_cmd,
         "ntp server WORD",
-        "ntp\n"
-        "server\n"
-        "NTP server name or IPv4 address\n"
+        NTP_STR
+        NTP_SERVER_STR
+        NTP_SERVER_NAME_STR
       );
 
 
 DEFUN ( vtysh_set_ntp_authentication_enable,
         vtysh_set_ntp_authentication_enable_cmd,
         "ntp authentication enable",
-        "ntp info\n"
-        "authentication\n"
-        "Enable ntp authentication\n"
+        NTP_STR
+        NTP_AUTH_STR
+        NTP_AUTH_ENABLE_STR
       )
 {
     int ret_code = CMD_SUCCESS;
@@ -863,20 +863,20 @@ DEFUN ( vtysh_set_ntp_authentication_enable,
 DEFUN_NO_FORM ( vtysh_set_ntp_authentication_enable,
         vtysh_set_ntp_authentication_enable_cmd,
         "ntp authentication enable",
-        "ntp info\n"
-        "authentication\n"
-        "Enable ntp authentication\n"
+        NTP_STR
+        NTP_AUTH_STR
+        NTP_AUTH_ENABLE_STR
       );
 
 
 DEFUN ( vtysh_set_ntp_authentication_key,
         vtysh_set_ntp_authentication_key_cmd,
         "ntp authentication-key WORD md5 WORD",
-        "ntp\n"
-        "authentication-key\n"
-        "NTP authentication-key number\n"
-        "md5\n"
-        "NTP authentication-key\n"
+        NTP_STR
+        NTP_AUTH_KEY_STR
+        NTP_KEY_NUM_STR
+        NTP_MD5_STR
+        NTP_MD5_PASSWORD_STR
       )
 {
     int ret_code = CMD_SUCCESS;
@@ -902,18 +902,18 @@ DEFUN ( vtysh_set_ntp_authentication_key,
 DEFUN_NO_FORM ( vtysh_set_ntp_authentication_key,
         vtysh_set_ntp_authentication_key_cmd,
         "ntp authentication-key WORD",
-        "ntp\n"
-        "authentication-key\n"
-        "NTP authentication-key number\n"
+        NTP_STR
+        NTP_AUTH_KEY_STR
+        NTP_KEY_NUM_STR
       );
 
 
 DEFUN ( vtysh_set_ntp_trusted_key,
         vtysh_set_ntp_trusted_key_cmd,
         "ntp trusted-key WORD",
-        "ntp\n"
-        "trusted-key\n"
-        "Trusted-key number\n"
+        NTP_STR
+        NTP_TRUST_KEY_STR
+        NTP_KEY_NUM_STR
       )
 {
     int ret_code = CMD_SUCCESS;
@@ -937,9 +937,9 @@ DEFUN ( vtysh_set_ntp_trusted_key,
 DEFUN_NO_FORM ( vtysh_set_ntp_trusted_key,
         vtysh_set_ntp_trusted_key_cmd,
         "ntp trusted-key WORD",
-        "ntp\n"
-        "trusted-key\n"
-        "Trusted-key number\n"
+        NTP_STR
+        NTP_TRUST_KEY_STR
+        NTP_KEY_NUM_STR
       );
 
 /*================================================================================================*/
