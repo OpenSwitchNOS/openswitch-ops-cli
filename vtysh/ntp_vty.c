@@ -729,7 +729,7 @@ vtysh_ovsdb_show_ntp_authentication_keys()
 DEFUN ( vtysh_show_ntp_associations,
         vtysh_show_ntp_associations_cmd,
         "show ntp associations",
-        "show\n"
+        SHOW_STR
         "ntp\n"
         "NTP associations\n"
       )
@@ -741,7 +741,7 @@ DEFUN ( vtysh_show_ntp_associations,
 DEFUN ( vtysh_show_ntp_status,
         vtysh_show_ntp_status_cmd,
         "show ntp status",
-        "show\n"
+        SHOW_STR
         "ntp\n"
         "NTP status information\n"
       )
@@ -753,7 +753,7 @@ DEFUN ( vtysh_show_ntp_status,
 DEFUN ( vtysh_show_ntp_statistics,
         vtysh_show_ntp_statistics_cmd,
         "show ntp statistics",
-        "show\n"
+        SHOW_STR
         "ntp\n"
         "NTP statistics information\n"
       )
@@ -765,7 +765,7 @@ DEFUN ( vtysh_show_ntp_statistics,
 DEFUN ( vtysh_show_ntp_trusted_keys,
         vtysh_show_ntp_trusted_keys_cmd,
         "show ntp trusted-keys",
-        "show\n"
+        SHOW_STR
         "ntp\n"
         "NTP trusted-Keys information\n"
       )
@@ -777,7 +777,7 @@ DEFUN ( vtysh_show_ntp_trusted_keys,
 DEFUN ( vtysh_show_ntp_authentication_keys,
         vtysh_show_ntp_authentication_keys_cmd,
         "show ntp authentication-keys",
-        "show\n"
+        SHOW_STR
         "ntp\n"
         "NTP authentication-keys information\n"
       )
@@ -839,7 +839,7 @@ DEFUN_NO_FORM ( vtysh_set_ntp_server,
 DEFUN ( vtysh_set_ntp_authentication_enable,
         vtysh_set_ntp_authentication_enable_cmd,
         "ntp authentication enable",
-        "ntp info\n"
+        "ntp\n"
         "authentication\n"
         "Enable ntp authentication\n"
       )
@@ -863,7 +863,7 @@ DEFUN ( vtysh_set_ntp_authentication_enable,
 DEFUN_NO_FORM ( vtysh_set_ntp_authentication_enable,
         vtysh_set_ntp_authentication_enable_cmd,
         "ntp authentication enable",
-        "ntp info\n"
+        "ntp\n"
         "authentication\n"
         "Enable ntp authentication\n"
       );
