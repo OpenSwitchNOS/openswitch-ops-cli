@@ -50,7 +50,23 @@
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lacp_cli);
 extern struct ovsdb_idl *idl;
-int maximum_lag_interfaces = 0;
+
+bool
+lacp_exceeded_maximum_lag()
+{
+    const struct ovsrec_port *port_row = NULL;
+    int lags_found = 0;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl) {
+        if (strncmp(port_row->name,
+                    LAG_PORT_NAME_PREFIX,
+                    LAG_PORT_NAME_PREFIX_LENGTH) == 0) {
+            lags_found++;
+        }
+    }
+
+    return lags_found >= MAX_LAG_INTERFACES ? true : false;
+}
 
 static int
 delete_lag(const char *lag_name)
