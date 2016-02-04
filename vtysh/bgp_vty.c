@@ -4974,7 +4974,7 @@ cli_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr, char *name, 
 
     if (!dir_found) {
         direction[num_entries] = dir;
-        pl_table_entry[num_entries] = CONST_CAST(struct ovsrec_route_map*, pl_row);
+        pl_table_entry[num_entries] = CONST_CAST(struct ovsrec_prefix_list*, pl_row);
         num_entries++;
     }
 
