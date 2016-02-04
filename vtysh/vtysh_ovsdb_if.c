@@ -48,6 +48,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include <termios.h>
+#include "banner_vty.h"
 
 
 #ifdef HAVE_GNU_REGEX
@@ -808,6 +809,123 @@ vtysh_ovsdb_hostname_get()
     return NULL;
 }
 
+/*
+ * The set command to set the banner and banner_exec other_configs in the System
+ * table
+ */
+int
+vtysh_ovsdb_banner_set(const char* in, enum banner_type which_banner)
+{
+    const struct ovsrec_system *ovs= NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status = TXN_ERROR;
+    uid_t uid = -1;
+    struct passwd *current_user = NULL;
+
+    uid = geteuid();
+    current_user = getpwuid(uid);
+    if (current_user == NULL)
+    {
+        vty_out(vty, "An error occurred while determining the current user.%s",
+                VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    if (check_user_group(current_user->pw_name, NETOP_GROUP) == 0)
+    {
+        vty_out(vty, "Only network operators may change login banners.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    ovs = ovsrec_system_first(idl);
+    if (ovs) {
+        status_txn = cli_do_config_start();
+        if(status_txn == NULL) {
+            cli_do_config_abort(status_txn);
+            VLOG_ERR("Couldn't create the OVSDB transaction to configure banner.");
+            return CMD_OVSDB_FAILURE;
+        } else {
+            if (which_banner == BANNER_MOTD) {
+                smap_replace((struct smap *)&ovs->other_config,
+                             SYSTEM_OTHER_CONFIG_MAP_BANNER, in);
+            }
+            else if (which_banner == BANNER_EXEC) {
+                smap_replace((struct smap *)&ovs->other_config,
+                             SYSTEM_OTHER_CONFIG_MAP_BANNER_EXEC, in);
+            }
+            ovsrec_system_set_other_config(ovs, &ovs->other_config);
+            status = cli_do_config_finish(status_txn);
+        }
+        if(!(status == TXN_SUCCESS || status == TXN_UNCHANGED)) {
+            VLOG_ERR("Committing banner update transaction to DB failed.");
+            return CMD_OVSDB_FAILURE;
+        }
+        else if (status == TXN_SUCCESS) {
+            vty_out(vty, "Banner updated successfully!%s", VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+        else {
+            return CMD_WARNING;
+        }
+    } else {
+        VLOG_ERR("Unable to retrieve any system table rows in order to set "
+                 "banner value.");
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+/*
+ * The get command to read from the post login banner from other_config
+ */
+
+int
+vtysh_ovsdb_banner_exec_get(char* banner)
+{
+    const struct ovsrec_system *ovs;
+    ovs = ovsrec_system_first(idl);
+    const char *str;
+
+    if (ovs) {
+        str = smap_get(&ovs->other_config, SYSTEM_OTHER_CONFIG_MAP_BANNER_EXEC);
+        if (str) {
+            strncpy(banner, str, MAX_BANNER_LENGTH);
+        }
+        else {
+            strncpy(banner, "", MAX_BANNER_LENGTH);
+        }
+    } else {
+        VLOG_ERR("Unable to retrieve any system table rows in order to retrieve"
+                 " banner value");
+        return CMD_OVSDB_FAILURE;
+    }
+    return CMD_SUCCESS;
+}
+
+/*
+ * The get command to read from the banner from other_config
+ */
+int
+vtysh_ovsdb_banner_get(char* banner)
+{
+    const struct ovsrec_system *ovs;
+    ovs = ovsrec_system_first(idl);
+    const char *str;
+
+    if (ovs) {
+        str = smap_get(&ovs->other_config, SYSTEM_OTHER_CONFIG_MAP_BANNER);
+        if (str) {
+            strncpy(banner, str, MAX_BANNER_LENGTH);
+        }
+        else {
+            strncpy(banner, "", MAX_BANNER_LENGTH);
+        }
+    } else {
+        VLOG_ERR("Unable to retrieve any system table rows in order to retrieve"
+                 " banner value");
+        return CMD_OVSDB_FAILURE;
+    }
+
+    return CMD_SUCCESS;
+}
 /*
  * Function: vtysh_ovsdb_session_timeout_set
  * Responsibility: To set CLI idle session timeout value.
