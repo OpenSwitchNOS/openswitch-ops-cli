@@ -1480,7 +1480,6 @@ lldpd_get_system_description() {
     char *key, *val;
     char *ptr1 = NULL;
     struct utsname un;
-    char *hp;
     bool pretty_name_found = 0;
 
     FILE *fp = fopen("/etc/os-release", "r");
@@ -1569,10 +1568,9 @@ DEFUN (cli_lldp_show_local_device,
     const struct ovsrec_vrf *vrf = NULL;
     const struct ovsrec_port *portrow = NULL;
     const struct ovsrec_interface *ifrow = NULL;
-    const struct ovsrec_vlan *vlan;
 
-    bool lldp_enabled = false;
     int tx_interval = 0;
+    int i = 0;
     int hold_time = 0;
     char *system_name = NULL;
     char *system_des = NULL;
@@ -1582,7 +1580,6 @@ DEFUN (cli_lldp_show_local_device,
     struct utsname un;
     bool print_header = 0;
     char *vlan_name = NULL;
-    int ret = 0, i;
 
     system_des = lldpd_get_system_description();
 
@@ -1684,12 +1681,12 @@ DEFUN (cli_lldp_show_local_device,
 
             vty_out(vty, "Port VLAN Id      : ");
             if (portrow->tag)
-                vty_out(vty, "%d%s", *portrow->tag, VTY_NEWLINE);
+                vty_out(vty, "%lu%s", *portrow->tag, VTY_NEWLINE);
 
             if (strcmp(portrow->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0) {
                 vty_out(vty, "VLAN-Ids          : ");
                 if (portrow->tag)
-                    vty_out(vty, "%d%s", *portrow->tag, VTY_NEWLINE);
+                    vty_out(vty, "%lu%s", *portrow->tag, VTY_NEWLINE);
 
                 vty_out(vty, "VLAN Name         : %s%s", (vlan_name ? vlan_name : ""), VTY_NEWLINE);
                 vty_out(vty, "%s", VTY_NEWLINE);
@@ -1697,7 +1694,7 @@ DEFUN (cli_lldp_show_local_device,
                 vty_out(vty, "VLAN-Ids          : ");
 
                 if (portrow->tag)
-                    vty_out(vty, "%d", *portrow->tag);
+                    vty_out(vty, "%lu", *portrow->tag);
 
 
                 for (i = 0; i < portrow->n_trunks; i++) {
@@ -1708,7 +1705,7 @@ DEFUN (cli_lldp_show_local_device,
                         vty_out(vty, ", ");
 
 
-                    vty_out(vty, "%d", portrow->trunks[i]);
+                    vty_out(vty, "%lu", portrow->trunks[i]);
                 }
 
                 vty_out(vty, " %s", VTY_NEWLINE);
@@ -1716,7 +1713,7 @@ DEFUN (cli_lldp_show_local_device,
 
                 if (portrow->tag) {
                     vlan_name = lldp_get_vlan_name(*portrow->tag);
-                    vty_out(vty, "%s", (vlan_name ? vlan_name : ""), VTY_NEWLINE);
+                    vty_out(vty, "%s%s", (vlan_name ? vlan_name : ""), VTY_NEWLINE);
                 }
 
                 for (i = 0; i < portrow->n_trunks; i++) {
@@ -1740,7 +1737,7 @@ DEFUN (cli_lldp_show_local_device,
             for (i = 0; i < portrow->n_trunks; i++) {
                 if ( i )
                     vty_out(vty, ", ");
-                vty_out(vty, "%d", portrow->trunks[i]);
+                vty_out(vty, "%lu", portrow->trunks[i]);
             }
 
             vty_out(vty, " %s", VTY_NEWLINE);

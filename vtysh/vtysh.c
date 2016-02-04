@@ -29,6 +29,7 @@
 #include <arpa/inet.h>
 #include <vty_utils.h>
 #include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/ntp_vty.h"
 #else
 #include <zebra.h>
 #endif
@@ -731,7 +732,6 @@ int complete_status;
 static int
 default_port_add (const char *if_name)
 {
-    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
 
@@ -743,7 +743,7 @@ default_port_add (const char *if_name)
         cli_do_config_abort (status_txn);
         return CMD_OVSDB_FAILURE;
       }
-    port_row = port_check_and_add (if_name, true, true, status_txn);
+    port_check_and_add (if_name, true, true, status_txn);
     status = cli_do_config_finish (status_txn);
 
     if (status == TXN_SUCCESS)
@@ -1702,7 +1702,7 @@ DEFUN(vtysh_vlan,
     {
         /* Check for internal VLAN.
          * No configuration is allowed on internal VLANs. */
-        vty_out(vty, "VLAN%d is used as an internal VLAN. "
+        vty_out(vty, "VLAN%lu is used as an internal VLAN. "
                 "No further configuration allowed.%s", vlan_row->id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1817,7 +1817,7 @@ DEFUN(vtysh_no_vlan,
         {
             /* Check for internal VLAN.
              * No deletion is allowed on internal VLANs. */
-            vty_out(vty, "VLAN%d is used as an internal VLAN. "
+            vty_out(vty, "VLAN%lu is used as an internal VLAN. "
                     "Deletion not allowed.%s", vlan_row->id, VTY_NEWLINE);
             return CMD_SUCCESS;
         }
@@ -4248,7 +4248,7 @@ DEFUN (vtysh_show_session_timeout_cli,
 {
     int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
 
-    vty_out(vty, "session-timeout: %d minute", timeout_period);
+    vty_out(vty, "session-timeout: %lu minute", timeout_period);
     if (timeout_period > 1)
         vty_out(vty, "s");
     if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)

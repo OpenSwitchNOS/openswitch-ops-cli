@@ -840,7 +840,7 @@ vtysh_ovsdb_os_name_get(void)
 
     ovs = ovsrec_system_first(idl);
     if (ovs) {
-        os_name = smap_get(&ovs->software_info, SYSTEM_SOFTWARE_INFO_OS_NAME);
+        os_name = (char *)smap_get(&ovs->software_info, SYSTEM_SOFTWARE_INFO_OS_NAME);
     }
 
     return os_name ? os_name : "OpenSwitch";
@@ -911,7 +911,7 @@ vtysh_ovsdb_hostname_reset(char *hostname_arg)
         data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
         ovsdb_hostname = data->keys->string;
 
-        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        if ((ovsdb_hostname != NULL) && (strcmp(ovsdb_hostname, hostname_arg) == 0))
         {
             vtysh_ovsdb_hostname_set("");
         }
@@ -1492,7 +1492,7 @@ bool
 check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
 {
     char *l3port = NULL;
-    l3port = smap_get(&vlan_row->internal_usage,
+    l3port = (char *)smap_get(&vlan_row->internal_usage,
                                  VLAN_INTERNAL_USAGE_L3PORT);
     return (l3port != NULL) ? true : false;
 }
