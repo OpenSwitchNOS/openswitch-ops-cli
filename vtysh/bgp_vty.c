@@ -12601,7 +12601,396 @@ DEFUN (show_ipv6_prefix_list_prefix_longer,
     show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, argv[1],
                       first_match, longer, prefix_len(argv[1]));
     return CMD_SUCCESS;
+}
 
+const struct ovsrec_prefix_list *
+policy_get_bgp_community_filter_in_ovsdb(const char *name, const char *type)
+{
+    const struct ovsrec_bgp_community_filter *cfilter_row;
+    int i;
+    bool match_found = false;
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter_row, idl) {
+        if ( !strcmp(cfilter_row->name, name) &&
+             !strcmp(cfilter_row->type, type)) {
+                match_found = true;
+                break;
+        }
+    }
+    if (match_found) {
+        return cfilter_row;
+
+    } else {
+        return NULL;
+    }
+}
+
+const struct ovsrec_prefix_list *
+policy_get_bgp_community_filter_list_in_ovsdb(const char *name,
+              const char *type, const char *action, const char *description)
+{
+    const struct ovsrec_bgp_community_filter *cfilter_row;
+    int i;
+    bool match_found = false;
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter_row, idl) {
+        if ( !strcmp(cfilter_row->name, name) &&
+             !strcmp(cfilter_row->type, type)) {
+
+            if (strcmp(action,"permit") == 0) {
+                for(i=0 ; i < cfilter_row->n_permit; i++) {
+                    if (strcmp(cfilter_row->permit[i],description) == 0) {
+                        match_found = true;
+                        break;
+
+                    }
+                 }
+                 if (match_found) {
+                        break;
+                }
+
+            } else if (strcmp(action,"deny") == 0) {
+                for(i=0 ; i < cfilter_row->n_deny; i++) {
+                    if (strcmp(cfilter_row->deny[i],description) == 0) {
+                        match_found = true;
+                        break;
+
+                    }
+                }
+                if (match_found) {
+                        break;
+                }
+            }
+        }
+    }
+
+    if (match_found) {
+        return cfilter_row;
+
+    } else {
+        return NULL;
+    }
+
+}
+
+static int
+policy_set_community_filter_list_in_ovsdb (struct vty *vty, afi_t afi, char *type,
+                          char *name, char *action, char *description)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_community_filter *cfilter_row;
+    const struct ovsrec_bgp_community_filter *temp_cfilter_row;
+    size_t size, i;
+    char **desc;
+    bool entry_set = false;
+
+    START_DB_TXN(policy_txn);
+
+    cfilter_row = policy_get_bgp_community_filter_list_in_ovsdb(name,
+                                          type, action, description);
+
+    if (!cfilter_row) {
+        OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter_row, idl) {
+            if (!strcmp(cfilter_row->name, name)) {
+                if (!strcmp(action,"permit")) {
+                    size = cfilter_row->n_permit + 1;
+                    desc = xmalloc(sizeof(char *) * size);
+                    for (i=0; i< cfilter_row->n_permit; i++) {
+                        desc[i] = cfilter_row->permit[i];
+                    }
+                    desc[cfilter_row->n_permit] = description;
+                    ovsrec_bgp_community_filter_set_permit(cfilter_row,
+                                   desc, size);
+                    entry_set = true;
+                    free(desc);
+                } else if (!strcmp(action,"deny")) {
+                    size = cfilter_row->n_deny + 1;
+                    desc = xmalloc(sizeof (char *) * size);
+                    for (i=0; i< cfilter_row->n_deny; i++) {
+                        desc[i] = cfilter_row->deny[i];
+                    }
+                    desc[cfilter_row->n_deny] = description;
+                    ovsrec_bgp_community_filter_set_deny(cfilter_row,
+                                                         desc, size);
+                    entry_set = true;
+                    free(desc);
+                }
+            }
+        }
+
+        if (!entry_set) {
+
+            cfilter_row = ovsrec_bgp_community_filter_insert(policy_txn);
+            ovsrec_bgp_community_filter_set_name(cfilter_row, name);
+            ovsrec_bgp_community_filter_set_type(cfilter_row, type);
+            if (!strcmp(action,"permit")) {
+                size = cfilter_row->n_permit + 1;
+                desc = xmalloc(sizeof(char *) * size);
+                for (i=0; i< cfilter_row->n_permit; i++) {
+                        desc[i] = cfilter_row->permit[i];
+                }
+                desc[cfilter_row->n_permit] = description;
+                ovsrec_bgp_community_filter_set_permit(cfilter_row,
+                                   desc, size);
+                entry_set = true;
+                free(desc);
+            } else if (!strcmp(action,"deny")) {
+                size = cfilter_row->n_deny + 1;
+                desc = xmalloc(sizeof (char *) * size);
+                for (i=0; i< cfilter_row->n_deny; i++) {
+                        desc[i] = cfilter_row->deny[i];
+                }
+                desc[cfilter_row->n_deny] = description;
+                ovsrec_bgp_community_filter_set_deny(cfilter_row,
+                                                         desc, size);
+                entry_set = true;
+                free(desc);
+            }
+        }
+    }
+    END_DB_TXN(policy_txn);
+
+}
+
+DEFUN (ip_community_list,
+       ip_community_list_cmd,
+       "ip community-list"
+       " WORD (deny|permit) .LINE",
+       IP_STR
+       "Add a community list entry\n"
+       "Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+{
+    regex_t *regex = NULL;
+
+    /* All digit name check.  */
+    if (all_digit (argv[0])) {
+        vty_out (vty, "%% Community name cannot have all digits%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    regex = bgp_regcomp (argv_concat(argv, argc, 2));
+
+    if (!regex) {
+        vty_out (vty, "%%  Malformed community-list value%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+    return policy_set_community_filter_list_in_ovsdb(vty, AFI_IP,
+                            "community-list", argv[0], argv[1],
+                            argv_concat(argv, argc, 2));
+}
+
+DEFUN (ip_extcommunity_list,
+       ip_extcommunity_list_cmd,
+       "ip extcommunity-list"
+       " WORD (deny|permit) .LINE",
+       IP_STR
+       "Add an extended community list entry\n"
+       "Extended Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+{
+
+    regex_t *regex = NULL;
+
+    /* All digit name check.  */
+    if (all_digit (argv[0])) {
+        vty_out (vty, "%% Community name cannot have all digits%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    regex = bgp_regcomp (argv_concat(argv, argc, 2));
+
+    if (!regex) {
+        vty_out (vty, "%%  Malformed community-list value%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    return policy_set_community_filter_list_in_ovsdb(vty, AFI_IP,
+                            "extcommunity-list", argv[0], argv[1],
+                            argv_concat(argv, argc, 2));
+}
+
+static int
+policy_no_community_filter_name_in_ovsdb (char *type, char *name)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_community_filter *community_row;
+
+    START_DB_TXN(policy_txn);
+    community_row = policy_get_bgp_community_filter_in_ovsdb(name, type);
+    if (!community_row) {
+        ERRONEOUS_DB_TXN(policy_txn,"%% Community-filter list not found");
+    }
+    ovsrec_bgp_community_filter_delete(community_row);
+
+    END_DB_TXN(policy_txn);
+}
+
+
+DEFUN (no_ip_community_list,
+       no_ip_community_list_cmd,
+       "no ip community-list WORD",
+       NO_STR
+       IP_STR
+       "Add a community list entry\n"
+       "Community list name\n")
+
+{
+    return policy_no_community_filter_name_in_ovsdb
+                        ("community-list", argv[0]);
+}
+
+DEFUN (no_ip_extcommunity_list,
+       no_ip_extcommunity_list_cmd,
+       "no ip extcommunity-list WORD",
+       NO_STR
+       IP_STR
+       "Add an extended community list entry\n"
+       "Extended Community list name\n")
+
+{
+
+    return policy_no_community_filter_name_in_ovsdb
+                     ("extcommunity-list", argv[0]);
+}
+
+static int
+policy_no_community_filter_list_in_ovsdb(afi_t afi, const char *type,
+                              const char *name, const char *action,
+                              const char *description)
+{
+    const struct ovsrec_bgp_community_filter *cfilter;
+    struct ovsdb_idl_txn *policy_txn = NULL;
+    int i,j,new_size;
+    char **desc;
+
+    START_DB_TXN(policy_txn);
+
+    cfilter = policy_get_bgp_community_filter_list_in_ovsdb(name,
+                                          type, action, description);
+
+    if (cfilter == NULL) {
+        ERRONEOUS_DB_TXN(policy_txn, "%% Community filter list not found");
+    } else {
+        OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter, idl) {
+            if (!strcmp(cfilter->name,name) &&
+                !strcmp(cfilter->type,type)) {
+                if (!(strcmp(action,"permit"))) {
+                    new_size = cfilter->n_permit - 1;
+                    desc = xmalloc(sizeof(char *) * new_size);
+                    for (i = 0, j = 0; i < cfilter->n_permit; i++) {
+                        if (strcmp(cfilter->permit[i], description)) {
+                            desc[j] = cfilter->permit[i];
+                            j++;
+                        }
+                    }
+                    ovsrec_bgp_community_filter_set_permit(cfilter, desc, new_size);
+                    free(desc);
+                } else if (!(strcmp(action,"deny"))) {
+                    new_size = cfilter->n_deny - 1;
+                    desc = xmalloc(sizeof(char *) * new_size);
+                    for (i = 0, j = 0; i < cfilter->n_deny; i++) {
+                        if (strcmp(cfilter->deny[i], description)) {
+                            desc[j] = cfilter->deny[i];
+                            j++;
+                        }
+                    }
+                    ovsrec_bgp_community_filter_set_deny(cfilter, desc, new_size);
+                    free(desc);
+                }
+            }
+        }
+    }
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (no_ip_community_list_line,
+       no_ip_community_list_line_cmd,
+       "no ip community-list"
+       " WORD (deny|permit) .LINE",
+       NO_STR
+       IP_STR
+       "Add a community list entry\n"
+       "Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+
+{
+
+    return policy_no_community_filter_list_in_ovsdb(AFI_IP, "community-list"
+                            ,argv[0], argv[1], argv_concat(argv, argc, 2));
+}
+
+DEFUN (no_ip_extcommunity_list_line,
+       no_ip_extcommunity_list_line_cmd,
+       "no ip extcommunity-list"
+       " WORD (deny|permit) .LINE",
+       NO_STR
+       IP_STR
+       "Add an extended community list entry\n"
+       "Extended Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+
+{
+
+    return policy_no_community_filter_list_in_ovsdb(AFI_IP, "extcommunity-list"
+                              ,argv[0], argv[1], argv_concat(argv, argc, 2));
+}
+
+void
+policy_show_community_filter_in_ovsdb(char *type)
+{
+
+    const struct ovsrec_bgp_community_filter *ovs_community_list = NULL;
+    int i;
+
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(ovs_community_list,idl)
+    {
+
+        if ( ovs_community_list->name
+             && ovs_community_list->type) {
+            if (!strcmp(ovs_community_list->type,type)) {
+               vty_out(vty,"ip %s %s%s",
+                                  ovs_community_list->type,
+                                  ovs_community_list->name,VTY_NEWLINE);
+               for (i =0 ; i<ovs_community_list->n_permit; i++) {
+                vty_out(vty,"%4spermit %s%s","",
+                                  ovs_community_list->permit[i],VTY_NEWLINE);
+               }
+                for (i =0 ; i<ovs_community_list->n_deny; i++) {
+                vty_out(vty,"%4sdeny %s%s","",
+                                  ovs_community_list->deny[i],VTY_NEWLINE);
+               }
+           }
+        }
+
+    }
+
+}
+DEFUN (show_ip_community_list,
+       show_ip_community_list_cmd,
+       "show ip community-list",
+       SHOW_STR
+       IP_STR
+       "List community-list\n")
+{
+    policy_show_community_filter_in_ovsdb("community-list");
+
+}
+
+DEFUN (show_ip_extcommunity_list,
+       show_ip_extcommunity_list_cmd,
+       "show ip extcommunity-list",
+       SHOW_STR
+       IP_STR
+       "List extended-community list\n")
+{
+    policy_show_community_filter_in_ovsdb("extcommunity-list");
 }
 void policy_vty_init(void)
 {
@@ -12632,6 +13021,14 @@ void policy_vty_init(void)
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_prefix_cmd);
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_prefix_first_match_cmd);
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_prefix_longer_cmd);
+    install_element(CONFIG_NODE, &ip_community_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_community_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_community_list_line_cmd);
+    install_element(CONFIG_NODE, &ip_extcommunity_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_extcommunity_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_extcommunity_list_line_cmd);
+    install_element(ENABLE_NODE, &show_ip_community_list_cmd);
+    install_element(ENABLE_NODE, &show_ip_extcommunity_list_cmd);
     install_element(CONFIG_NODE, &rt_map_cmd);
     install_element(CONFIG_NODE, &no_rt_map_cmd);
     install_element(CONFIG_NODE, &no_rt_map_all_cmd);
