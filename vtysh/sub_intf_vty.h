@@ -45,7 +45,9 @@
 
 #define INTF_HELP_STR                 "Interface to create"
 void sub_if_vty_init(void);
+void sub_intf_vty_init(void);
 void encapsulation_vty_init(void);
+int delete_sub_intf(const char *sub_intf_name);
 
 const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                              bool attach_to_default_sub_if,

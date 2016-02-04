@@ -26,6 +26,7 @@
 
 /* Function declarations */
 void ntpd_vty_init (void);
+void ntp_vty_init (void);
 
 /* Structure defiitions */
 typedef struct ntp_cli_ntp_server_params_s {

@@ -34,13 +34,13 @@
 #include <lib/version.h>
 #include "getopt.h"
 #include "command.h"
+#include "intf_vty.h"
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
 #include "vtysh/vtysh_utils.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
-#include "intf_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openswitch-idl.h"
@@ -53,6 +53,7 @@
 
 VLOG_DEFINE_THIS_MODULE(vtysh_interface_cli);
 extern struct ovsdb_idl *idl;
+extern struct cmd_token *token;
 
 #define INTF_NAME_SIZE 50
 

@@ -68,5 +68,16 @@ bool check_port_in_vrf(const char *port_name);
 
 bool vtysh_ovsdb_is_loaded(void);
 
+extern struct ovsrec_vlan *vlan_row;
+bool check_if_internal_vlan(const struct ovsrec_vlan *vlan_row);
+
 void utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width);
+
+void vtysh_periodic_refresh(void);
+
+int vtysh_init_source_interface_context_clients(void);
+
+int vtysh_init_dhcp_tftp_context_clients(void);
+
+int vtysh_init_sftp_context_clients (void);
 #endif /* VTYSH_OVSDB_IF_H */
