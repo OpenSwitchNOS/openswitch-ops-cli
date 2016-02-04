@@ -25,6 +25,9 @@
 
 #include <stdbool.h>
 
+/* For banner_type enum */
+#include "banner_vty.h"
+
 #define MAX_MACADDR_LEN 17
 #define DEFAULT_SESSION_TIMEOUT_PERIOD 30
 #define OVS_OSPF_VL_MAX_COUNT        256
@@ -97,5 +100,11 @@ void ospf_area_vlink_init(void);
 bool check_acl_configuration(const char *port_name);
 
 bool vtysh_chk_for_system_configured_db_is_ready(void);
+
+int vtysh_ovsdb_banner_set(const char* in, enum banner_type which_banner);
+
+int vtysh_ovsdb_banner_get(char* banner);
+
+int vtysh_ovsdb_banner_exec_get(char* banner);
 
 #endif /* VTYSH_OVSDB_IF_H */
