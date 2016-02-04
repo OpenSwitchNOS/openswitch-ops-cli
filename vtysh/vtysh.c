@@ -64,6 +64,8 @@
 #include "vrf_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
+#include "banner_vty.h"
+
 #endif
 
 #include "sub_intf_vty.h"
@@ -2665,7 +2667,7 @@ DEFUN (vtysh_start_bash,
 }
 
 /*Function to check whether user is member of the given group*/
-static int
+int
 check_user_group( const char *user, const char *group_name)
 {
        int j, ngroups;
@@ -4505,5 +4507,7 @@ vtysh_init_vty ( struct passwd *pw)
   /* Initialize ECMP CLI */
   ecmp_vty_init();
 
+  /* Initialize banner CLI */
+  banner_vty_init();
 #endif
 }
