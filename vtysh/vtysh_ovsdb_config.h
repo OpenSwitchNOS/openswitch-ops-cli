@@ -76,6 +76,7 @@ typedef enum vtysh_router_context_client_idenum
   e_vtysh_router_context_client_id_first = 0,
   e_vtysh_router_context_bgp_ip_prefix,
   e_vtysh_router_context_bgp_ip_community_filter,
+  e_vtysh_router_context_bgp_ip_filter_list,
   e_vtysh_router_context_bgp_routemap,
   e_vtysh_router_context_bgp,
   e_vtysh_router_context_ospf,

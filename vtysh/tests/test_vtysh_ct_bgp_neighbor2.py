@@ -39,7 +39,12 @@ from opsvsi.opsvsitest import *
 #   * neighbor <peer-group> prefix-list
 #   * no neighbor <peer> prefix-list
 #   * no neighbor <peer-group> prefix-list
-#
+#   * neighbor <peer> filter-list
+#   * neighbor <peer-group> filter-list
+#   * no neighbor <peer> filter-list
+#   * no neighbor <peer-group> filter-list
+#   * ip as-path access-list WORD (deny|permit) .LINE
+#   * no ip as-path access-list WORD (deny|permit) .LINE
 #
 # S1 [interface 1]<--->[interface 1] S2
 
@@ -566,6 +571,250 @@ class bgpTest(OpsVsiTest):
 
         return True
 
+    def configure_neighbor_filter_list(self):
+        key = "filter-list"
+        info("\n########## Configuring %s for neighbor %s"
+             " on switch 1... ##########\n" %
+            (key, BGP1_NEIGHBOR))
+
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        cfg_array = []
+        cfg_array.append("ip as-path access-list %s permit 123" % filter_list)
+        cfg_array.append("router bgp %s" % BGP1_ASN)
+        cfg_array.append("neighbor %s %s %s %s" % (BGP1_NEIGHBOR, \
+            key, filter_list, LIST_OUT))
+
+        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+
+    def verify_neighbor_filter_list(self):
+        key = "filter-list"
+        key2 = "filter_list"
+        info("\n########## Verifying %s for neighbor %s"
+            " on switch 1... ##########\n" % (key2, BGP1_NEIGHBOR))
+        found = False
+        filter_list = 'fl_test'
+        switch = self.net.switches[0]
+
+        show_cmd = "show running-config"
+        dump = switch.cmdCLI(show_cmd)
+        lines = dump.split('\n')
+        search_pattern = "neighbor %s %s %s %s"% (BGP1_NEIGHBOR, \
+            key, filter_list, LIST_OUT)
+        for line in lines:
+            if search_pattern in line:
+                   found = True
+        assert (found == True), \
+            "Error in verifying %s for neighbor %s" \
+            " on switch 1\n" % (key, BGP1_NEIGHBOR)
+
+        return True
+
+    def unconfigure_neighbor_filter_list(self):
+        key = "filter-list"
+        info("\n########## Unconfiguring %s for neighbor %s"
+            " on switch 1... ##########\n" % (key, BGP1_NEIGHBOR))
+
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        cfg_array = []
+        cfg_array.append("router bgp %s" % BGP1_ASN)
+        cfg_array.append("no neighbor %s %s %s %s" % (BGP1_NEIGHBOR, \
+            key, filter_list, LIST_OUT))
+        cfg_array.append("no ip as-path access-list %s permit 123" % filter_list)
+
+        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+
+    def verify_no_neighbor_filter_list(self):
+        key = "filter-list"
+        key2 = "filter_list"
+        info("\n########## Verifying no %s for neighbor %s"
+            " on switch 1... ##########\n" % (key2, BGP1_NEIGHBOR))
+        found = False
+        filter_list = 'fl_test'
+        switch = self.net.switches[0]
+
+        show_cmd = "show running-config"
+        dump = switch.cmdCLI(show_cmd)
+        lines = dump.split('\n')
+        search_pattern = "neighbor %s %s %s %s"% (BGP1_NEIGHBOR, \
+            key, filter_list, LIST_OUT)
+        for line in lines:
+            if search_pattern in line:
+                   found = True
+        assert (found == False), \
+            "Error in verifying no %s for neighbor %s" \
+            " on switch 1\n" % (key, BGP1_NEIGHBOR)
+
+    def configure_neighbor_filter_list_peergroup(self):
+        key = "filter-list"
+        info("\n########## Configuring %s for peer group %s"
+            " on switch 1... ##########\n" % (key, self.peer_group))
+
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        cfg_array = []
+        cfg_array.append("ip as-path access-list %s permit 123" % filter_list)
+        cfg_array.append("router bgp %s" % BGP1_ASN)
+        cfg_array.append("neighbor %s peer-group" % self.peer_group)
+        cfg_array.append("neighbor %s peer-group %s" % (BGP1_NEIGHBOR,
+            self.peer_group))
+        cfg_array.append("neighbor %s %s %s %s" % (self.peer_group, \
+            key, filter_list, LIST_OUT))
+
+        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+
+    def verify_neighbor_filter_list_peergroup(self):
+        key = "filter-list"
+        info("\n########## Verifying %s for peer group %s"
+            " on switch 1... ##########\n" % (key, self.peer_group))
+        foundNeighbor = False
+        foundpeerGroup = False
+        foundpeerGroupCfg = False
+        filter_list = 'fl_test'
+        switch = self.net.switches[0]
+
+        dump = switch.cmdCLI("show running-config")
+        lines = dump.split('\n')
+        search_pattern_neighbor = "neighbor %s peer-group %s"% (BGP1_NEIGHBOR,
+            self.peer_group)
+        search_pattern_peer_group = "neighbor %s peer-group"% (self.peer_group)
+        search_pattern_peer_group_cfg = \
+            "neighbor %s %s %s %s"% (self.peer_group, key, filter_list, LIST_OUT)
+        for line in lines:
+            if search_pattern_neighbor in line:
+                foundNeighbor = True
+            elif search_pattern_peer_group in line:
+                foundpeerGroup = True
+            elif search_pattern_peer_group_cfg in line:
+                foundpeerGroupCfg = True
+
+        assert (foundNeighbor == True or foundpeerGroup == True or \
+            foundpeerGroupCfg == True), \
+            "Error in verifying %s for peer group %s" \
+            " on switch 1\n" % (key, self.peer_group)
+
+    def unconfigure_neighbor_filter_list_peergroup(self):
+        key = "filter-list"
+        info("\n########## Unconfiguring %s for peer group %s"
+            " on switch 1... ##########\n" % (key, self.peer_group))
+
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        cfg_array = []
+        cfg_array.append("router bgp %s" % BGP1_ASN)
+        cfg_array.append("no neighbor %s %s %s %s" % (self.peer_group, \
+            key, filter_list, LIST_OUT))
+        cfg_array.append("no ip as-path access-list %s permit 123" % filter_list)
+
+        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+
+    def verify_no_neighbor_filter_list_peergroup(self):
+        key = "filter-list"
+        info("\n########## Verifying no %s for peer group %s"
+            " on switch 1... ##########\n" % (key, self.peer_group))
+        foundNeighbor = False
+        foundpeerGroup = False
+        foundpeerGroupCfg = False
+        filter_list = 'fl_test'
+        switch = self.net.switches[0]
+
+        dump = switch.cmdCLI("show running-config")
+        lines = dump.split('\n')
+        search_pattern_neighbor = "neighbor %s peer-group %s"% (BGP1_NEIGHBOR,
+            self.peer_group)
+        search_pattern_peer_group = "neighbor %s peer-group"% (self.peer_group)
+        search_pattern_peer_group_cfg = \
+            "neighbor %s %s %s %s"% (self.peer_group, key, filter_list, LIST_OUT)
+        for line in lines:
+            if search_pattern_neighbor in line:
+                foundNeighbor = True
+            elif search_pattern_peer_group in line:
+                foundpeerGroup = True
+            elif search_pattern_peer_group_cfg in line:
+                foundpeerGroupCfg = True
+
+        assert (foundNeighbor == True or foundpeerGroup == True or \
+            foundpeerGroupCfg == False), \
+            "Error in verifying no %s for peer group %s" \
+            " on switch 1\n" % (key, self.peer_group)
+
+        return True
+
+    def configure_ip_aspath_access_list(self):
+        key = "as-path access-list"
+        info("\n########## Configuring %s for neighbor %s"
+             " on switch 1... ##########\n" %
+            (key, BGP1_NEIGHBOR))
+
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        cfg_array = []
+        cfg_array.append("ip %s %s permit 123" % (key, filter_list))
+
+        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+
+    def verify_ip_aspath_access_list(self):
+        key = "as-path access-list"
+        info("\n########## Verifying %s for neighbor %s"
+            " on switch 1... ##########\n" % (key, BGP1_NEIGHBOR))
+        found = False
+        filter_list = 'fl_test'
+        switch = self.net.switches[0]
+
+        found = False
+        show_cmd = "show running-config"
+        dump = switch.cmdCLI(show_cmd)
+        lines = dump.split('\n')
+        search_pattern = "ip %s %s permit 123"% (key, \
+            filter_list)
+        for line in lines:
+            if search_pattern in line:
+                   found = True
+        assert (found == True), \
+            "Error in verifying %s for neighbor %s" \
+            " on switch 1\n" % (key, BGP1_NEIGHBOR)
+
+        return True
+
+
+    def unconfigure_ip_aspath_access_list(self):
+        key = "as-path access-list"
+        info("\n########## Configuring %s for neighbor %s"
+             " on switch 1... ##########\n" %
+            (key, BGP1_NEIGHBOR))
+
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        cfg_array = []
+        cfg_array.append("no ip %s %s permit 123" % (key, filter_list))
+
+        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+
+    def verify_no_ip_aspath_access_list(self):
+        key = "as-path access-list"
+        info("\n########## Verifying %s for neighbor %s"
+            " on switch 1... ##########\n" % (key, BGP1_NEIGHBOR))
+        found = False
+        filter_list = 'fl_test'
+        switch = self.net.switches[0]
+
+        found = False
+        show_cmd = "show running-config"
+        dump = switch.cmdCLI(show_cmd)
+        lines = dump.split('\n')
+        search_pattern = "ip %s %s permit 123"% (key, \
+            filter_list)
+        for line in lines:
+            if search_pattern in line:
+                   found = True
+        assert (found == False), \
+            "Error in verifying %s for neighbor %s" \
+            " on switch 1\n" % (key, BGP1_NEIGHBOR)
+
+        return True
+
+
 
 
 class Test_bgpd_neighbor_cmds:
@@ -615,6 +864,21 @@ class Test_bgpd_neighbor_cmds:
         self.test_var.verify_neighbor_prefix_list_peergroup()
         self.test_var.unconfigure_neighbor_prefix_list_peergroup()
         self.test_var.verify_no_neighbor_prefix_list_peergroup()
+
+        self.test_var.configure_neighbor_filter_list()
+        self.test_var.verify_neighbor_filter_list()
+        self.test_var.unconfigure_neighbor_filter_list()
+        self.test_var.verify_no_neighbor_filter_list()
+        self.test_var.configure_neighbor_filter_list_peergroup()
+        self.test_var.verify_neighbor_filter_list_peergroup()
+        self.test_var.unconfigure_neighbor_filter_list_peergroup()
+        self.test_var.verify_no_neighbor_filter_list_peergroup()
+
+        self.test_var.configure_ip_aspath_access_list()
+        self.test_var.verify_ip_aspath_access_list()
+        self.test_var.unconfigure_ip_aspath_access_list()
+        self.test_var.verify_no_ip_aspath_access_list()
+
 
 
 #    def test_mininet_cli(self):
