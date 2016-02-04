@@ -825,6 +825,8 @@ vrf_no_routing (const char *if_name)
 
         OVSREC_PORT_FOR_EACH(tmp_port_row, idl)
         {
+            if (tmp_port_row->interfaces == NULL) continue;
+
             tmp_intf_row = tmp_port_row->interfaces[0];
             if(tmp_intf_row->n_subintf_parent > 0)
             {
