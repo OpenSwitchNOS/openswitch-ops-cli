@@ -282,7 +282,7 @@ is_parent_interface_split(const struct ovsrec_interface *parent_iface)
     char *lanes_split_value = NULL;
     bool is_split = false;
 
-    lanes_split_value = smap_get(&parent_iface->user_config,
+    lanes_split_value = (char *)smap_get(&parent_iface->user_config,
                                INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
     if ((lanes_split_value != NULL) &&
         (strcmp(lanes_split_value,

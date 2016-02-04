@@ -81,9 +81,9 @@ check_split_iface_conditions (const char *ifname)
       return false;
     }
 
-  split_value = smap_get(&if_row->hw_intf_info,
+  split_value = (char *)smap_get(&if_row->hw_intf_info,
           INTERFACE_HW_INTF_INFO_MAP_SPLIT_4);
-  lanes_split_value = smap_get(&if_row->user_config,
+  lanes_split_value = (char *)smap_get(&if_row->user_config,
           INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
   /* Check for split_4 attribute */
   if ((split_value != NULL) &&
@@ -106,7 +106,7 @@ check_split_iface_conditions (const char *ifname)
       parent_iface = if_row->split_parent;
       if (parent_iface != NULL)
         {
-          lanes_split_value = smap_get(&parent_iface->user_config,
+          lanes_split_value = (char *)smap_get(&parent_iface->user_config,
                                        INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
           if ((lanes_split_value == NULL) ||
               (strcmp(lanes_split_value,
@@ -1407,7 +1407,7 @@ show_vrf_info ()
         }
   return CMD_SUCCESS;
     }
-
+    return 0;
 }
 
 DEFUN (cli_vrf_add,
