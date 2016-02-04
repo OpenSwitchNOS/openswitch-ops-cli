@@ -47,6 +47,8 @@ char routercontextbgproutemapclientname[] =
                           "vtysh_router_context_bgp_routemap_clientcallback";
 char routercontextbgpipcommunityfilterclientname[] =
                           "vtysh_router_context_bgp_ip_community_filter_clientcallback";
+char routercontextbgpipfilterlistclientname[] =
+                          "vtysh_router_context_bgp_ip_filter_list_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
@@ -148,6 +150,17 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       nbr_table->key_prefix_lists[i]);
                 i++;
             }
+
+            i=0;
+            while (i < nbr_table->n_aspath_filters) {
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
+                                      "neighbor", bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "filter-list", nbr_table->value_aspath_filters[i]->name,
+                                      nbr_table->key_aspath_filters[i]);
+                i++;
+            }
+
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_allow_as_in)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
@@ -218,6 +231,41 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
         vtysh_ovsdb_cli_print(p_msg,"!");
     }
 }
+
+
+ /*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_ip_filter_list_clientcallback
+| Responsibility : ip as-path access-list command
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_router_context_bgp_ip_filter_list_clientcallback(void *p_private)
+{
+    const struct ovsrec_bgp_aspath_filter *ovs_filter_list = NULL;
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+    int itr;
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(ovs_filter_list, p_msg->idl)
+    {
+        if (ovs_filter_list->name) {
+            for(itr = 0; itr < ovs_filter_list->n_permit; itr++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip as-path access-list %s %s %s",
+                                      ovs_filter_list->name,
+                                      "permit", ovs_filter_list->permit[itr]);
+            }
+            for(itr = 0; itr < ovs_filter_list->n_deny; itr++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip as-path access-list %s %s %s",
+                                      ovs_filter_list->name,
+                                      "deny", ovs_filter_list->deny[itr]);
+            }
+        }
+    }
+    vtysh_ovsdb_cli_print(p_msg,"!");
+    return e_vtysh_ok;
+}
+
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_ip_community_filter_clientcallback
@@ -725,6 +773,22 @@ vtysh_init_router_context_clients()
     }
 
     retval = e_vtysh_error;
+    client.p_client_name = routercontextbgpipfilterlistclientname;
+    client.client_id = e_vtysh_router_context_bgp_ip_filter_list;
+    client.p_callback = &vtysh_router_context_bgp_ip_filter_list_clientcallback;
+    retval = vtysh_context_addclient(e_vtysh_router_context,
+                                     e_vtysh_router_context_bgp_ip_filter_list,
+                                     &client);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add "
+                                  "bgp ip filter list callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+
     client.p_client_name = routercontextbgproutemapclientname;
     client.client_id = e_vtysh_router_context_bgp_routemap;
     client.p_callback = &vtysh_router_context_bgp_routemap_clientcallback;
