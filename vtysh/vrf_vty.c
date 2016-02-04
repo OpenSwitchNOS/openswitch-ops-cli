@@ -65,8 +65,8 @@ bool
 check_split_iface_conditions (const char *ifname)
 {
   const struct ovsrec_interface *if_row, *next, *parent_iface;
-  char *lanes_split_value = NULL;
-  char *split_value = NULL;
+  const char *lanes_split_value = NULL;
+  const char *split_value = NULL;
   bool allowed = true;
 
   OVSREC_INTERFACE_FOR_EACH_SAFE(if_row, next, idl)
@@ -782,6 +782,11 @@ vrf_no_routing (const char *if_name)
   const struct ovsrec_port *port_row = NULL;
   const struct ovsrec_vrf *vrf_row = NULL;
   const struct ovsrec_bridge *default_bridge_row = NULL;
+  const struct ovsrec_port *tmp_port_row = NULL;
+  const struct ovsrec_interface *tmp_intf_row = NULL;
+  const struct ovsrec_vrf *tmp_vrf_row = NULL;
+  const struct ovsrec_interface *tmp_parent_intf_row = NULL;
+  struct ovsrec_port **ports;
   struct ovsdb_idl_txn *status_txn = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsrec_port **vrf_ports;
@@ -790,7 +795,7 @@ vrf_no_routing (const char *if_name)
   int trunk_count = 0;
   int64_t* tag = NULL;
   int tag_count = 0;
-  size_t i, n;
+  int k=0, n=0, i=0;
 
   status_txn = cli_do_config_start ();
 
@@ -818,14 +823,6 @@ vrf_no_routing (const char *if_name)
   else if ((vrf_row = port_vrf_lookup (port_row)) != NULL)
     {
         /* Delete subinterfaces configured, if any. */
-        const struct ovsrec_port *tmp_port_row = NULL;
-        const struct ovsrec_port *sub_intf_port_row =  NULL;
-        const struct ovsrec_vrf *tmp_vrf_row = NULL;
-        const struct ovsrec_interface *tmp_intf_row = NULL;
-        const struct ovsrec_interface *tmp_parent_intf_row = NULL;
-        struct ovsrec_port **ports;
-        int k=0, n=0, i=0;
-
         tmp_parent_intf_row = port_row->interfaces[0];
 
         OVSREC_PORT_FOR_EACH(tmp_port_row, idl)
@@ -1460,7 +1457,7 @@ show_vrf_info ()
         }
   return CMD_SUCCESS;
     }
-
+    return 0;
 }
 
 DEFUN (cli_vrf_add,

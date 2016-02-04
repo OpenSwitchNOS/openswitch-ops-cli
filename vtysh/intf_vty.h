@@ -31,8 +31,8 @@
 #define INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT               "on"
 
 #ifdef ENABLE_OVSDB
-void
-intf_vty_init (void);
+
+void intf_vty_init (void);
 void dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
                           char * const helpstr, int max_len);
 void dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
