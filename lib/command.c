@@ -5024,6 +5024,8 @@ DEFUN (no_config_log_timestamp_precision,
   return CMD_SUCCESS;
 }
 
+/* The following functions are remnants from Quagga */
+/* See ../bannery_vty.c for banner code */
 DEFUN (banner_motd_file,
        banner_motd_file_cmd,
        "banner motd file [FILE]",
