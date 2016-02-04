@@ -4974,7 +4974,7 @@ cli_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr, char *name, 
 
     if (!dir_found) {
         direction[num_entries] = dir;
-        pl_table_entry[num_entries] = CONST_CAST(struct ovsrec_route_map*, pl_row);
+        pl_table_entry[num_entries] = CONST_CAST(struct ovsrec_prefix_list*, pl_row);
         num_entries++;
     }
 
@@ -5049,8 +5049,6 @@ cli_no_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr,
         if (!strcmp(dir, direct)) {
             /* If found, then we skip adding this prefix-list configuration. */
             dir_found = true;
-            num_entries--;
-            continue;
         } else {
             /* This is not the entry we are deleting, so make sure it remains
              * in the ovsdb. */
@@ -5091,6 +5089,120 @@ DEFUN(no_neighbor_prefix_list,
                                                  CONST_CAST(char*, argv[2]));
 }
 
+/* AS-Path Filter */
+static struct ovsrec_bgp_aspath_filter *
+get_neighbor_aspath_filter(const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
+                           char *name, char *direction)
+{
+    struct ovsrec_bgp_aspath_filter *flist = NULL;
+    char *direct, *fl_name;
+    int i;
+
+    for (i = 0; i < ovs_bgp_neighbor->n_aspath_filters; i++)
+    {
+        direct = ovs_bgp_neighbor->key_aspath_filters[i];
+        fl_name = ovs_bgp_neighbor->value_aspath_filters[i]->name;
+
+        if (!strcmp(name, fl_name) && !strcmp(direction, direct))
+        {
+            flist = ovs_bgp_neighbor->value_aspath_filters[i];
+            break;
+        }
+    }
+
+    return flist;
+}
+
+static struct ovsrec_bgp_neighbor *
+get_bgp_neighbor(const struct ovsdb_idl_txn *txn, char *vrf_name, char *ip_addr)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "VRF does not exist");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ERRONEOUS_DB_TXN(txn, "Neighbor does not exist");
+    }
+
+    return ovs_bgp_neighbor;
+}
+
+static int
+cli_neighbor_aspath_filter_cmd_execute(char *vrf_name, char *ip_addr, char *name, char *dir)
+{
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+    struct ovsdb_idl_txn *txn;
+    struct ovsrec_bgp_aspath_filter **fl_table_entry;
+    bool fl_found = false;
+    bool dir_found = false;
+    char **direction;
+    int num_entries;
+    int i;
+
+    START_DB_TXN(txn);
+
+    ovs_bgp_neighbor = get_bgp_neighbor(txn, vrf_name, ip_addr);
+
+    /* Since neighbor exists, we need to check the aspath filter name and
+     *        direction to identify if it's a duplicate. */
+    if (get_neighbor_aspath_filter(ovs_bgp_neighbor, name, dir)) {
+        ABORT_DB_TXN(txn, "Configuration exists");
+    }
+
+    /* Check if the specified aspath-filter exists. */
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_row, idl) {
+        if (!strcmp(fl_row->name, name)) {
+            fl_found = true;
+            break;
+        }
+    }
+
+    if (!fl_found) {
+        ERRONEOUS_DB_TXN(txn, "AS-Path filter does not exist");
+    }
+
+    num_entries = ovs_bgp_neighbor->n_aspath_filters;
+    direction = xmalloc(sizeof(*direction) * (num_entries+1));
+    fl_table_entry = xmalloc(sizeof(*fl_table_entry) * (num_entries+1));
+
+    for (i = 0; i < num_entries; i++) {
+        direction[i] = ovs_bgp_neighbor->key_aspath_filters[i];
+        fl_table_entry[i] = ovs_bgp_neighbor->value_aspath_filters[i];
+        if (!strcmp(dir, direction[i])) {
+            fl_table_entry[i] = CONST_CAST(struct ovsrec_bgp_aspath_filter*, fl_row);
+            dir_found = true;
+        }
+    }
+
+    /* If the direction in not found in the column then add an entry with direction and filter */
+    if (dir_found == false) {
+        direction[num_entries] = dir;
+        fl_table_entry[num_entries] = CONST_CAST(struct ovsrec_bgp_aspath_filter*, fl_row);
+        num_entries++;
+    }
+
+    ovsrec_bgp_neighbor_set_aspath_filters(ovs_bgp_neighbor, direction,
+                                           fl_table_entry, num_entries);
+
+    free(direction);
+    free(fl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
+}
 
 DEFUN(neighbor_filter_list,
       neighbor_filter_list_cmd,
@@ -5102,9 +5214,66 @@ DEFUN(neighbor_filter_list,
       "Filter incoming routes\n"
       "Filter outgoing routes\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_neighbor_aspath_filter_cmd_execute(NULL,
+                                                  CONST_CAST(char*, argv[0]),
+                                                  CONST_CAST(char*, argv[1]),
+                                                  CONST_CAST(char*, argv[2]));
 }
+
+static int
+cli_no_neighbor_aspath_filter_cmd_execute(char *vrf_name, char *ip_addr,
+                                          char *dir)
+{
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    struct ovsrec_bgp_aspath_filter **fl_table_entry;
+    char **direction;
+    char *direct;
+    int num_entries;
+    int i, j;
+    bool dir_found = false;
+
+    START_DB_TXN(txn);
+
+    ovs_bgp_neighbor = get_bgp_neighbor(txn, vrf_name, ip_addr);
+
+    if (!ovs_bgp_neighbor->n_aspath_filters) {
+        ABORT_DB_TXN(txn, "Failed to unconfigure, AS-Path filter does not exist");
+    }
+
+    /* Check to see if a filter-list is configured for the direction. */
+    num_entries = ovs_bgp_neighbor->n_aspath_filters;
+    direction = xmalloc(sizeof(*direction) * num_entries);
+    fl_table_entry = xmalloc(sizeof(*fl_table_entry) * num_entries);
+
+    for (i = 0, j = 0; i < num_entries; i++) {
+        direct = ovs_bgp_neighbor->key_aspath_filters[i];
+
+        if (!strcmp(dir, direct)) {
+            /* If found, then we skip adding this filter-list configuration. */
+            dir_found = true;
+        } else {
+            /* This is not the entry we are deleting, so make sure it remains
+             *                in the ovsdb. */
+            direction[j] = direct;
+            fl_table_entry[j++] = ovs_bgp_neighbor->value_aspath_filters[i];
+        }
+    }
+
+    if (!dir_found) {
+        free(direction);
+        free(fl_table_entry);
+        ABORT_DB_TXN(txn, "Neighbor filter-list for the direction does not exist");
+    }
+
+    ovsrec_bgp_neighbor_set_aspath_filters(ovs_bgp_neighbor, direction, fl_table_entry,
+                                           num_entries);
+    free(direction);
+    free(fl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
+ }
 
 DEFUN(no_neighbor_filter_list,
       no_neighbor_filter_list_cmd,
@@ -5117,8 +5286,229 @@ DEFUN(no_neighbor_filter_list,
       "Filter incoming routes\n"
       "Filter outgoing routes\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_neighbor_aspath_filter_cmd_execute(NULL,
+                                                     CONST_CAST(char*, argv[0]),
+                                                     CONST_CAST(char*, argv[2]));
+}
+
+/* ip as-path access-list */
+static bool get_aspath_filter_match(const struct ovsrec_bgp_aspath_filter *fl_row,
+                                    const char *des, const char* action)
+{
+    int itr;
+    if(strcmp(action,"permit") == 0) {
+        for(itr=0; itr < fl_row->n_permit; itr++) {
+            if(!strcmp(fl_row->permit[itr], des))
+                return true;
+        }
+    }
+    if(strcmp(action,"deny") == 0) {
+        for(itr=0; itr < fl_row->n_deny; itr++) {
+            if(!strcmp(fl_row->deny[itr], des))
+                return true;
+        }
+    }
+    return false;
+}
+
+static const struct ovsrec_bgp_aspath_filter *
+policy_get_aspath_filter_in_ovsdb(const char *name,
+                                  const char *action, const char *description)
+{
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_row, idl) {
+        if (strcmp(fl_row->name, name) == 0) {
+            if (get_aspath_filter_match(fl_row, description, action) == true) {
+                return fl_row;
+            }
+        }
+    }
+    return NULL;
+}
+
+static int
+policy_set_aspath_filter_in_ovsdb(struct vty *vty, afi_t afi,
+                                  const char *name, const char *action, const char *description)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+    char **permit_entries;
+    char **deny_entries;
+    char **new_permit_entry;
+    char **new_deny_entry;
+    int num_entries;
+    int i;
+    bool entry_set = false;
+
+    START_DB_TXN(policy_txn);
+
+    fl_row = policy_get_aspath_filter_in_ovsdb(name, action, description);
+    /*
+     * If row not found, create an empty row and set the fields.
+     *
+     */
+    if (!fl_row) {
+        OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_row, idl) {
+            if (strcmp(fl_row->name, name) == 0) {
+                if (!strcmp(action, "permit")) {
+                    num_entries = fl_row->n_permit;
+                    permit_entries = xmalloc(sizeof(*permit_entries) * (num_entries+1));
+
+                    for (i = 0; i < num_entries; i++) {
+                        permit_entries[i] = fl_row->permit[i];
+                    }
+
+                    permit_entries[num_entries] = CONST_CAST(char *, description);
+                    num_entries++;
+                    ovsrec_bgp_aspath_filter_set_permit(fl_row, permit_entries, num_entries);
+
+                    entry_set = true;
+                    free(permit_entries);
+                }
+                if (!strcmp(action, "deny")) {
+                    num_entries = fl_row->n_deny;
+                    deny_entries = xmalloc(sizeof(*deny_entries) * (num_entries+1));
+
+                    for (i = 0; i < num_entries; i++){
+                        deny_entries[i] = fl_row->deny[i];
+                    }
+
+                    deny_entries[num_entries] = CONST_CAST(char *, description);
+                    num_entries++;
+
+                    ovsrec_bgp_aspath_filter_set_deny(fl_row, deny_entries, num_entries);
+
+                    entry_set = true;
+                    free(deny_entries);
+                }
+            }
+        }
+
+        if(entry_set != true) {
+            fl_row = ovsrec_bgp_aspath_filter_insert(policy_txn);
+            ovsrec_bgp_aspath_filter_set_name(fl_row, name);
+
+            if (!strcmp(action, "permit")) {
+                num_entries = 0;
+                new_permit_entry = xmalloc(sizeof(*new_permit_entry) * (num_entries+1));
+
+                new_permit_entry[num_entries] = CONST_CAST(char *, description);
+                num_entries++;
+
+                ovsrec_bgp_aspath_filter_set_permit(fl_row, new_permit_entry, num_entries);
+
+                free(new_permit_entry);
+            }
+            if (!strcmp(action, "deny")) {
+                num_entries = 0;
+                new_deny_entry = xmalloc(sizeof(*new_deny_entry) * (num_entries+1));
+
+                new_deny_entry[num_entries] = CONST_CAST(char *, description);
+                num_entries++;
+
+                ovsrec_bgp_aspath_filter_set_deny(fl_row, new_deny_entry, num_entries);
+
+                free(new_deny_entry);
+            }
+        }
+    }
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (ip_as_path, ip_as_path_cmd,
+       "ip as-path access-list WORD (deny|permit) .LINE",
+       IP_STR
+       "BGP autonomous system path filter\n"
+       "Specify an access list name\n"
+       "Regular expression access list name\n"
+       "Specify packets to reject\n"
+       "Specify packets to forward\n"
+       "A regular-expression to match the BGP AS paths\n")
+{
+    regex_t *regex = NULL;
+
+    regex = bgp_regcomp(argv_concat(argv, argc, 2));
+
+    if (!regex) {
+        vty_out (vty, "%%  Malformed filter-list value%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    return policy_set_aspath_filter_in_ovsdb(vty, AFI_IP,
+                                             argv[0], argv[1],
+                                             argv_concat(argv, argc, 2));
+}
+
+static int
+policy_no_aspath_filter_in_ovsdb(afi_t afi, const char *name, const char *action,
+                                 const char *description)
+
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+
+    START_DB_TXN(policy_txn);
+    fl_row = policy_get_aspath_filter_in_ovsdb(name, action, description);
+
+    if (!fl_row) {
+        ERRONEOUS_DB_TXN(policy_txn,"filter-list not found");
+    }
+
+    ovsrec_bgp_aspath_filter_delete(fl_row);
+
+    END_DB_TXN(policy_txn);
+}
+
+static int
+policy_no_aspath_filter_name_in_ovsdb(const char *name)
+{
+    const struct ovsrec_bgp_aspath_filter *fl_entry;
+    struct ovsdb_idl_txn *policy_txn;
+    bool match_found = false;
+
+    /* Start of transaction. */
+    START_DB_TXN(policy_txn);
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_entry, idl) {
+        if (!strcmp(fl_entry->name,name)) {
+            match_found = true;
+            ovsrec_bgp_aspath_filter_delete(fl_entry);
+        }
+    }
+    if (!match_found) {
+        ERRONEOUS_DB_TXN(policy_txn,"filter-list list not found");
+    }
+
+    /* End of transaction. */
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN (no_ip_as_path,
+       no_ip_as_path_cmd,
+       "no ip as-path access-list WORD (deny|permit) .LINE",
+       NO_STR
+       IP_STR
+       "BGP autonomous system path filter\n"
+       "Specify an access list name\n"
+       "Regular expression access list name\n"
+       "Specify packets to reject\n"
+       "Specify packets to forward\n"
+       "A regular-expression to match the BGP AS paths\n")
+{
+    return policy_no_aspath_filter_in_ovsdb(AFI_IP, argv[0], argv[1], argv_concat(argv, argc, 2));
+}
+
+DEFUN (no_ip_as_path_all,
+       no_ip_as_path_all_cmd,
+       "no ip as-path access-list WORD",
+       NO_STR
+       IP_STR
+       "BGP autonomous system path filter\n"
+       "Specify an access list name\n"
+       "Regular expression access list name\n")
+{
+    return policy_no_aspath_filter_name_in_ovsdb(argv[0]);
 }
 
 struct ovsrec_route_map *
@@ -12783,6 +13173,9 @@ DEFUN (show_ipv6_prefix_list_prefix_longer,
 }
 void policy_vty_init(void)
 {
+    install_element(CONFIG_NODE, &ip_as_path_cmd);
+    install_element(CONFIG_NODE, &no_ip_as_path_cmd);
+    install_element(CONFIG_NODE, &no_ip_as_path_all_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_any_cmd);
     install_element(CONFIG_NODE, &ipv6_prefix_list_seq_cmd);
