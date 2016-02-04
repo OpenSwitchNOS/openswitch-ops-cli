@@ -145,6 +145,10 @@ void vtysh_pager_init (void);
 int execute_command (const char *, int, const char *arg[]);
 
 int remove_temp_db(int initialize);
+
+void vtysh_periodic_refresh(void);
+
+int vty_refresh_aliases(void);
 /* Child process execution flag. */
 extern int execute_flag;
 

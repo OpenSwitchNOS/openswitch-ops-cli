@@ -219,6 +219,7 @@ void vtysh_ovsdb_init_clients(void);
 
 vtysh_ret_val vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, ...);
 
+vtysh_ret_val vtysh_sh_run_iteratecontextlist(FILE *fp);
 /* All log/debug/err logging functions */
 void vtysh_ovsdb_config_logmsg(int loglevel, char *fmt,  ...);
 

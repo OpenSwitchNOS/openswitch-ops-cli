@@ -574,17 +574,10 @@ system_ovsdb_init()
 {
     /* Add Platform Related Tables. */
     ovsdb_idl_add_table(idl, &ovsrec_table_fan);
-    ovsdb_idl_add_table(idl, &ovsrec_table_power_supply);
     ovsdb_idl_add_table(idl, &ovsrec_table_led);
     ovsdb_idl_add_table(idl, &ovsrec_table_subsystem);
 
     /* Add Columns for System Related Tables. */
-
-    /* Power Supply. */
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_external_ids);
 
     /* LED. */
     ovsdb_idl_add_column(idl, &ovsrec_led_col_id);
@@ -597,7 +590,6 @@ system_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_interfaces);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_leds);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_fans);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_power_supplies);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_asset_tag_number);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_type);
@@ -842,7 +834,7 @@ const char *
 vtysh_ovsdb_os_name_get(void)
 {
     const struct ovsrec_system *ovs;
-    char *os_name = NULL;
+    const char *os_name = NULL;
 
     ovs = ovsrec_system_first(idl);
     if (ovs) {
@@ -917,7 +909,7 @@ vtysh_ovsdb_hostname_reset(char *hostname_arg)
         data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
         ovsdb_hostname = data->keys->string;
 
-        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        if ((ovsdb_hostname != NULL) && (strcmp(ovsdb_hostname, hostname_arg) == 0))
         {
             vtysh_ovsdb_hostname_set("");
         }
@@ -1497,7 +1489,7 @@ check_port_in_vrf(const char *port_name)
 bool
 check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
 {
-    char *l3port = NULL;
+    const char *l3port = NULL;
     l3port = smap_get(&vlan_row->internal_usage,
                                  VLAN_INTERNAL_USAGE_L3PORT);
     return (l3port != NULL) ? true : false;

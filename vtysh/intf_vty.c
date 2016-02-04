@@ -53,6 +53,7 @@
 
 VLOG_DEFINE_THIS_MODULE(vtysh_interface_cli);
 extern struct ovsdb_idl *idl;
+extern struct cmd_token *token;
 
 #define INTF_NAME_SIZE 50
 
