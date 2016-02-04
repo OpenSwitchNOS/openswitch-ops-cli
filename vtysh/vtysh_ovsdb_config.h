@@ -65,7 +65,6 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_led,
   e_vtysh_config_context_staticroute,
   e_vtysh_config_context_ecmp,
-  e_vtysh_config_context_ntp,
   e_vtysh_config_context_client_id_max
 } vtysh_config_context_clientid;
 
@@ -74,6 +73,7 @@ typedef enum vtysh_router_context_client_idenum
 {
   e_vtysh_router_context_client_id_first = 0,
   e_vtysh_router_context_bgp_ip_prefix,
+  e_vtysh_router_context_bgp_ip_community_filter,
   e_vtysh_router_context_bgp_routemap,
   e_vtysh_router_context_bgp,
   e_vtysh_router_context_ospf,

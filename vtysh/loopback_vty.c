@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -591,7 +591,7 @@ delete_loopback_intf(const char *if_name)
     status_txn = cli_do_config_start();
     if (status_txn == NULL)
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
+        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -633,8 +633,8 @@ delete_loopback_intf(const char *if_name)
     }
 }
 
-DEFUN (cli_intf_show_interface_loopback_if,
-        cli_intf_show_interface_loopback_if_cmd,
+DEFUN (cli_intf_show_intferface_loopback_if,
+        cli_intf_show_intferface_loopback_if_cmd,
         "show interface loopback <0-2147483647>",
         SHOW_STR
         INTERFACE_STR
@@ -716,6 +716,65 @@ DEFUN (cli_intf_show_interface_loopback_if,
 
         datum = ovsrec_interface_get_statistics(ifrow,
                 OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
+#if 0
+        if (NULL==datum) continue;
+
+        vty_out(vty, " RX%s", VTY_NEWLINE);
+
+        atom.string = interface_statistics_keys[0];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld input packets  ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        atom.string = interface_statistics_keys[1];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld bytes  ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        atom.string = interface_statistics_keys[8];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld input error    ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        atom.string = interface_statistics_keys[4];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld dropped  ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        atom.string = interface_statistics_keys[7];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld CRC/FCS  ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        vty_out(vty, " TX%s", VTY_NEWLINE);
+
+        atom.string = interface_statistics_keys[2];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld output packets ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        atom.string = interface_statistics_keys[3];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld bytes  ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        atom.string = interface_statistics_keys[11];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld input error    ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        atom.string = interface_statistics_keys[9];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld dropped  ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "%s", VTY_NEWLINE);
+
+        atom.string = interface_statistics_keys[10];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        vty_out(vty, "   %10ld collision  ",
+                (index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "%s", VTY_NEWLINE);
+#endif
     }
 
     shash_destroy(&sorted_interfaces);
@@ -725,15 +784,15 @@ DEFUN (cli_intf_show_interface_loopback_if,
 }
 
 
-DEFUN (cli_intf_show_interface_loopback,
-        cli_intf_show_interface_loopback_cmd,
+DEFUN (cli_intf_show_intferface_loopback,
+        cli_intf_show_intferface_loopback_cmd,
         "show interface loopback",
         SHOW_STR
         INTERFACE_STR
         "Show details of a loopback interface\n"
         "Select a loopback interface\n")
 {
-    return cli_intf_show_interface_loopback_if (self, vty,
+    return cli_intf_show_intferface_loopback_if (self, vty,
             vty_flags, 0, argv);
 }
 
@@ -765,7 +824,8 @@ DEFUN (cli_loopback_if_config_ipv6,
         "ipv6 address X:X::X:X/M",
         IPV6_STR
         "Set IP address\n"
-        "Interface IPv6 address\n")
+        "Interface IPv6 address\n"
+        "Set as secondary IPv6 address\n")
 {
     return loopback_if_config_ipv6((char*) vty->index, argv[0]);
 }
@@ -774,9 +834,10 @@ DEFUN (cli_loopback_if_del_ipv6,
         cli_loopback_if_del_ipv6_cmd,
         "no ipv6 address X:X::X:X/M",
         NO_STR
-        IPV6_STR
+        IP_STR
         "Set IP address\n"
-        "Interface IP address\n")
+        "Interface IP address\n"
+        "Set as secondary IP address\n")
 {
     return loopback_if_del_ipv6((char*) vty->index, argv[0]);
 }
@@ -811,6 +872,6 @@ loopback_intf_vty_init (void)
     install_element (LOOPBACK_INTERFACE_NODE, &cli_loopback_if_del_ipv6_cmd);
 
     /*show cammands at enable node */
-    install_element (ENABLE_NODE, &cli_intf_show_interface_loopback_cmd);
-    install_element (ENABLE_NODE, &cli_intf_show_interface_loopback_if_cmd);
+    install_element (ENABLE_NODE, &cli_intf_show_intferface_loopback_cmd);
+    install_element (ENABLE_NODE, &cli_intf_show_intferface_loopback_if_cmd);
 }

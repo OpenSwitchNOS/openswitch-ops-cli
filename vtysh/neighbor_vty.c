@@ -137,7 +137,7 @@ DEFUN (cli_ipv6_show,
     cli_ipv6_neighbors_show_cmd,
     "show ipv6 neighbors",
     SHOW_STR
-    IPV6_STR
+    SHOW_IPV6_STR
     SHOW_IPV6_NEIGHBOR_STR)
 {
   return show_ipv6_neighbors();

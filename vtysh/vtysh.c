@@ -45,11 +45,12 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_ovsdb_config.h"
+#include "powersupply_vty.h"
 #include "log.h"
 #include "bgp_vty.h"
 #include "logrotate_vty.h"
+#include "fan_vty.h"
 #include "temperature_vty.h"
-#include "ntp_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 #include "openswitch-idl.h"
@@ -66,6 +67,7 @@
 #include "intf_vty.h"
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
+#include "led_vty.h"
 #include "system_vty.h"
 #include "lacp_vty.h"
 #include "ecmp_vty.h"
@@ -74,7 +76,6 @@
 #include "ping.h"
 #include "traceroute.h"
 
-void ospf_vty_init(void);
 #endif
 
 #include "sub_intf_vty.h"
@@ -945,14 +946,13 @@ static struct cmd_node bgp_ipv6m_node =
       "%s(config-router-af)# "
    };
 
-
+#ifndef ENABLE_OVSDB
 static struct cmd_node ospf_node =
    {
       OSPF_NODE,
       "%s(config-router)# "
    };
 
-#ifndef ENABLE_OVSDB
 static struct cmd_node ripng_node =
    {
       RIPNG_NODE,
@@ -1463,10 +1463,12 @@ DEFUNSH (VTYSH_OSPFD,
    return vtysh_exit (vty);
 }
 
+#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ospfd,
       vtysh_quit_ospfd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
+#endif
 
 DEFUNSH (VTYSH_OSPF6D,
       vtysh_exit_ospf6d,
@@ -1577,7 +1579,7 @@ DEFUN (vtysh_interface,
 {
   static char ifnumber[MAX_IFNAME_LENGTH];
 
-  if (strchr(argv[0], '.'))
+  if (strchr(argv[0],'.'))
      vty->node = SUB_INTERFACE_NODE;
   else
      vty->node = INTERFACE_NODE;
@@ -1641,7 +1643,7 @@ DEFUN (no_vtysh_interface,
   vty->node = CONFIG_NODE;
   static char ifnumber[MAX_IFNAME_LENGTH];
 
-  if (strchr(argv[0], '.'))
+  if (strchr(argv[0],'.'))
   {
      delete_sub_intf(argv[0]);
      return CMD_SUCCESS;
@@ -1809,7 +1811,7 @@ DEFUN(vtysh_vlan,
 
 DEFUN(vtysh_no_vlan,
     vtysh_no_vlan_cmd,
-    "no vlan <2-4094>",
+    "no vlan <1-4094>",
     NO_STR
     VLAN_STR
     "VLAN Identifier\n")
@@ -1917,17 +1919,7 @@ DEFUN(vtysh_no_vlan,
             {
                 int64_t* tag = NULL;
                 int tag_count = 0;
-                if ( trunk_count ) {
-                    ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
-                    ovsrec_port_set_tag(port_row, tag, tag_count);
-                } else {
-                    ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
-                    tag = xmalloc(sizeof *port_row->tag);
-                    tag_count = 1;
-                    tag[0] = DEFAULT_VLAN;
-                    ovsrec_port_set_tag(port_row, tag, tag_count);
-                    free(tag);
-                }
+                ovsrec_port_set_tag(port_row, tag, tag_count);
             }
         }
 
@@ -4307,13 +4299,8 @@ DEFUN (vtysh_show_session_timeout_cli,
 {
     int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
 
-    vty_out(vty, "session-timeout: %d minute", timeout_period);
-    if (timeout_period > 1)
-        vty_out(vty, "s");
     if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)
-        vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
-    else
-        vty_out(vty, " (Default)%s%s", VTY_NEWLINE, VTY_NEWLINE);
+        vty_out(vty, "session-timeout %d%s", timeout_period, VTY_NEWLINE);
 
     return CMD_SUCCESS;
 }
@@ -4417,9 +4404,8 @@ vtysh_init_vty (void)
    install_node (&bgp_ipv6_node, NULL);
    install_node (&bgp_ipv6m_node, NULL);
 /* #endif */
-
-   install_node (&ospf_node, NULL);
 #ifndef ENABLE_OVSDB
+   install_node (&ospf_node, NULL);
 /* #ifdef HAVE_IPV6 */
    install_node (&ripng_node, NULL);
    install_node (&ospf6_node, NULL);
@@ -4460,12 +4446,12 @@ vtysh_init_vty (void)
    vtysh_install_default (BGP_IPV6_NODE);
    vtysh_install_default (BGP_IPV6M_NODE);
 #ifndef ENABLE_OVSDB
+   vtysh_install_default (OSPF_NODE);
    vtysh_install_default (RIPNG_NODE);
    vtysh_install_default (OSPF6_NODE);
    vtysh_install_default (BABEL_NODE);
    vtysh_install_default (ISIS_NODE);
 #endif
-   vtysh_install_default (OSPF_NODE);
    vtysh_install_default (KEYCHAIN_NODE);
    vtysh_install_default (KEYCHAIN_KEY_NODE);
    vtysh_install_default (VTY_NODE);
@@ -4487,14 +4473,10 @@ vtysh_init_vty (void)
    install_element (VIEW_NODE, &vtysh_enable_cmd);
    install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
-
-   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
-   install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
-   install_element (OSPF_NODE, &vtysh_end_all_cmd);
-
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
+   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
@@ -4517,10 +4499,10 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_exit_all_cmd);
    /* install_element (CONFIG_NODE, &vtysh_quit_all_cmd); */
    install_element (ENABLE_NODE, &vtysh_exit_all_cmd);
-
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_exit_ripd_cmd);
    install_element (RIPNG_NODE, &vtysh_exit_ripngd_cmd);
+   install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
    install_element (OSPF6_NODE, &vtysh_exit_ospf6d_cmd);
 #endif
    install_element (BGP_NODE, &vtysh_exit_bgpd_cmd);
@@ -4543,10 +4525,10 @@ vtysh_init_vty (void)
    /* "end" command. */
    install_element (CONFIG_NODE, &vtysh_end_all_cmd);
    install_element (ENABLE_NODE, &vtysh_end_all_cmd);
-
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_end_all_cmd);
    install_element (RIPNG_NODE, &vtysh_end_all_cmd);
+   install_element (OSPF_NODE, &vtysh_end_all_cmd);
    install_element (OSPF6_NODE, &vtysh_end_all_cmd);
    install_element (BABEL_NODE, &vtysh_end_all_cmd);
 #endif
@@ -4577,11 +4559,10 @@ vtysh_init_vty (void)
    install_element (LOOPBACK_INTERFACE_NODE, &vtysh_end_all_cmd);
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
-   install_element (CONFIG_NODE, &router_ospf_cmd);
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ripng_cmd);
 #endif
-
+   install_element (CONFIG_NODE, &router_ospf_cmd);
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ospf6_cmd);
 #endif
@@ -4753,11 +4734,13 @@ vtysh_init_vty (void)
   vlan_vty_init();
   aaa_vty_init();
   dhcp_tftp_vty_init();
+  /* Initialise System LED cli */
+  led_vty_init();
   sub_intf_vty_init();
   loopback_intf_vty_init();
-
   /* Initialise System cli */
   system_vty_init();
+  fan_vty_init();
   temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
@@ -4770,17 +4753,14 @@ vtysh_init_vty (void)
   /* Initialise SFTP CLI */
   sftp_vty_init();
 
+  /* Initialise power supply cli */
+  powersupply_vty_init();
   lacp_vty_init();
 
-  /* Initialize ospf commands*/
-  ospf_vty_init();
   /* Initialize ECMP CLI */
   ecmp_vty_init();
 
   /* Initialize ping CLI */
   ping_vty_init();
-
-  /* Initialize ntp CLI */
-  ntp_vty_init();
 #endif
 }

@@ -34,8 +34,6 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_router_context.h"
-#include "command.h"
-#include "ospf_vty.h"
 
 #define CLEANUP_SHOW_RUN
 
@@ -45,6 +43,8 @@ char routercontextbgpipprefixclientname[] =
                           "vtysh_router_context_bgp_ip_prefix_clientcallback";
 char routercontextbgproutemapclientname[] =
                           "vtysh_router_context_bgp_routemap_clientcallback";
+char routercontextbgpipcommunityfilterclientname[] =
+                          "vtysh_router_context_bgp_ip_community_filter_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
@@ -203,6 +203,39 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
         }
         vtysh_ovsdb_cli_print(p_msg,"!");
     }
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_ip_community_filter_clientcallback
+| Responsibility : ip community-filter lists commands
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_router_context_bgp_ip_community_filter_clientcallback(void *p_private)
+{
+    const struct ovsrec_community_filter *ovs_community_list = NULL;
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+
+    OVSREC_COMMUNITY_FILTER_FOR_EACH(ovs_community_list, p_msg->idl)
+    {
+
+        if ( ovs_community_list->name
+             && ovs_community_list->type
+             && ovs_community_list->action
+             && ovs_community_list->match ) {
+            vtysh_ovsdb_cli_print(p_msg,"ip %s %s %s %s",
+                                  ovs_community_list->type,
+                                  ovs_community_list->name,
+                                  ovs_community_list->action,
+                                  ovs_community_list->match);
+        }
+
+    }
+    vtysh_ovsdb_cli_print(p_msg,"!");
+    return e_vtysh_ok;
+
 }
 
 /*-----------------------------------------------------------------------------
@@ -424,30 +457,6 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                                  value_route_map_entries[j]->
                                                  match), "prefix_list"));
 
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "ipv6_prefix_list"))
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
-                                      "match ipv6 address prefix-list",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "ipv6_prefix_list"));
-
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "community"))
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
-                                      "match community",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "community"));
-
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "extcommunity"))
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
-                                      "match extcommunity",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "extcommunity"));
-
             if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
                 "community"))
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community",
@@ -580,47 +589,8 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
 vtysh_ret_val
 vtysh_router_context_ospf_clientcallback(void *p_private)
 {
-    const struct ovsrec_vrf *ovs_vrf = NULL;
-    const struct ovsrec_ospf_router *ospf_router_row = NULL;
-    int i = 0, j = 0;
-    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-    const char *val = NULL;
-    char area_str[OSPF_SHOW_STR_LEN];
-
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
-                             "vtysh_context_router_ospf_clientcallback entered");
-
-    OVSREC_VRF_FOR_EACH(ovs_vrf, p_msg->idl)
-    {
-        for (j = 0; j < ovs_vrf->n_ospf_routers; j++)
-        {
-
-            vtysh_ovsdb_cli_print(p_msg, "%s", "router ospf");
-
-            ospf_router_row = ovs_vrf->value_ospf_routers[j];
-
-            /* Router id */
-            val = smap_get((const struct smap *)&ospf_router_row->router_id,
-                            OSPF_KEY_ROUTER_ID_VAL);
-            if (val && (strcmp(val, OSPF_DEFAULT_STR) != 0))
-                vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
-                                      "router-id", val);
-
-            /* network <range> area <area-id>*/
-            while (i < ospf_router_row->n_networks)
-            {
-                memset(area_str,'\0', OSPF_SHOW_STR_LEN);
-                OSPF_IP_STRING_CONVERT(area_str, ntohl(ospf_router_row->value_networks[i]));
-                vtysh_ovsdb_cli_print(p_msg, "%4snetwork %s area %s", "",
-                                      ospf_router_row->key_networks[i],
-                                      area_str);
-                i++;
-            }
-        }
-    }
-
-    //vtysh_router_context_ospf_neighbor_callback(p_msg);
-    return e_vtysh_ok;
+  /* OPS-TODO */
+  return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -658,6 +628,21 @@ vtysh_init_router_context_clients()
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                                   "router context unable to add "
                                   "bgp ip prefix callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+    client.p_client_name = routercontextbgpipcommunityfilterclientname;
+    client.client_id = e_vtysh_router_context_bgp_ip_community_filter;
+    client.p_callback = &vtysh_router_context_bgp_ip_community_filter_clientcallback;
+    retval = vtysh_context_addclient(e_vtysh_router_context,
+                                     e_vtysh_router_context_bgp_ip_community_filter,
+                                     &client);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add "
+                                  "bgp ip community filter callback");
         assert(0);
         return retval;
     }

@@ -1,7 +1,7 @@
 /* Interface CLI commands
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1519,7 +1519,6 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
     struct shash sorted_interfaces;
     const struct shash_node **nodes;
     int idx, count;
-    bool validIntf = false;
 
     struct string_pairs
     {
@@ -1536,6 +1535,23 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
         { "supported_speeds", "Supported speeds" },
         { NULL, NULL }
     };
+
+    if (brief)
+    {
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, "-----------------------------------------------%s",
+                VTY_NEWLINE);
+        vty_out(vty, "Ethernet      Connector    Module     Module   %s",
+                VTY_NEWLINE);
+        vty_out(vty, "Interface                  Type       Status   %s",
+                VTY_NEWLINE);
+        vty_out(vty, "-----------------------------------------------%s",
+                VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "%s", VTY_NEWLINE);
+    }
 
     shash_init(&sorted_interfaces);
 
@@ -1562,20 +1578,9 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
             /* Skipping internal interfaces */
             continue;
         }
-        validIntf = true;
 
         if (brief)
         {
-            vty_out(vty, "%s", VTY_NEWLINE);
-            vty_out(vty, "-----------------------------------------------%s",
-                    VTY_NEWLINE);
-            vty_out(vty, "Ethernet      Connector    Module     Module   %s",
-                    VTY_NEWLINE);
-            vty_out(vty, "Interface                  Type       Status   %s",
-                    VTY_NEWLINE);
-            vty_out(vty, "-----------------------------------------------%s",
-                    VTY_NEWLINE);
-
             /* Display the brief information */
             vty_out (vty, " %-12s ", ifrow->name);
             bool present = false;
@@ -1743,16 +1748,7 @@ int cli_show_xvr_exec (struct cmd_element *self, struct vty *vty,
     shash_destroy(&sorted_interfaces);
     free(nodes);
 
-    if (validIntf)
-    {
-        return CMD_SUCCESS;
-    }
-    else
-    {
-        vty_out (vty, "Invalid switch interface ID.%s", VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
-    }
-
+    return CMD_SUCCESS;
 }
 
 

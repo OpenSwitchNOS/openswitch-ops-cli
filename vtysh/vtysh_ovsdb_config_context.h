@@ -32,6 +32,5 @@ vtysh_ret_val vtysh_config_context_vrf_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_fan_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_led_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_staticroute_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_ntp_clientcallback(void *p_private);
 
 #endif /* VTYSH_OVSDB_CONFIG_CONTEXT_H */

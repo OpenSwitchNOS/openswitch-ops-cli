@@ -156,91 +156,6 @@ class bgpCLItest(OpsVsiTest):
         assert network_str_flag is False, \
             'Test to unconfigure BGP network FAILED!'
 
-    def configure_routemap_match(self):
-        info("\n##########  Test to configure Route-Map Match commands"
-             " ##########\n")
-
-        match_ipv6_prefix_list_str = "match ipv6 address prefix-list 5"
-        match_ipv6_prefix_list_flag = False
-        match_community_str = "match community 100"
-        match_community_str_flag = False
-        match_extcommunity_str = "match extcommunity e1"
-        match_extcommunity_str_flag = False
-
-        s1 = self.net.switches[0]
-        s1.cmdCLI("configure terminal")
-        s1.cmdCLI("route-map r1 permit 10")
-        s1.cmdCLI(match_ipv6_prefix_list_str)
-        s1.cmdCLI(match_community_str)
-        s1.cmdCLI(match_extcommunity_str)
-        s1.cmdCLI("end")
-
-        dump = s1.cmdCLI("show running-config")
-        lines = dump.split('\n')
-        for line in lines:
-            if match_ipv6_prefix_list_str in line:
-                match_ipv6_prefix_list_flag = True
-            elif match_community_str in line:
-                match_community_str_flag = True
-            elif match_extcommunity_str in line:
-                match_extcommunity_str_flag = True
-
-        if match_ipv6_prefix_list_flag is False:
-            info("###  Error configuring 'match ipv6 address prefix-list' ###\n")
-        elif match_community_str_flag is False:
-            info("###  Error configuring 'match community' ###\n")
-        elif match_extcommunity_str_flag is False:
-            info("###  Error configuring 'match extcommunity' ###\n")
-
-        if match_ipv6_prefix_list_flag is False or \
-           match_community_str_flag is False or \
-           match_extcommunity_str_flag is False:
-            info("### Test to configure Route-Map match commands FAILED! ###\n")
-
-    def unconfigure_routemap_match(self):
-        info("\n##########  Test to unconfigure Route-Map Match commands"
-             " ##########\n")
-
-        match_ipv6_prefix_list_str = "match ipv6 address prefix-list 5"
-        no_match_ipv6_prefix_list_str = "no match ipv6 address prefix-list 5"
-        match_ipv6_prefix_list_flag = False
-        match_community_str = "match community 100"
-        no_match_community_str = "no match community 100"
-        match_community_str_flag = False
-        match_extcommunity_str = "match extcommunity e1"
-        no_match_extcommunity_str = "no match extcommunity e1"
-        match_extcommunity_str_flag = False
-
-        s1 = self.net.switches[0]
-        s1.cmdCLI("configure terminal")
-        s1.cmdCLI("route-map r1 permit 10")
-        s1.cmdCLI(no_match_ipv6_prefix_list_str)
-        s1.cmdCLI(no_match_community_str)
-        s1.cmdCLI(no_match_extcommunity_str)
-        s1.cmdCLI("end")
-
-        dump = s1.cmdCLI("show running-config")
-        lines = dump.split('\n')
-        for line in lines:
-            if match_ipv6_prefix_list_str in line:
-                match_ipv6_prefix_list_flag = True
-            elif match_community_str in line:
-                match_community_str_flag = True
-            elif match_extcommunity_str in line:
-                match_extcommunity_str_flag = True
-
-        if match_ipv6_prefix_list_flag is True:
-            info("###  Error unconfiguring 'match ipv6 address prefix-list' ###\n")
-        elif match_community_str_flag is True:
-            info("###  Error unconfiguring 'match community' ###\n")
-        elif match_extcommunity_str_flag is True:
-            info("###  Error unconfiguring 'match extcommunity' ###\n")
-
-        if match_ipv6_prefix_list_flag is True or \
-           match_community_str_flag is True or \
-           match_extcommunity_str_flag is True:
-            info("### Test to unconfigure Route-Map match commands FAILED! ###\n")
-
 
 class Test_bgpd_router_cmds:
     def setup(self):
@@ -270,5 +185,3 @@ class Test_bgpd_router_cmds:
         self.test.unconfigure_bgp_router_flags()
         self.test.configure_bgp_network()
         self.test.unconfigure_bgp_network()
-        self.test.configure_routemap_match()
-        self.test.unconfigure_routemap_match()

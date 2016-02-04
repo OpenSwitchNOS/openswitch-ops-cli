@@ -154,11 +154,11 @@ static int vlan_int_range_add(const char *min_vlan,
 /* vlan internal configuration command */
 DEFUN  (cli_vlan_int_range_add,
         cli_vlan_int_range_add_cmd,
-        "vlan internal range <2-4094> <2-4094> (ascending|descending)",
+        "vlan internal range <1-4094> <1-4094> (ascending|descending)",
         VLAN_STR
         VLAN_INT_STR
         VLAN_INT_RANGE_STR
-        "Start VLAN, between 2 and 4094\n"
+        "Start VLAN, between 1 and 4094\n"
         "End VLAN, between Start VLAN and 4094\n"
         "Assign VLANs in ascending order (Default)\n"
         "Assign VLANs in descending order\n")
@@ -277,12 +277,12 @@ DEFUN  (cli_vlan_int_range_del,
 /* Deleting vlan internal configuration. Default config takes effect */
 DEFUN  (cli_vlan_int_range_del_arg,
         cli_vlan_int_range_del_cmd_arg,
-        "no vlan internal range <2-4094> <2-4094> (ascending|descending)",
+        "no vlan internal range <1-4094> <1-4094> (ascending|descending)",
         NO_STR
         VLAN_STR
         VLAN_INT_STR
         VLAN_INT_RANGE_STR
-        "Start VLAN, between 2 and 4094\n"
+        "Start VLAN, between 1 and 4094\n"
         "End VLAN, between Start VLAN and 4094\n"
         "Assign VLANs in ascending order (Default)\n"
         "Assign VLANs in descending order\n")
@@ -421,16 +421,6 @@ DEFUN(cli_vlan_admin,
         cli_do_config_abort(status_txn);
         vty_out(vty, OVSDB_VLAN_SHUTDOWN_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
-    }
-
-    if (vlan_id == DEFAULT_VLAN )
-    {
-        VLOG_DBG("Shutdown not permitted in DEFAULT_VLAN_%d."
-                 " Function:%s, Line:%d", vlan_id, __func__, __LINE__);
-        cli_do_config_abort(status_txn);
-        vty_out(vty, "Shutdown not permitted in DEFAULT_VLAN_%d.\n", vlan_id);
-        return CMD_SUCCESS;
-
     }
 
     OVSREC_VLAN_FOR_EACH(vlan_row, idl)
@@ -623,7 +613,7 @@ DEFUN(cli_intf_vlan_access,
 
 DEFUN(cli_intf_no_vlan_access,
     cli_intf_no_vlan_access_cmd,
-    "no vlan access [<2-4094>]",
+    "no vlan access [<1-4094>]",
     NO_STR
     VLAN_STR
     "Access configuration\n"
@@ -703,17 +693,15 @@ DEFUN(cli_intf_no_vlan_access,
         return CMD_SUCCESS;
     }
 
+    ovsrec_port_set_vlan_mode(vlan_port_row, NULL);
     int64_t* trunks = NULL;
     int trunk_count = 0;
     ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
-    int64_t* tag = xmalloc(sizeof *port_row->tag);
-    int tag_count = 1;
-
-    tag[0] = DEFAULT_VLAN;
+    int64_t* tag = NULL;
+    int tag_count = 0;
     ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
 
     status = cli_do_config_finish(status_txn);
-    free(tag);
 
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
     {
@@ -830,6 +818,12 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     if (NULL == vlan_port_row->vlan_mode)
     {
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
+    }
+    else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vty_out(vty, "The interface is in access mode.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
@@ -1004,17 +998,7 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
     {
         if (0 == trunk_count)
         {
-            trunks = NULL;
-            ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
-            ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
-
-            int64_t* tag = xmalloc(sizeof *port_row->tag);
-            int tag_count = 1;
-
-            tag[0] = DEFAULT_VLAN;
-            ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
-            free(tag);
-
+            ovsrec_port_set_vlan_mode(vlan_port_row, NULL);
         }
     }
 
@@ -1136,6 +1120,12 @@ DEFUN(cli_intf_vlan_trunk_native,
     {
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED);
     }
+    else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vty_out(vty, "The interface is in access mode.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
@@ -1247,26 +1237,11 @@ DEFUN(cli_intf_no_vlan_trunk_native,
         return CMD_SUCCESS;
     }
 
+    int64_t* tag = NULL;
+    int n_tag = 0;
+    ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
+    ovsrec_port_set_tag(vlan_port_row, tag, n_tag);
 
-    int64_t* trunks = NULL;
-    int trunk_count = 0;
-    trunk_count = vlan_port_row->n_trunks;
-
-    if (trunk_count)
-    {
-        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
-    }
-    else
-    {
-        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
-        ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
-        int64_t* tag = xmalloc(sizeof *port_row->tag);
-        int tag_count = 1;
-
-        tag[0] = DEFAULT_VLAN;
-        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
-        free(tag);
-    }
     status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -1568,7 +1543,7 @@ DEFUN(cli_lag_vlan_access,
 
 DEFUN(cli_lag_no_vlan_access,
     cli_lag_no_vlan_access_cmd,
-    "no vlan access [<2-4094>]",
+    "no vlan access [<1-4094>]",
     NO_STR
     VLAN_STR
     "Access configuration\n"
@@ -1616,14 +1591,11 @@ DEFUN(cli_lag_no_vlan_access,
     int64_t* trunks = NULL;
     int trunk_count = 0;
     ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
-    int64_t* tag = xmalloc(sizeof *port_row->tag);
-    int tag_count = 1;
-
-    tag[0] = DEFAULT_VLAN;
+    int64_t* tag = NULL;
+    int tag_count = 0;
     ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
 
     status = cli_do_config_finish(status_txn);
-    free(tag);
 
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
     {
@@ -1705,6 +1677,12 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     if (vlan_port_row->vlan_mode == NULL)
     {
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
+    }
+    else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vty_out(vty, "The LAG is in access mode.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
     }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
@@ -1831,16 +1809,7 @@ DEFUN(cli_lag_no_vlan_trunk_allowed,
     {
         if (trunk_count == 0)
         {
-            trunks = NULL;
-            ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
-            ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
-
-            int64_t* tag = xmalloc(sizeof *port_row->tag);
-            int tag_count = 1;
-
-            tag[0] = DEFAULT_VLAN;
-            ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
-            free(tag);
+            ovsrec_port_set_vlan_mode(vlan_port_row, NULL);
         }
     }
 
@@ -1927,6 +1896,12 @@ DEFUN(cli_lag_vlan_trunk_native,
     {
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED);
     }
+    else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    {
+        vty_out(vty, "The LAG is in access mode.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
@@ -2001,25 +1976,11 @@ DEFUN(cli_lag_no_vlan_trunk_native,
         return CMD_SUCCESS;
     }
 
-    int64_t* trunks = NULL;
-    int trunk_count = 0;
-    trunk_count = vlan_port_row->n_trunks;
+    int64_t* tag = NULL;
+    int n_tag = 0;
+    ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
+    ovsrec_port_set_tag(vlan_port_row, tag, n_tag);
 
-    if (trunk_count)
-    {
-        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
-    }
-    else
-    {
-        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
-        ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
-        int64_t* tag = xmalloc(sizeof *port_row->tag);
-        int tag_count = 1;
-
-        tag[0] = DEFAULT_VLAN;
-        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
-        free(tag);
-    }
     status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -2205,9 +2166,9 @@ DEFUN(cli_show_vlan,
     }
 
     vty_out(vty, "%s", VTY_NEWLINE);
-    vty_out(vty, "--------------------------------------------------------------------------------------%s", VTY_NEWLINE);
-    vty_out(vty, "VLAN    Name            Status   Reason         Reserved       Ports%s", VTY_NEWLINE);
-    vty_out(vty, "--------------------------------------------------------------------------------------%s", VTY_NEWLINE);
+    vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
+    vty_out(vty, "VLAN    Name      Status   Reason         Reserved       Ports%s", VTY_NEWLINE);
+    vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
 
     shash_init(&sorted_vlan_id);
 
@@ -2225,7 +2186,7 @@ DEFUN(cli_show_vlan,
         char vlan_id[5] = { 0 };
         snprintf(vlan_id, 5, "%ld", vlan_row->id);
         vty_out(vty, "%-8s", vlan_id);
-        vty_out(vty, "%-16s", vlan_row->name);
+        vty_out(vty, "%-10s", vlan_row->name);
         vty_out(vty, "%-9s", vlan_row->oper_state);
         vty_out(vty, "%-15s", vlan_row->oper_state_reason);
         if(!smap_is_empty(&vlan_row->internal_usage))
@@ -2316,13 +2277,13 @@ DEFUN(cli_show_vlan_id,
     }
 
     vty_out(vty, "%s", VTY_NEWLINE);
-    vty_out(vty, "--------------------------------------------------------------------------------------%s", VTY_NEWLINE);
-    vty_out(vty, "VLAN    Name            Status   Reason         Reserved       Ports%s", VTY_NEWLINE);
-    vty_out(vty, "--------------------------------------------------------------------------------------%s", VTY_NEWLINE);
+    vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
+    vty_out(vty, "VLAN    Name      Status   Reason         Reserved       Ports%s", VTY_NEWLINE);
+    vty_out(vty, "--------------------------------------------------------------------------------%s", VTY_NEWLINE);
 
 
     vty_out(vty, "%-8s", argv[0]);
-    vty_out(vty, "%-16s", temp_vlan_row->name);
+    vty_out(vty, "%-10s", temp_vlan_row->name);
     vty_out(vty, "%-9s", temp_vlan_row->oper_state);
     vty_out(vty, "%-15s", temp_vlan_row->oper_state_reason);
     if(!smap_is_empty(&temp_vlan_row->internal_usage))
