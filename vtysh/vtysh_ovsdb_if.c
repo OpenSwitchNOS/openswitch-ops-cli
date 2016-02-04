@@ -166,6 +166,7 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_timers);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_route_maps);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_prefix_lists);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_aspath_filters);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_external_ids);
@@ -406,6 +407,10 @@ vrf_ovsdb_init()
 static void
 policy_ovsdb_init ()
 {
+    ovsdb_idl_add_table(idl, &ovsrec_table_bgp_aspath_filter);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_aspath_filter_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_aspath_filter_col_permit);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_aspath_filter_col_deny);
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_prefix_list_entries);
