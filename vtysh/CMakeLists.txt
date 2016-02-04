@@ -56,6 +56,7 @@ add_executable(vtysh
   logrotate_vty.c
   ecmp_vty.c
   ospf_vty.c vtysh_ovsdb_ospf_context.c
+  banner_vty.c
   utils/vlan_vtysh_utils.c
   utils/intf_vtysh_utils.c
   utils/vrf_vtysh_utils.c
@@ -76,6 +77,7 @@ install(
 install(
   FILES
   vtysh_utils.h vtysh.h vtysh_ovsdb_if.h vtysh_user.h vtysh_ovsdb_config.h
+  banner_vty.h
   DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/vtysh")
 install(
   FILES
