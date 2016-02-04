@@ -574,17 +574,10 @@ system_ovsdb_init()
 {
     /* Add Platform Related Tables. */
     ovsdb_idl_add_table(idl, &ovsrec_table_fan);
-    ovsdb_idl_add_table(idl, &ovsrec_table_power_supply);
     ovsdb_idl_add_table(idl, &ovsrec_table_led);
     ovsdb_idl_add_table(idl, &ovsrec_table_subsystem);
 
     /* Add Columns for System Related Tables. */
-
-    /* Power Supply. */
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_external_ids);
 
     /* LED. */
     ovsdb_idl_add_column(idl, &ovsrec_led_col_id);
@@ -597,7 +590,6 @@ system_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_interfaces);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_leds);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_fans);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_power_supplies);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_asset_tag_number);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_type);
