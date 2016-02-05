@@ -514,6 +514,22 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                       smap_get(&ovs_route_map->
                                                value_route_map_entries[j]->set,
                                                "metric"));
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "extcommunity rt"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set extcommunity rt",
+                        smap_get(&ovs_route_map->
+                            value_route_map_entries[j]->set,
+                                "extcommunity rt"));
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "extcommunity soo"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set extcommunity soo",
+                        smap_get(&ovs_route_map->
+                            value_route_map_entries[j]->set,
+                                "extcommunity soo"));
         }
     }
 
