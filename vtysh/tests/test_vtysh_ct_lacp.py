@@ -126,21 +126,114 @@ class LACPCliTest(OpsVsiTest):
             'Test to add interfaces to LAG ports - FAILED!'
         return True
 
-    def globalLacpCommands(self):
+    def lacpSystemPriority(self):
         info('''
-########## Test global LACP commands ##########
+########## Test lacp system priority ##########
 ''')
-        global_lacp_cmd_found = False
+
         s1 = self.net.switches[0]
-        s1.cmdCLI('conf t')
-        s1.cmdCLI('lacp system-priority 999')
-        out = s1.cmd('ovs-vsctl list system')
-        lines = out.split('\n')
+
+        ######################################################################
+        #
+        #   Configure basic system priority to 999
+        #
+        ######################################################################
+        success = False
+
+        s1.cmdCLI("configure terminal")
+        s1.cmdCLI("lacp system-priority 999")
+
+        out = s1.cmd("ovs-vsctl list system")
+        lines = out.split("\n")
         for line in lines:
             if 'lacp-system-priority="999"' in line:
-                global_lacp_cmd_found = True
-        assert (global_lacp_cmd_found is True), \
-            'Test global LACP commands - FAILED!'
+                success = True
+
+        assert success, "Test lacp system priority - FAILED!"
+
+        ######################################################################
+        #
+        #   Basic removal of system priority 999
+        #
+        #   Using "no lacp system-priority 999"
+        #
+        #   In this case the stored key must be deleted because values match.
+        #
+        ######################################################################
+        success = True
+        s1.cmdCLI("no lacp system-priority 999")
+
+        out = s1.cmd("ovs-vsctl list system")
+        lines = out.split("\n")
+        for line in lines:
+            if 'lacp-system-priority="999"' in line:
+                success = False
+
+        assert success, "Test lacp system priority - FAILED!"
+
+        ######################################################################
+        #
+        #   Configure basic system priority to 65534
+        #
+        #   In this case, system priority must not be set because it's the
+        #   system default value
+        #
+        ######################################################################
+        success = True
+
+        s1.cmdCLI("lacp system-priority 65534")
+
+        out = s1.cmdCLI("ovs-vsctl list system")
+        lines = out.split("\n")
+        for line in lines:
+            if 'lacp-system-priority="65534"' in line:
+                success = False
+
+        assert success, 'Test lacp system priority - FAILED!'
+
+        ######################################################################
+        #
+        #   Basic removal of system priority 999
+        #
+        #   Using "no lacp system-priority 998"
+        #
+        #   In this case the stored key will not be deleted because mismatch,
+        #   and error has to be displayed instead.
+        #
+        ######################################################################
+        s1.cmdCLI("lacp system-priority 999")
+        out = s1.cmdCLI("no lacp system-priority 998")
+
+        assert "% Command failed." in out, \
+            "Test lacp system priority - FAILED!"
+
+        ######################################################################
+        #
+        #   Basic removal of system priority 999
+        #
+        #   Using "no lacp system-priority"
+        #
+        #   In this case the stored key will be deleted.
+        #
+        ######################################################################
+        success = True
+
+        s1.cmdCLI("lacp system-priority 999")
+        s1.cmdCLI("no lacp system-priority")
+
+        out = s1.cmdCLI("ovs-vsctl list system")
+        lines = out.split("\n")
+        for line in lines:
+            if 'lacp-system-priority="999"' in line:
+                success = False
+
+        assert success, 'Test lacp system priority - FAILED!'
+
+        ######################################################################
+        #
+        #   Exit
+        #
+        ######################################################################
         return True
 
     def lag_hash_LoadBalancing(self):
@@ -720,9 +813,9 @@ class Test_lacp_cli:
 ''')
 
     def test_globalLacpCommands(self):
-        if self.test.globalLacpCommands():
+        if self.test.lacpSystemPriority():
             info('''
-########## Test global LACP commands - SUCCESS! ##########
+########## Test lacp system priority - SUCCESS! ##########
 ''')
 
     def test_lagL234LoadBalancing(self):

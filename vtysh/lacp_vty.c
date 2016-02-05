@@ -569,51 +569,63 @@ DEFUN (cli_lacp_set_no_heartbeat_rate_fast,
   return lacp_set_heartbeat_rate((char*) vty->index, PORT_OTHER_CONFIG_LACP_TIME_SLOW);
 }
 
-
+/******************************************************************************
+ * Set system priority
+ *
+ * Parameter:
+ *      - priority: new system priority value
+ *
+ * If "priority" is different from the default value it will be replaced. If
+ * not, the stored key will be deleted.
+ *
+ *****************************************************************************/
 static int
 lacp_set_global_sys_priority(const char *priority)
 {
-  const struct ovsrec_system *row = NULL;
-  struct smap smap = SMAP_INITIALIZER(&smap);
-  struct ovsdb_idl_txn* txn = NULL;
-  enum ovsdb_idl_txn_status status;
+    const struct ovsrec_system *row = NULL;
+    struct smap smap = SMAP_INITIALIZER(&smap);
+    struct ovsdb_idl_txn* txn = NULL;
+    enum ovsdb_idl_txn_status status;
 
-  txn = cli_do_config_start();
-  if(txn == NULL)
-  {
-    VLOG_ERR(LACP_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
-    cli_do_config_abort(txn);
-    return CMD_OVSDB_FAILURE;
-  }
+    txn = cli_do_config_start();
+    if(txn == NULL)
+    {
+        VLOG_ERR(LACP_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
+        cli_do_config_abort(txn);
+        return CMD_OVSDB_FAILURE;
+    }
 
-  row = ovsrec_system_first(idl);
+    row = ovsrec_system_first(idl);
 
-  if(!row)
-  {
-    VLOG_ERR(LACP_OVSDB_ROW_FETCH_ERROR,__func__,__LINE__);
-    cli_do_config_abort(txn);
-    return CMD_OVSDB_FAILURE;
-  }
+    if(!row)
+    {
+        VLOG_ERR(LACP_OVSDB_ROW_FETCH_ERROR, __func__, __LINE__);
+        cli_do_config_abort(txn);
+        return CMD_OVSDB_FAILURE;
+    }
 
-  smap_clone(&smap, &row->lacp_config);
+    smap_clone(&smap, &row->lacp_config);
 
-  if(DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY == atoi(priority))
-    smap_remove(&smap, PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY);
-  else
-    smap_replace(&smap, PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY, priority);
+    if(atoi(priority) != DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY) {
+        smap_replace(&smap,
+                     PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY,
+                     priority);
+    }
 
-  ovsrec_system_set_lacp_config(row, &smap);
-  smap_destroy(&smap);
-  status = cli_do_config_finish(txn);
-  if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
-  {
-    return CMD_SUCCESS;
-  }
-  else
-  {
-    VLOG_ERR("Transaction commit failed.Function=%s Line=%d",__func__,__LINE__);
-    return CMD_OVSDB_FAILURE;
-  }
+    ovsrec_system_set_lacp_config(row, &smap);
+    smap_destroy(&smap);
+    status = cli_do_config_finish(txn);
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        return CMD_SUCCESS;
+    }
+    else
+    {
+        VLOG_ERR("Transaction commit failed.Function=%s Line=%d",
+                 __func__,
+                 __LINE__);
+        return CMD_OVSDB_FAILURE;
+    }
 }
 
 DEFUN (cli_lacp_set_global_sys_priority,
@@ -626,6 +638,75 @@ DEFUN (cli_lacp_set_global_sys_priority,
   return lacp_set_global_sys_priority(argv[0]);
 }
 
+/******************************************************************************
+ * Set no system priority
+ *
+ * Parameter:
+ *      - priority: existing system priority value to be removed
+ *
+ * There are these cases:
+ *      - priority is NULL, stored key deleted
+ *      - priority difers from stored key, error raised
+ *      - priority equals stored key, stored key deleted.
+ *
+ *****************************************************************************/
+static int
+lacp_set_no_global_sys_priority(const char *priority)
+{
+    const struct ovsrec_system *row = NULL;
+    struct smap smap = SMAP_INITIALIZER(&smap);
+    struct ovsdb_idl_txn* txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    const char *priority_val = NULL;
+
+    txn = cli_do_config_start();
+    if(txn == NULL)
+    {
+        VLOG_ERR(LACP_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
+        cli_do_config_abort(txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row = ovsrec_system_first(idl);
+
+    if(!row)
+    {
+        VLOG_ERR(LACP_OVSDB_ROW_FETCH_ERROR, __func__, __LINE__);
+        cli_do_config_abort(txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    smap_clone(&smap, &row->lacp_config);
+
+    if (priority) {
+        priority_val = smap_get(&smap,
+                                PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY);
+
+        if (strcmp(priority, priority_val) != 0) {
+            cli_do_config_abort(txn);
+            return CMD_OVSDB_FAILURE;
+        }
+    }
+
+    smap_remove(&smap, PORT_OTHER_CONFIG_MAP_LACP_SYSTEM_PRIORITY);
+
+    ovsrec_system_set_lacp_config(row, &smap);
+    smap_destroy(&smap);
+
+    status = cli_do_config_finish(txn);
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        return CMD_SUCCESS;
+    }
+    else
+    {
+        VLOG_ERR("Transaction commit failed.Function=%s Line=%d",
+                 __func__,
+                 __LINE__);
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
 DEFUN (cli_lacp_set_no_global_sys_priority,
        lacp_set_no_global_sys_priority_cmd,
        "no lacp system-priority <0-65535>",
@@ -634,9 +715,7 @@ DEFUN (cli_lacp_set_no_global_sys_priority,
        "Set LACP system priority\n"
        "The range is 0 to 65535.(Default:65534)\n")
 {
-  char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
-  snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY);
-  return lacp_set_global_sys_priority(def_sys_priority);
+    return lacp_set_no_global_sys_priority(argv[0]);
 }
 
 DEFUN (cli_lacp_set_no_global_sys_priority_shortform,
@@ -646,9 +725,7 @@ DEFUN (cli_lacp_set_no_global_sys_priority_shortform,
        LACP_STR
        "Set LACP system priority\n")
 {
-  char def_sys_priority[LACP_DEFAULT_SYS_PRIORITY_LENGTH]={0};
-  snprintf(def_sys_priority, LACP_DEFAULT_SYS_PRIORITY_LENGTH, "%d", DFLT_SYSTEM_LACP_CONFIG_SYSTEM_PRIORITY);
-  return lacp_set_global_sys_priority(def_sys_priority);
+    return lacp_set_no_global_sys_priority(NULL);
 }
 
 static int
