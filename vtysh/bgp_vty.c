@@ -10584,6 +10584,8 @@ const struct lookup_entry match_table[] = {
 const struct lookup_entry set_table[] = {
     {"community", "community"},
     {"metric", "metric"},
+    {"extcommunity rt", "extcommunity rt"},
+    {"extcommunity soo", "extcommunity soo"},
     {NULL, NULL},
 };
 
@@ -11890,6 +11892,132 @@ ALIAS(no_set_metric,
       "Metric value\n")
 
 static int
+policy_set_route_map_set_extcommunity_rt_str_in_ovsdb(struct vty *vty,
+                                                      const int argc,
+                                                      const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    str = argv_concat(argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                      "extcommunity rt", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+DEFUN(set_ecommunity_rt,
+      set_ecommunity_rt_cmd,
+      "set extcommunity rt .ASN:nn_or_IP-address:nn",
+      SET_STR
+      "BGP extended community attribute\n"
+      "Route Target extended community\n"
+      "VPN extended community\n")
+{
+    return policy_set_route_map_set_extcommunity_rt_str_in_ovsdb (vty, argc,
+                                                                      argv);
+}
+
+DEFUN(no_set_ecommunity_rt,
+      no_set_ecommunity_rt_cmd,
+      "no set extcommunity rt",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Route Target extended community\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "extcommunity rt", NULL);
+}
+
+ALIAS(no_set_ecommunity_rt,
+      no_set_ecommunity_rt_val_cmd,
+      "no set extcommunity rt .ASN:nn_or_IP-address:nn",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Route Target extended community\n"
+      "VPN extended community\n")
+
+
+static int
+policy_set_route_map_set_extcommunity_soo_str_in_ovsdb(struct vty *vty,
+                                                       const int argc,
+                                                       const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    str = argv_concat(argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                      "extcommunity soo", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+DEFUN(set_ecommunity_soo,
+      set_ecommunity_soo_cmd,
+      "set extcommunity soo .ASN:nn_or_IP-address:nn",
+      SET_STR
+      "BGP extended community attribute\n"
+      "Site-of-Origin extended community\n"
+      "VPN extended community\n")
+{
+    return policy_set_route_map_set_extcommunity_soo_str_in_ovsdb (vty, argc,
+                                                                       argv);
+}
+
+DEFUN(no_set_ecommunity_soo,
+      no_set_ecommunity_soo_cmd,
+      "no set extcommunity soo",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Site-of-Origin extended community\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "extcommunity soo", NULL);
+}
+
+ALIAS(no_set_ecommunity_soo,
+      no_set_ecommunity_soo_val_cmd,
+      "no set extcommunity soo .ASN:nn_or_IP-address:nn",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Site-of-Origin extended community\n"
+      "VPN extended community\n")
+
+
+
+static int
 policy_set_route_map_set_community_str_in_ovsdb(struct vty *vty,
                                                 const int argc,
                                                 const char **argv)
@@ -12834,4 +12962,10 @@ void policy_vty_init(void)
     install_element(RMAP_NODE, &set_community_cmd);
     install_element(RMAP_NODE, &no_set_community_cmd);
     install_element(RMAP_NODE, &no_set_community_val_cmd);
+    install_element(RMAP_NODE, &set_ecommunity_rt_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_rt_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_rt_val_cmd);
+    install_element(RMAP_NODE, &set_ecommunity_soo_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_soo_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_soo_val_cmd);
 }
