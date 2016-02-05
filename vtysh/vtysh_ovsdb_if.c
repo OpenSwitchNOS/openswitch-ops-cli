@@ -497,67 +497,6 @@ radius_server_ovsdb_init()
     return;
 }
 
-static void
-dhcp_tftp_ovsdb_init()
-{
-    /* Add dhcp-server config tables */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
-    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_server);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_range);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_static_host);
-
-    /* Add columns in  System table */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
-
-    /* Add columns in VRF table */
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_dhcp_server);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_other_config);
-
-    /* Add columns in DHCP Server table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_ranges);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_static_hosts);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_dhcp_options);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_matches);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_bootp);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_other_config);
-
-    /* Add columns in DHCP server ranges table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_start_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_end_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_netmask);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_prefix_len);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_broadcast);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_set_tag);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_match_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_is_static);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_lease_duration);
-
-    /* Add columns in DHCP server static hosts table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_mac_addresses);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_set_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_hostname);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_id);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_lease_duration);
-
-    /* Add columns in DHCP server options table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_match_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_number);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_value);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_ipv6);
-
-    /* Add columns in DHCP server matches table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_set_tag);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_number);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_value);
-
-}
-
 /***********************************************************
  * @func        : system_ovsdb_init
  * @detail      : Initialise System Related OVSDB tables
@@ -767,7 +706,6 @@ ovsdb_init(const char *db_path)
 
     /* vlan table. */
     vlan_ovsdb_init();
-    dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init();
     /* Add tables/columns needed for LACP config commands. */
