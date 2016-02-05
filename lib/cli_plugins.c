@@ -29,8 +29,9 @@
 #include <unistd.h>
 #include "cli_plugins.h"
 #include "openvswitch/vlog.h"
+#include <string.h>
+#include <stdbool.h>
 
-#define CLI_PLUGINS_ERR -1
 
 #define PLUGINS_CALL(FUN) \
 do { \
@@ -60,6 +61,34 @@ struct plugin_class {
  */
 static lt_dlinterface_id interface_id;
 
+/* List of disabled CLI plugins */
+static char *cli_disable_plugins[] = {
+  "ntpd",
+  NULL
+};
+
+/*
+ * Function : plugins_check_if_plugin_is_disabled.
+ * Responsibility : Check if the feature specific module is allowed
+ *                  to load
+ * Parameters :
+ *   const char *filename: Module filename which is passed by libltdl.
+ * Return : Return true if plugin should be disabled, or
+ *          Return false if plugin should be enabled
+ */
+static bool
+plugins_check_if_plugin_is_disabled(const char *filename)
+{
+    int plugin_index = 0;
+    while (cli_disable_plugins[plugin_index] != NULL) {
+        if(strstr(filename, cli_disable_plugins[plugin_index]) != NULL) {
+            return true;
+        }
+        plugin_index++;
+    }
+    return false;
+}
+
 /*
  * Function : plugins_cli_destroy.
  * Responsibility : Unloading all feature specific cli module.
@@ -74,7 +103,6 @@ plugins_cli_destroy(void)
     VLOG_INFO("Destroyed all plugins");
     exit(1);
 }
-
 
 /*
  * Function : plugins_open_plugin.
@@ -91,6 +119,11 @@ plugins_open_plugin(const char *filename, void *data)
 {
     struct plugin_class plcl = {NULL};
     lt_dlhandle handle;
+
+    if (plugins_check_if_plugin_is_disabled(filename)) {
+        VLOG_DBG("Plugin %s is disabled\n",filename);
+        return CLI_PLUGINS_SUCCESS;
+    }
 
     if (!(handle = lt_dlopenadvise(filename, *(lt_dladvise *)data))) {
         VLOG_ERR("Failed loading %s: %s\n", filename, lt_dlerror());
@@ -114,7 +147,7 @@ plugins_open_plugin(const char *filename, void *data)
     plcl.cli_init();
 
     VLOG_DBG("Loaded plugin library %s\n", filename);
-    return 0;
+    return CLI_PLUGINS_SUCCESS;
 }
 
 /*
