@@ -172,8 +172,12 @@ static int sflow_show(void)
     vty_out(vty, "Agent Address Family          %s%s",
             sflow_row->agent_addr_family, VTY_NEWLINE);
   else
-    vty_out(vty, "Agent Address Family          NOT SET%s",
-            VTY_NEWLINE);
+    if(sflow_row->agent != NULL)
+      vty_out(vty, "Agent Address Family          ipv4%s",
+              VTY_NEWLINE);
+    else
+      vty_out(vty, "Agent Address Family          NOT SET%s",
+              VTY_NEWLINE);
 
   if(sflow_row->sampling != NULL)
     vty_out(vty, "Sampling Rate                 %lld%s",
@@ -526,7 +530,6 @@ static int sflow_set_agent_interface(const char *interface, const char *family,
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   const char *sflow_name = OVSDB_SFLOW_GLOBAL_ROW_NAME;
   bool intf_found = false;
-  bool port_found = false;
 
   if (status_txn == NULL)
     {
@@ -558,24 +561,6 @@ static int sflow_set_agent_interface(const char *interface, const char *family,
       if (!intf_found)
         {
           vty_out(vty, "\nInvalid interface%s\n", VTY_NEWLINE);
-          cli_do_config_abort(status_txn);
-          return CMD_SUCCESS;
-        }
-
-      /* Validating if the interface is an L3 interface */
-      OVSREC_PORT_FOR_EACH(port_row, idl)
-        {
-          if(strcmp(port_row->name, interface) == 0)
-            {
-              port_found = true;
-              break;
-            }
-        }
-
-      if (!port_found)
-        {
-          vty_out(vty, "\nInterface %s is not L3.%s\n", interface,
-                  VTY_NEWLINE);
           cli_do_config_abort(status_txn);
           return CMD_SUCCESS;
         }
@@ -692,16 +677,26 @@ DEFUN (cli_sflow_no_set_collector,
 {
     return sflow_set_collector(argv[0], argv[1], argv[2], false);
 }
+
 DEFUN (cli_sflow_set_agent_interface,
        cli_sflow_set_agent_interface_cmd,
+       "sflow agent-interface INTERFACE",
+       SFLOW_STR
+       "Set agent interface\n"
+       "Interface name\n")
+{
+    return sflow_set_agent_interface(argv[0], NULL, true);
+}
+
+DEFUN (cli_sflow_set_agent_interface_family,
+       cli_sflow_set_agent_interface_family_cmd,
        "sflow agent-interface INTERFACE"
-       " {agent-address-family (ipv4|ipv6)}",
+       " (ipv4|ipv6)",
        SFLOW_STR
        "Set agent interface\n"
        "Interface name\n"
-       "Agent address family\n"
-       "IPv4 address\n"
-       "IPv6 address\n")
+       "IPv4 agent address family (Default)\n"
+       "IPv6 agent address family\n")
 {
     return sflow_set_agent_interface(argv[0], argv[1], true);
 }
@@ -736,6 +731,7 @@ sflow_vty_init (void)
   install_element (CONFIG_NODE, &cli_sflow_set_collector_cmd);
   install_element (CONFIG_NODE, &cli_sflow_no_set_collector_cmd);
   install_element (CONFIG_NODE, &cli_sflow_set_agent_interface_cmd);
+  install_element (CONFIG_NODE, &cli_sflow_set_agent_interface_family_cmd);
   install_element (CONFIG_NODE, &cli_sflow_no_set_agent_interface_cmd);
   install_element (ENABLE_NODE, &cli_sflow_show_cmd);
 }
