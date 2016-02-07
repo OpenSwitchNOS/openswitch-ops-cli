@@ -348,11 +348,6 @@ main (int argc, char **argv, char **env)
   vty = vty_new ();
   vty->type = VTY_SHELL;
   vty->node = VIEW_NODE;
-  /* install dynamic helpstring function callback */
-  install_dyn_helpstr_funcptr("dyncb_helpstr_1G", dyncb_helpstr_speeds);
-  install_dyn_helpstr_funcptr("dyncb_helpstr_10G", dyncb_helpstr_speeds);
-  install_dyn_helpstr_funcptr("dyncb_helpstr_40G", dyncb_helpstr_speeds);
-  install_dyn_helpstr_funcptr("dyncb_helpstr_mtu", dyncb_helpstr_mtu);
   cmd_init(0);
   plugins_cli_init(FEATURES_CLI_PATH);
 

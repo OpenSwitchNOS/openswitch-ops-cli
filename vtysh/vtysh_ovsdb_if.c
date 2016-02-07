@@ -58,7 +58,6 @@
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
-#include "intf_vty.h"
 
 #define TMOUT_POLL_INTERVAL 20
 
@@ -433,41 +432,6 @@ policy_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_route_map_entry_col_set);
 }
 
-/***********************************************************
- * @func        : intf_ovsdb_init
- * @detail      : Initialise Interface table
- * @param[in]
- *      idl     : Pointer to idl structure
- ***********************************************************/
-static void
-intf_ovsdb_init()
-{
-    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_admin_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_duplex);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mtu);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mac_in_use);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_type);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pm_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lacp_status);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_subintf_parent);
-    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
-    ovsdb_idl_add_table(idl, &ovsrec_table_port);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
-}
 
 /***********************************************************
  * @func        : alias_ovsdb_init
@@ -740,8 +704,6 @@ ovsdb_init(const char *db_path)
     /* Add columns for ECMP configuration. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
 
-    /* Interface tables. */
-    intf_ovsdb_init();
 
    /* Management interface columns. */
     mgmt_intf_ovsdb_init();
