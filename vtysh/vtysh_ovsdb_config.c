@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -338,7 +338,6 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     vtysh_contextlist *current = show_run_contextlist;
     vtysh_contextlist *subcontext_list;
     vtysh_ovsdb_cbmsg msg;
-    const struct ovsrec_interface *ifrow;
     feature_row_list *row_list = NULL;
     feature_row_list *temp_row_list= NULL;
 
@@ -616,7 +615,6 @@ vtysh_ovsdb_init_clients(void)
   vtysh_init_config_context_clients();
   vtysh_init_router_context_clients();
   vtysh_init_vlan_context_clients();
-  vtysh_init_intf_context_clients();
   vtysh_init_intf_lag_context_clients();
   vtysh_init_source_interface_context_clients();
   vtysh_init_dhcp_tftp_context_clients();

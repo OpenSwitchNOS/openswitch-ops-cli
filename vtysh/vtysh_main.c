@@ -1,6 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -28,6 +28,7 @@
 #include <setjmp.h>
 #include <sys/wait.h>
 #include <pwd.h>
+#include <termios.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -38,6 +39,7 @@
 #include "getopt.h"
 #include "command.h"
 #include "memory.h"
+#include "timeval.h"
 
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
@@ -47,7 +49,6 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include "openvswitch/vlog.h"
-#include "vtysh/intf_vty.h"
 
 #define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
@@ -348,11 +349,6 @@ main (int argc, char **argv, char **env)
   vty = vty_new ();
   vty->type = VTY_SHELL;
   vty->node = VIEW_NODE;
-  /* install dynamic helpstring function callback */
-  install_dyn_helpstr_funcptr("dyncb_helpstr_1G", dyncb_helpstr_speeds);
-  install_dyn_helpstr_funcptr("dyncb_helpstr_10G", dyncb_helpstr_speeds);
-  install_dyn_helpstr_funcptr("dyncb_helpstr_40G", dyncb_helpstr_speeds);
-  install_dyn_helpstr_funcptr("dyncb_helpstr_mtu", dyncb_helpstr_mtu);
   cmd_init(0);
   plugins_cli_init(FEATURES_CLI_PATH);
 

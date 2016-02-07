@@ -26,5 +26,6 @@
 
 void lacp_vty_init (void);
 bool lacp_exceeded_maximum_lag(void);
+bool lacp_exceeded_maximum_lag();
 
 #endif /* _LACP_VTY_H */
