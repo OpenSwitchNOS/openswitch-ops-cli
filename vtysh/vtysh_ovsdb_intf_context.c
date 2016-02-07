@@ -33,7 +33,6 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
-#include "intf_vty.h"
 #include "vrf_vty.h"
 #include "vtysh/utils/lacp_vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
@@ -240,7 +239,7 @@ intfd_get_user_cfg_adminstate(const struct smap *ifrow_config,
 static bool
 is_parent_interface_split(const struct ovsrec_interface *parent_iface)
 {
-    char *lanes_split_value = NULL;
+    const char *lanes_split_value = NULL;
     bool is_split = false;
 
     lanes_split_value = smap_get(&parent_iface->user_config,

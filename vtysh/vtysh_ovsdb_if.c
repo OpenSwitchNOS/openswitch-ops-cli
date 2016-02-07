@@ -1,7 +1,7 @@
 /* Vtysh daemon ovsdb integration.
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -58,7 +58,6 @@
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
-#include "intf_vty.h"
 
 #define TMOUT_POLL_INTERVAL 20
 
@@ -438,41 +437,6 @@ policy_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_route_map_entry_col_set);
 }
 
-/***********************************************************
- * @func        : intf_ovsdb_init
- * @detail      : Initialise Interface table
- * @param[in]
- *      idl     : Pointer to idl structure
- ***********************************************************/
-static void
-intf_ovsdb_init()
-{
-    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_admin_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_duplex);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mtu);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mac_in_use);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_type);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pm_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lacp_status);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_subintf_parent);
-    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
-    ovsdb_idl_add_table(idl, &ovsrec_table_port);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
-}
 
 /***********************************************************
  * @func        : alias_ovsdb_init
@@ -737,8 +701,6 @@ ovsdb_init(const char *db_path)
     /* Add columns for ECMP configuration. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
 
-    /* Interface tables. */
-    intf_ovsdb_init();
 
    /* Management interface columns. */
     mgmt_intf_ovsdb_init();
@@ -839,7 +801,7 @@ const char *
 vtysh_ovsdb_os_name_get(void)
 {
     const struct ovsrec_system *ovs;
-    char *os_name = NULL;
+    const char *os_name = NULL;
 
     ovs = ovsrec_system_first(idl);
     if (ovs) {
@@ -914,7 +876,7 @@ vtysh_ovsdb_hostname_reset(char *hostname_arg)
         data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
         ovsdb_hostname = data->keys->string;
 
-        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        if ((ovsdb_hostname != NULL) && (strcmp(ovsdb_hostname, hostname_arg) == 0))
         {
             vtysh_ovsdb_hostname_set("");
         }
@@ -1494,7 +1456,7 @@ check_port_in_vrf(const char *port_name)
 bool
 check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
 {
-    char *l3port = NULL;
+    const char *l3port = NULL;
     l3port = smap_get(&vlan_row->internal_usage,
                                  VLAN_INTERNAL_USAGE_L3PORT);
     return (l3port != NULL) ? true : false;
