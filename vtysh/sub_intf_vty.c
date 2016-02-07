@@ -38,7 +38,6 @@
 #include "vtysh/vtysh.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
-#include "intf_vty.h"
 #include "openvswitch/vlog.h"
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
