@@ -33,7 +33,8 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
                  ping_handler.c sftp_vty.c \
                  ntp_vty.c ospf_vty.c \
-                 vtysh_ovsdb_sftp_context.c
+                 vtysh_ovsdb_sftp_context.c \
+                 utils/vlan_vtysh_utils.c
 endif
 
 nodist_vtysh_SOURCES = vtysh_cmd.c
@@ -50,7 +51,8 @@ vtyshinclude_HEADERS = vtysh_utils.h vtysh.h \
         vtysh_ovsdb_config.h
 
 vtyshutilsincludedir = $(includedir)/vtysh/utils
-vtyshutilsinclude_HEADERS = utils/system_vtysh_utils.h
+vtyshutilsinclude_HEADERS = utils/system_vtysh_utils.h \
+        utils/vlan_vtysh_utils.h utils/lacp_vtysh_utils.h
 
 examplesdir = $(exampledir)
 dist_examples_DATA = vtysh.conf.sample

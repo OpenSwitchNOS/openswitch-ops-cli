@@ -34,8 +34,8 @@
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
 #include "intf_vty.h"
-#include "lacp_vty.h"
 #include "vrf_vty.h"
+#include "vtysh/utils/lacp_vtysh_utils.h"
 
 #define PRINT_INTERFACE_NAME(name_written, p_msg, if_name)\
   if (!(name_written))\
@@ -85,27 +85,6 @@ const struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
         if (vrf_row->ports[i] == port_row) {
           return vrf_row;
         }
-      }
-    }
-    return NULL;
-}
-
-/*-----------------------------------------------------------------------------
-| Function : port_lookup
-| Responsibility : Lookup port table entry for interface name
-| Parameters :
-|   const char *if_name : Interface name
-|   const struct ovsdb_idl *idl : IDL for vtysh
-| Return : bool : returns true/false
------------------------------------------------------------------------------*/
-const struct ovsrec_port* port_lookup(const char *if_name,
-                                const struct ovsdb_idl *idl)
-{
-    const struct ovsrec_port *port_row = NULL;
-    OVSREC_PORT_FOR_EACH(port_row, idl)
-    {
-      if (strcmp(port_row->name, if_name) == 0) {
-        return port_row;
       }
     }
     return NULL;

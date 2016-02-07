@@ -52,6 +52,7 @@
 #include "vlan_vty.h"
 #include "vrf_vty.h"
 #include "vtysh/vtysh_utils.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
 
 
 VLOG_DEFINE_THIS_MODULE (vtysh_sub_intf_cli);
