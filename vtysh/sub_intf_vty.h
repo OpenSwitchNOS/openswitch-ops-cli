@@ -55,7 +55,4 @@ const struct ovsrec_sub_if* port_sub_if_lookup(const struct ovsrec_port *port_ro
 
 const struct ovsrec_sub_if* sub_if_lookup(const char *sub_if_name);
 
-extern int
-show_ip_addresses(const char *if_name, struct vty *vty);
-
 #endif /* _VTY_SUB_INTF_H */

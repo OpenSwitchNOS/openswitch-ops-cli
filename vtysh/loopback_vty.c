@@ -45,6 +45,8 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "loopback_vty.h"
 #include "vtysh/vtysh_utils.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
+#include "vtysh/utils/intf_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_loopback_if_cli);
 extern struct ovsdb_idl *idl;

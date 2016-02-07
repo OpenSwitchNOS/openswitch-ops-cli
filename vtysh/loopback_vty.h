@@ -43,7 +43,4 @@
 const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                              bool attach_to_default_sub_if,
                                              struct ovsdb_idl_txn *txn);
-extern int
-show_ip_addresses(const char *if_name, struct vty *vty);
-
 #endif /* _VTY_LOOPBACK_INTF_H */

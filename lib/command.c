@@ -38,7 +38,6 @@ Boston, MA 02111-1307, USA.  */
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
-#include "dyn_helpstr.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
@@ -78,6 +77,8 @@ enum matcher_rv
 /* Host information structure. */
 struct host host;
 
+/* list of callback functions for dynamic helpstr */
+static struct dyn_cb_func *dyn_cb_lookup = NULL;
 /* Standard command node structures. */
 static struct cmd_node auth_node =
 {
@@ -550,6 +551,7 @@ format_parser_read_word(struct format_parser_state *state)
   int len, i;
   char *cmd;
   struct cmd_token *token;
+  struct dyn_cb_func * dyn_cb_temp;
 
   start = state->cp;
 
@@ -574,10 +576,14 @@ format_parser_read_word(struct format_parser_state *state)
 
     if (token->dyn_cb != NULL)
     {
-      for (i = 0; i < (sizeof(dyn_cb_lookup)/sizeof(dyn_cb_lookup[0])); i++)
+      dyn_cb_temp = dyn_cb_lookup;
+      while (dyn_cb_temp != NULL)
       {
-        if(!strcmp(dyn_cb_lookup[i].funcname, token->dyn_cb))
-          token->dyn_cb_func = dyn_cb_lookup[i].funcptr;
+          if (!strcmp(dyn_cb_temp->funcname, token->dyn_cb)) {
+              token->dyn_cb_func = dyn_cb_temp->funcptr;
+              break;
+          }
+          dyn_cb_temp = dyn_cb_temp->next;
       }
     }
   }
@@ -4813,4 +4819,27 @@ cmd_terminate_node_element (void *del_ptr, enum data_type del_type)
             }
        }
    }
+}
+/*
+ * Function : install_dyn_helpstr_funcptr
+ * Responsibility : install dynamic helpstring callback function in global list.
+ * Parameters : char *funcname : dynamic helpstring callback function name.
+ *              void (*funcptr): callback function pointer.
+ * Return : void.
+ */
+void
+install_dyn_helpstr_funcptr(char *funcname,
+                   void (*funcptr)(struct cmd_token *token, struct vty *vty, \
+                            char * const dyn_helpstr_ptr, int max_strlen))
+{
+    /* allocate node */
+    struct dyn_cb_func* new_node =
+                    (struct dyn_cb_func*) malloc(sizeof(struct dyn_cb_func));
+    /* put in the data  */
+    new_node->funcname  = funcname;
+    new_node->funcptr =  funcptr;
+    new_node->next = dyn_cb_lookup;
+    dyn_cb_lookup = new_node;
+
+    return;
 }

@@ -24,22 +24,7 @@
 #ifndef _LACP_VTY_H
 #define _LACP_VTY_H
 
-#define LACP_STATUS_FIELD_COUNT 8
-#define LACP_DEFAULT_SYS_PRIORITY_LENGTH 6
-#define LAG_PORT_NAME_PREFIX "lag"
-#define LAG_PORT_NAME_PREFIX_LENGTH 3
+void lacp_vty_init (void);
+bool lacp_exceeded_maximum_lag(void);
 
-#define LACP_OVSDB_TXN_CREATE_ERROR "Couldn't create the OVSDB transaction.Function=%s Line=%d"
-#define LACP_OVSDB_ROW_FETCH_ERROR  "Couldn't fetch row from the DB.Function=%s Line=%d"
-#define LACP_OVSDB_TXN_COMMIT_ERROR "Committing transaction to DB failed.Function=%s Line=%d"
-#define LACP_STR "Configure LACP parameters\n"
-#define MAX_INTF_TO_LAG 8
-#define MAX_LAG_INTERFACES 256
-#define LACP_DEFAULT_PORT_PRIORITY 1
-
-void
-lacp_vty_init (void);
-
-bool
-lacp_exceeded_maximum_lag(void);
 #endif /* _LACP_VTY_H */

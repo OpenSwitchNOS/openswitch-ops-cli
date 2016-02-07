@@ -33,7 +33,7 @@
 #include "vtysh_ovsdb_if.h"
 #include "lib/vty.h"
 #include "vtysh_ovsdb_config_context.h"
-#include "vtysh_ovsdb_intf_context.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh_ovsdb_vlan_context.h"
 #include "vtysh_ovsdb_router_context.h"
 #include "vtysh_ovsdb_intf_lag_context.h"
