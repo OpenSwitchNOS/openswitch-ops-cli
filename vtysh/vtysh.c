@@ -865,12 +865,6 @@ static struct cmd_node isis_node =
    };
 #endif
 
-static struct cmd_node interface_node =
-   {
-      INTERFACE_NODE,
-      "%s(config-if)# ",
-   };
-
 #ifdef ENABLE_OVSDB
 static struct cmd_node sub_interface_node =
 {
@@ -1565,40 +1559,6 @@ ALIAS (vtysh_exit_tftp_server,
       "quit",
       "Exit current mode and down to previous mode\n")
 #endif
-DEFUN (vtysh_interface,
-      vtysh_interface_cmd,
-      "interface IFNAME",
-      "Select an interface to configure\n"
-      "Interface's name\n")
-{
-  static char ifnumber[MAX_IFNAME_LENGTH];
-
-  if (strchr(argv[0], '.'))
-     vty->node = SUB_INTERFACE_NODE;
-  else
-     vty->node = INTERFACE_NODE;
-
-  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
-  vty->node = VLAN_INTERFACE_NODE;
-      GET_VLANIF(ifnumber, argv[0]);
-      if (create_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
-          return CMD_OVSDB_FAILURE;
-      }
-  }
-  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
-  {
-    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
-    default_port_add(ifnumber);
-  }
-  else
-  {
-    return CMD_ERR_NO_MATCH;
-  }
-  VLOG_DBG("%s ifnumber = %s\n", __func__, ifnumber);
-  vty->index = ifnumber;
-  return CMD_SUCCESS;
-}
-
 DEFUN (vtysh_interface_vlan,
        vtysh_interface_vlan_cmd,
        "interface vlan VLANID",
@@ -1627,39 +1587,6 @@ DEFUN (vtysh_interface_vlan,
    return CMD_SUCCESS;
 }
 
-DEFUN (no_vtysh_interface,
-      no_vtysh_interface_cmd,
-      "no interface IFNAME",
-      NO_STR
-      "Delete a pseudo interface's configuration\n"
-      "Interface's name\n")
-{
-  vty->node = CONFIG_NODE;
-  static char ifnumber[MAX_IFNAME_LENGTH];
-
-  if (strchr(argv[0], '.'))
-  {
-     delete_sub_intf(argv[0]);
-     return CMD_SUCCESS;
-  }
-
-  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
-      GET_VLANIF(ifnumber, argv[0]);
-      if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
-          return CMD_OVSDB_FAILURE;
-      }
-  }
-  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
-  {
-    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
-  }
-  else
-  {
-    return CMD_ERR_NO_MATCH;
-  }
-  vty->index = ifnumber;
-  return CMD_SUCCESS;
-}
 
 DEFUN (no_vtysh_interface_vlan,
        no_vtysh_interface_vlan_cmd,
@@ -2043,25 +1970,6 @@ DEFUN (vtysh_intf_link_aggregation,
     vty->index = lag_number;
     return CMD_SUCCESS;
   }
-}
-#else
-DEFUNSH (VTYSH_INTERFACE,
-      vtysh_interface,
-      vtysh_interface_cmd,
-      "interface IFNAME",
-      "Select an interface to configure\n"
-      "Interface's name\n")
-{
-  if (strchr(argv[0], '.'))
-    vty->node = SUB_INTERFACE_NODE
-  else
-    vty->node = INTERFACE_NODE;
-
-  static char ifnumber[5];
-  if (strlen(argv[0]) < 5)
-    memcpy(ifnumber, argv[0], strlen(argv));
-  vty->index = ifnumber;
-  return CMD_SUCCESS;
 }
 #endif
 #ifndef ENABLE_OVSDB
@@ -4412,7 +4320,6 @@ vtysh_init_vty (void)
 #ifndef ENABLE_OVSDB
    install_node (&rip_node, NULL);
 #endif
-   install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
    install_node (&vlan_node, NULL);
    install_node (&link_aggregation_node, NULL);
@@ -4582,7 +4489,6 @@ vtysh_init_vty (void)
    install_element (INTERFACE_NODE, &no_interface_desc_cmd);
 #endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
-   install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
    /* Sub-interafce and Loopback elements. */
    install_element (SUB_INTERFACE_NODE, &vtysh_exit_sub_interface_cmd);
    install_element (SUB_INTERFACE_NODE, &vtysh_quit_sub_interface_cmd);
@@ -4632,9 +4538,7 @@ vtysh_init_vty (void)
 #endif
 
 #ifdef ENABLE_OVSDB
-   install_element (CONFIG_NODE, &vtysh_interface_cmd);
    install_element (CONFIG_NODE, &vtysh_interface_vlan_cmd);
-   install_element (CONFIG_NODE, &no_vtysh_interface_cmd);
    install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
@@ -4764,7 +4668,6 @@ vtysh_init_vty (void)
   lldp_vty_init();
   vrf_vty_init();
   neighbor_vty_init();
-  intf_vty_init();
   l3routes_vty_init();
   vlan_vty_init();
   aaa_vty_init();

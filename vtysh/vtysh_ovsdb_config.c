@@ -616,7 +616,6 @@ vtysh_ovsdb_init_clients(void)
   vtysh_init_config_context_clients();
   vtysh_init_router_context_clients();
   vtysh_init_vlan_context_clients();
-  vtysh_init_intf_context_clients();
   vtysh_init_intf_lag_context_clients();
   vtysh_init_source_interface_context_clients();
   vtysh_init_dhcp_tftp_context_clients();
