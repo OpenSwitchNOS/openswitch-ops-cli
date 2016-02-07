@@ -56,17 +56,14 @@
 #include "vswitch-idl.h"
 
 #ifdef ENABLE_OVSDB
-#include "intf_vty.h"
 #include "vswitch-idl.h"
 #include "smap.h"
 #include "lldp_vty.h"
 #include "vrf_vty.h"
 #include "neighbor_vty.h"
-#include "intf_vty.h"
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
 #include "system_vty.h"
-#include "lacp_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
 #include "dhcp_tftp_vty.h"
@@ -81,7 +78,8 @@ void ospf_vty_init(void);
 #include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
-
+#include "vtysh/utils/lacp_vtysh_utils.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -729,7 +727,7 @@ int complete_status;
 /* This function creates a port for an interface. If the interface is
   not configured , a default port will be created for the interface and
   it will be attached to the default VRF.*/
-static int
+int
 default_port_add (const char *if_name)
 {
     const struct ovsrec_port *port_row = NULL;

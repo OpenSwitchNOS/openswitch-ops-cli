@@ -31,28 +31,14 @@
 #define INTERFACE_USER_CONFIG_MAP_AUTONEG_DEFAULT               "on"
 
 #ifdef ENABLE_OVSDB
-#define VERIFY_VLAN_IFNAME(s) strncasecmp(s, "vlan", 4)
-
-#define GET_VLANIF(s, a) \
-        strcpy(s, "vlan"); \
-        strcat(s, (a+4));
-
-#define VLANIF_NAME(vif, s)  \
-        strcpy(vif, "vlan"); \
-        strcat(vif, s);
-
 void
 intf_vty_init (void);
-int create_vlan_interface(const char *vlan_if);
-int delete_vlan_interface(const char *vlan_if);
-bool verify_ifname(char *str);
 void dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
                           char * const helpstr, int max_len);
 void dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
                        char * const helpstr, int max_strlen);
 const struct shash_node **sort_interface(const struct shash *sh);
 
-int show_ip_addresses(const char *if_name, struct vty *vty);
 #endif
 
 #endif /* _INFT_VTY_H */
