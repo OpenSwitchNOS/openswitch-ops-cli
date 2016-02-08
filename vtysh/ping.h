@@ -62,7 +62,6 @@
 "Enter Repetition value in the range. (Default: 5)\n"
 
 #define PING_MAX_HOSTNAME_LENGTH 256
-#define MAX_PATTERN_LENGTH       16
 
 /* ping options default values */
 #define PING_DEF_TIMEOUT        2
@@ -72,9 +71,8 @@
 /* default ping cmd */
 #define PING4_DEF_CMD       "ping"
 
-/* ping6 : use -n to suppress lookup of symbolic names.
-Display numeric output only */
-#define PING6_DEF_CMD       "ping6 -n"
+/* default ping6 cmd */
+#define PING6_DEF_CMD       "ping6"
 
 /* cmd to execute in namespace swns */
 #define SWNS_EXEC            "/sbin/ip netns exec swns"

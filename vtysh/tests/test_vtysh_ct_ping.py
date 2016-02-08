@@ -50,11 +50,6 @@ class pingCLITest(OpsVsiTest):
             'Ping IP :data-fill validation failed'
         info('\n### Ping IP: value of data-fill validation passed ###\n')
 
-        ret = s1.cmdCLI("ping 1.1.1.1 data-fill 12341234123412345")
-        assert 'Only first 16 characters will be used for data-fill.' in ret,\
-            'Ping IP :data-fill validation failed'
-        info('\n### Ping IP: value of data-fill validation passed ###\n')
-
         ret = s1.cmdCLI("ping 1.1.1.1 repetitions 0")
         assert '% Unknown command.' in ret, \
             'Ping IP :repetition validation failed'
@@ -111,11 +106,6 @@ class pingCLITest(OpsVsiTest):
         assert 'Datafill pattern should be in hexadecimal only.' in ret, \
             'Ping Host :data-fill validation failed'
         info('\n### Ping Host: value of data-fill validation passed ###\n')
-
-        ret = s1.cmdCLI("ping testname data-fill 12341234123412345")
-        assert 'Only first 16 characters will be used for data-fill.' in ret,\
-            'Ping IP :data-fill validation failed'
-        info('\n### Ping IP: value of data-fill validation passed ###\n')
 
         ret = s1.cmdCLI("ping testname repetitions 0")
         assert '% Unknown command.' in ret, \
@@ -178,11 +168,6 @@ class pingCLITest(OpsVsiTest):
             'Ping IPv6 :data-fill validation failed'
         info('\n### Ping IPv6: value of data-fill validation passed ###\n')
 
-        ret = s1.cmdCLI("ping6 1:1::1:1 data-fill 12341234123412345")
-        assert 'Only first 16 characters will be used for data-fill.' in ret, \
-            'Ping IPv6 :data-fill validation failed'
-        info('\n### Ping IPv6: value of data-fill validation passed ###\n')
-
         ret = s1.cmdCLI("ping6 1:1::1:1 repetitions 0")
         assert '% Unknown command.' in ret, \
             'Ping IPv6 :repetition validation failed'
@@ -209,11 +194,6 @@ class pingCLITest(OpsVsiTest):
 
         ret = s1.cmdCLI("ping6 testname data-fill pa")
         assert 'Datafill pattern should be in hexadecimal only' in ret, \
-            'Ping IPv6 :data-fill validation failed'
-        info('\n### Ping IPv6: value of data-fill validation passed ###\n')
-
-        ret = s1.cmdCLI("ping6 testname data-fill 12341234123412345")
-        assert 'Only first 16 characters will be used for data-fill.' in ret, \
             'Ping IPv6 :data-fill validation failed'
         info('\n### Ping IPv6: value of data-fill validation passed ###\n')
 
@@ -250,7 +230,7 @@ class pingCLITest(OpsVsiTest):
                         " include-timestamp-and-address")
         lines = ret.split('\n')
         for line in lines:
-            if '127.0.0.1' in line and '200 data bytes' in line:
+            if 'PING localhost (127.0.0.1) 200(268) bytes of data.' in line:
                 ping_target_ip_set = True
         assert (ping_target_ip_set is True), \
             'Ping IPv4 with IP address and multiple parameters test- FAILED!'
@@ -275,7 +255,7 @@ class pingCLITest(OpsVsiTest):
                         " ip-option include-timestamp")
         lines = ret.split('\n')
         for line in lines:
-            if 'PING localhost' in line and '200 data bytes' in line:
+            if 'PING localhost (127.0.0.1) 200(268) bytes of data.' in line:
                 ping_target_host_set = True
         assert (ping_target_host_set is True), \
             'Ping IPv4 with Hostname and multiple parameters test- FAILED!'
@@ -288,17 +268,7 @@ class pingCLITest(OpsVsiTest):
         ret = s1.cmdCLI("ping6 ::1")
         lines = ret.split('\n')
         for line in lines:
-            if 'PING ::1 (::1)' in line:
-                ping_target_ip_set = True
-        assert (ping_target_ip_set is True), \
-            'Ping6 with IPv6 address test- FAILED!'
-        info('\n### Ping6 with IPv6 address test passed\n')
-
-        ping_target_ip_set = False
-        ret = s1.cmdCLI("ping6 ::1")
-        lines = ret.split('\n')
-        for line in lines:
-            if 'PING ::1 (::1)' in line:
+            if 'PING ::1(::1)' in line:
                 ping_target_ip_set = True
         assert (ping_target_ip_set is True), \
             'Ping6 with IPv6 address test- FAILED!'
@@ -309,7 +279,7 @@ class pingCLITest(OpsVsiTest):
                         " interval 2 repetitions 1")
         lines = ret.split('\n')
         for line in lines:
-            if 'PING ::1 (::1)' in line and '200 data bytes' in line:
+            if 'PING ::1(::1)' in line and '200 data bytes' in line:
                 ping_target_ip_set = True
         assert (ping_target_ip_set is True), \
             'Ping6 with IPv6 address with multiple parameters test- FAILED!'
@@ -322,7 +292,7 @@ class pingCLITest(OpsVsiTest):
         ret = s1.cmdCLI("ping6 localhost")
         lines = ret.split('\n')
         for line in lines:
-            if 'PING localhost (::1)' in line:
+            if 'PING localhost(localhost)' in line:
                 ping_target_host_set = True
         assert (ping_target_host_set is True), \
             'Ping6 with Hostname test- FAILED!'
@@ -333,7 +303,7 @@ class pingCLITest(OpsVsiTest):
                         " interval 2 repetitions 1")
         lines = ret.split('\n')
         for line in lines:
-            if 'PING localhost (::1)' in line and '200 data bytes' in line:
+            if 'PING localhost(localhost)' in line and '200 data bytes' in line:
                 ping_target_host_set = True
         assert (ping_target_host_set is True), \
             'Ping6 with Hostname with multiple parameters test- FAILED!'
