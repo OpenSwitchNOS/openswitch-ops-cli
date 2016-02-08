@@ -99,13 +99,13 @@ bool ping_main (pingEntry *p, void (*fPtr)(char *buff))
 
         /* Append value of tos */
         if (p->pingTos)
-            len += sprintf(target+len, " -T %d", p->pingTos);
+            len += sprintf(target+len, " -Q %d", p->pingTos);
 
         /* Ping4 ip-options */
         if (p->includeTimestamp)
-            len += sprintf(target+len, " --ip-timestamp=tsonly ");
+            len += sprintf(target+len, " -T tsonly ");
         else if (p->includeTimestampAddress)
-            len += sprintf(target+len, " --ip-timestamp=tsaddr ");
+            len += sprintf(target+len, " -T tsandaddr ");
         else if (p->recordRoute)
             len += sprintf(target+len, " -R ");
     }

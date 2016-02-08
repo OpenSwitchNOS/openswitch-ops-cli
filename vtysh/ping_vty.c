@@ -130,12 +130,6 @@ int decodeParam (const char* value, pingArguments type, pingEntry* p)
                         return CMD_WARNING;
                     }
                 }
-                if (iter > MAX_PATTERN_LENGTH)
-                {
-                    vty_out (vty, "Only first %d characters will be"
-                             " used for data-fill. %s",
-                             MAX_PATTERN_LENGTH, VTY_NEWLINE);
-                }
                 p->pingDataFill = (char*)value;
             }
             break;
