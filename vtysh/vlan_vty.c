@@ -743,6 +743,8 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
     int i = 0, found_vlan = 0;
+    int64_t* tag = NULL;
+    int tag_count = 0;
 
     if (NULL == status_txn)
     {
@@ -834,6 +836,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
+        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
     }
 
@@ -967,6 +970,13 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
         vty_out(vty, "The interface is not in trunk mode.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    if(vlan_port_row->n_tag == 1 && *vlan_port_row->tag == vlan_id )
+    {
+        vty_out(vty, "Not permitted, vlan configured as native vlan.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1143,13 +1153,33 @@ DEFUN(cli_intf_vlan_trunk_native,
     }
 
     int64_t* tag = NULL;
+    int64_t* trunks = NULL;
     tag = xmalloc(sizeof *vlan_port_row->tag);
     tag[0] = vlan_id;
     int tag_count = 1;
     ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
 
+    for (i = 0; i < vlan_port_row->n_trunks; i++)
+    {
+        if (vlan_id == vlan_port_row->trunks[i])
+        {
+            vty_out(vty, "The VLAN is already allowed on the interface.%s", VTY_NEWLINE);
+            break;
+        }
+    }
+
+    trunks = xmalloc(sizeof *vlan_port_row->trunks * (vlan_port_row->n_trunks + 1));
+    for (i = 0; i < vlan_port_row->n_trunks; i++)
+    {
+        trunks[i] = vlan_port_row->trunks[i];
+    }
+    trunks[vlan_port_row->n_trunks] = vlan_id;
+    int trunk_count = vlan_port_row->n_trunks + 1;
+    ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
+
     status = cli_do_config_finish(status_txn);
     free(tag);
+    free(trunks);
 
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
     {
@@ -1652,6 +1682,8 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
     int i = 0, found_vlan = 0;
+    int64_t* tag = NULL;
+    int tag_count = 0;
 
     if (NULL == status_txn)
     {
@@ -1709,6 +1741,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
+        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
     }
 
