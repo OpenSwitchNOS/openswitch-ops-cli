@@ -1,6 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -92,7 +92,8 @@ struct vtysh_alias_data {
                                                                               IS_NETWORK_ADDRESS(i))
 #define USERADD "/usr/sbin/useradd"
 #define USERMOD "/usr/sbin/usermod"
-#define OVSDB_GROUP "ovsdb_users"
+#define OVSDB_GROUP "ovsdb-client"
+#define NETOP_GROUP "ops_netop"
 #define VTYSH_PROMPT "/usr/bin/vtysh"
 #define USERDEL "/usr/sbin/userdel"
 #define USER_NAME_MAX_LENGTH 32

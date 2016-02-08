@@ -1,6 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -3234,7 +3234,7 @@ check_user_group( const char *user, const char *group_name)
            return false;
        }
 
-       /* check user exist in ovsdb_users group*/
+       /* check user exist in ovsdb-client group */
        for (j = 0; j < ngroups; j++) {
            gr = getgrgid(groups[j]);
            if (gr != NULL) {
@@ -3312,7 +3312,7 @@ set_user_passwd(const char *user)
     }
     ret = check_user_group(user, OVSDB_GROUP);
 
-    /* Change the passwd if user is in ovsdb_user list */
+    /* Change the passwd if user is in ovsdb-client group list */
     if (ret==1)
     {
         vty_out(vty,"Changing password for user %s %s", user, VTY_NEWLINE);
@@ -3579,7 +3579,7 @@ validate_user(const char *user)
     return true;
 }
 
-/* Function to create new user with password and add it to the ovsdb_users group*/
+/* Function to create new user with password and add it to the ovsdb-cliet group*/
 static int
 create_new_vtysh_user(const char *user)
 {
@@ -3627,17 +3627,19 @@ create_new_vtysh_user(const char *user)
     /* Encrypt the password. String 'ab' is used to perturb the */
     /* algorithm in  one of 4096 different ways. */
     password = crypt_r(passwd,"ab",&data);
-    const char *arg[8];
+    const char *arg[10];
     arg[0] = USERADD;
     arg[1] = "-p";
     arg[2]= password;
     arg[3] = "-g";
-    arg[4] = OVSDB_GROUP;
-    arg[5] = "-s";
-    arg[6] = VTYSH_PROMPT;
-    arg[7] = CONST_CAST(char*, user);
+    arg[4] = NETOP_GROUP;
+    arg[5] = "-G";
+    arg[6] = OVSDB_GROUP;
+    arg[7] = "-s";
+    arg[8] = VTYSH_PROMPT;
+    arg[9] = CONST_CAST(char*, user);
     vty_out(vty, "%s", VTY_NEWLINE);
-    cmd_ret = execute_command("sudo", 8,(const char **)arg);
+    cmd_ret = execute_command("sudo", 10,(const char **)arg);
     if(cmd_ret == 0)
     {
         vty_out(vty, "User added successfully.%s", VTY_NEWLINE);
