@@ -32,7 +32,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
                  ping_handler.c sftp_vty.c \
-                 ntp_vty.c ospf_vty.c \
+                 ospf_vty.c \
                  vtysh_ovsdb_sftp_context.c \
                  utils/vlan_vtysh_utils.c \
                  utils/intf_vtysh_utils.c \
