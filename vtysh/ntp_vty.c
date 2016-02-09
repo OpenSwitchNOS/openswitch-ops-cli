@@ -26,8 +26,8 @@
 #include <sys/wait.h>
 #include "command.h"
 #include "memory.h"
-#include "vtysh/vtysh.h"
-#include "vtysh/vtysh_user.h"
+#include "vtysh.h"
+#include "vtysh_user.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
 #include "ntp_vty.h"
@@ -42,7 +42,7 @@ VLOG_DEFINE_THIS_MODULE(vtysh_ntp_cli);
 
 /* Global variables */
 extern struct ovsdb_idl *idl;
-char g_NTP_prefer_default[]  = NTP_ASSOC_ATTRIB_PREFER_DEFAULT;
+//char g_NTP_prefer_default[]  = NTP_ASSOC_ATTRIB_PREFER_DEFAULT;
 char g_NTP_version_default[] = NTP_ASSOC_ATTRIB_VERSION_DEFAULT;
 
 /*================================================================================================*/
@@ -93,6 +93,7 @@ vtysh_ovsdb_ntp_auth_enable_set(ntp_cli_ntp_auth_enable_params_t *pntp_auth_enab
     END_DB_TXN(ntp_auth_enable_txn);
 }
 
+#if 0
 static void
 vtysh_ovsdb_ntp_clear_stats()
 {
@@ -124,6 +125,7 @@ vtysh_ovsdb_ntp_clear_stats()
     /* End of transaction. */
     END_DB_TXN(ntp_stats_txn);
 }
+#endif
 
 /*================================================================================================*/
 /* NTP Keys Table Related functions */
@@ -132,13 +134,13 @@ static const struct ovsrec_ntp_key *
 ntp_ovsrec_get_auth_key(int64_t key)
 {
     int i = 0;
-    struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
+    const struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
 
     OVSREC_NTP_KEY_FOR_EACH(ntp_auth_key_row, idl) {
         i++;
 
         if (ntp_auth_key_row->key_id == key) {
-            VLOG_DBG("AuthKey matching %d found at row = %d\n", key, i);
+            VLOG_DBG("AuthKey matching %ld found at row = %d\n", key, i);
             return ntp_auth_key_row;
         }
     }
@@ -160,7 +162,7 @@ ntp_trusted_key_get_default_parameters(ntp_cli_ntp_trusted_key_params_t *pntp_tr
 }
 
 const int
-ntp_auth_key_replace_parameters(struct ovsrec_ntp_key *ntp_auth_key_row, ntp_cli_ntp_auth_key_params_t *pntp_auth_key_params, bool key_exists)
+ntp_auth_key_replace_parameters(const struct ovsrec_ntp_key *ntp_auth_key_row, ntp_cli_ntp_auth_key_params_t *pntp_auth_key_params, bool key_exists)
 {
     if (ntp_auth_key_row) {
         if (!key_exists) {
@@ -178,7 +180,7 @@ ntp_auth_key_replace_parameters(struct ovsrec_ntp_key *ntp_auth_key_row, ntp_cli
  * Also if requested it returns pointer to the row in the "NTP_Key" table
  */
 const int
-ntp_sanitize_auth_key(const char *pkey, struct ovsrec_ntp_key **pntp_auth_key_row, char *password)
+ntp_sanitize_auth_key(const char *pkey, const struct ovsrec_ntp_key **pntp_auth_key_row, char *password)
 {
     /* Check key range */
     if (pkey) {
@@ -215,7 +217,7 @@ ntp_sanitize_auth_key(const char *pkey, struct ovsrec_ntp_key **pntp_auth_key_ro
 const int
 vtysh_ovsdb_ntp_auth_key_set(ntp_cli_ntp_auth_key_params_t *pntp_auth_key_params)
 {
-    struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
+    const struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
     struct ovsdb_idl_txn *ntp_auth_key_txn = NULL;
     bool key_exists = 0;
     int retval = CMD_SUCCESS;
@@ -266,7 +268,7 @@ vtysh_ovsdb_ntp_auth_key_set(ntp_cli_ntp_auth_key_params_t *pntp_auth_key_params
 const int
 vtysh_ovsdb_ntp_trusted_key_set(ntp_cli_ntp_trusted_key_params_t *pntp_trusted_key_params)
 {
-    struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
+    const struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
     struct ovsdb_idl_txn *ntp_trusted_key_txn = NULL;
     int64_t key = atoi(pntp_trusted_key_params->key);
     int retval = CMD_SUCCESS;
@@ -285,10 +287,10 @@ vtysh_ovsdb_ntp_trusted_key_set(ntp_cli_ntp_trusted_key_params_t *pntp_trusted_k
         vty_out(vty, "This key does not exist\n");
     } else {
         if (pntp_trusted_key_params->no_form) {
-            VLOG_DBG("Unmarking key %d as trusted\n", key);
+            VLOG_DBG("Unmarking key %ld as trusted\n", key);
             ovsrec_ntp_key_set_trust_enable(ntp_auth_key_row, NTP_FALSE);
         } else {
-            VLOG_DBG("Marking key %d as trusted\n", key);
+            VLOG_DBG("Marking key %ld as trusted\n", key);
             ovsrec_ntp_key_set_trust_enable(ntp_auth_key_row, NTP_TRUE);
         }
     }
@@ -304,7 +306,7 @@ static const struct ovsrec_ntp_association *
 ntp_ovsrec_get_assoc(char *vrf_name, char *server_name)
 {
     int i = 0;
-    struct ovsrec_ntp_association *ntp_assoc_row = NULL;
+    const struct ovsrec_ntp_association *ntp_assoc_row = NULL;
 
     OVSREC_NTP_ASSOCIATION_FOR_EACH(ntp_assoc_row, idl) {
         i++;
@@ -334,12 +336,12 @@ static inline void
 ntp_server_get_default_cfg(ntp_cli_ntp_server_params_t *pntp_server_params)
 {
     memset(pntp_server_params, 0, sizeof(ntp_cli_ntp_server_params_t));
-    pntp_server_params->prefer = g_NTP_prefer_default;
+    //pntp_server_params->prefer = g_NTP_prefer_default;
     pntp_server_params->version = g_NTP_version_default;
 }
 
 const int
-ntp_server_replace_parameters(struct ovsrec_ntp_association *ntp_assoc_row, ntp_cli_ntp_server_params_t *ntp_server_params, bool server_exists)
+ntp_server_replace_parameters(const struct ovsrec_ntp_association *ntp_assoc_row, ntp_cli_ntp_server_params_t *ntp_server_params, bool server_exists)
 {
     struct smap smap_assoc_attribs;
     struct smap smap_assoc_status;
@@ -357,7 +359,7 @@ ntp_server_replace_parameters(struct ovsrec_ntp_association *ntp_assoc_row, ntp_
 
             /* Set the VRF name */
             /* TODO: set the "n_vrf" parameter for the following function call correctly when multiple VRFs are supported */
-            struct ovsrec_vrf *vrf_row = get_ovsrec_vrf_with_name(ntp_server_params->vrf_name);
+            const struct ovsrec_vrf *vrf_row = get_ovsrec_vrf_with_name(ntp_server_params->vrf_name);
             ovsrec_ntp_association_set_vrf(ntp_assoc_row, vrf_row);
 
             /* Set default values for other columns */
@@ -417,7 +419,7 @@ ntp_server_sanitize_parameters(ntp_cli_ntp_server_params_t *pntp_server_params)
 
     /* Check sanity for the key */
     if (pntp_server_params->keyid) {
-        retval = ntp_sanitize_auth_key(pntp_server_params->keyid, &(pntp_server_params->key_row), NULL);
+        retval = ntp_sanitize_auth_key(pntp_server_params->keyid, (const struct ovsrec_ntp_key **)(&(pntp_server_params->key_row)), NULL);
         if (CMD_SUCCESS != retval) {
             return retval;
         }
@@ -425,7 +427,7 @@ ntp_server_sanitize_parameters(ntp_cli_ntp_server_params_t *pntp_server_params)
 
     /* Check sanity for the version */
     if (pntp_server_params->version) {
-        int ntp_ver = atoi(pntp_server_params->version); 
+        int ntp_ver = atoi(pntp_server_params->version);
 
         if ((ntp_ver < atoi(NTP_ASSOC_ATTRIB_VERSION_3)) || (ntp_ver > atoi(NTP_ASSOC_ATTRIB_VERSION_4))) {
             vty_out(vty, "NTP version should lie between [%s-%s]\n", NTP_ASSOC_ATTRIB_VERSION_3, NTP_ASSOC_ATTRIB_VERSION_4);
@@ -439,7 +441,7 @@ ntp_server_sanitize_parameters(ntp_cli_ntp_server_params_t *pntp_server_params)
 const int
 vtysh_ovsdb_ntp_server_set(ntp_cli_ntp_server_params_t *ntp_server_params)
 {
-    struct ovsrec_ntp_association *ntp_assoc_row = NULL;
+    const struct ovsrec_ntp_association *ntp_assoc_row = NULL;
     struct ovsdb_idl_txn *ntp_association_txn = NULL;
     bool ntp_server_exists = 0;
     int retval = CMD_SUCCESS;
@@ -492,9 +494,9 @@ vtysh_ovsdb_ntp_server_set(ntp_cli_ntp_server_params_t *ntp_server_params)
 static void
 vtysh_ovsdb_show_ntp_associations()
 {
-    struct ovsrec_ntp_association *ntp_assoc_row = NULL;
+    const struct ovsrec_ntp_association *ntp_assoc_row = NULL;
     int i = 0;
-    char *buf = NULL;
+    const char *buf = NULL;
 
     vty_out(vty, "----------------------------------------------------------------------------------------------------------------------\n");
     vty_out(vty, " %3s  %15s  %15s  %3s  %5s",
@@ -542,7 +544,7 @@ vtysh_ovsdb_show_ntp_associations()
         vty_out(vty, "  %3s", ((buf) ? buf : ""));
 
         if (ntp_assoc_row->key_id) {
-            vty_out(vty, "  %5d", ((struct ovsrec_ntp_key *)ntp_assoc_row->key_id)->key_id);
+            vty_out(vty, "  %5ld", ((struct ovsrec_ntp_key *)ntp_assoc_row->key_id)->key_id);
         } else {
             vty_out(vty, "  %5s", NTP_DEFAULT_STR);
         }
@@ -604,8 +606,8 @@ static void
 vtysh_ovsdb_show_ntp_status()
 {
     const struct ovsrec_system *ovs_system = NULL;
-    char *buf = NULL;
-    struct ovsrec_ntp_association *ntp_assoc_row = NULL;
+    const char *buf = NULL;
+    const struct ovsrec_ntp_association *ntp_assoc_row = NULL;
     bool status = 0;
 
     /* Get access to the System Table */
@@ -649,7 +651,7 @@ static void
 vtysh_ovsdb_show_ntp_statistics()
 {
     const struct ovsrec_system *ovs_system = NULL;
-    char *buf = NULL;
+    const char *buf = NULL;
 
     /* Get access to the System Table */
     ovs_system = ovsrec_system_first(idl);
@@ -689,7 +691,7 @@ vtysh_ovsdb_show_ntp_statistics()
 static void
 vtysh_ovsdb_show_ntp_trusted_keys()
 {
-    struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
+    const struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
 
     vty_out(vty,"------------\n");
     vty_out(vty,"Trusted-keys\n");
@@ -697,7 +699,7 @@ vtysh_ovsdb_show_ntp_trusted_keys()
 
     OVSREC_NTP_KEY_FOR_EACH(ntp_auth_key_row, idl) {
         if ((ntp_auth_key_row) && (ntp_auth_key_row->trust_enable)) {
-            vty_out(vty, "%d\n", ntp_auth_key_row->key_id);
+            vty_out(vty, "%ld\n", ntp_auth_key_row->key_id);
         }
     }
 
@@ -707,7 +709,7 @@ vtysh_ovsdb_show_ntp_trusted_keys()
 static void
 vtysh_ovsdb_show_ntp_authentication_keys()
 {
-    struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
+    const struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
 
     vty_out(vty,"---------------------------\n");
     vty_out(vty,"%8s   %16s\n", "Auth-key", "MD5 password");
@@ -715,7 +717,7 @@ vtysh_ovsdb_show_ntp_authentication_keys()
 
     OVSREC_NTP_KEY_FOR_EACH(ntp_auth_key_row, idl) {
         if (ntp_auth_key_row) {
-            vty_out(vty, "%8d   %16s\n", ntp_auth_key_row->key_id, ntp_auth_key_row->key_password);
+            vty_out(vty, "%8ld   %16s\n", ntp_auth_key_row->key_id, ntp_auth_key_row->key_password);
         }
     }
 
@@ -951,6 +953,51 @@ DEFUN_NO_FORM ( vtysh_set_ntp_trusted_key,
 
 void
 ntp_vty_init (void)
+{
+    /* SHOW CMDS */
+    install_element (VIEW_NODE, &vtysh_show_ntp_associations_cmd);
+    install_element (ENABLE_NODE, &vtysh_show_ntp_associations_cmd);
+
+    install_element (VIEW_NODE, &vtysh_show_ntp_status_cmd);
+    install_element (ENABLE_NODE, &vtysh_show_ntp_status_cmd);
+
+    install_element (VIEW_NODE, &vtysh_show_ntp_statistics_cmd);
+    install_element (ENABLE_NODE, &vtysh_show_ntp_statistics_cmd);
+
+    install_element (VIEW_NODE, &vtysh_show_ntp_trusted_keys_cmd);
+    install_element (ENABLE_NODE, &vtysh_show_ntp_trusted_keys_cmd);
+
+    install_element (VIEW_NODE, &vtysh_show_ntp_authentication_keys_cmd);
+    install_element (ENABLE_NODE, &vtysh_show_ntp_authentication_keys_cmd);
+
+    /* CONFIG CMDS */
+    install_element (CONFIG_NODE, &vtysh_set_ntp_server_cmd);
+    install_element (CONFIG_NODE, &no_vtysh_set_ntp_server_cmd);
+
+    install_element (CONFIG_NODE, &vtysh_set_ntp_authentication_enable_cmd);
+    install_element (CONFIG_NODE, &no_vtysh_set_ntp_authentication_enable_cmd);
+
+    install_element (CONFIG_NODE, &vtysh_set_ntp_authentication_key_cmd);
+    install_element (CONFIG_NODE, &no_vtysh_set_ntp_authentication_key_cmd);
+
+    install_element (CONFIG_NODE, &vtysh_set_ntp_trusted_key_cmd);
+    install_element (CONFIG_NODE, &no_vtysh_set_ntp_trusted_key_cmd);
+}
+
+/*================================================================================================*/
+
+/* Initialize ops-ntpd cli node.
+ */
+void cli_pre_init(void)
+{
+    /* ops-ntpd doesn't have any context level cli commands.
+     * To load ops-ntpd cli shared libraries at runtime, this function is required.
+     */
+}
+
+/* Initialize ops-ntpd cli element.
+ */
+void cli_post_init(void)
 {
     /* SHOW CMDS */
     install_element (VIEW_NODE, &vtysh_show_ntp_associations_cmd);
