@@ -340,7 +340,8 @@ class pingCLITest(OpsVsiTest):
         info('\n### Ping6 with Hostname with multiple parameters'
              ' test passed\n')
 
-
+@pytest.mark.skipif(True, reason="Skipping ping CT temporarily till code changes"
+                    " related to ping package change to iputils are merged.")
 class Test_vtysh_ping:
 
     def setup_class(cls):
