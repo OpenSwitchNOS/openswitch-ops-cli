@@ -196,35 +196,22 @@ DEFUN (vtysh_loopback_interface,
 static int
 mask_ip4_subnet(const char* ip4)
 {
-    unsigned int i,j;
-    unsigned int address[5];
-    unsigned int subnet_mask[4];
-    unsigned int ip_subnet_mask = 0;
-    unsigned char ip_add[4];
-    unsigned char subnet_bits[4];
+   char ipAddressString[16];
+   int mask_bits, addr;
+   unsigned int i = 0;
+   unsigned int subnet_bits = 0;
 
-    snprintf(ip_add, strchr(ip4, '/') - ip4 + 1, "%s", ip4);
-    snprintf(subnet_bits, strlen(strchr(ip4, '/')), "%s", strchr(ip4, '/') +1);
-    for (i = 0; i < 4; i++)
-    {
-        address[i] = atoi(ip_add);
-        if (strchr(ip_add,'.') != 0)
-            strcpy(ip_add,strchr(ip_add, '.') + 1);
-    }
+   strcpy(ipAddressString, ip4);
+   strcpy(strchr(ipAddressString, '/'), "\0");
+   mask_bits = atoi(strchr(ip4,'/') + 1);
 
-    for (i = 0; i < atoi(subnet_bits) / 8; i++)
-    {
-        subnet_mask[i] = address[i];
-        ip_subnet_mask += subnet_mask[i];
-    }
+   int domain, s;
+   s = inet_pton(AF_INET, ipAddressString, &addr);
 
-    if ((atoi(subnet_bits) % 8) != 0)
-    {
-        subnet_mask[i] = address[i];
-        subnet_mask[i] >>= (8 - (atoi(subnet_bits) % 8));
-        ip_subnet_mask += subnet_mask[i];
-    }
-    return ip_subnet_mask;
+   while(i < mask_bits)
+       subnet_bits |= (1 << i++);
+
+   return (addr & subnet_bits);
 }
 
 /*
