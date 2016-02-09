@@ -1559,6 +1559,42 @@ ALIAS (vtysh_exit_tftp_server,
       "quit",
       "Exit current mode and down to previous mode\n")
 #endif
+DEFUN (vtysh_interface,
+      vtysh_interface_cmd,
+      "interface IFNAME",
+      "Select an interface to configure\n"
+      "Interface's name\n")
+{
+  static char ifnumber[MAX_IFNAME_LENGTH];
+
+  if (strchr(argv[0], '.'))
+  {
+     return create_sub_interface(argv[0]);
+  }
+  else
+     vty->node = INTERFACE_NODE;
+
+  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
+  vty->node = VLAN_INTERFACE_NODE;
+      GET_VLANIF(ifnumber, argv[0]);
+      if (create_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
+          return CMD_OVSDB_FAILURE;
+      }
+  }
+  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
+  {
+    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
+    default_port_add(ifnumber);
+  }
+  else
+  {
+    return CMD_ERR_NO_MATCH;
+  }
+  VLOG_DBG("%s ifnumber = %s\n", __func__, ifnumber);
+  vty->index = ifnumber;
+  return CMD_SUCCESS;
+}
+
 DEFUN (vtysh_interface_vlan,
        vtysh_interface_vlan_cmd,
        "interface vlan VLANID",
