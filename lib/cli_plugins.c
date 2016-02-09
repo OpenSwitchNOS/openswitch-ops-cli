@@ -65,6 +65,7 @@ static lt_dlinterface_id interface_id;
 static char *cli_disable_plugins[] = {
   "ntpd",
   "intfd",
+  "lacpd",
   NULL
 };
 
