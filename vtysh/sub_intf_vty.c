@@ -1056,6 +1056,16 @@ create_sub_interface(char* subifname)
 
     sprintf(sub_intf, "%d", sub_intf_number);
 
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if (strcmp(port_row->name, ifnumber) == 0)
+        {
+            vty->index = ifnumber;
+            vty->node = SUB_INTERFACE_NODE;
+            return CMD_SUCCESS;
+        }
+    }
+
     OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
     {
         if (strcmp(intf_row->name, phy_intf) == 0)
@@ -1107,6 +1117,7 @@ create_sub_interface(char* subifname)
             break;
         }
     }
+
     if (!port_found)
     {
         txn = cli_do_config_start();
