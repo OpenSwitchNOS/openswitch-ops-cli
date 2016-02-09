@@ -777,19 +777,23 @@ DEFUN (cli_lldp_show_intf_statistics,
 
         atom.string = lldp_interface_statistics_keys[0];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets transmitted :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets transmitted :%ld%s",
+              (index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
 
         atom.string = lldp_interface_statistics_keys [1];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets received :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets received :%ld%s",
+              (index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
 
         atom.string = lldp_interface_statistics_keys[2];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets received and discarded :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets received and discarded :%ld%s"
+              ,(index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
 
         atom.string = lldp_interface_statistics_keys[3];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Packets received and unrecognized :%ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Packets received and unrecognized :%ld%s"
+              ,(index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
         break;
      }
   }
@@ -930,7 +934,7 @@ DEFUN (cli_lldp_show_config,
       vty_out(vty, "%-25s", "Yes");
       vty_out(vty, "%-25s", "Yes");
     }
-    printf("\n");
+    vty_out(vty, "%s", VTY_NEWLINE);
     current = current->next;
   }
 
@@ -1161,13 +1165,13 @@ DEFUN (cli_lldp_show_statistics,
     current = current->next;
   }
 
-  vty_out(vty, "LLDP Global statistics:\n\n");
-  vty_out(vty, "Total Packets transmitted : %u\n",total_tx_packets);
-  vty_out(vty, "Total Packets received : %u\n",total_rx_packets);
-  vty_out(vty, "Total Packet received and discarded : %u\n",total_rx_discared);
-  vty_out(vty, "Total TLVs unrecognized : %u\n",total_rx_unrecognized);
+  vty_out(vty, "LLDP Global statistics:%s%s",VTY_NEWLINE,VTY_NEWLINE);
+  vty_out(vty, "Total Packets transmitted : %u%s",total_tx_packets,VTY_NEWLINE);
+  vty_out(vty, "Total Packets received : %u%s",total_rx_packets,VTY_NEWLINE);
+  vty_out(vty, "Total Packet received and discarded : %u%s",total_rx_discared,VTY_NEWLINE);
+  vty_out(vty, "Total TLVs unrecognized : %u%s",total_rx_unrecognized,VTY_NEWLINE);
 
-  vty_out(vty, "LLDP Port Statistics:\n");
+  vty_out(vty, "LLDP Port Statistics:%s",VTY_NEWLINE);
   vty_out(vty, "%-10s","Port-ID");
   vty_out(vty, "%-15s","Tx-Packets");
   vty_out(vty, "%-15s","Rx-packets");
@@ -1183,7 +1187,7 @@ DEFUN (cli_lldp_show_statistics,
     vty_out (vty, "%-15d", current->rx_packets);
     vty_out (vty, "%-20d", current->rx_discared);
     vty_out (vty, "%-20d", current->rx_unrecognized);
-    printf("\n");
+    vty_out(vty, "%s", VTY_NEWLINE);
     current = current->next;
   }
 
@@ -1334,13 +1338,13 @@ DEFUN (cli_lldp_show_neighbor_info,
     iter++;
   }
 
-  vty_out(vty, "\n");
-  vty_out(vty, "Total neighbor entries : %u\n", total_insert_count);
-  vty_out(vty, "Total neighbor entries deleted : %u\n", total_delete_count);
-  vty_out(vty, "Total neighbor entries dropped : %u\n", total_drop_count);
-  vty_out(vty, "Total neighbor entries aged-out : %u\n", total_ageout_count);
+  vty_out(vty, "%s", VTY_NEWLINE);
+  vty_out(vty, "Total neighbor entries : %u%s", total_insert_count,VTY_NEWLINE);
+  vty_out(vty, "Total neighbor entries deleted : %u%s", total_delete_count,VTY_NEWLINE);
+  vty_out(vty, "Total neighbor entries dropped : %u%s", total_drop_count,VTY_NEWLINE);
+  vty_out(vty, "Total neighbor entries aged-out : %u%s", total_ageout_count,VTY_NEWLINE);
 
-  vty_out(vty, "\n");
+  vty_out(vty, "%s", VTY_NEWLINE);
   vty_out(vty, "%-15s","Local Port");
   vty_out(vty, "%-25s","Neighbor Chassis-ID");
   vty_out(vty, "%-25s","Neighbor Port-ID");
@@ -1356,7 +1360,7 @@ DEFUN (cli_lldp_show_neighbor_info,
     vty_out (vty, "%-25s", nbr_info[iter].chassis_id);
     vty_out (vty, "%-25s", nbr_info[iter].port_id);
     vty_out (vty, "%-10s", nbr_info[iter].chassis_ttl);
-    printf("\n");
+    vty_out(vty, "%s", VTY_NEWLINE);
     iter++;
   }
 
@@ -1412,53 +1416,65 @@ DEFUN (cli_lldp_show_intf_neighbor_info,
         datum = ovsrec_interface_get_lldp_statistics(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
         atom.string = lldp_interface_neighbor_info_keys[0];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries               : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries               : %ld%s"
+              ,(index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[1];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries deleted       : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries deleted       : %ld%s"
+              ,(index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[2];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries dropped       : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries dropped       : %ld%s"
+              ,(index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[3];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor entries age-out       : %ld\n",(index == UINT_MAX)? 0 : datum->values[index].integer);
+        vty_out(vty, "Neighbor entries age-out       : %ld%s"
+              ,(index == UINT_MAX)? 0 : datum->values[index].integer,VTY_NEWLINE);
 
         datum = ovsrec_interface_get_lldp_neighbor_info(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_STRING);
 
         atom.string = lldp_interface_neighbor_info_keys[9];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor Chassis-Name          : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Neighbor Chassis-Name          : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[10];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor Chassis-Description   : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Neighbor Chassis-Description   : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[4];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor Chassis-ID            : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Neighbor Chassis-ID            : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[11];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor Management-Address    : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Neighbor Management-Address    : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[7];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Chassis Capabilities Available : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Chassis Capabilities Available : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[8];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Chassis Capabilities Enabled   : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Chassis Capabilities Enabled   : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[5];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "Neighbor Port-ID               : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "Neighbor Port-ID               : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string,VTY_NEWLINE);
 
         atom.string = lldp_interface_neighbor_info_keys[6];
         index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "TTL                            : %s\n",(index == UINT_MAX)? "" : datum->values[index].string);
+        vty_out(vty, "TTL                            : %s%s"
+              ,(index == UINT_MAX)? "" : datum->values[index].string),VTY_NEWLINE;
         break;
      }
   }
