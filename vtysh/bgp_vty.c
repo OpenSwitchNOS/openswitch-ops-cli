@@ -13670,6 +13670,7 @@ policy_show_community_filter_in_ovsdb(const char *type)
         }
     }
 }
+
 DEFUN(show_ip_community_list,
        show_ip_community_list_cmd,
        "show ip community-list",
@@ -13690,11 +13691,71 @@ DEFUN(show_ip_extcommunity_list,
 {
     policy_show_community_filter_in_ovsdb("extcommunity-list");
 }
+
+static void
+policy_show_bgp_aspath_filter_in_ovsdb(const char *name)
+{
+    const struct ovsrec_bgp_aspath_filter *ovs_filter_list = NULL;
+    int i;
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(ovs_filter_list, idl)
+    {
+        if (!name) {
+            vty_out(vty,"ip as-path access-list %s%s",
+                    ovs_filter_list->name,VTY_NEWLINE);
+            for (i = 0 ; i<ovs_filter_list->n_permit; i++) {
+                vty_out(vty,"%4spermit %s%s","",
+                        ovs_filter_list->permit[i],VTY_NEWLINE);
+            }
+            for (i = 0 ; i<ovs_filter_list->n_deny; i++) {
+                vty_out(vty,"%4sdeny %s%s","",
+                        ovs_filter_list->deny[i],VTY_NEWLINE);
+            }
+        }
+        else if (!strcmp(ovs_filter_list->name, name)) {
+            vty_out(vty,"ip as-path access-list %s%s",
+                    ovs_filter_list->name,VTY_NEWLINE);
+            for (i = 0 ; i<ovs_filter_list->n_permit; i++) {
+                vty_out(vty,"%4spermit %s%s","",
+                        ovs_filter_list->permit[i],VTY_NEWLINE);
+            }
+            for (i = 0 ; i<ovs_filter_list->n_deny; i++) {
+                vty_out(vty,"%4sdeny %s%s","",
+                        ovs_filter_list->deny[i],VTY_NEWLINE);
+            }
+        }
+    }
+}
+
+DEFUN (show_ip_as_path_access_list,
+       show_ip_as_path_access_list_cmd,
+       "show ip as-path-access-list WORD",
+       SHOW_STR
+       IP_STR
+       "List AS path access lists\n"
+       "AS path access list name\n")
+{
+    policy_show_bgp_aspath_filter_in_ovsdb(argv[0]);
+}
+
+
+DEFUN (show_ip_as_path_access_list_all,
+       show_ip_as_path_access_list_all_cmd,
+       "show ip as-path-access-list",
+       SHOW_STR
+       IP_STR
+       "List AS path access lists\n")
+{
+    policy_show_bgp_aspath_filter_in_ovsdb(NULL);
+}
+
 void policy_vty_init(void)
 {
     install_element(CONFIG_NODE, &ip_as_path_cmd);
     install_element(CONFIG_NODE, &no_ip_as_path_cmd);
     install_element(CONFIG_NODE, &no_ip_as_path_all_cmd);
+    install_element(ENABLE_NODE, &show_ip_as_path_access_list_cmd);
+    install_element(ENABLE_NODE, &show_ip_as_path_access_list_all_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_any_cmd);
     install_element(CONFIG_NODE, &ipv6_prefix_list_seq_cmd);
