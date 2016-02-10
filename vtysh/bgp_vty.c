@@ -4924,24 +4924,24 @@ cli_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr, char *name, 
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
-        ERRONEOUS_DB_TXN(txn, "Error: No vrf found");
+        ERRONEOUS_DB_TXN(txn, "VRF not found");
     }
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
-        ERRONEOUS_DB_TXN(txn, "Error: Specified BGP router not configured");
+        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
     }
 
     ovs_bgp_neighbor =
     get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
     if (!ovs_bgp_neighbor) {
-        ERRONEOUS_DB_TXN(txn, "Error: No existing neighbor found");
+        ERRONEOUS_DB_TXN(txn, "Neighbor not found");
     }
 
     /* Since neighbor exists, we need to check the prefix-list name and
      *        direction to identify if it's a duplicate. */
     if (get_neighbor_prefix_list(ovs_bgp_neighbor, name, dir)) {
-        ABORT_DB_TXN(txn, "Error: Configuration exists");
+        ABORT_DB_TXN(txn, "Configuration exists");
     }
 
     /* Check if the specified prefix-list exists. */
@@ -4953,7 +4953,7 @@ cli_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr, char *name, 
     }
 
     if (!pl_found) {
-        ERRONEOUS_DB_TXN(txn, "Error: Prefix filter does not exist");
+        ERRONEOUS_DB_TXN(txn, "Prefix filter does not exist");
     }
 
     int num_entries = ovs_bgp_neighbor->n_prefix_lists;
@@ -5017,22 +5017,22 @@ cli_no_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr,
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
-        ERRONEOUS_DB_TXN(txn, "Error: No vrf found");
+        ERRONEOUS_DB_TXN(txn, "VRF not found");
     }
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
-        ERRONEOUS_DB_TXN(txn, "Error: Specified BGP router not configured");
+        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
     }
 
     ovs_bgp_neighbor =
     get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
     if (!ovs_bgp_neighbor) {
-        ERRONEOUS_DB_TXN(txn, "Error: Neighbor does not exist");
+        ERRONEOUS_DB_TXN(txn, "Neighbor not found");
     }
 
     if (!ovs_bgp_neighbor->n_prefix_lists) {
-        ABORT_DB_TXN(txn, "Error: Failed to unconfigure, prefix filter does not exist");
+        ABORT_DB_TXN(txn, "Failed to unconfigure, prefix filter does not exist");
     }
 
     /* Check to see if a prefix-list is configured for the direction. */
@@ -5060,7 +5060,7 @@ cli_no_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr,
     if (!dir_found) {
         free(direction);
         free(pl_table_entry);
-        ABORT_DB_TXN(txn, "Error: Neighbor prefix-list for the direction doesn't exist");
+        ABORT_DB_TXN(txn, "Neighbor prefix-list for the direction does not exist");
     }
 
     num_entries = j;
@@ -13670,6 +13670,7 @@ policy_show_community_filter_in_ovsdb(const char *type)
         }
     }
 }
+
 DEFUN(show_ip_community_list,
        show_ip_community_list_cmd,
        "show ip community-list",
@@ -13690,11 +13691,67 @@ DEFUN(show_ip_extcommunity_list,
 {
     policy_show_community_filter_in_ovsdb("extcommunity-list");
 }
+
+static void
+show_bgp_aspath_filter_print(const struct ovsrec_bgp_aspath_filter
+                             *ovs_filter_list)
+{
+    int i;
+
+    vty_out(vty,"ip as-path access-list %s%s",
+            ovs_filter_list->name,VTY_NEWLINE);
+    for (i = 0 ; i<ovs_filter_list->n_permit; i++) {
+        vty_out(vty,"%4spermit %s%s","",
+                ovs_filter_list->permit[i],VTY_NEWLINE);
+    }
+    for (i = 0 ; i<ovs_filter_list->n_deny; i++) {
+        vty_out(vty,"%4sdeny %s%s","",
+                ovs_filter_list->deny[i],VTY_NEWLINE);
+    }
+}
+
+static void
+policy_show_bgp_aspath_filter_in_ovsdb(const char *name)
+{
+    const struct ovsrec_bgp_aspath_filter *ovs_filter_list = NULL;
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(ovs_filter_list, idl) {
+        if (!name)
+            show_bgp_aspath_filter_print(ovs_filter_list);
+        else if (!strcmp(ovs_filter_list->name, name))
+            show_bgp_aspath_filter_print(ovs_filter_list);
+    }
+}
+
+DEFUN (show_ip_as_path_access_list,
+       show_ip_as_path_access_list_cmd,
+       "show ip as-path-access-list WORD",
+       SHOW_STR
+       IP_STR
+       "List AS path access lists\n"
+       "AS path access list name\n")
+{
+    policy_show_bgp_aspath_filter_in_ovsdb(argv[0]);
+}
+
+
+DEFUN (show_ip_as_path_access_list_all,
+       show_ip_as_path_access_list_all_cmd,
+       "show ip as-path-access-list",
+       SHOW_STR
+       IP_STR
+       "List AS path access lists\n")
+{
+    policy_show_bgp_aspath_filter_in_ovsdb(NULL);
+}
+
 void policy_vty_init(void)
 {
     install_element(CONFIG_NODE, &ip_as_path_cmd);
     install_element(CONFIG_NODE, &no_ip_as_path_cmd);
     install_element(CONFIG_NODE, &no_ip_as_path_all_cmd);
+    install_element(ENABLE_NODE, &show_ip_as_path_access_list_cmd);
+    install_element(ENABLE_NODE, &show_ip_as_path_access_list_all_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_any_cmd);
     install_element(CONFIG_NODE, &ipv6_prefix_list_seq_cmd);
