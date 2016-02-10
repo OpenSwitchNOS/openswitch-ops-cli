@@ -232,7 +232,23 @@ DEFUN (cli_traceroute,
         VLOG_ERR("Decoding of token maximum ttl failed");
         return CMD_SUCCESS;
     }
+    if (argv[3])
+    {
+        if (argv[2])
+        {
+            if (atoi(argv[3]) > atoi(argv[2]))
+            {
+                vty_out (vty, " Minimum ttl should be less than the maximum ttl.%s", VTY_NEWLINE);
+                return CMD_SUCCESS;
+            }
 
+        }
+        else if (atoi(argv[3]) > TRACE_DEF_MAXTTL)
+        {
+            vty_out (vty, " Minimum ttl should be less than the maximum ttl.%s", VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+    }
     /* decode token minimum ttl */
     if (decodeTracerouteParam(argv[3], MIN_TTL, &p) != CMD_SUCCESS)
     {
@@ -323,7 +339,23 @@ DEFUN (cli_traceroute_ipoption,
         VLOG_ERR("Decoding of token maximum ttl failed");
         return CMD_SUCCESS;
     }
+    if (argv[4])
+    {
+        if (argv[3])
+        {
+            if (atoi(argv[4]) > atoi(argv[3]))
+            {
+                vty_out (vty, " Minimum ttl should be less than the maximum ttl.%s", VTY_NEWLINE);
+                return CMD_SUCCESS;
+            }
 
+        }
+        else if (atoi(argv[4]) > TRACE_DEF_MAXTTL)
+        {
+            vty_out (vty, " Minimum ttl should be less than the maximum ttl.%s", VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+    }
     /* decode token minimum ttl */
     if (decodeTracerouteParam(argv[4], MIN_TTL, &p) != CMD_SUCCESS)
     {
