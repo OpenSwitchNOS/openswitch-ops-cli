@@ -45,6 +45,8 @@ from opsvsi.opsvsitest import *
 #   * no neighbor <peer-group> filter-list
 #   * ip as-path access-list WORD (deny|permit) .LINE
 #   * no ip as-path access-list WORD (deny|permit) .LINE
+#   * show ip as-path access-list
+#   * show ip as-path access-list WORD
 #
 # S1 [interface 1]<--->[interface 1] S2
 
@@ -743,9 +745,7 @@ class bgpTest(OpsVsiTest):
 
     def configure_ip_aspath_access_list(self):
         key = "as-path access-list"
-        info("\n########## Configuring %s for neighbor %s"
-             " on switch 1... ##########\n" %
-            (key, BGP1_NEIGHBOR))
+        info("\n########## Configuring %s on switch 1... ##########\n" %(key))
 
         switch = self.net.switches[0]
         filter_list = 'fl_test'
@@ -756,8 +756,7 @@ class bgpTest(OpsVsiTest):
 
     def verify_ip_aspath_access_list(self):
         key = "as-path access-list"
-        info("\n########## Verifying %s for neighbor %s"
-            " on switch 1... ##########\n" % (key, BGP1_NEIGHBOR))
+        info("\n########## Verifying %s on switch 1... ##########\n" %(key))
         found = False
         filter_list = 'fl_test'
         switch = self.net.switches[0]
@@ -772,17 +771,13 @@ class bgpTest(OpsVsiTest):
             if search_pattern in line:
                    found = True
         assert (found == True), \
-            "Error in verifying %s for neighbor %s" \
-            " on switch 1\n" % (key, BGP1_NEIGHBOR)
+            "Error in verifying %s on switch 1\n" % (key)
 
         return True
 
-
     def unconfigure_ip_aspath_access_list(self):
         key = "as-path access-list"
-        info("\n########## Configuring %s for neighbor %s"
-             " on switch 1... ##########\n" %
-            (key, BGP1_NEIGHBOR))
+        info("\n########## Configuring %s on switch 1... ##########\n" %(key))
 
         switch = self.net.switches[0]
         filter_list = 'fl_test'
@@ -793,8 +788,7 @@ class bgpTest(OpsVsiTest):
 
     def verify_no_ip_aspath_access_list(self):
         key = "as-path access-list"
-        info("\n########## Verifying %s for neighbor %s"
-            " on switch 1... ##########\n" % (key, BGP1_NEIGHBOR))
+        info("\n########## Verifying %s on switch 1... ##########\n" % (key))
         found = False
         filter_list = 'fl_test'
         switch = self.net.switches[0]
@@ -809,12 +803,112 @@ class bgpTest(OpsVsiTest):
             if search_pattern in line:
                    found = True
         assert (found == False), \
-            "Error in verifying %s for neighbor %s" \
-            " on switch 1\n" % (key, BGP1_NEIGHBOR)
+            "Error in verifying %s on switch 1\n" % (key)
 
         return True
 
+    def configure_for_show_ip_aspath_access_list(self):
+        key = "as-path access-list"
+        info("\n########## Configuring %s on switch 1... ##########\n" % (key))
 
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        filter_list2 = 'fl_test2'
+        cfg_array = []
+        cfg_array.append("ip %s %s permit 123" % (key, filter_list))
+        cfg_array.append("ip %s %s deny 456" % (key, filter_list2))
+
+        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+
+
+    def unconfigure_for_show_ip_aspath_access_list(self):
+        key = "as-path access-list"
+        info("\n########## Configuring %s on switch 1... ##########\n" % (key))
+
+        switch = self.net.switches[0]
+        filter_list = 'fl_test'
+        filter_list2 = 'fl_test2'
+        cfg_array = []
+        cfg_array.append("no ip %s %s permit 123" % (key, filter_list))
+        cfg_array.append("no ip %s %s deny 456" % (key, filter_list2))
+
+
+    def verify_show_ip_aspath_access_list(self):
+        key = "as-path access-list"
+        key2 = "as-path-access-list"
+        info("\n########## Verifying show %s on switch 1... ##########\n" %(key))
+        found = False
+        filter_list = 'fl_test'
+        filter_list2 = 'fl_test2'
+        switch = self.net.switches[0]
+
+        found = False
+        show_cmd = "show ip %s" %(key2)
+        dump = switch.cmdCLI(show_cmd)
+        lines = dump.split('\n')
+        search_pattern = "ip %s %s"% (key, filter_list)
+        search_pattern_action = "permit 123"
+        i = 0
+        for line in lines:
+            if search_pattern in lines[i]\
+                and search_pattern_action in lines[i+1]:
+                found = True
+            i = i + 1
+        assert (found == True), \
+            "Error in verifying show %s on switch 1\n" % (key)
+
+        found = False
+        search_pattern = "ip %s %s"% (key, filter_list2)
+        search_pattern_action = "deny 456"
+        i = 0
+        for line in lines:
+            if search_pattern in lines[i]\
+                and search_pattern_action in lines[i+1]:
+                found = True
+            i = i + 1
+        assert (found == True), \
+            "Error in verifying show %s on switch 1\n" % (key)
+
+        return True
+
+    def verify_show_ip_aspath_access_list_name(self):
+        key = "as-path access-list"
+        key2 = "as-path-access-list"
+        info("\n########## Verifying show %s on switch 1... ##########\n" %(key))
+
+        found = False
+        filter_list = 'fl_test'
+        filter_list2 = 'fl_test2'
+        switch = self.net.switches[0]
+
+        found = False
+        show_cmd = "show ip %s %s" %(key2, filter_list)
+        dump = switch.cmdCLI(show_cmd)
+        lines = dump.split('\n')
+        search_pattern = "ip %s %s"% (key, filter_list)
+        search_pattern_action = "permit 123"
+        i = 0
+        for line in lines:
+            if search_pattern in lines[i]\
+                and search_pattern_action in lines[i+1]:
+                found = True
+            i = i + 1
+        assert (found == True), \
+            "Error in verifying show %s on switch 1\n" % (key)
+
+        found = False
+        search_pattern = "ip %s %s"% (key, filter_list2)
+        search_pattern_action = "deny 456"
+        i = 0
+        for line in lines:
+            if search_pattern in lines[i]\
+                and search_pattern_action in lines[i+1]:
+                found = True
+            i = i + 1
+        assert (found == False), \
+            "Error in verifying show %s on switch 1\n" % (key)
+
+        return True
 
 
 class Test_bgpd_neighbor_cmds:
@@ -879,6 +973,10 @@ class Test_bgpd_neighbor_cmds:
         self.test_var.unconfigure_ip_aspath_access_list()
         self.test_var.verify_no_ip_aspath_access_list()
 
+        self.test_var.configure_for_show_ip_aspath_access_list()
+        self.test_var.verify_show_ip_aspath_access_list()
+        self.test_var.verify_show_ip_aspath_access_list_name()
+        self.test_var.unconfigure_for_show_ip_aspath_access_list()
 
 
 #    def test_mininet_cli(self):
