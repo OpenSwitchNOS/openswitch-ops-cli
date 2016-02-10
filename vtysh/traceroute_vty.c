@@ -364,7 +364,7 @@ DEFUN (cli_traceroute6,
        cli_traceroute6_cmd,
     "traceroute6 ( X:X::X:X | WORD ) { dstport <1-34000> | maxttl <1-255> | "
     "probes <1-5>| timeout <1-60>} ",
-    TRACEROUTE_STR
+    TRACEROUTE6_STR
     TRACEROUTE_IP
     TRACEROUTE_HOST
     TRACEROUTE_DSTPORT
