@@ -48,6 +48,7 @@
 #include "smap.h"
 #include "openswitch-dflt.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
+#include "vtysh/utils/vrf_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -123,26 +124,6 @@ check_split_iface_conditions (const char *ifname)
     }
 
   return allowed;
-}
-
-
-/*
- * Check if port is part of any VRF and return the VRF row.
- */
-const struct ovsrec_vrf*
-port_vrf_lookup (const struct ovsrec_port *port_row)
-{
-  const struct ovsrec_vrf *vrf_row = NULL;
-  size_t i;
-  OVSREC_VRF_FOR_EACH (vrf_row, idl)
-    {
-      for (i = 0; i < vrf_row->n_ports; i++)
-        {
-          if (vrf_row->ports[i] == port_row)
-            return vrf_row;
-        }
-    }
-  return NULL;
 }
 
 /*
