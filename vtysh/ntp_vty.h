@@ -142,6 +142,8 @@ config_finish_result (enum ovsdb_idl_txn_status status)
 
 #define NTP_ASSOC_SERVER_NAME_LEN                       57
 
+#define NTP_ASSOC_MAX_SERVERS                           8
+
 /* NTP Association attributes (association_attributes) */
 #define NTP_ASSOC_ATTRIB_REF_CLOCK_ID                   "ref_clock_id"
 
