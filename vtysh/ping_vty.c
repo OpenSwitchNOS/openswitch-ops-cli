@@ -1,6 +1,6 @@
 /* PING CLI commands
  *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,7 +23,6 @@
  */
 
 #include <stdlib.h>
-#include <stdbool.h>
 #include "command.h"
 #include "vtysh/vtysh.h"
 #include "ping.h"
@@ -298,7 +297,7 @@ DEFUN (cli_ping6,
     " ping6 ( X:X::X:X | WORD )"
     " { datagram-size <100-65468> | data-fill WORD | repetitions <1-10000> "
     " | interval <1-60> }",
-    PING_STR
+    PING6_STR
     PING_IP
     PING_HOST
     PING_DSIZE
