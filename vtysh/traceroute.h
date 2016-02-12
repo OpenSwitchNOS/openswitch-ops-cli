@@ -30,15 +30,17 @@
 #include <stdbool.h>
 
 #define TRACEROUTE_STR \
-"Traceroute Utility\n"
+"Trace the IPv4 route to a device on the network\n"
+#define TRACEROUTE6_STR \
+"Trace the IPv6 route to a device on the network\n"
 #define TRACEROUTE_IP \
-"Enter IP address of the  device to traceroute\n"
+"Enter IP address of the device to traceroute\n"
 #define TRACEROUTE_HOST \
 "Enter Hostname of the device to traceroute\n"
 #define TRACEROUTE_MAXTTL \
-"Maximum time to live <1-255>\n"
+"Specify maximum number of hops to reach the destination <1-255>\n"
 #define TRACEROUTE_MINTTL \
-"Minimum time to live <1-255>\n"
+"Specify minimum number of hops to reach the destination <1-255>\n"
 #define TRACEROUTE_TIMEOUT \
 "Traceroute timeout in seconds <1-60>\n"
 #define TRACEROUTE_PROBES \
@@ -48,19 +50,19 @@
 #define TRACEROUTE_IP_OPTION \
 "Specify the IP option\n"
 #define TRACEROUTE_LOOSEROUTE \
-"Loose Source Route\n"
+"Specify the route for loose source record route\n"
 #define LOOSEIP \
-"Enter the IP for looseroute\n"
+"Enter intermediate router's IP address for loose source routing\n"
 #define MAXTTL_INPUT \
-"Enter maximum TTL value (default: 30)\n"
+"Enter maximum TTL value (Default: 30)\n"
 #define MINTTL_INPUT \
-"Enter minimum TTL value (default: 1)\n"
+"Enter minimum TTL value (Default: 1)\n"
 #define TIMEOUT_INPUT \
-"Enter timeout value in seconds (default: 3 seconds)\n"
+"Enter timeout value in seconds (Default: 3 seconds)\n"
 #define PROBES_INPUT \
-"Enter probes value (default: 3)\n"
+"Enter probes value (Default: 3)\n"
 #define DSTPORT_INPUT \
-"Enter destination port value (default: 33434)\n"
+"Enter destination port value (Default: 33434)\n"
 
 #define TRACEROUTE_MAX_HOSTNAME_LENGTH  256
 
