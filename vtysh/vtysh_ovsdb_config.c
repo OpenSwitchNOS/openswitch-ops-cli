@@ -342,6 +342,8 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     struct feature_sorted_list *list = NULL;
     const struct shash_node **nodes;
     int idx, count;
+    feature_row_list *row_list = NULL;
+    feature_row_list *temp_row_list= NULL;
 
     VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl,
              ovsdb_idl_get_seqno(idl));

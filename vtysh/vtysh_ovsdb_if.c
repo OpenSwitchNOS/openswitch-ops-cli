@@ -890,7 +890,7 @@ const char *
 vtysh_ovsdb_os_name_get(void)
 {
     const struct ovsrec_system *ovs;
-    char *os_name = NULL;
+    const char *os_name = NULL;
 
     ovs = ovsrec_system_first(idl);
     if (ovs) {
@@ -965,7 +965,7 @@ vtysh_ovsdb_hostname_reset(char *hostname_arg)
         data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
         ovsdb_hostname = data->keys->string;
 
-        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        if ((ovsdb_hostname != NULL) && (strcmp(ovsdb_hostname, hostname_arg) == 0))
         {
             vtysh_ovsdb_hostname_set("");
         }
@@ -1545,7 +1545,7 @@ check_port_in_vrf(const char *port_name)
 bool
 check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
 {
-    char *l3port = NULL;
+    const char *l3port = NULL;
     l3port = smap_get(&vlan_row->internal_usage,
                                  VLAN_INTERNAL_USAGE_L3PORT);
     return (l3port != NULL) ? true : false;
