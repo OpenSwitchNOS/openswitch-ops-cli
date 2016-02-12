@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 
-#define PING_STR            "Ping Utility\n"
+#define PING_STR            "Send ping requests to a device on the network\n"
 #define PING_IP             "Enter IP address of the device to ping\n"
 #define PING_HOST           "Enter Hostname of the device to ping\n"
 #define PATTERN             "Enter Hexadecimal pattern (Default: AB)\n"
@@ -38,6 +38,8 @@
 #define TSADDR              "include-timestamp-and-address"
 #define RR                  "record-route"
 
+#define PING6_STR \
+"Send IPv6 ping requests to a device on the network\n"
 #define PING_IP_OPT \
 "Specify the IP option - Record Route or Timestamp option\n"
 #define PING_DSIZE \
