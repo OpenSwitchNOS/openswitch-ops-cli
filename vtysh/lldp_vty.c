@@ -1,7 +1,7 @@
 /* LLDP CLI commands
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1793,9 +1793,9 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
 
 DEFUN (lldp_if_lldp_tx,
        lldp_if_lldp_tx_cmd,
-       "lldp transmission",
+       "lldp transmit",
        INTF_LLDP_STR
-       "Set the transmission\n")
+       "Enable LLDP transmission on interface\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission");
@@ -1805,9 +1805,9 @@ DEFUN (lldp_if_lldp_tx,
 
 DEFUN (lldp_if_lldp_rx,
        lldp_if_lldp_rx_cmd,
-       "lldp reception",
+       "lldp receive",
        INTF_LLDP_STR
-       "Set the reception\n")
+       "Enable LLDP reception on interface\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception");
@@ -1919,10 +1919,10 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 
 DEFUN (lldp_if_no_lldp_tx,
        lldp_if_no_lldp_tx_cmd,
-       "no lldp transmission",
+       "no lldp transmit",
        NO_STR
        INTF_LLDP_STR
-       "Set the transmission\n")
+       "Disable LLDP transmission on interface\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission");
@@ -1932,10 +1932,10 @@ DEFUN (lldp_if_no_lldp_tx,
 
 DEFUN (lldp_if_no_lldp_rx,
        lldp_if_no_lldp_rx_cmd,
-       "no lldp reception",
+       "no lldp receive",
        NO_STR
        INTF_LLDP_STR
-       "Set the reception\n")
+       "Disable LLDP reception on interface\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception");

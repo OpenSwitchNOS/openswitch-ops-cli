@@ -625,7 +625,7 @@ class vrfCLITest(OpsVsiTest):
         s1.cmdCLI("exit")
         intf_cmd = "interface " + third_interface
         s1.cmdCLI(intf_cmd)
-        s1.cmdCLI('lldp transmission')
+        s1.cmdCLI('lldp transmit')
         s1.cmdCLI('exit')
         ret = s1.cmdCLI('do show running-config')
         output = ret.split('\n')
