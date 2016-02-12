@@ -1,7 +1,7 @@
 /* LACP CLI commands
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,7 +39,6 @@
 #include "vtysh/vtysh_user.h"
 #include "vswitch-idl.h"
 #include "ovsdb-idl.h"
-#include "lacp_vty.h"
 #include "smap.h"
 #include "openvswitch/vlog.h"
 #include "openswitch-idl.h"
@@ -47,10 +46,27 @@
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "openswitch-dflt.h"
 #include "vrf_vty.h"
+#include "vtysh/utils/lacp_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_lacp_cli);
 extern struct ovsdb_idl *idl;
-int maximum_lag_interfaces = 0;
+
+bool
+lacp_exceeded_maximum_lag()
+{
+    const struct ovsrec_port *port_row = NULL;
+    int lags_found = 0;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl) {
+        if (strncmp(port_row->name,
+                    LAG_PORT_NAME_PREFIX,
+                    LAG_PORT_NAME_PREFIX_LENGTH) == 0) {
+            lags_found++;
+        }
+    }
+
+    return lags_found >= MAX_LAG_INTERFACES;
+}
 
 static int
 delete_lag(const char *lag_name)
@@ -343,32 +359,40 @@ lacp_set_hash(const char *lag_name, const char *hash)
   }
 }
 
-DEFUN (cli_lacp_set_hash,
-       lacp_set_hash_cmd,
+DEFUN (cli_lacp_set_l2_hash,
+       lacp_set_l2_hash_cmd,
        "hash l2-src-dst",
-       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
+       "The type of hash algorithm used for aggregated port (Default:l3-src-dst)\n"
        "Base the hash on l2-src-dst\n")
 {
   return lacp_set_hash((char*) vty->index, "l2-src-dst");
 }
 
-DEFUN (cli_lacp_set_no_hash,
-       lacp_set_no_hash_cmd,
-       "no hash l2-src-dst",
-       NO_STR
-       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n"
-       "Base the hash on l2-src-dst\n")
+DEFUN (cli_lacp_set_l2vid_hash,
+       lacp_set_l2vid_hash_cmd,
+       "hash l2vid-src-dst",
+       "The type of hash algorithm used for aggregated port (Default:l3-src-dst)\n"
+       "Base the hash on l2vid-src-dst\n")
+{
+  return lacp_set_hash((char*) vty->index, "l2vid-src-dst");
+}
+
+DEFUN (cli_lacp_set_l3_hash,
+       lacp_set_l3_hash_cmd,
+       "hash l3-src-dst",
+       "The type of hash algorithm used for aggregated port (Default:l3-src-dst)\n"
+       "Base the hash on l3-src-dst\n")
 {
   return lacp_set_hash((char*) vty->index, "l3-src-dst");
 }
 
-DEFUN (cli_lacp_set_no_hash_shortform,
-       lacp_set_no_hash_shortform_cmd,
-       "no hash",
-       NO_STR
-       "The type of hash algorithm used for aggregated port(Default:l3-src-dst)\n")
+DEFUN (cli_lacp_set_l4_hash,
+       lacp_set_l4_hash_cmd,
+       "hash l4-src-dst",
+       "The type of hash algorithm used for aggregated port (Default:l3-src-dst)\n"
+       "Base the hash on l4-src-dst\n")
 {
-  return lacp_set_hash((char*) vty->index, "l3-src-dst");
+  return lacp_set_hash((char*) vty->index, "l4-src-dst");
 }
 
 static int
@@ -686,6 +710,89 @@ DEFUN (cli_lacp_intf_set_port_id,
   return lacp_intf_set_port_id((char*)vty->index, argv[0]);
 }
 
+/*****************************************************************************
+ * When the interface is modified using "lacp port-id #" a new key will be
+ * generated ("lacp-port-id=#") within the other_config section.
+ *
+ * This function will search for the interface and then remove the key.
+ * By default smap will do nothing if the key was not found.
+ ****************************************************************************/
+static int
+lacp_intf_set_no_port_id(const char *if_name, const char *port_id_val)
+{
+    const struct ovsrec_interface * row = NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct smap smap = SMAP_INITIALIZER(&smap);
+
+    bool error = false;
+    const char *port_id = NULL;
+
+    status_txn = cli_do_config_start();
+
+    if(status_txn == NULL) {
+        VLOG_ERR(LACP_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+        if(strcmp(row->name, if_name) == 0)
+        {
+            smap_clone(&smap, &row->other_config);
+
+            if (port_id_val) {
+                port_id = smap_get(&smap,
+                                   INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_ID);
+
+                if (!port_id || strcmp(port_id, port_id_val) != 0) {
+                    error = true;
+                    break;
+                }
+            }
+
+            smap_remove(&smap, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_ID);
+            ovsrec_interface_set_other_config(row, &smap);
+            smap_destroy(&smap);
+        }
+    }
+
+    if (error) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    status = cli_do_config_finish(status_txn);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED) {
+        return CMD_SUCCESS;
+    } else {
+        VLOG_ERR(LACP_OVSDB_TXN_COMMIT_ERROR, __func__,__LINE__);
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+DEFUN (cli_lacp_intf_set_no_port_id,
+       cli_lacp_intf_set_no_port_id_cmd,
+       "no lacp port-id <1-65535>",
+       NO_STR
+       "Set port ID used in LACP negotiation\n"
+       "The range is 1 to 65535\n")
+{
+    return lacp_intf_set_no_port_id((char*)vty->index, argv[0]);
+}
+
+DEFUN (cli_lacp_intf_set_no_port_id_short,
+       cli_lacp_intf_set_no_port_id_short_cmd,
+       "no lacp port-id",
+       NO_STR
+       "Set port ID used in LACP negotiation\n"
+       "The range is 1 to 65535\n")
+{
+    return lacp_intf_set_no_port_id((char*)vty->index, NULL);
+}
+
 static int
 lacp_intf_set_port_priority(const char *if_name, const char *port_priority_val)
 {
@@ -744,6 +851,92 @@ DEFUN (cli_lacp_intf_set_port_priority,
 {
   return lacp_intf_set_port_priority((char*)vty->index, argv[0]);
 }
+
+/*****************************************************************************
+ * When the interface is modified using "lacp port-priority #" a new key will
+ * be generated ("lacp-port-priority=#") within the other_config section.
+ *
+ * This function will search for the interface and then remove the key.
+ * By default smap will do nothing if the key was not found.
+ ****************************************************************************/
+static int
+lacp_intf_set_no_port_priority(const char *if_name,
+                               const char *port_priority_val)
+{
+    const struct ovsrec_interface * row = NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct smap smap = SMAP_INITIALIZER(&smap);
+
+    bool error = false;
+    const char *port_priority = NULL;
+
+    status_txn = cli_do_config_start();
+    if (status_txn == NULL) {
+        VLOG_ERR(LACP_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+        if (strcmp(row->name, if_name) == 0)
+        {
+            smap_clone(&smap, &row->other_config);
+
+            if (port_priority_val) {
+                port_priority = smap_get(&smap,
+                                INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
+
+                if (!port_priority
+                    || strcmp(port_priority, port_priority_val) != 0) {
+                    error = true;
+                    break;
+                }
+            }
+
+            smap_remove(&smap, INTERFACE_OTHER_CONFIG_MAP_LACP_PORT_PRIORITY);
+            ovsrec_interface_set_other_config(row, &smap);
+            smap_destroy(&smap);
+            break;
+        }
+    }
+
+    if (error) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    status = cli_do_config_finish(status_txn);
+
+    if (status == TXN_SUCCESS || status == TXN_UNCHANGED) {
+        return CMD_SUCCESS;
+    } else {
+        VLOG_ERR(LACP_OVSDB_TXN_COMMIT_ERROR, __func__,__LINE__);
+        return CMD_OVSDB_FAILURE;
+    }
+}
+
+DEFUN (cli_lacp_intf_set_no_port_priority,
+       cli_lacp_intf_set_no_port_priority_cmd,
+       "no lacp port-priority <1-65535>",
+       NO_STR
+       "Set port priority is used in LACP negotiation\n"
+       "The range is 1 to 65535\n")
+{
+    return lacp_intf_set_no_port_priority((char*)vty->index, argv[0]);
+}
+
+DEFUN (cli_lacp_intf_set_no_port_priority_short,
+       cli_lacp_intf_set_no_port_priority_short_cmd,
+       "no lacp port-priority",
+       NO_STR
+       "Set port priority is used in LACP negotiation\n"
+       "The range is 1 to 65535\n")
+{
+    return lacp_intf_set_no_port_priority((char*)vty->index, NULL);
+}
+
 
 /*
  * Function : remove_port_reference
@@ -1706,9 +1899,10 @@ lacp_vty_init (void)
   install_element (LINK_AGGREGATION_NODE, &lacp_set_mode_no_cmd);
   install_element (LINK_AGGREGATION_NODE, &cli_lag_routing_cmd);
   install_element (LINK_AGGREGATION_NODE, &cli_lag_no_routing_cmd);
-  install_element (LINK_AGGREGATION_NODE, &lacp_set_hash_cmd);
-  install_element (LINK_AGGREGATION_NODE, &lacp_set_no_hash_cmd);
-  install_element (LINK_AGGREGATION_NODE, &lacp_set_no_hash_shortform_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l2_hash_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l2vid_hash_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l3_hash_cmd);
+  install_element (LINK_AGGREGATION_NODE, &lacp_set_l4_hash_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_fallback_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_no_fallback_cmd);
   install_element (LINK_AGGREGATION_NODE, &lacp_set_heartbeat_rate_cmd);
@@ -1719,7 +1913,12 @@ lacp_vty_init (void)
   install_element (CONFIG_NODE, &lacp_set_no_global_sys_priority_shortform_cmd);
   install_element (CONFIG_NODE, &vtysh_remove_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_id_cmd);
+  install_element (INTERFACE_NODE, &cli_lacp_intf_set_no_port_id_cmd);
+  install_element (INTERFACE_NODE, &cli_lacp_intf_set_no_port_id_short_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_intf_set_port_priority_cmd);
+  install_element (INTERFACE_NODE, &cli_lacp_intf_set_no_port_priority_cmd);
+  install_element (INTERFACE_NODE,
+                   &cli_lacp_intf_set_no_port_priority_short_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_add_intf_to_lag_cmd);
   install_element (INTERFACE_NODE, &cli_lacp_remove_intf_from_lag_cmd);
   install_element (ENABLE_NODE, &cli_lacp_show_configuration_cmd);

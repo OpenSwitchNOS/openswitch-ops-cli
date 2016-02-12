@@ -1,5 +1,6 @@
-/* Management interface client callback resigitration header file.
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP.
+/* Feature Specific CLI commands initialize via plugins source file.
+ *
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,16 +17,30 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
  *
- * File: vtysh_ovsdb_mgmt_intf_context.h
+ * File: cli_plugins.h
  *
- * Purpose:  To add declarations required for vtysh_ovsdb_mgmt_intf_context.c
- *
+ * Purpose: To install the feature specific cli commands node & elements
+ *          via plugins.
  */
 
-#ifndef VTYSH_OVSDB_MGMT_INTF_CONTEXT_H
-#define VTYSH_OVSDB_MGMT_INTF_CONTEXT_H
 
-int vtysh_init_mgmt_intf_context_clients(void);
-vtysh_ret_val vtysh_mgmt_intf_context_clientcallback(void *p_private);
+#ifndef CLI_PLUGINS_H
+#define CLI_PLUGINS_H 1
 
-#endif /* VTYSH_OVSDB_MGMT_INTF_CONTEXT_H */
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+#ifdef __linux__
+void plugins_cli_init(const char *path);
+void vtysh_cli_post_init(void);
+#endif
+
+#ifdef  __cplusplus
+}
+#endif
+
+#define CLI_PLUGINS_ERR      -1
+#define CLI_PLUGINS_SUCCESS   0
+
+#endif /* cli_plugins.h */

@@ -847,7 +847,7 @@ ipv6_route_common (struct vty *vty, char **argv, char *distance)
 DEFUN (vtysh_ipv6_route,
     vtysh_ipv6_route_cmd,
     "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE)",
-    IP_STR
+    IPV6_STR
     "Configure static routes\n"
     "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
     "Nexthop IPv6 (eg. 2010:bda::)\n"
@@ -859,7 +859,7 @@ DEFUN (vtysh_ipv6_route,
 DEFUN (vtysh_ipv6_route_distance,
     vtysh_ipv6_route_distance_cmd,
     "ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) <1-255>",
-    IP_STR
+    IPV6_STR
     "Configure static routes\n"
     "IPv6 destination prefix (e.g. 2010:bd9::/32)\n"
     "Nexthop IPv6 (eg. 2010:bda::)\n"
@@ -873,7 +873,7 @@ DEFUN (vtysh_show_ipv6_route,
     vtysh_show_ipv6_route_cmd,
     "show ipv6 route",
     SHOW_STR
-    IP_STR
+    IPV6_STR
     ROUTE_STR)
 {
   int retval;
@@ -1042,7 +1042,7 @@ DEFUN (vtysh_no_ipv6_route,
     vtysh_no_ipv6_route_cmd,
     "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE)",
     NO_STR
-    IP_STR
+    IPV6_STR
     "Configure static route\n"
     "IP destination prefix (e.g. 2010:bd9::)\n"
     "Nexthop IP (eg. 2010:bda::)\n"
@@ -1055,7 +1055,7 @@ DEFUN (vtysh_no_ipv6_route_distance,
     vtysh_no_ipv6_route_distance_cmd,
     "no ipv6 route X:X::X:X/M (X:X::X:X|INTERFACE) <1-255>",
     NO_STR
-    IP_STR
+    IPV6_STR
     "Configure static route\n"
     "IP destination prefix (e.g. 2010:bd9::)\n"
     "Nexthop IP (eg. 2010:bda::)\n"

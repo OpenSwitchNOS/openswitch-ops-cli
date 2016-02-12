@@ -28,7 +28,8 @@
 #ifndef VTYSH_OVSDB_CONFIG_H
 #define VTYSH_OVSDB_CONFIG_H
 
-#include "lib/vty.h"
+#include "vty.h"
+#include <stdbool.h>
 
 /* general vtysh return type */
 typedef enum vtysh_ret_val_enum
@@ -65,6 +66,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_led,
   e_vtysh_config_context_staticroute,
   e_vtysh_config_context_ecmp,
+  e_vtysh_config_context_ntp,
   e_vtysh_config_context_client_id_max
 } vtysh_config_context_clientid;
 
@@ -73,6 +75,7 @@ typedef enum vtysh_router_context_client_idenum
 {
   e_vtysh_router_context_client_id_first = 0,
   e_vtysh_router_context_bgp_ip_prefix,
+  e_vtysh_router_context_bgp_ip_community_filter,
   e_vtysh_router_context_bgp_routemap,
   e_vtysh_router_context_bgp,
   e_vtysh_router_context_ospf,
@@ -158,6 +161,9 @@ typedef struct vtysh_ovsdb_cbmsg_struct
   struct ovsdb_idl *idl;
   vtysh_contextid contextid;
   int clientid;
+  bool disp_header_cfg;
+  void *feature_row;
+  bool skip_subcontext_list;
 }vtysh_ovsdb_cbmsg;
 
 typedef struct vtysh_ovsdb_cbmsg_struct *vtysh_ovsdb_cbmsg_ptr;
@@ -221,5 +227,38 @@ struct ovsdb_idl_txn * cli_do_config_start(void);
 enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* txn);
 
 void cli_do_config_abort(struct ovsdb_idl_txn* txn);
+
+struct vtysh_context_feature_row_list {
+    void * row;
+    struct vtysh_context_feature_row_list *next;
+};
+typedef struct vtysh_context_feature_row_list feature_row_list;
+
+struct vtysh_contextlist_struct {
+    /* Enum value of the context */
+    int index;
+    /* Context callback function */
+    vtysh_ret_val (*vtysh_context_callback) (void* p_private);
+    /* Init callback function to be called before vtysh_context_callback */
+    feature_row_list * (*context_callback_init) (void* p_private);
+    /* Exit callback function to be called after vtysh_context_callback */
+    void (*context_callback_exit) (feature_row_list * row_list);
+    /* Sub-context list for running-config context */
+    struct vtysh_contextlist_struct * subcontext_list;
+    /* Pointer to next context callback node */
+    struct vtysh_contextlist_struct * next;
+};
+
+typedef struct vtysh_contextlist_struct vtysh_contextlist;
+
+vtysh_ret_val install_show_run_config_context(vtysh_contextid index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          feature_row_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (feature_row_list * head));
+vtysh_ret_val install_show_run_config_subcontext(vtysh_contextid index,
+                          vtysh_contextid subcontext_index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          feature_row_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (feature_row_list * head));
 
 #endif /* VTYSH_OVSDB_CONFIG_H */
