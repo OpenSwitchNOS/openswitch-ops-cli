@@ -625,7 +625,7 @@ class vrfCLITest(OpsVsiTest):
         s1.cmdCLI("exit")
         intf_cmd = "interface " + third_interface
         s1.cmdCLI(intf_cmd)
-        s1.cmdCLI('lldp transmission')
+        s1.cmdCLI('lldp transmit')
         s1.cmdCLI('exit')
         ret = s1.cmdCLI('do show running-config')
         output = ret.split('\n')
@@ -691,8 +691,8 @@ class vrfCLITest(OpsVsiTest):
         intf_cmd = 'do show interface ' + split_parent_1
         ret_ip = s1.cmdCLI(intf_cmd)
         assert expected_output in ret_vrf \
-               and '11.1.1.1/8' in ret_ip, \
-               'Split parent interface configuration failed'
+            and '11.1.1.1/8' in ret_ip, \
+            'Split parent interface configuration failed'
         info('### Split parent interface configured successfully ###\n')
 
         # Split a parent interface that already has an IP address configured
@@ -704,8 +704,8 @@ class vrfCLITest(OpsVsiTest):
         intf_cmd = 'do show interface ' + split_parent_1
         ret_ip = s1.cmdCLI(intf_cmd)
         assert unexpected_output not in ret_vrf and \
-               '11.1.1.1/8' not in ret_ip, \
-               'Split parent interface configuration removal failed'
+            '11.1.1.1/8' not in ret_ip, \
+            'Split parent interface configuration removal failed'
         info('### Split parent interface layer 3 '
              'configuration removed successfully ###\n')
         s1.cmdCLI('exit')
@@ -747,9 +747,9 @@ class vrfCLITest(OpsVsiTest):
         expected_output_1 = '\t' + split_child_1
         expected_output_2 = '\t' + split_child_2
         assert expected_output_1 in ret_vrf and \
-               expected_output_2 in ret_vrf and \
-               '12.1.1.1/8' in ret_ip1 and '13.1.1.1/8' in ret_ip2, \
-               'Split child interface configuration failed'
+            expected_output_2 in ret_vrf and \
+            '12.1.1.1/8' in ret_ip1 and '13.1.1.1/8' in ret_ip2, \
+            'Split child interface configuration failed'
         info('### Split child interface configured successfully ###\n')
 
         # No Split a parent interface that has
@@ -769,10 +769,10 @@ class vrfCLITest(OpsVsiTest):
         unexpected_output_2 = '\t' + split_child_2
 
         assert unexpected_output_1 not in ret_vrf and \
-               unexpected_output_2 not in ret_vrf and \
-               '12.1.1.1/8' not in ret_ip1 and \
-               '13.1.1.1/8' not in ret_ip2, \
-               'Split child interface configuration removal failed'
+            unexpected_output_2 not in ret_vrf and \
+            '12.1.1.1/8' not in ret_ip1 and \
+            '13.1.1.1/8' not in ret_ip2, \
+            'Split child interface configuration removal failed'
         info('### Split child interface layer 3 '
              'configurations removed successfully ###\n')
 
@@ -784,14 +784,14 @@ class vrfCLITest(OpsVsiTest):
         ovs_get_port_cmd = 'ovs-vsctl get port ' + split_parent_2 + ' name'
         ret_port = s1.ovscmd(ovs_get_port_cmd)
         assert split_parent_2 in ret_port, \
-               'No routing command failed on split parent'
+            'No routing command failed on split parent'
         s1.cmdCLI('split', False)
         s1.cmdCLI('y')
         ret_port = s1.ovscmd(ovs_get_port_cmd)
         expected_output = 'ovs-vsctl: no row ' + split_parent_2 + \
                           ' in table Port'
         assert expected_output in ret_port, \
-               'Port row deletion failed on split command'
+            'Port row deletion failed on split command'
         info('### Port row deleted successfully on split command ###\n')
 
         # Cleanup
