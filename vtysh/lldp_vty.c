@@ -1795,7 +1795,7 @@ DEFUN (lldp_if_lldp_tx,
        lldp_if_lldp_tx_cmd,
        "lldp transmission",
        INTF_LLDP_STR
-       "Set the transmission\n")
+       "Enable LLDP transmission on interface\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission");
@@ -1807,7 +1807,7 @@ DEFUN (lldp_if_lldp_rx,
        lldp_if_lldp_rx_cmd,
        "lldp reception",
        INTF_LLDP_STR
-       "Set the reception\n")
+       "Enable LLDP reception on interface\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception");
@@ -1922,7 +1922,7 @@ DEFUN (lldp_if_no_lldp_tx,
        "no lldp transmission",
        NO_STR
        INTF_LLDP_STR
-       "Set the transmission\n")
+       "Enable LLDP transmission on interface\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission");
@@ -1935,7 +1935,7 @@ DEFUN (lldp_if_no_lldp_rx,
        "no lldp reception",
        NO_STR
        INTF_LLDP_STR
-       "Set the reception\n")
+       "Enable LLDP reception on interface\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception");
