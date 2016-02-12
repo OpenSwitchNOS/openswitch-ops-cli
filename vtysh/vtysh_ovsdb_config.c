@@ -338,7 +338,6 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     vtysh_contextlist *current = show_run_contextlist;
     vtysh_contextlist *subcontext_list;
     vtysh_ovsdb_cbmsg msg;
-    const struct ovsrec_interface *ifrow;
     feature_row_list *row_list = NULL;
     feature_row_list *temp_row_list= NULL;
 

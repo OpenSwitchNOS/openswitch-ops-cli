@@ -240,7 +240,7 @@ intfd_get_user_cfg_adminstate(const struct smap *ifrow_config,
 static bool
 is_parent_interface_split(const struct ovsrec_interface *parent_iface)
 {
-    char *lanes_split_value = NULL;
+    const char *lanes_split_value = NULL;
     bool is_split = false;
 
     lanes_split_value = smap_get(&parent_iface->user_config,

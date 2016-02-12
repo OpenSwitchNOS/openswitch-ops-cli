@@ -2243,7 +2243,7 @@ cli_bgp_network_cmd_execute(char *vrf_name, char *network)
         for (i = 0; i < bgp_router_row->n_networks; i++) {
             network_list[i] = bgp_router_row->networks[i];
         }
-        network_list[bgp_router_row->n_networks] = &prefix_str;
+        network_list[bgp_router_row->n_networks] = (char *)&prefix_str;
         ovsrec_bgp_router_set_networks(bgp_router_row, network_list,
                                        (bgp_router_row->n_networks + 1));
         free(network_list);
@@ -4133,7 +4133,7 @@ DEFUN(no_neighbor_ebgp_multihop,
     const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
-    char* ip_addr = argv[0];
+    const char* ip_addr = argv[0];
 
     START_DB_TXN(txn);
 
@@ -4383,7 +4383,7 @@ DEFUN(no_neighbor_update_source,
     const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
-    char* ip_addr = argv[0];
+    const char* ip_addr = argv[0];
 
     START_DB_TXN(txn);
 
@@ -6084,7 +6084,7 @@ DEFUN(no_neighbor_ttl_security,
     const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
-    char* ip_addr = argv[0];
+    const char* ip_addr = argv[0];
 
     START_DB_TXN(txn);
 
@@ -9342,7 +9342,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -9369,7 +9369,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
                 redist[i] = bgp_router_row->key_redistribute[i];
                 rt_maps[i] = bgp_router_row->value_redistribute[i];
             }
-            redist[bgp_router_row->n_redistribute] = type;
+            redist[bgp_router_row->n_redistribute] = (char *)type;
             rt_maps[bgp_router_row->n_redistribute] =
                    CONST_CAST(struct ovsrec_route_map *, rt_map_row);
             ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
@@ -9393,7 +9393,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
             }
             rt_maps[bgp_router_row->n_redistribute] =
                          CONST_CAST(struct ovsrec_route_map *, rt_map_row);
-            redist[bgp_router_row->n_redistribute] = type;
+            redist[bgp_router_row->n_redistribute] = (char *)type;
             ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
                              rt_maps, new_size);
             free(redist);
@@ -9486,7 +9486,7 @@ get_redistribute_confg_in_ovsdb(const char *type, const char *name)
                 rt_map_row = bgp_router_row->value_redistribute[i];
                 if(rt_map_row->name &&
                     !strcmp(rt_map_row->name,name)) {
-                    return bgp_router_row;
+                    return (struct ovsrec_bgp_router *)bgp_router_row;
                 }
             }
         }
@@ -9494,14 +9494,12 @@ get_redistribute_confg_in_ovsdb(const char *type, const char *name)
     return  NULL;
 }
 
-static void
+static int
 cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
                                   const char *name)
 {
     const struct ovsrec_vrf *vrf_row;
     const struct ovsrec_bgp_router *bgp_router_row;
-    struct smap smap_match;
-    const struct ovsrec_route_map *rt_map_row;
     struct ovsrec_route_map **rt_maps;
     struct ovsdb_idl_txn *bgp_router_txn = NULL;
     char  **redist ;
@@ -9509,7 +9507,7 @@ cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -12491,10 +12489,8 @@ show_prefix_list(afi_t afi, const char *name,
             char *prefix, bool first_match, bool longer, int plen)
 {
     const struct ovsrec_prefix_list *ovs_prefix_list = NULL;
-    const struct ovsrec_prefix_list_entry *ovs_prefix_list_entry = NULL;
     struct in6_addr addrv6;
     int j = 0;
-    char *prefix_value;
     char *temp_prefix;
     bool first;
     int seq = 0;
@@ -12532,8 +12528,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12544,7 +12540,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                      ovs_prefix_list->name,
                                      ovs_prefix_list->n_prefix_list_entries,
                                      VTY_NEWLINE);
@@ -12554,10 +12550,10 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12582,8 +12578,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12594,7 +12590,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                       && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -12606,10 +12602,10 @@ show_prefix_list(afi_t afi, const char *name,
                                 }
                             } if ((ovs_prefix_list->
                                 key_prefix_list_entries[j] == seq || seq == 0)
-                                && !summary && (!strcmp(ovs_prefix_list->
+                                && (!summary) && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer){
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                                || strlen(prefix) == 0) && (!longer)){
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12624,7 +12620,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12642,8 +12638,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12654,15 +12650,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
                                 first = true;
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12691,8 +12687,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12703,7 +12699,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                      && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -12713,12 +12709,12 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary && (!strcmp(ovs_prefix_list->
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary) && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer){
-                                vty_out(vty,"%3sseq %d %s %s ge %d%s","",
+                                || strlen(prefix) == 0) && (!longer)){
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12736,7 +12732,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d%s","",
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12756,8 +12752,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12768,15 +12764,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                      ovs_prefix_list->name,
                                      ovs_prefix_list->n_prefix_list_entries,
                                      VTY_NEWLINE);
                                 first = true;
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12806,8 +12802,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12818,7 +12814,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                       && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -12828,12 +12824,12 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary && (!strcmp(ovs_prefix_list->
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary) && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer) {
-                                vty_out(vty,"%3sseq %d %s %s le %d%s","",
+                                || strlen(prefix) == 0) && (!longer)) {
+                                vty_out(vty,"%3sseq %lu %s %s le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12851,7 +12847,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s le %d%s","",
+                                vty_out(vty,"%3sseq %lu %s %s le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12871,8 +12867,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12883,15 +12879,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                 && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
                                 first = true;
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s le %d%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12918,8 +12914,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12930,7 +12926,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                       && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -12940,12 +12936,12 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary  && (!strcmp(ovs_prefix_list->
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)  && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d le %d%s","",
+                                || strlen(prefix) == 0) && (!longer)) {
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12964,7 +12960,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d le %d%s","",
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12986,8 +12982,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12998,15 +12994,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
                                 first = true;
-                            } if ( ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d le %d%s","",
+                            } if (( ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -13028,6 +13024,7 @@ show_prefix_list(afi_t afi, const char *name,
         }
 
     }
+    return 0;
 }
 
 DEFUN (show_ip_prefix_list,
@@ -13257,7 +13254,7 @@ DEFUN (show_ipv6_prefix_list_prefix,
     bool summary = false;
     bool first_match = false;
     bool longer = false;
-    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, argv[1],
+    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary,(char *)argv[1],
                      first_match, longer, 0);
     return CMD_SUCCESS;
 
@@ -13277,7 +13274,7 @@ DEFUN (show_ipv6_prefix_list_prefix_first_match,
     bool summary = false;
     bool first_match = true;
     bool longer = false;
-    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, argv[1],
+    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, (char *)argv[1],
                      first_match, longer, 0);
     return CMD_SUCCESS;
 }
@@ -13296,8 +13293,8 @@ DEFUN (show_ipv6_prefix_list_prefix_longer,
     bool summary = false;
     bool first_match = true;
     bool longer = true;
-    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, argv[1],
-                      first_match, longer, prefix_len(argv[1]));
+    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, (char *)argv[1],
+                      first_match, longer, prefix_len((char *)argv[1]));
     return CMD_SUCCESS;
 }
 
@@ -13326,7 +13323,7 @@ policy_get_bgp_community_filter_in_ovsdb(const char *name, const char *type)
     return NULL;
 }
 
-static const struct bgp_community_filter *
+static const struct ovsrec_bgp_community_filter *
 policy_get_bgp_community_filter_list_in_ovsdb(const char *name,
                                               const char *type,
                                               const char *action,
@@ -13379,7 +13376,7 @@ set_community_permit_entry_in_ovsdb(const struct ovsrec_bgp_community_filter *
    for(i = 0; i< cfilter_row->n_permit; i++) {
         desc[i] = cfilter_row->permit[i];
    }
-   desc[cfilter_row->n_permit] = description;
+   desc[cfilter_row->n_permit] = (char *)description;
    ovsrec_bgp_community_filter_set_permit(cfilter_row,
                                           desc, size);
    free(desc);
@@ -13397,7 +13394,7 @@ set_community_deny_entry_in_ovsdb(const struct ovsrec_bgp_community_filter *
    for(i = 0; i< cfilter_row->n_deny; i++) {
         desc[i] = cfilter_row->deny[i];
    }
-   desc[cfilter_row->n_deny] = description;
+   desc[cfilter_row->n_deny] = (char *)description;
    ovsrec_bgp_community_filter_set_deny(cfilter_row,
                                           desc, size);
    free(desc);
@@ -13412,7 +13409,6 @@ policy_set_community_filter_list_in_ovsdb(struct vty *vty,
 {
     struct ovsdb_idl_txn *policy_txn;
     const struct ovsrec_bgp_community_filter *cfilter_row;
-    size_t size, i;
     bool entry_set = false;
 
     START_DB_TXN(policy_txn);
@@ -13643,7 +13639,7 @@ DEFUN(no_ip_extcommunity_list_line,
                                                     argv_concat(argv, argc, 2));
 }
 
-void
+int
 policy_show_community_filter_in_ovsdb(const char *type)
 {
 
@@ -13669,6 +13665,7 @@ policy_show_community_filter_in_ovsdb(const char *type)
            }
         }
     }
+    return 0;
 }
 
 DEFUN(show_ip_community_list,
@@ -13678,7 +13675,7 @@ DEFUN(show_ip_community_list,
        IP_STR
        "List community-list\n")
 {
-    policy_show_community_filter_in_ovsdb("community-list");
+    return (policy_show_community_filter_in_ovsdb("community-list"));
 
 }
 
@@ -13689,7 +13686,7 @@ DEFUN(show_ip_extcommunity_list,
        IP_STR
        "List extended-community list\n")
 {
-    policy_show_community_filter_in_ovsdb("extcommunity-list");
+    return (policy_show_community_filter_in_ovsdb("extcommunity-list"));
 }
 
 static void
