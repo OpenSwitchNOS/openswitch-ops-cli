@@ -54,6 +54,49 @@
 VLOG_DEFINE_THIS_MODULE (vtysh_sflow_cli);
 extern struct ovsdb_idl *idl;
 
+/*
+ * This function is used to aggregate the total number of ingress and egress
+ * samples on all interfaces.
+ */
+static uint64_t
+sflow_aggregate_sample_count(void)
+{
+  uint64_t total_sample_count = 0;
+  uint64_t packet_count = 0;
+  unsigned int index;
+
+  const struct ovsrec_interface *ifrow = NULL;
+  const struct ovsdb_datum *datum;
+  union ovsdb_atom atom;
+
+  char *sflow_interface_statistics_keys [] = {
+    "sflow_ingress_packets",
+    "sflow_egress_packets"
+  };
+
+  OVSREC_INTERFACE_FOR_EACH (ifrow, idl)
+    {
+    datum = ovsrec_interface_get_statistics(ifrow,
+                                            OVSDB_TYPE_STRING,
+                                            OVSDB_TYPE_INTEGER);
+    if (datum)
+      {
+        /* Fetch the number of sFlow ingress packets */
+        atom.string = sflow_interface_statistics_keys[0];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        packet_count = (index == UINT_MAX)? 0 : datum->values[index].integer;
+        total_sample_count = total_sample_count + packet_count;
+
+        /* Fetch the number of sFlow egress packets */
+        atom.string = sflow_interface_statistics_keys[1];
+        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+        packet_count = (index == UINT_MAX)? 0 : datum->values[index].integer;
+        total_sample_count = total_sample_count + packet_count;
+      }
+    }
+  return total_sample_count;
+}
+
 /* This function displays the sflow configuration set in the sFlow table */
 static int sflow_show(void)
 {
@@ -207,12 +250,8 @@ static int sflow_show(void)
     vty_out(vty, "Max Datagram Size             %d%s",
             SFL_DEFAULT_DATAGRAM_SIZE, VTY_NEWLINE);
 
-  if(!smap_is_empty(&sflow_row->statistics))
-    vty_out(vty, "Number of Samples             %s%s",
-            sflow_row->statistics, VTY_NEWLINE);
-  else
-    vty_out(vty, "Number of Samples             0%s",
-            VTY_NEWLINE);
+  vty_out(vty, "Number of Samples             %"PRIu64"%s",
+          sflow_aggregate_sample_count(), VTY_NEWLINE);
 
   return CMD_SUCCESS;
 
