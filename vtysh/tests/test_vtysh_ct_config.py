@@ -83,7 +83,7 @@ class ShowRunningConfigTests(OpsVsiTest):
         assert '_uuid' in ovsout, 'Unable to find Interface 1 in OVSDB'
         out = s1.cmdCLI('configure terminal')
         out = s1.cmdCLI('interface 1')
-        out = s1.cmdCLI('no lldp transmission')
+        out = s1.cmdCLI('no lldp transmit')
         out = s1.cmdCLI('do show running-config')
         s1.cmdCLI('exit')
         lines = out.split('\n')
@@ -92,7 +92,7 @@ class ShowRunningConfigTests(OpsVsiTest):
                 lldp_txrx_disabled = True
         assert lldp_txrx_disabled is True, \
             'Test to verify show running-config for ' \
-            'lldp transmission - FAILED!'
+            'lldp transmit - FAILED!'
         return True
 
     def setLogrotatePeriodTest(self):
