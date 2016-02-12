@@ -34,6 +34,8 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_router_context.h"
+#include "command.h"
+#include "ospf_vty.h"
 
 #define CLEANUP_SHOW_RUN
 
@@ -43,6 +45,8 @@ char routercontextbgpipprefixclientname[] =
                           "vtysh_router_context_bgp_ip_prefix_clientcallback";
 char routercontextbgproutemapclientname[] =
                           "vtysh_router_context_bgp_routemap_clientcallback";
+char routercontextbgpipcommunityfilterclientname[] =
+                          "vtysh_router_context_bgp_ip_community_filter_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
@@ -56,6 +60,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
     const struct ovsrec_bgp_router *bgp_router_context=NULL;
     int i = 0, n_neighbors = 0, k = 0;
+    const struct ovsrec_bgp_neighbor *nbr_table=NULL;
   /* To consider all router entries. */
     OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_context, p_msg->idl)
     {
@@ -72,6 +77,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 
         for (n_neighbors = 0; n_neighbors<bgp_router_context->n_bgp_neighbors;
              n_neighbors++) {
+            nbr_table =  bgp_router_context->value_bgp_neighbors[n_neighbors];
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_remote_as)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
@@ -132,6 +138,16 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       key_route_maps[i]);
                 i++;
             }
+
+            i=0;
+            while (i < nbr_table->n_prefix_lists) {
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
+                                      "neighbor", bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "prefix-list", nbr_table->value_prefix_lists[i]->name,
+                                      nbr_table->key_prefix_lists[i]);
+                i++;
+            }
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_allow_as_in)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
@@ -157,6 +173,33 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       "soft-reconfiguration inbound");
 
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                n_ebgp_multihop)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s", "", "neighbor",
+                                      bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "ebgp-multihop");
+
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                n_ttl_security_hops)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %d", "", "neighbor",
+                                      bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "ttl-security hops",
+                                      *(bgp_router_context->
+                                      value_bgp_neighbors[n_neighbors]->
+                                      ttl_security_hops));
+
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                update_source)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s", "", "neighbor",
+                                      bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "update-source",
+                                      (bgp_router_context->
+                                      value_bgp_neighbors[n_neighbors]->
+                                      update_source));
+
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 bgp_peer_group) {
                 for (k = 0; k < bgp_router_context->n_bgp_neighbors; k++) {
                     if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
@@ -177,6 +220,45 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_ip_community_filter_clientcallback
+| Responsibility : ip community-filter lists commands
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_router_context_bgp_ip_community_filter_clientcallback(void *p_private)
+{
+    const struct ovsrec_bgp_community_filter *ovs_community_list = NULL;
+    int i;
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(ovs_community_list, p_msg->idl)
+    {
+
+        if ( ovs_community_list->name
+             && ovs_community_list->type) {
+            for (i =0 ; i<ovs_community_list->n_permit; i++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip %s %s permit %s",
+                                  ovs_community_list->type,
+                                  ovs_community_list->name,
+                                  ovs_community_list->permit[i]);
+            }
+            for (i =0 ; i<ovs_community_list->n_deny; i++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip %s %s deny %s",
+                                  ovs_community_list->type,
+                                  ovs_community_list->name,
+                                  ovs_community_list->deny[i]);
+            }
+        }
+
+    }
+    vtysh_ovsdb_cli_print(p_msg,"!");
+    return e_vtysh_ok;
+
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_ip_prefix_clientcallback
 | Responsibility : ip prefix-list command
 | Parameters :
@@ -188,21 +270,168 @@ vtysh_ret_val
 vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
 {
     const struct ovsrec_prefix_list *ovs_prefix_list = NULL;
+    const struct ovsrec_prefix_list_entry *ovs_prefix_list_entry = NULL;
+    struct in6_addr addrv6;
     int j = 0;
+    char *temp_prefix;
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
     OVSREC_PREFIX_LIST_FOR_EACH(ovs_prefix_list, p_msg->idl)
     {
+
+        if (ovs_prefix_list->name &&
+            strlen(ovs_prefix_list->description) !=0 ) {
+            vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s "
+                                               "description %s",
+                                               ovs_prefix_list->name,
+                                               ovs_prefix_list->
+                                               description);
+        }
         for (j = 0; j < ovs_prefix_list->n_prefix_list_entries; j++) {
-            if (ovs_prefix_list->name)
-                vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s seq %d %s %s",
-                                      ovs_prefix_list->name,
-                                      ovs_prefix_list->
-                                      key_prefix_list_entries[j],
-                                      ovs_prefix_list->
-                                      value_prefix_list_entries[j]->action,
-                                      ovs_prefix_list->
-                                      value_prefix_list_entries[j]->prefix);
+
+            if (ovs_prefix_list->name) {
+
+                temp_prefix = (char *)malloc(sizeof(ovs_prefix_list->
+                                  value_prefix_list_entries[j]->prefix));
+                strcpy(temp_prefix,ovs_prefix_list->
+                           value_prefix_list_entries[j]->prefix);
+                strtok(temp_prefix,"/");
+
+                if (strcmp(ovs_prefix_list->
+                        value_prefix_list_entries[j]->prefix,"any") == 0
+                        || (ovs_prefix_list->
+                        value_prefix_list_entries[j]->ge[0] == 0
+                        && ovs_prefix_list->
+                        value_prefix_list_entries[j]->le[0] == 0 )) {
+
+                    if (ovs_prefix_list->
+                        value_prefix_list_entries[j]->le[0] == 128) {
+
+                        vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list"
+                                          " %s seq %d %s %s",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix);
+                    } else if (inet_pton(AF_INET6,temp_prefix,
+                                             &addrv6) == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s"
+                                          " seq %d %s %s",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s"
+                                          " seq %d %s %s",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix);
+                    }
+                } else if (strcmp(ovs_prefix_list->
+                               value_prefix_list_entries[j]->prefix,"any") != 0
+                               && ovs_prefix_list->
+                               value_prefix_list_entries[j]->le[0] == 0 ) {
+
+                    if (inet_pton(AF_INET6,temp_prefix,&addrv6) == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s "
+                                          "seq %d %s %s ge %d ",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->ge[0]);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s "
+                                          "seq %d %s %s ge %d ",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->ge[0]);
+                    }
+                } else if (strcmp(ovs_prefix_list->
+                               value_prefix_list_entries[j]->prefix,"any") != 0
+                               && ovs_prefix_list->
+                               value_prefix_list_entries[j]->ge[0] == 0 ) {
+                    if (inet_pton(AF_INET6,temp_prefix,&addrv6) == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s "
+                                          "seq %d %s %s le %d ",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->le[0]);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s seq "
+                                          "%d %s %s le %d ",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->le[0]);
+                    }
+
+                } else {
+                    if (inet_pton(AF_INET6,temp_prefix,&addrv6) == 1) {
+                        vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s "
+                                          "seq %d %s %s ge %d le %d ",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->ge[0],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->le[0]);
+                    } else {
+                        vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s "
+                                          "seq %d %s %s ge %d le %d ",
+                                          ovs_prefix_list->name,
+                                          ovs_prefix_list->
+                                          key_prefix_list_entries[j],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->action,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->prefix,
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->ge[0],
+                                          ovs_prefix_list->
+                                          value_prefix_list_entries[j]->le[0]);
+
+                    }
+                }
+                free(temp_prefix);
+            }
         }
     }
     vtysh_ovsdb_cli_print(p_msg,"!");
@@ -248,6 +477,30 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                                  value_route_map_entries[j]->
                                                  match), "prefix_list"));
 
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "ipv6_prefix_list"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match ipv6 address prefix-list",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "ipv6_prefix_list"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "community"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match community",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "community"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "extcommunity"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match extcommunity",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "extcommunity"));
+
             if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
                 "community"))
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community",
@@ -261,6 +514,22 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                       smap_get(&ovs_route_map->
                                                value_route_map_entries[j]->set,
                                                "metric"));
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "extcommunity rt"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set extcommunity rt",
+                        smap_get(&ovs_route_map->
+                            value_route_map_entries[j]->set,
+                                "extcommunity rt"));
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "extcommunity soo"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set extcommunity soo",
+                        smap_get(&ovs_route_map->
+                            value_route_map_entries[j]->set,
+                                "extcommunity soo"));
         }
     }
 
@@ -279,7 +548,9 @@ vtysh_ret_val
 vtysh_router_context_bgp_clientcallback(void *p_private)
 {
     const struct ovsrec_vrf *ovs_vrf = NULL;
-    int i = 0, j = 0;
+    int i = 0, j = 0, k = 0;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
+
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
@@ -315,6 +586,26 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
                                       value_timers[1], ovs_vrf->
                                       value_bgp_routers[j]->value_timers[0]);
 
+            if (ovs_vrf->value_bgp_routers[j]->n_redistribute > 0) {
+                for (k = 0; k < ovs_vrf->value_bgp_routers[j]->n_redistribute;
+                     k++) {
+                        if (strlen(ovs_vrf->value_bgp_routers[j]->
+                            value_redistribute[k]->name) == 0)
+                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s","",
+                                                  "redistribute",
+                                                  ovs_vrf->value_bgp_routers[j]
+                                                  ->key_redistribute[k]);
+                        else
+                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s","",
+                                                  "redistribute",
+                                                  ovs_vrf->value_bgp_routers[j]
+                                                  ->key_redistribute[k],
+                                                  "route-map",
+                                                  ovs_vrf->value_bgp_routers[j]
+                                                  ->value_redistribute[k]
+                                                  ->name);
+                }
+            }
             if (ovs_vrf->value_bgp_routers[j]->n_fast_external_failover)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s", "", "bgp fast-external-failover");
 
@@ -336,8 +627,47 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
 vtysh_ret_val
 vtysh_router_context_ospf_clientcallback(void *p_private)
 {
-  /* OPS-TODO */
-  return e_vtysh_ok;
+    const struct ovsrec_vrf *ovs_vrf = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    int i = 0, j = 0;
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+    const char *val = NULL;
+    char area_str[OSPF_SHOW_STR_LEN];
+
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                             "vtysh_context_router_ospf_clientcallback entered");
+
+    OVSREC_VRF_FOR_EACH(ovs_vrf, p_msg->idl)
+    {
+        for (j = 0; j < ovs_vrf->n_ospf_routers; j++)
+        {
+
+            vtysh_ovsdb_cli_print(p_msg, "%s", "router ospf");
+
+            ospf_router_row = ovs_vrf->value_ospf_routers[j];
+
+            /* Router id */
+            val = smap_get((const struct smap *)&ospf_router_row->router_id,
+                            OSPF_KEY_ROUTER_ID_VAL);
+            if (val && (strcmp(val, OSPF_DEFAULT_STR) != 0))
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
+                                      "router-id", val);
+
+            /* network <range> area <area-id>*/
+            while (i < ospf_router_row->n_networks)
+            {
+                memset(area_str,'\0', OSPF_SHOW_STR_LEN);
+                OSPF_IP_STRING_CONVERT(area_str, ntohl(ospf_router_row->value_networks[i]));
+                vtysh_ovsdb_cli_print(p_msg, "%4snetwork %s area %s", "",
+                                      ospf_router_row->key_networks[i],
+                                      area_str);
+                i++;
+            }
+        }
+    }
+
+    //vtysh_router_context_ospf_neighbor_callback(p_msg);
+    return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -375,6 +705,21 @@ vtysh_init_router_context_clients()
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                                   "router context unable to add "
                                   "bgp ip prefix callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+    client.p_client_name = routercontextbgpipcommunityfilterclientname;
+    client.client_id = e_vtysh_router_context_bgp_ip_community_filter;
+    client.p_callback = &vtysh_router_context_bgp_ip_community_filter_clientcallback;
+    retval = vtysh_context_addclient(e_vtysh_router_context,
+                                     e_vtysh_router_context_bgp_ip_community_filter,
+                                     &client);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add "
+                                  "bgp ip community filter callback");
         assert(0);
         return retval;
     }

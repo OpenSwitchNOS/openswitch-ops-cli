@@ -47,7 +47,9 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include "openvswitch/vlog.h"
+#include "vtysh/intf_vty.h"
 
+#define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
 #endif
 
@@ -342,6 +344,17 @@ main (int argc, char **argv, char **env)
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_init_clients();
   vtysh_ovsdb_init(argc, argv, temp_db);
+  /* Make vty structure. */
+  vty = vty_new ();
+  vty->type = VTY_SHELL;
+  vty->node = VIEW_NODE;
+  /* install dynamic helpstring function callback */
+  install_dyn_helpstr_funcptr("dyncb_helpstr_1G", dyncb_helpstr_speeds);
+  install_dyn_helpstr_funcptr("dyncb_helpstr_10G", dyncb_helpstr_speeds);
+  install_dyn_helpstr_funcptr("dyncb_helpstr_40G", dyncb_helpstr_speeds);
+  install_dyn_helpstr_funcptr("dyncb_helpstr_mtu", dyncb_helpstr_mtu);
+  cmd_init(0);
+  plugins_cli_init(FEATURES_CLI_PATH);
 
   ret = pthread_create(&vtysh_ovsdb_if_thread,
                        (pthread_attr_t *)NULL,

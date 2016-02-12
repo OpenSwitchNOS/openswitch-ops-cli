@@ -1,6 +1,5 @@
-/* Power Supply CLI commands.
- *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+/*
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,21 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: powersupply_vty.h
+ * File: system_vtysh_utils.h
  *
- * Purpose: To add power supply CLI configuration and display commands.
+ * Purpose: header file for common system vtysh utility macros and functions
  */
 
-#ifndef _POWERSUPPLY_VTY_H
-#define _POWERSUPPLY_VTY_H
+#ifndef _SYSTEM_VTYSH_UTILS_H
+#define _SYSTEMVTYSH_UTILS_H
 
-#ifndef SYS_STR
-#define SYS_STR         "System information\n"
-#endif
-#define PSU_STR         "Power supply information\n"
+#define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
 
-int cli_system_get_psu();
-
-void powersupply_vty_init();
-
-#endif //_POWERSUPPLY_VTY_H
+#endif /* _SYSTEM_VTYSH_UTILS_H  */

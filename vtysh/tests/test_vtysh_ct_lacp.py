@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2015-2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -143,6 +143,194 @@ class LACPCliTest(OpsVsiTest):
             'Test global LACP commands - FAILED!'
         return True
 
+    def lag_hash_LoadBalancing(self):
+        info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 ##########
+''')
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l2-src-dst')
+        s1.cmdCLI('end')
+        success = False
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L2 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running-config) LAG Load balancing for L2 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L2'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l2-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L2 - FAILED!'
+
+        success = False
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l2vid-src-dst')
+        s1.cmdCLI('end')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l2vid-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L2+VID - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2vid-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running config) LAG Load balancing for L2+VID'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l2vid-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L2+VID '\
+            '- FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l2vid-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L2+VID'\
+            ' - FAILED!'
+
+        success = True
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l3-src-dst')
+        s1.cmdCLI('end')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode=' in line:
+                success = False
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L3 - FAILED!'
+
+        success = True
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l3-src-dst' in line:
+                success = False
+                break
+        assert success, \
+            'Test (show running-config) LAG Load balancing for L3 - FAILED!'
+
+        success = True
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l3-src-dst' in line:
+                success = False
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L3'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l3-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L3 - FAILED!'
+
+        success = False
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('hash l4-src-dst')
+        s1.cmdCLI('end')
+        out = s1.cmd('ovs-vsctl list port')
+        lines = out.split('\n')
+        for line in lines:
+            if 'bond_mode="l4-src-dst"' in line:
+                success = True
+                break
+        assert success, \
+            'Test (ovs-ctl) LAG Load balancing for L4 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running-config')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l4-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running-config) LAG Load balancing for L4 - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show running interface lag1')
+        lines = out.split('\n')
+        for line in lines:
+            if 'hash l4-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show running interface) LAG Load balancing for L4'\
+            ' - FAILED!'
+
+        success = False
+        out = s1.cmdCLI('show lacp aggregates')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Hash                  : l4-src-dst' in line:
+                success = True
+                break
+        assert success, \
+            'Test (show lacp aggregates) LAG Load balancing for L4 - FAILED!'
+        return True
+
     def lagContextCommands(self):
         info('''
 ########## Test LAG context commands ##########
@@ -180,9 +368,7 @@ class LACPCliTest(OpsVsiTest):
             if 'lacp-time=fast' in line:
                 success += 1
                 break
-        if success != 4:
-            lag_context_cmds_found = False
-        assert (lag_context_cmds_found is True), \
+        assert success == 4,\
             'Test LAG context commands - FAILED!'
 
         success = 0
@@ -203,13 +389,6 @@ class LACPCliTest(OpsVsiTest):
             if 'lacp-fallback-ab' in line:
                 success += 1
                 break
-        s1.cmdCLI('no hash l2-src-dst')
-        out = s1.cmd('ovs-vsctl list port')
-        lines = out.split('\n')
-        for line in lines:
-            if 'bond_mode="l2-src-dst"' in line:
-                success += 1
-                break
         s1.cmdCLI('no lacp rate fast')
         out = s1.cmd('ovs-vsctl list port')
         lines = out.split('\n')
@@ -217,47 +396,133 @@ class LACPCliTest(OpsVsiTest):
             if 'lacp-time' in line:
                 success += 1
                 break
-        if success != 0:
-            lag_context_cmds_found = False
-        assert (lag_context_cmds_found is True), \
+        assert success == 0,\
             'Test LAG context commands - FAILED!'
         return True
 
-    def interfaceContext(self):
+    def lacpPortId(self):
         info('''
-########## Test interface context commands ##########
+########## Test lacp port-id commands ##########
 ''')
-        interface_context_cmds_found = True
-        s1 = self.net.switches[0]
-        s1.cmdCLI('conf t')
-        s1.cmdCLI('interface 1')
-        s1.cmdCLI('lacp port-id 999')
-        success = 0
-        out = s1.cmd('ovs-vsctl list interface 1')
-        lines = out.split('\n')
-        for line in lines:
-            if 'lacp-port-id="999"' in line:
-                success += 1
-        s1.cmdCLI('lacp port-priority 111')
-        out = s1.cmd('ovs-vsctl list interface 1')
-        lines = out.split('\n')
-        for line in lines:
-            if 'lacp-port-priority="111"' in line:
-                success += 1
 
-        if success != 2:
-            interface_context_cmds_found = False
-        assert (interface_context_cmds_found is True), \
-            'Test interface context commands - FAILED!'
+        test_interface = 1
+        test_port_id = 999
+
+        test_commands = ["no lacp port-id",
+                         "no lacp port-id %s" % test_port_id]
+
+        # Configure port-id
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface %s' % test_interface)
+
+        for command in test_commands:
+            # info("########## Setting port-id ##########\n")
+            s1.cmdCLI('lacp port-id %s' % test_port_id)
+
+            # Verify if lacp port-id was modified within DB
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-id="%s"' % test_port_id in line:
+                    success = True
+                    break
+
+            assert success, \
+                'Test interface set port-priority command - FAILED!'
+
+            # info("########## Executing command: %s ##########\n" % command)
+            s1.cmdCLI(command)
+
+            # Validate if lacp port-id was removed from DB
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-id="%s"' % test_port_id not in line:
+                    success = True
+                    break
+
+            assert success, \
+                'Test interface set port-priority command - FAILED!'
+
+        # Check that command fails when port-id does not exist
+        out = s1.cmdCLI(test_commands[0])
+        assert "Command failed" not in out, \
+            "Test interface remove port-priority command - FAILED!"
+
+        out = s1.cmdCLI(test_commands[1])
+        assert "Command failed" in out, \
+            "Test interface remove port-priority command - FAILED!"
+
         return True
 
+    def lacpPortPriority(self):
+        info('''
+########## Test interface set port-priority command ##########
+''')
+
+        test_interface = 1
+        test_port_priority = 111
+        test_commands = ["no lacp port-priority",
+                         "no lacp port-priority %s" % test_port_priority]
+
+        # Configure port-priority
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface 1')
+
+        for command in test_commands:
+            # info("########## Setting port-priority ##########\n")
+            s1.cmdCLI('lacp port-priority %s' % test_port_priority)
+
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-priority="%s"' % test_port_priority \
+                        in line:
+                    success = True
+                    break
+
+            assert success, \
+                "Test interface set port-priority command - FAILED!"
+
+            # info("########## Executing command: %s ##########\n" % command)
+            s1.cmdCLI(command)
+
+            success = False
+            out = s1.cmd('ovs-vsctl list interface %s' % test_interface)
+            lines = out.split('\n')
+            for line in lines:
+                if 'other_config' in line \
+                        and 'lacp-port-priority="%s"' % test_port_priority \
+                        not in line:
+                    success = True
+                    break
+
+            assert success, \
+                "Test interface remove port-priority command - FAILED!"
+
+        # Check that command fails when port-id does not exist
+        out = s1.cmdCLI(test_commands[0])
+        assert "Command failed" not in out, \
+            "Test interface remove port-priority command - FAILED!"
+
+        out = s1.cmdCLI(test_commands[1])
+        assert "Command failed" in out, \
+            "Test interface remove port-priority command - FAILED!"
+
+        return True
 
     def showInterfaceLagBrief(self):
         info('''
 ########## Test show interface lag brief command ##########
 ''')
-        show_interface_brief = True
-        show_interface_lag_brief = True
         s1 = self.net.switches[0]
         s1.cmdCLI('conf t')
 
@@ -282,44 +547,60 @@ class LACPCliTest(OpsVsiTest):
         # info('''%s \n''', out)
         lines = out.split('\n')
         for line in lines:
-            if 'lag3         --      --  --      --     --                        auto     --' in line:
+            if 'lag3' in line and \
+                    'auto' in line and \
+                    line.count("--") is 6:
                 success += 1
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4' in line and \
+                    'passive' in line and \
+                    'auto' in line and \
+                    line.count('--') is 5:
                 success += 1
-            if 'lag5         --      --  active  --     --                        auto     --' in line:
+            if 'lag5' in line and \
+                    'active' in line and \
+                    'auto' in line and \
+                    line.count('--') is 5:
                 success += 1
-        if success != 3:
-            show_interface_brief = False
-        assert (show_interface_brief is True), \
+        assert success == 3,\
             'Test show interface brief command - FAILED!'
 
         # Verify show interface lag4 brief shows only lag 4
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag4 brief')
         lines = out.split('\n')
         for line in lines:
-            if 'lag4         --      --  passive --     --                        auto     --' in line:
+            if 'lag4' in line and \
+                    'passive' in line and \
+                    'auto' in line and \
+                    line.count('--') is 5:
                 success += 1
-            if 'lag1' in line or 'lag2' in line or 'lag3' in line or 'lag5' in line:
+            if 'lag1' in line or \
+                    'lag2' in line or \
+                    'lag3' in line or \
+                    'lag5' in line:
                 success -= 1
-        if success != 1:
-            show_interface_lag_brief = False
-        assert (show_interface_lag_brief is True), \
+        assert success == 1,\
             'Test show interface lag4 brief command - FAILED!'
 
+        info('''
+########## Test show interface lag transceiver command ##########
+''')
+        success = 0;
+        out = s1.cmdCLI('show interface lag5 transceiver')
+        if 'Invalid switch interface ID.' in out:
+            success += 1
+        assert(success != 0),\
+            'transceiver in lag command failed'
         return True
 
     def showInterfaceLag(self):
         info('''
 ########## Test show interface lag command ##########
 ''')
-        show_interface_lag1 = True
-        show_interface_lag4 = True
-        show_interface_lag5 = True
         s1 = self.net.switches[0]
 
         # Verify 'show interface lag1' shows correct  information about lag1
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag1')
         lines = out.split('\n')
         for line in lines:
@@ -331,13 +612,13 @@ class LACPCliTest(OpsVsiTest):
                 success += 1
             if 'Speed' in line and '0 Mb/s' in line:
                 success += 1
-        if success != 4:
-            show_interface_lag1 = False
-        assert (show_interface_lag1 is True), \
+            if 'Aggregation-key' in line and '1' in line:
+                success += 1
+        assert success == 5,\
             'Test show interface lag1 command - FAILED!'
 
         # Verify 'show interface lag4' shows correct  information about lag4
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag4')
         lines = out.split('\n')
         for line in lines:
@@ -349,13 +630,11 @@ class LACPCliTest(OpsVsiTest):
                 success += 1
             if 'Speed' in line and '0 Mb/s' in line:
                 success += 1
-        if success != 4:
-            show_interface_lag4 = False
-        assert (show_interface_lag4 is True), \
+        assert success == 4,\
             'Test show interface lag4 command - FAILED!'
 
         # Verify 'show interface lag5' shows correct  information about lag5
-        success = 0;
+        success = 0
         out = s1.cmdCLI('show interface lag5')
         lines = out.split('\n')
         for line in lines:
@@ -367,11 +646,41 @@ class LACPCliTest(OpsVsiTest):
                 success += 1
             if 'Speed' in line and '0 Mb/s' in line:
                 success += 1
-        if success != 4:
-            show_interface_lag5 = False
-        assert (show_interface_lag5 is True), \
+        assert success == 4,\
             'Test show interface lag5 command - FAILED!'
 
+        return True
+
+    def showLacpInterfaces(self):
+        show_lacp_interface = True
+        success = 0
+        s1 = self.net.switches[0]
+        out = s1.cmdCLI('show lacp interface')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Intf Aggregate Port    Port     Key  State   '\
+               'System-id         System   Aggr' in line:
+                success += 1
+            if 'name      id      Priority                                '\
+               'Priority Key' in line:
+                success += 1
+            if 'Intf Aggregate Partner Port     Key  State   '\
+               'System-id         System   Aggr' in line:
+                success += 1
+            if 'name      Port-id Priority                                '\
+               'Priority Key' in line:
+                success += 1
+            if '1    lag1' in line:
+                success += 1
+            if '2    lag1' in line:
+                success += 1
+            if '3    lag2' in line:
+                success += 1
+            if '4    lag2' in line:
+                success += 1
+
+        assert success == 12,\
+            'Test show lacp interface command = FAILED!'
         return True
 
 
@@ -416,16 +725,28 @@ class Test_lacp_cli:
 ########## Test global LACP commands - SUCCESS! ##########
 ''')
 
+    def test_lagL234LoadBalancing(self):
+        if self.test.lag_hash_LoadBalancing():
+            info('''
+########## Test LAG Load balancing for L2, L2+VID, L3 and L4 - SUCCESS! #######
+''')
+
     def test_lagContextCommands(self):
         if self.test.lagContextCommands():
             info('''
 ########## Test LAG context commands - SUCCESS! ##########
 ''')
 
-    def test_interfaceContext(self):
-        if self.test.interfaceContext():
+    def test_lacpPortId(self):
+        if self.test.lacpPortId():
             info('''
-########## Test interface context commands - SUCCESS! ##########
+########## Test lacp port-id commands - SUCCESS! ##########
+''')
+
+    def test_lacpPortPriority(self):
+        if self.test.lacpPortPriority():
+            info('''
+########## Test lacp port-priority commands - SUCCESS! ##########
 ''')
 
     def test_showInterfaceLagBrief(self):
@@ -440,8 +761,100 @@ class Test_lacp_cli:
 ########## Test show interface lag command - SUCCESS! ##########
 ''')
 
+    def test_showLacpInterface(self):
+        if self.test.showLacpInterfaces():
+            info('''
+########## Test show lacp interface command - SUCCESS! ##########
+''')
+
     def teardown_class(cls):
         Test_lacp_cli.test.net.stop()
+
+    def setup_method(self, method):
+        pass
+
+    def teardown_method(self, method):
+        pass
+
+    def __del__(self):
+        del self.test
+
+
+###############################################################################
+#
+#   Validates max number of lags added
+#
+#   Allowed MAX number 256
+#
+###############################################################################
+class LACPMaxNumberOfLags(OpsVsiTest):
+    def setupNet(self):
+        host_opts = self.getHostOpts()
+        switch_opts = self.getSwitchOpts()
+        infra_topo = SingleSwitchTopo(k=0, hopts=host_opts, sopts=switch_opts)
+        self.net = Mininet(infra_topo,
+                           switch=VsiOpenSwitch,
+                           host=Host,
+                           link=OpsVsiLink,
+                           controller=None,
+                           build=True)
+
+    def test_max_number_of_lags(self):
+        info("########## "
+             "Test max number of LAGs allowed "
+             "########## ")
+
+        max_lag = 256
+
+        s1 = self.net.switches[0]
+        s1.cmdCLI('configure terminal')
+
+        # Create allowed LAGs
+        for lag_num in range(1, max_lag + 1):
+            s1.cmdCLI('interface lag %d' % lag_num)
+            s1.cmdCLI('exit')
+
+        #exit configure terminal
+        s1.cmdCLI('exit')
+
+        out = s1.cmdCLI("show running-config")
+        lines = out.split('\n')
+
+        # Check if all LAGs were created
+        total_lag = 0
+        for line in lines:
+            if 'interface lag ' in line:
+                total_lag += 1
+
+        assert total_lag is max_lag, \
+            "Failed test, all LAGs not created!"
+
+        # Crate LAG 257
+        s1.cmdCLI('configure terminal')
+        out = s1.cmdCLI('interface lag %d' % (max_lag + 1))
+
+        assert "Cannot create LAG interface." in out, \
+            "Failed test, new LAG created!"
+
+        info("DONE\n")
+
+
+class Test_lacp_max_lags:
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        pass
+
+    def setup_class(cls):
+        Test_lacp_max_lags.test = LACPMaxNumberOfLags()
+
+    def teardown_class(cls):
+        Test_lacp_max_lags.test.net.stop()
+
+    def test_max_number_of_lags(self):
+        self.test.test_max_number_of_lags()
 
     def setup_method(self, method):
         pass

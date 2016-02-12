@@ -1574,6 +1574,8 @@ AC_CONFIG_FILES([Makefile lib/Makefile
 	  lib/version.h])
 
 AC_CONFIG_FILES([vtysh/extract.pl],[chmod +x vtysh/extract.pl])
+AC_CONFIG_FILES(lib/ops-cli.pc)
+
 ## Hack, but working solution to avoid rebuilding of quagga.info.
 ## It's already in CVS until texinfo 4.7 is more common.
 AC_OUTPUT

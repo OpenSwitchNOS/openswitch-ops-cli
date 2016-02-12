@@ -44,9 +44,10 @@
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "intf_vty.h"
+#include "vlan_vty.h"
 #include "smap.h"
 #include "openswitch-dflt.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -785,6 +786,10 @@ vrf_no_routing (const char *if_name)
   enum ovsdb_idl_txn_status status;
   struct ovsrec_port **vrf_ports;
   struct ovsrec_port **bridge_ports;
+  int64_t* trunks = NULL;
+  int trunk_count = 0;
+  int64_t* tag = NULL;
+  int tag_count = 0;
   size_t i, n;
 
   status_txn = cli_do_config_start ();
@@ -812,6 +817,59 @@ vrf_no_routing (const char *if_name)
     }
   else if ((vrf_row = port_vrf_lookup (port_row)) != NULL)
     {
+        /* Delete subinterfaces configured, if any. */
+        const struct ovsrec_port *tmp_port_row = NULL;
+        const struct ovsrec_port *sub_intf_port_row =  NULL;
+        const struct ovsrec_vrf *tmp_vrf_row = NULL;
+        const struct ovsrec_interface *tmp_intf_row = NULL;
+        const struct ovsrec_interface *tmp_parent_intf_row = NULL;
+        struct ovsrec_port **ports;
+        int k=0, n=0, i=0;
+
+        tmp_parent_intf_row = port_row->interfaces[0];
+
+        OVSREC_PORT_FOR_EACH(tmp_port_row, idl)
+        {
+            if (tmp_port_row->interfaces == NULL) continue;
+
+            tmp_intf_row = tmp_port_row->interfaces[0];
+            if (tmp_intf_row->n_subintf_parent > 0)
+            {
+                if (tmp_intf_row->value_subintf_parent[0] == tmp_parent_intf_row)
+                {
+                    /* This is a subinterface created for the parent
+                       being configured as L2 interface, need to remove. */
+                    ovsrec_interface_delete(tmp_intf_row);
+
+                    OVSREC_VRF_FOR_EACH (tmp_vrf_row, idl)
+                    {
+                        for (k = 0; k < tmp_vrf_row->n_ports; k++)
+                        {
+                            if (tmp_port_row == tmp_vrf_row->ports[k])
+                            {
+                                ports = xmalloc(sizeof *tmp_vrf_row->ports
+                                        * (tmp_vrf_row->n_ports-1));
+                                if (ports != NULL)
+                                {
+                                   for (i = n = 0; i < tmp_vrf_row->n_ports; i++)
+                                   {
+                                       if (tmp_vrf_row->ports[i] != tmp_port_row)
+                                       {
+                                           ports[n++] = tmp_vrf_row->ports[i];
+                                       }
+                                   }
+                                   ovsrec_vrf_set_ports(tmp_vrf_row, ports, n);
+                                   free(ports);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    ovsrec_port_delete(tmp_port_row);
+                }
+            }
+        }
+
       vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
       for (i = n = 0; i < vrf_row->n_ports; i++)
         {
@@ -823,6 +881,16 @@ vrf_no_routing (const char *if_name)
       ovsrec_port_delete (port_row);
       port_row = port_check_and_add (if_name, true, false, status_txn);
     }
+
+  ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
+
+  ovsrec_port_set_trunks(port_row, trunks, trunk_count);
+
+  tag = xmalloc(sizeof *port_row->tag);
+  tag_count = 1;
+  tag[0] = DEFAULT_VLAN;
+
+  ovsrec_port_set_tag(port_row, tag, tag_count);
 
   default_bridge_row = ovsrec_bridge_first (idl);
   bridge_ports = xmalloc (
@@ -836,6 +904,7 @@ vrf_no_routing (const char *if_name)
   ovsrec_bridge_set_ports (default_bridge_row, bridge_ports,
                            default_bridge_row->n_ports + 1);
   free (bridge_ports);
+  free(tag);
 
   status = cli_do_config_finish (status_txn);
   if (status == TXN_SUCCESS)
@@ -1448,7 +1517,7 @@ DEFUN (cli_vrf_no_routing,
     NO_STR
     "Configure interface as L3\n")
 {
-  return vrf_no_routing((char*) vty->index);
+    return vrf_no_routing((char*) vty->index);
 }
 
 DEFUN (cli_vrf_config_ip,
