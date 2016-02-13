@@ -555,7 +555,7 @@ bgp_rib_cmp(void *a, void *b)
     res = strcmp(rt1->prefix, rt2->prefix);
     if (res == 0) {
         /* compare nexthops. */
-        if (rt1->bgp_nexthops[0] && rt2->bgp_nexthops[0]) {
+        if (rt1->bgp_nexthops && rt2->bgp_nexthops) {
             return (strcmp(rt1->bgp_nexthops[0]->ip_address,
                            rt2->bgp_nexthops[0]->ip_address));
         } else {
@@ -1066,11 +1066,13 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
-    ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
     if (vrf_row->n_bgp_routers && (vrf_row->key_bgp_routers[0] != asn)) {
-      VLOG_DBG("BGP is already running; AS is %ld", vrf_row->key_bgp_routers[0]);
-      ERRONEOUS_DB_TXN(bgp_router_txn, "bgp router already running");
+        vty_out(vty,"BGP is already running; AS is %ld%s",
+                vrf_row->key_bgp_routers[0],VTY_NEWLINE);
+        END_DB_TXN(bgp_router_txn);
+        return CMD_SUCCESS;
     }
     /* See if it already exists. */
     bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, asn);
@@ -1079,11 +1081,6 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     if (bgp_router_row == NULL) {
         bgp_router_row = ovsrec_bgp_router_insert(bgp_router_txn);
         bgp_router_insert_to_vrf(vrf_row, bgp_router_row, asn);
-#ifdef EXTRA_DEBUG
-        vty_out(vty, "new bgp router created with asn : %d\n", asn);
-#endif
-    } else {
-        VLOG_DBG("bgp router already exists!");
     }
     /* Get the context from previous command for sub-commands. */
     vty->node = BGP_NODE;
@@ -2263,6 +2260,20 @@ DEFUN(bgp_network,
     return cli_bgp_network_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
 }
 
+static bool
+verify_network_in_bgp_router_table(const struct ovsrec_bgp_router * bgp_router,
+                                   const char *prefix_str)
+{
+    int i;
+    OVSREC_BGP_ROUTER_FOR_EACH(bgp_router, idl) {
+        for (i = 0; i < bgp_router->n_networks; i++) {
+            if(!strcmp(bgp_router->networks[i], prefix_str)) {
+                 return true;
+            }
+        }
+    }
+    return false;
+}
 /* Unconfigure static BGP network. */
 static int
 cli_no_bgp_network_cmd_execute(char *vrf_name, const char *network)
@@ -2306,15 +2317,14 @@ cli_no_bgp_network_cmd_execute(char *vrf_name, const char *network)
                                                     (int64_t)vty->index);
     if (bgp_router_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
-    }
-    else {
+    } else if(verify_network_in_bgp_router_table(bgp_router_row, prefix_str)) {
         VLOG_DBG("vty_index for no network : %ld\n network : %s",
                   (int64_t)vty->index, network);
         /* Delete networks in BGP_Router table. */
         network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
                                (bgp_router_row->n_networks - 1));
         for (i = 0,j = 0; i < bgp_router_row->n_networks; i++) {
-            if(0 != strcmp(bgp_router_row->networks[i], prefix_str)) {
+            if(strcmp(bgp_router_row->networks[i], prefix_str)) {
                 network_list[j] = bgp_router_row->networks[i];
                 j++;
             }
@@ -5565,12 +5575,6 @@ cli_neighbor_route_map_cmd_execute(char *vrf_name, char *ipAddr, char *name,
     get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ipAddr);
     if (!ovs_bgp_neighbor) {
         ERRONEOUS_DB_TXN(txn, "no existing neighbor found");
-    }
-
-    /* Since neighbor exists, we need to check the route-map name and
-       direction to identify if it's a duplicate. */
-    if (get_neighbor_route_map(ovs_bgp_neighbor, name, direction)) {
-        ABORT_DB_TXN(txn, "configuration exists");
     }
 
     /* Check if the specified route-map exists. */
@@ -8997,9 +9001,10 @@ ALIAS(show_ip_bgp_neighbors_peer,
       IP_STR
       BGP_STR
       "Display VPNv4 NLRI specific information\n"
-      "Display information about all VPNv4 NLRIs\n"
+      "Display information for a route distinguisher\n"
+      "VPN Route Distinguisher\n"
       "Detailed information on TCP and BGP neighbor connections\n"
-      "Neighbor to display information about\n")
+      "Network in the BGP routing table to display\n")
 
 ALIAS(show_ip_bgp_neighbors_peer,
       show_bgp_neighbors_peer_cmd,
