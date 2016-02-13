@@ -24,5 +24,6 @@
 #define _SYSTEMVTYSH_UTILS_H
 
 #define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
+#define TO_BE_REMOVED
 
 #endif /* _SYSTEM_VTYSH_UTILS_H  */

@@ -1,6 +1,6 @@
 /* SFTP functionality client callback resigitration source files.
  *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP.
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP.
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2, or (at your option) any
@@ -38,6 +38,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh_ovsdb_sftp_context.h"
+#include "utils/system_vtysh_utils.h"
 
 char sftp_server_context_client_name[] = "vtysh_sftp_server_context_\
                                                         clientcallback";
@@ -81,6 +82,20 @@ vtysh_init_sftp_context_clients (void)
     vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
+    retval = install_show_run_config_context(
+                                  e_vtysh_sftp_server_context,
+                                  &vtysh_sftp_server_context_clientcallback,
+                                  NULL, NULL);
+    if (e_vtysh_ok != retval)
+    {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "SFTP server context unable "\
+                           "to add config callback");
+        assert(0);
+        return retval;
+    }
+
+#ifdef TO_BE_REMOVED
     client.p_client_name = sftp_server_context_client_name;
     client.client_id = e_vtysh_sftp_server_context_config;
     client.p_callback = &vtysh_sftp_server_context_clientcallback;
@@ -95,5 +110,6 @@ vtysh_init_sftp_context_clients (void)
         assert(0);
         return retval;
     }
+#endif
     return e_vtysh_ok;
 }

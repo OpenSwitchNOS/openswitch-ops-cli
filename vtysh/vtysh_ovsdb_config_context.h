@@ -23,14 +23,18 @@
  *
  ***************************************************************************/
 
+#include "utils/system_vtysh_utils.h"
+
 #ifndef VTYSH_OVSDB_CONFIG_CONTEXT_H
 #define VTYSH_OVSDB_CONFIG_CONTEXT_H
 
 int vtysh_init_config_context_clients();
 vtysh_ret_val vtysh_config_context_global_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_vrf_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_fan_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_led_clientcallback(void *p_private);
+#ifdef TO_BE_REMOVED
+vtysh_ret_val vtysh_config_context_fan_clientcallback_old(void *p_private);
+vtysh_ret_val vtysh_config_context_led_clientcallback_old(void *p_private);
+#endif
 vtysh_ret_val vtysh_config_context_staticroute_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_ntp_clientcallback(void *p_private);
 
