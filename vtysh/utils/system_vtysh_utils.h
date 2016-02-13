@@ -24,5 +24,7 @@
 #define _SYSTEMVTYSH_UTILS_H
 
 #define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
+#define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
+#define TO_BE_REMOVED
 
 #endif /* _SYSTEM_VTYSH_UTILS_H  */

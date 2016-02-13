@@ -34,6 +34,7 @@
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh_ovsdb_dhcp_tftp_context.h"
 #include "openswitch-dflt.h"
+#include "utils/system_vtysh_utils.h"
 
 char dhcpclientname[] = "vtysh_dhcp_tftp_context_dhcp_clientcallback";
 char tftpclientname[] = "vtysh_dhcp_tftp_context_tftp_clientcallback";
@@ -461,6 +462,39 @@ vtysh_init_dhcp_tftp_context_clients(void)
     vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
+    retval = install_show_run_config_context(e_vtysh_dhcp_tftp_context,
+                                  NULL, NULL, NULL);
+    if(e_vtysh_ok != retval)
+    {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "config context unable to add dhcp_tftp callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = install_show_run_config_subcontext(e_vtysh_dhcp_tftp_context,
+                                       e_vtysh_dhcp_tftp_context_dhcp,
+                                       &vtysh_dhcp_tftp_context_dhcp_clientcallback,
+                                       NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                    "dhcp-tftpcontext unable to add dhcp client callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = install_show_run_config_subcontext(e_vtysh_dhcp_tftp_context,
+                                       e_vtysh_dhcp_tftp_context_tftp,
+                                       &vtysh_dhcp_tftp_context_tftp_clientcallback,
+                                       NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                        "dhcp-tftp context unable to tftp client callback");
+        assert(0);
+        return retval;
+    }
+
+#ifdef TO_BE_REMOVED
     client.p_client_name = dhcpclientname;
     client.client_id = e_vtysh_dhcp_tftp_context_dhcp;
     client.p_callback = &vtysh_dhcp_tftp_context_dhcp_clientcallback;
@@ -488,6 +522,6 @@ vtysh_init_dhcp_tftp_context_clients(void)
         assert(0);
         return retval;
     }
-
+#endif
     return e_vtysh_ok;
 }

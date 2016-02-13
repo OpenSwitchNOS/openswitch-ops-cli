@@ -80,6 +80,7 @@ void ospf_vty_init(void);
 #include <termios.h>
 #include "vtysh/utils/lacp_vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
+#include "vtysh/utils/system_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -2575,6 +2576,7 @@ ALIAS (vtysh_write_memory,
 #endif
 
 #ifdef ENABLE_OVSDB
+#ifdef TO_BE_REMOVED
 DEFUN (vtysh_show_running_config,
       vtysh_show_running_config_cmd,
       "show running-config",
@@ -2592,7 +2594,7 @@ DEFUN (vtysh_show_running_config,
    vtysh_ovsdb_read_config(fp);
    return CMD_SUCCESS;
 }
-
+#endif
 
 /*
  * This defun is added for show running config testing.
@@ -4548,7 +4550,9 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_no_session_timeout_cli_cmd);
 #endif
 
+#ifdef TO_BE_REMOVED
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
+#endif
    install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_vlan_cmd);

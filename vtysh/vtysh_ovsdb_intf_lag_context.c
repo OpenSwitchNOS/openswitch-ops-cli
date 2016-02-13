@@ -32,6 +32,7 @@
 #include "vrf_vty.h"
 #include "vtysh/utils/lacp_vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
+#include "utils/system_vtysh_utils.h"
 
 char intflagcontextclientname[] = "vtysh_intf_lag_context_clientcallback";
 
@@ -179,6 +180,18 @@ vtysh_init_intf_lag_context_clients()
   vtysh_context_client client;
   vtysh_ret_val retval = e_vtysh_error;
 
+  retval = install_show_run_config_context(e_vtysh_interface_lag_context,
+                                  &vtysh_intf_lag_context_clientcallback,
+                                  NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "Interface LAG context unable to add config callback");
+    assert(0);
+    return retval;
+  }
+
+#ifdef TO_BE_REMOVED
   client.p_client_name = intflagcontextclientname;
   client.client_id = e_vtysh_interface_lag_context_config;
   client.p_callback = &vtysh_intf_lag_context_clientcallback;
@@ -190,5 +203,6 @@ vtysh_init_intf_lag_context_clients()
     assert(0);
     return retval;
   }
+#endif
   return e_vtysh_ok;
 }

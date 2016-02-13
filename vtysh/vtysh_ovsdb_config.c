@@ -415,6 +415,7 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     return e_vtysh_ok;
 }
 
+#ifdef TO_BE_REMOVED
 
 /*-----------------------------------------------------------------------------
 | Function: vtysh_context_iterateoverclients
@@ -486,7 +487,7 @@ vtysh_ovsdb_read_config(FILE *fp)
     vtysh_context_iterateoverclients(contextid, &msg);
   }
 }
-
+#endif
 
 /*-----------------------------------------------------------------------------
 | Function: vtysh_context_table_list_clients
@@ -769,4 +770,5 @@ install_show_run_config_subcontext(vtysh_contextid index,
             }
         }
     }
+    return e_vtysh_ok;
 }

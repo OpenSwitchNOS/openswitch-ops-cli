@@ -35,6 +35,7 @@
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh_ovsdb_source_interface_context.h"
 #include "openswitch-dflt.h"
+#include "utils/system_vtysh_utils.h"
 
 char source_interface_context_client_name[] = "vtysh_source_interface_context_\
                                                clientcallback";
@@ -91,6 +92,19 @@ vtysh_init_source_interface_context_clients(void)
 {
     vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
+
+    retval = install_show_run_config_context(
+                                e_vtysh_source_interface_context,
+                                &vtysh_source_interface_context_clientcallback,
+                                NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                     "source_interface context unable to add config callback");
+        assert(0);
+        return retval;
+    }
+
+#ifdef TO_BE_REMOVED
     memset(&client, 0, sizeof(vtysh_context_client));
     client.p_client_name = source_interface_context_client_name;
     client.client_id = e_vtysh_source_interface_context_config;
@@ -104,6 +118,6 @@ vtysh_init_source_interface_context_clients(void)
         assert(0);
         return retval;
     }
-
+#endif
     return e_vtysh_ok;
 }
