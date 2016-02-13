@@ -296,17 +296,17 @@ ospf_nbr_options_print (const struct ovsrec_ospf_neighbor* nbr_row)
 
     for (i =0; i < nbr_row->n_nbr_options; i++)
     {
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_O) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_O) == 0)
             options = options | OSPF_OPTION_O;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_DC) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_DC) == 0)
             options = options | OSPF_OPTION_DC;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_EA) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_EA) == 0)
             options = options | OSPF_OPTION_EA;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_NP) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_NP) == 0)
             options = options | OSPF_OPTION_NP;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_MC) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_MC) == 0)
             options = options | OSPF_OPTION_MC;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_E) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_E) == 0)
             options = options | OSPF_OPTION_E;
     }
 
@@ -589,7 +589,7 @@ ospf_router_cmd_execute(char *vrf_name, int64_t instance_tag)
     vrf_row = ospf_get_vrf_by_name(vrf_name);
     if (vrf_row == NULL)
     {
-        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF not found");
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
     }
     /* See if it already exists. */
     ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
@@ -605,6 +605,8 @@ ospf_router_cmd_execute(char *vrf_name, int64_t instance_tag)
 
     /* End of transaction. */
     OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
 }
 
 /* "no router ospf" command handler. */
@@ -695,7 +697,7 @@ ospf_no_router_cmd_execute(char *vrf_name, int64_t instance_id)
 
     vrf_row = ospf_get_vrf_by_name(vrf_name);
     if (vrf_row == NULL) {
-        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found");
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
     }
 
     /* See if it already exists. */
@@ -741,6 +743,8 @@ ospf_no_router_cmd_execute(char *vrf_name, int64_t instance_id)
 
     /* End of transaction. */
     OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
 }
 
 /* "router-id <id> command handler. " */
@@ -774,7 +778,7 @@ ospf_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
 
         vrf_row = ospf_get_vrf_by_name(vrf_name);
         if (vrf_row == NULL) {
-            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found.");
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
         }
 
         /* See if it already exists. */
@@ -784,7 +788,8 @@ ospf_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
         /* If does not exist, nothing to modify. */
         if (ospf_router_row == NULL)
         {
-            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not found.");
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn,
+                                  "OSPF router is not present.");
         }
         else
         {
@@ -807,6 +812,7 @@ ospf_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
         return CMD_WARNING;
     }
 
+    return CMD_SUCCESS;
 }
 
 /* "no router-id <id> command handler." */
@@ -825,7 +831,7 @@ ospf_no_router_id_cmd_execute(char *vrf_name)
 
     vrf_row = ospf_get_vrf_by_name(vrf_name);
     if (vrf_row == NULL) {
-        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found.");
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
     }
     /* See if it already exists. */
     ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
@@ -833,7 +839,7 @@ ospf_no_router_id_cmd_execute(char *vrf_name)
 
     /* If does not exist, nothing to modify. */
     if (ospf_router_row == NULL) {
-        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not found.");
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
     } else {
         /* Unset the router-id. */
         smap_clone(&smap, &ospf_router_row->router_id);
@@ -846,6 +852,8 @@ ospf_no_router_id_cmd_execute(char *vrf_name)
 
     /* End of transaction. */
     OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
 }
 
 
@@ -1037,8 +1045,6 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
     int64_t area;
     int i = 0, j = 0;
 
-    /* TO DO: Check the validity of network range.*/
-
     /* Start of transaction. */
     OSPF_START_DB_TXN(ospf_router_txn);
 
@@ -1049,7 +1055,7 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
             if ((strcmp(ospf_router_row->key_networks[i], network_range) == 0)
                 && (ospf_router_row->value_networks[i] != area_id))
             {
-                if(no_flag == false)
+                if (no_flag == false)
                 {
                     OSPF_ABORT_DB_TXN(ospf_router_txn, "Remove the existing"
                         " area id before configuring a new one.");
@@ -1062,13 +1068,20 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
 
                 return CMD_WARNING;
             }
+            else if ((no_flag == false) &&
+                !(strcmp(ospf_router_row->key_networks[i], network_range)) &&
+                (ospf_router_row->value_networks[i] == area_id))
+                {
+                    OSPF_ABORT_DB_TXN(ospf_router_txn,
+                                      "Configuration already exists.");
+                }
         }
     }
 
     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     if (vrf_row == NULL)
     {
-        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not found.");
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
     }
 
     /* See if it already exists. */
@@ -1077,7 +1090,7 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
 
     if (ospf_router_row == NULL)
     {
-        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not found.");
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
     }
 
     if (!no_flag)
@@ -1091,6 +1104,8 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
 
     /* End of transaction. */
     OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
 
 }
 
@@ -1621,6 +1636,63 @@ ospf_ifsm_print(const char *if_state)
         return "NONE";
 }
 
+void
+ospf_add_port_intervals(const struct ovsrec_port* port_row,
+                            const char *key, int64_t interval)
+{
+    int i = 0;
+    char **ospf_key_timers = xmalloc(OSPF_TIMER_KEY_MAX_LENGTH *
+                                    (port_row->n_ospf_intervals + 1));
+    int64_t *intervals_list = xmalloc(sizeof *port_row->value_ospf_intervals *
+                                    (port_row->n_ospf_intervals + 1));
+
+    for (i = 0; i < port_row->n_ospf_intervals; i++)
+    {
+        ospf_key_timers[i] = port_row->key_ospf_intervals[i];
+        intervals_list[i] = port_row->value_ospf_intervals[i];
+    }
+
+    ospf_key_timers[port_row->n_ospf_intervals] = key;
+    intervals_list[port_row->n_ospf_intervals] = interval;
+
+    ovsrec_port_set_ospf_intervals(port_row, ospf_key_timers, intervals_list,
+                                  (port_row->n_ospf_intervals + 1));
+}
+
+
+
+/*Funtion to set the OSPF intervals in the port table. */
+int
+ospf_set_port_intervals(const struct ovsrec_port* port_row,
+                            const char *key, int64_t interval)
+{
+    int i = 0;
+
+    if (!port_row || !key)
+        return 0;
+
+    /* If key is already present, then only update the value. */
+    for (i = 0; i < port_row->n_ospf_intervals; i++)
+    {
+        if (!strcmp(port_row->key_ospf_intervals[i], key))
+        {
+            port_row->value_ospf_intervals[i] = interval;
+            ovsrec_port_set_ospf_intervals(port_row,
+                                           port_row->key_ospf_intervals,
+                                           port_row->value_ospf_intervals,
+                                           port_row->n_ospf_intervals);
+            return CMD_SUCCESS;
+        }
+    }
+
+    /* If key is not present, then something is wrong. We should have added
+      the default values already. Add the key and value and log that the key was not present. */
+    ospf_add_port_intervals(port_row, key, interval);
+    VLOG_DBG("OSPF interval %s was not configured\n", key);
+
+    return CMD_SUCCESS;
+}
+
 /*Funtion to get the intervals from port table. */
 int64_t
 ospf_get_port_intervals(const struct ovsrec_port* port_row,
@@ -1640,6 +1712,176 @@ ospf_get_port_intervals(const struct ovsrec_port* port_row,
     return 0;
 }
 
+static int ospf_interval_cmd_execute(const char* ifname,
+                                           const char* key,
+                                           int64_t interval)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    int i = 0;
+    bool is_present = false;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    /* Get the interface row for the interface name passed. */
+    OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+    {
+        if (strcmp(ospf_interface_row->name, ifname) == 0)
+            break;
+    }
+
+    if (ospf_interface_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn, "Interface is not present.");
+        return CMD_WARNING;
+    }
+    else
+    {
+        port_row = ospf_interface_row->port;
+    }
+
+    if (port_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interface is not attached to any port.");
+        return CMD_WARNING;
+    }
+
+    /* For dead interval, check if dead interval is more than hello interval. */
+    if(!strcmp(key, OSPF_KEY_DEAD_INTERVAL))
+    {
+        int hello_interval = 0;
+        hello_interval = ospf_get_port_intervals(port_row,
+                                                 OSPF_KEY_HELLO_INTERVAL);
+        if(hello_interval > interval)
+        {
+            OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Dead interval cannot be less than hello interval.");
+            return CMD_WARNING;
+        }
+    }
+
+    if (ospf_set_port_intervals(port_row, key, interval) != CMD_SUCCESS)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interval to be configured was not present.");
+        return CMD_WARNING;
+    }
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+
+static int ospf_max_metric_startup_cmd_execute(bool no_flag,
+                                                         const char* vrf_name,
+                                                         int instance_id,
+                                                         const char* startup)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    struct smap smap = SMAP_INITIALIZER(&smap);
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(vrf_name);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+                                                              instance_id);
+
+    if (ospf_router_row == NULL)
+    {
+        smap_destroy(&smap);
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    smap_clone(&smap, &ospf_router_row->stub_router_adv);
+
+    if (!no_flag)
+    {
+        /* Set the startup interval and clear the admin flag. */
+        smap_replace(&smap, OSPF_KEY_ROUTER_STUB_STARTUP, startup);
+        smap_remove(&smap, OSPF_KEY_ROUTER_STUB_ADMIN);
+    }
+    else
+    {
+        smap_remove(&smap, OSPF_KEY_ROUTER_STUB_STARTUP);
+    }
+
+    ovsrec_ospf_router_set_stub_router_adv(ospf_router_row, &smap);
+
+    smap_destroy(&smap);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+static int ospf_max_metric_admin_cmd_execute(bool no_flag,
+                                                        const char* vrf_name,
+                                                        int instance_id)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    struct smap smap = SMAP_INITIALIZER(&smap);
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(vrf_name);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+                                                              instance_id);
+
+    if (ospf_router_row == NULL)
+    {
+        smap_destroy(&smap);
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    smap_clone(&smap, &ospf_router_row->stub_router_adv);
+
+    if (!no_flag)
+    {
+        /* Set the admin flag. and clear up startup interval. */
+        smap_replace(&smap, OSPF_KEY_ROUTER_STUB_ADMIN, "true");
+        smap_remove(&smap, OSPF_KEY_ROUTER_STUB_STARTUP);
+    }
+    else
+    {
+        smap_replace(&smap, OSPF_KEY_ROUTER_STUB_ADMIN, "false");
+    }
+
+    ovsrec_ospf_router_set_stub_router_adv(ospf_router_row, &smap);
+
+    smap_destroy(&smap);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
 
 void
 ospf_interface_one_row_print(struct vty *vty,const char* ifname,
@@ -2521,10 +2763,250 @@ ospf_running_config_show()
                                       VTY_NEWLINE);
                 i++;
             }
+
+            /* max-metric  admin */
+            val = smap_get(&ospf_router_row->stub_router_adv,
+                            OSPF_KEY_ROUTER_STUB_ADMIN);
+            if(val && (strcmp(val, "true") == 0))
+            {
+                vty_out(vty, "%4s%s%s", "",
+                        "max-metric router-lsa", VTY_NEWLINE);
+            }
+
+            /* max-metric  startup */
+            val = smap_get(&ospf_router_row->stub_router_adv,
+                            OSPF_KEY_ROUTER_STUB_STARTUP);
+            if(val)
+            {
+                vty_out(vty, "%4s%s %s%s", "",
+                        "max-metric router-lsa on-startup", val, VTY_NEWLINE);
+            }
         }
     }
 
     return;
+}
+
+static void
+ospf_route_network_show(const struct ovsrec_ospf_router *router_row)
+{
+    const struct ovsrec_ospf_route *route_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+    int i = 0, j = 0, area_id = 0;
+    int64_t cost = OSPF_DEFAULT_COST;
+    char area_str[OSPF_SHOW_STR_LEN];
+
+    vty_out (vty, "============ OSPF network routing table ============%s",
+         VTY_NEWLINE);
+
+    OVSREC_OSPF_AREA_FOR_EACH(area_row, idl)
+    {
+        /* Print inter area routes. */
+        for (i = 0; i < area_row->n_inter_area_ospf_routes; i++)
+        {
+            route_row = area_row->inter_area_ospf_routes[i];
+            area_id = smap_get_int(&route_row->route_info,
+                                   OSPF_KEY_ROUTE_AREA_ID, 0);
+            if (area_id != 0)
+            {
+                OSPF_IP_STRING_CONVERT(area_str, ntohl(area_id));
+            }
+            else
+            {
+                strncpy(area_str, "0.0.0.0", OSPF_SHOW_STR_LEN - 1);
+            }
+
+            cost = smap_get_int(&route_row->route_info,
+                                OSPF_KEY_ROUTE_COST, OSPF_DEFAULT_COST);
+            vty_out (vty, "IA %-18s    [%d] area: %s%s", route_row->prefix,
+                     cost, area_str, VTY_NEWLINE);
+            for(j = 0; j < route_row->n_paths; j++)
+                vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
+                         VTY_NEWLINE);
+        }
+
+        /* Print intra area routes. */
+        for (i = 0; i < area_row->n_intra_area_ospf_routes; i++)
+        {
+            route_row = area_row->intra_area_ospf_routes[i];
+            area_id = smap_get_int(&route_row->route_info,
+                                   OSPF_KEY_ROUTE_AREA_ID, 0);
+            if (area_id != 0)
+            {
+                OSPF_IP_STRING_CONVERT(area_str, ntohl(area_id));
+            }
+            else
+            {
+                strncpy(area_str, "0.0.0.0", OSPF_SHOW_STR_LEN - 1);
+            }
+
+            cost = smap_get_int(&route_row->route_info,
+                                OSPF_KEY_ROUTE_COST, OSPF_DEFAULT_COST);
+            vty_out (vty, "%-18s    [%d] area: %s%s", route_row->prefix,
+                     cost, area_str, VTY_NEWLINE);
+            for(j = 0; j < route_row->n_paths; j++)
+                vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
+                         VTY_NEWLINE);
+        }
+    }
+    vty_out (vty, "%s", VTY_NEWLINE);
+
+}
+
+
+static void
+ospf_route_router_show(const struct ovsrec_ospf_router *router_row)
+{
+    const struct ovsrec_ospf_route *route_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+    int i = 0, j = 0, area_id = 0;
+    int64_t cost = OSPF_DEFAULT_COST;
+    char area_str[OSPF_SHOW_STR_LEN];
+    int abr_flag = 0, asbr_flag = 0;
+
+    vty_out (vty, "============ OSPF router routing table =============%s",
+         VTY_NEWLINE);
+
+    OVSREC_OSPF_AREA_FOR_EACH(area_row, idl)
+    {
+        /* Print inter area routes. */
+        for (i = 0; i < area_row->n_router_ospf_routes; i++)
+        {
+            route_row = area_row->router_ospf_routes[i];
+            area_id = smap_get_int(&route_row->route_info,
+                                   OSPF_KEY_ROUTE_AREA_ID, 0);
+            if (area_id != 0)
+            {
+                OSPF_IP_STRING_CONVERT(area_str, ntohl(area_id));
+            }
+            else
+            {
+                strncpy(area_str, "0.0.0.0", OSPF_SHOW_STR_LEN - 1);
+            }
+
+            cost = smap_get_int(&route_row->route_info,
+                                OSPF_KEY_ROUTE_COST, OSPF_DEFAULT_COST);
+            abr_flag = smap_get_int(&route_row->route_info,
+                                    OSPF_KEY_ROUTE_TYPE_ABR, 0);
+            asbr_flag = smap_get_int(&route_row->route_info,
+                                    OSPF_KEY_ROUTE_TYPE_ASBR, 0);
+
+            vty_out (vty, "R %-15s   %s [%d] area: %s%s%s%s",
+                     route_row->prefix,
+                     !strcmp(route_row->path_type,
+                     OSPF_PATH_TYPE_STRING_INTER_AREA) ? "IA" : "  ",
+                     cost, area_str,
+                     (abr_flag == 0) ? "" : ", ABR",
+                     (asbr_flag == 0) ? "" : ", ASBR",
+                     VTY_NEWLINE);
+
+            for(j = 0; j < route_row->n_paths; j++)
+                vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
+                         VTY_NEWLINE);
+        }
+    }
+    vty_out (vty, "%s", VTY_NEWLINE);
+
+}
+
+static void
+ospf_route_external_show(const struct ovsrec_ospf_router *router_row)
+{
+    const struct ovsrec_ospf_route *route_row = NULL;
+    int i = 0, j = 0, area_id = 0;
+    int64_t cost = OSPF_DEFAULT_COST;
+    char area_str[OSPF_SHOW_STR_LEN];
+    const char *val = NULL;
+
+    vty_out (vty, "============ OSPF external routing table ===========%s",
+         VTY_NEWLINE);
+
+    /* Print inter area routes. */
+    for (i = 0; i < router_row->n_ext_ospf_routes; i++)
+    {
+        route_row = router_row->ext_ospf_routes[i];
+        area_id = smap_get_int(&route_row->route_info,
+                               OSPF_KEY_ROUTE_AREA_ID, 0);
+        if (area_id != 0)
+        {
+            OSPF_IP_STRING_CONVERT(area_str, ntohl(area_id));
+        }
+        else
+        {
+            strncpy(area_str, "0.0.0.0", OSPF_SHOW_STR_LEN - 1);
+        }
+
+        val = smap_get(&route_row->route_info,
+                                OSPF_KEY_ROUTE_EXT_TYPE);
+        cost = smap_get_int(&route_row->route_info,
+                            OSPF_KEY_ROUTE_COST, OSPF_DEFAULT_COST);
+
+        if(!strcmp(val, OSPF_EXT_TYPE_STRING_TYPE1))
+        {
+            val = smap_get(&route_row->route_info,
+                                OSPF_KEY_ROUTE_EXT_TAG);
+            vty_out (vty, "N E1 %-18s    [%d] tag: %u%s",
+                     route_row->prefix,
+                     cost, (val)? val:"", VTY_NEWLINE);
+        }
+        else if(!strcmp(val, OSPF_EXT_TYPE_STRING_TYPE2))
+        {
+            val = smap_get(&route_row->route_info,
+                                OSPF_KEY_ROUTE_EXT_TAG);
+
+            vty_out (vty, "N E2 %-18s    [%d/%d] tag: %u%s",
+                     route_row->prefix, cost,
+                     smap_get_int(&route_row->route_info,
+                                  OSPF_KEY_ROUTE_TYPE2_COST,
+                                  OSPF_ROUTE_TYPE2_COST_DEFAULT),
+                     (val)? val:"", VTY_NEWLINE);
+        }
+
+        for(j = 0; j < route_row->n_paths; j++)
+            vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
+                     VTY_NEWLINE);
+    }
+
+    vty_out (vty, "%s", VTY_NEWLINE);
+
+}
+
+
+static int
+ospf_ip_route_show()
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    int instance_tag = 1;
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+
+    /* Get the OSPF_Router row. */
+    ospf_router_row =
+    get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_tag);
+    if (ospf_router_row == NULL)
+    {
+        vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    if (ovsrec_ospf_route_first(idl) == NULL )
+    {
+        vty_out (vty, "No OSPF routing information exist%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    /* Show Network routes. */
+    ospf_route_network_show (ospf_router_row);
+
+    /* Show Router routes. */
+    ospf_route_router_show (ospf_router_row);
+
+    /* Show AS External routes. */
+    ospf_route_external_show (ospf_router_row);
+
+    return CMD_SUCCESS;
+
 }
 
 DEFUN(cli_ospf_router,
@@ -2596,8 +3078,12 @@ DEFUN(cli_ospf_router_network_area_id,
     char ip_str[OSPF_SHOW_STR_LEN];
     int instance_id = 1;
     int64_t area_id = 0;
+    struct prefix_ipv4 p;
 
     area_id = htonl(atoi(argv[1]));
+
+    /* TO DO: Check the validity of network range.*/
+    VTY_GET_IPV4_PREFIX ("network prefix", p, argv[0]);
 
     return ospf_router_area_id_cmd_execute(false, instance_id, argv[0], area_id);
 }
@@ -2610,7 +3096,6 @@ DEFUN(cli_ospf_router_network_area_ip,
       OSPF_NETWORK_RANGE_STR
       OSPF_AREA_STR
       OSPF_AREA_IP_STR)
-
 {
     int ret;
     struct in_addr id;
@@ -2618,17 +3103,26 @@ DEFUN(cli_ospf_router_network_area_ip,
 
     memset (&id, 0, sizeof (struct in_addr));
 
-    if(ospf_string_is_an_ip_addr(argv[1]))
+    /* Check the validity if its not backone. */
+    if (!strcmp(argv[1], OSPF_DEFAULT_STR))
     {
-        ret = inet_aton (argv[1], &id);
-        if (!ret || (id.s_addr == 0))
+        id.s_addr = 0;
+    }
+    else
+    {
+        if(ospf_string_is_an_ip_addr(argv[1]))
         {
-            vty_out (vty, "Malformed area identifier.%s", VTY_NEWLINE);
-            return CMD_WARNING;
+            ret = inet_aton (argv[1], &id);
+            if (!ret || (id.s_addr == 0))
+            {
+                vty_out (vty, "Malformed area identifier.%s", VTY_NEWLINE);
+                return CMD_WARNING;
+            }
         }
     }
 
-    return ospf_router_area_id_cmd_execute(false, instance_id, argv[0],id.s_addr);
+    return ospf_router_area_id_cmd_execute(false, instance_id, argv[0],
+                                           id.s_addr);
 }
 
 
@@ -2690,6 +3184,98 @@ DEFUN(cli_ospf_router_no_network_area_ip,
 
     return ospf_router_area_id_cmd_execute(true, instance_id, argv[0],
                                            id.s_addr);
+}
+
+
+DEFUN(cli_ospf_router_max_metric,
+      cli_ospf_router_max_metric_cmd,
+      "max-metric router-lsa {on-startup <5-86400>}",
+      OSPF_MAX_METRIC_STR
+      OSPF_ROUTER_LSA_STR
+      OSPF_ON_STARTUP_STR
+      OSPF_STARTUP_TIME_STR)
+{
+
+    if(argv[0])
+    {
+        return ospf_max_metric_startup_cmd_execute(false, DEFAULT_VRF_NAME, 1,
+                                                   argv[0]);
+    }
+    else
+        return ospf_max_metric_admin_cmd_execute(false, DEFAULT_VRF_NAME, 1);
+}
+
+DEFUN(cli_ospf_router_no_max_metric,
+      cli_ospf_router_no_max_metric_cmd,
+      "no max-metric router-lsa {on-startup}",
+      NO_STR
+      OSPF_MAX_METRIC_STR
+      OSPF_ROUTER_LSA_STR
+      OSPF_ON_STARTUP_STR)
+{
+    if(argv[0])
+    {
+        ospf_max_metric_startup_cmd_execute(true, DEFAULT_VRF_NAME, 1, 0);
+    }
+    else
+    {
+        return ospf_max_metric_admin_cmd_execute(true, DEFAULT_VRF_NAME, 1);
+    }
+}
+
+
+DEFUN(cli_ospf_router_hello_interval,
+      cli_ospf_router_hello_interval_cmd,
+      "ip ospf hello-interval <1-65535>",
+      IP_STR
+      OSPF_CONF_STR
+      OSPF_HELLO_INTERVAL_STR
+      OSPF_HELLO_INTERVAL_VAL_STR)
+{
+
+    return ospf_interval_cmd_execute((char*)vty->index, OSPF_KEY_HELLO_INTERVAL,
+                                     atoi(argv[0]));
+}
+
+DEFUN(cli_ospf_router_no_hello_interval,
+      cli_ospf_router_no_hello_interval_cmd,
+      "no ip ospf hello-interval",
+      NO_STR
+      IP_STR
+      OSPF_CONF_STR
+      OSPF_HELLO_INTERVAL_STR)
+{
+
+    return ospf_interval_cmd_execute((char*)vty->index,
+                                     OSPF_KEY_HELLO_INTERVAL,
+                                     OSPF_HELLO_INTERVAL_DEFAULT);
+}
+
+DEFUN(cli_ospf_router_dead_interval,
+      cli_ospf_router_dead_interval_cmd,
+      "ip ospf dead-interval <1-65535>",
+      IP_STR
+      OSPF_CONF_STR
+      OSPF_DEAD_INTERVAL_STR
+      OSPF_DEAD_INTERVAL_VAL_STR)
+{
+
+    return ospf_interval_cmd_execute((char*)vty->index, OSPF_KEY_DEAD_INTERVAL,
+                                     atoi(argv[0]));
+}
+
+DEFUN(cli_ospf_router_no_dead_interval,
+      cli_ospf_router_no_dead_interval_cmd,
+      "no ip ospf dead-interval",
+      NO_STR
+      IP_STR
+      OSPF_CONF_STR
+      OSPF_DEAD_INTERVAL_STR)
+{
+
+    return ospf_interval_cmd_execute((char*)vty->index,
+                                     OSPF_KEY_DEAD_INTERVAL,
+                                     OSPF_DEAD_INTERVAL_DEFAULT);
 }
 
 
@@ -2854,6 +3440,19 @@ DEFUN (cli_ip_ospf_nbr_nbrid_detail_show,
     return CMD_SUCCESS;
 }
 
+
+DEFUN (cli_ip_ospf_route_show,
+       cli_ip_ospf_route_show_cmd,
+       "show ip ospf route",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       ROUTE_STR)
+{
+    return ospf_ip_route_show();
+}
+
+
 DEFUN (cli_ip_ospf_running_config_show,
        cli_ip_ospf_running_config_show_cmd,
        "show running-config router ospf",
@@ -2884,6 +3483,16 @@ ospf_vty_init(void)
     install_element(OSPF_NODE, &cli_ospf_router_no_network_area_id_cmd);
     install_element(OSPF_NODE, &cli_ospf_router_no_network_area_ip_cmd);
 
+    /* max-metric command */
+    install_element(OSPF_NODE, &cli_ospf_router_max_metric_cmd);
+    install_element(OSPF_NODE, &cli_ospf_router_no_max_metric_cmd);
+
+    /* OSPF Intervals */
+    install_element(INTERFACE_NODE, &cli_ospf_router_hello_interval_cmd);
+    install_element(INTERFACE_NODE, &cli_ospf_router_no_hello_interval_cmd);
+    install_element(INTERFACE_NODE, &cli_ospf_router_dead_interval_cmd);
+    install_element(INTERFACE_NODE, &cli_ospf_router_no_dead_interval_cmd);
+
     /* Show commands */
     install_element(ENABLE_NODE, &cli_ip_ospf_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_interface_show_cmd);
@@ -2893,6 +3502,7 @@ ospf_vty_init(void)
     install_element(ENABLE_NODE, &cli_ip_ospf_nbr_ifname_detail_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_nbrid_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_nbr_nbrid_detail_show_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_route_show_cmd);
 
     /* show running-config router ospf */
     install_element(ENABLE_NODE, &cli_ip_ospf_running_config_show_cmd);

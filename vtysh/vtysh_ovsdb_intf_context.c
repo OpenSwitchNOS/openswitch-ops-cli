@@ -30,6 +30,7 @@
 #include <vector.h>
 #include "vswitch-idl.h"
 #include "openswitch-idl.h"
+#include "openswitch-dflt.h"
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
@@ -38,6 +39,9 @@
 #include "vtysh/utils/lacp_vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh/utils/intf_vtysh_utils.h"
+#include "command.h"
+#include "ospf_vty.h"
+
 
 #define PRINT_INTERFACE_NAME(name_written, p_msg, if_name)\
   if (!(name_written))\
@@ -165,6 +169,52 @@ vtysh_ovsdb_intftable_print_lag(vtysh_ovsdb_cbmsg_ptr p_msg,
 
   return e_vtysh_ok;
 }
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_intftable_print_ospf
+| Responsibility : print ospf information of an interface
+| Parameters :
+|                     p_msg : vtysh_ovsdb_cbmsg_ptr data
+|                  intf_cfg : pointer of type vtysh_ovsdb_intf_cfg
+|                   if_name : interface name
+| Return : void
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_intftable_print_ospf(vtysh_ovsdb_cbmsg_ptr p_msg,
+                                       vtysh_ovsdb_intf_cfg *intf_cfg,
+                                       const char *if_name)
+{
+  const struct ovsrec_port *port_row = NULL;
+  const struct ovsrec_interface *if_row = NULL;
+  int k=0;
+  int64_t interval = 0;
+
+   OVSREC_PORT_FOR_EACH(port_row, p_msg->idl)
+   {
+      for (k = 0; k < port_row->n_interfaces; k++)
+      {
+         if_row = port_row->interfaces[k];
+         if(strcmp(if_name, if_row->name) == 0)
+         {
+             PRINT_INTERFACE_NAME(intf_cfg->disp_intf_cfg, p_msg, if_name)
+
+             interval = ospf_get_port_intervals(port_row,
+                                                OSPF_KEY_HELLO_INTERVAL);
+             if((interval > 0) && (interval != OSPF_HELLO_INTERVAL_DEFAULT))
+                 vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+                                       "ip ospf hello-interval", interval);
+
+           interval = ospf_get_port_intervals(port_row, OSPF_KEY_DEAD_INTERVAL);
+           if((interval > 0) && (interval != OSPF_DEAD_INTERVAL_DEFAULT))
+               vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+                                     "ip ospf dead-interval", interval);
+         }
+      }
+   }
+
+  return e_vtysh_ok;
+}
+
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_intftable_parse_othercfg
@@ -433,6 +483,7 @@ vtysh_intf_context_clientcallback(void *p_private)
      vtysh_ovsdb_intftable_parse_lacp_othercfg(&ifrow->other_config, p_msg,
                                                &intfcfg, ifrow->name);
      vtysh_ovsdb_intftable_print_lag(p_msg, &intfcfg, ifrow->name);
+     vtysh_ovsdb_intftable_print_ospf(p_msg, &intfcfg, ifrow->name);
      vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg, intfcfg.disp_intf_cfg);
    }
 
