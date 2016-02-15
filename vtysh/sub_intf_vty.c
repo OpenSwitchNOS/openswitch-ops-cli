@@ -203,7 +203,8 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
         {
            vty_out(vty, "Error : Vlan ID is an internal vlan.%s",
                    VTY_NEWLINE);
-           return 0;
+           cli_do_config_abort(status_txn);
+           return CMD_SUCCESS;
         }
     }
 
