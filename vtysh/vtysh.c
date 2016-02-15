@@ -1945,6 +1945,7 @@ DEFUN(vtysh_no_vlan,
     else
     {
         vty_out(vty, "Couldn't find the VLAN %d. Make sure it's configured%s", vlan_id, VTY_NEWLINE);
+        vty->node = INTERFACE_NODE;
         return CMD_SUCCESS;
     }
 }
