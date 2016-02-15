@@ -44,7 +44,6 @@
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "vlan_vty.h"
 #include "smap.h"
 #include "openswitch-dflt.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
