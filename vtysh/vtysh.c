@@ -2629,43 +2629,6 @@ DEFUN (vtysh_show_running_config,
    return CMD_SUCCESS;
 }
 
-
-/*
- * This defun is added for show running config testing.
- * As all the features are being modularized, untill
- * completed, existing running-config infra will be used.
- * Existing infra will be removed once all modules are modularized
- * and this DEFUN will be changed to show running-config.
- */
-DEFUN_HIDDEN (vtysh_show_running_config_new,
-       vtysh_show_running_config_new_cmd,
-       "show test-running-config",
-       SHOW_STR
-       "Current running configuration\n")
-{
-   FILE *fp = NULL;
-
-   fp = stdout;
-   if (!vtysh_show_startup)
-   {
-       fprintf(fp, "Current configuration:\n");
-   }
-
-   vtysh_sh_run_iteratecontextlist(fp);
-   return CMD_SUCCESS;
-}
-
-DEFUN_HIDDEN (vtysh_show_context_client_list,
-              vtysh_show_context_client_list_cmd,
-              "show context-client-list",
-              SHOW_STR
-              "Vtysh Context Table Client List\n")
-{
-   vty_out (vty, "%sCurrent Context Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
-
-   vtysh_context_table_list_clients (vty);
-   return CMD_SUCCESS;
-}
 #else
 ALIAS (vtysh_write_terminal,
       vtysh_show_running_config_cmd,
@@ -4430,8 +4393,6 @@ vtysh_init_vty (void)
    vtysh_install_default (VTY_NODE);
 
 #ifdef ENABLE_OVSDB
-  install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
-  install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 
    install_element (CONFIG_NODE, &vtysh_dhcp_server_cmd);
@@ -4585,7 +4546,6 @@ vtysh_init_vty (void)
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-   install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_vlan_cmd);
    install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);
