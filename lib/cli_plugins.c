@@ -66,8 +66,7 @@ static char *cli_disable_plugins[] = {
   "lacpd",
   "arpmgrd",
   "lldp",
-  "lacp",
-  "vland",
+  "lacp"
   NULL
 };
 
