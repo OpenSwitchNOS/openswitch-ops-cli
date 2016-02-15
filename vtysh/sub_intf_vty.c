@@ -48,7 +48,6 @@
 #include <vector.h>
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
-#include "vlan_vty.h"
 #include "vrf_vty.h"
 #include "vtysh/vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
