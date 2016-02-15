@@ -586,22 +586,6 @@ logrotate_ovsdb_init()
 }
 
 static void
-vlan_ovsdb_init()
-{
-    ovsdb_idl_add_table(idl, &ovsrec_table_vlan);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_id);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_admin);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_description);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_hw_vlan_config);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state_reason);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_internal_usage);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_external_ids);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_other_config);
-}
-
-static void
 mgmt_intf_ovsdb_init()
 {
     ovsdb_idl_add_column(idl, &ovsrec_system_col_mgmt_intf);
@@ -733,7 +717,6 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
 
     /* vlan table. */
-    vlan_ovsdb_init();
     dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init();

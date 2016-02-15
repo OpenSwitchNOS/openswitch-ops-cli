@@ -23,9 +23,9 @@
 #ifndef _VLAN_VTYSH_UTILS_H
 #define _VLAN_VTYSH_UTILS_H
 
-#define VERIFY_VLAN_IFNAME(s) strncasecmp(s, "vlan", 4)
-
 #define DEFAULT_VLAN    1
+
+#define VERIFY_VLAN_IFNAME(s) strncasecmp(s, "vlan", 4)
 
 #define GET_VLANIF(s, a) \
         strcpy(s, "vlan"); \

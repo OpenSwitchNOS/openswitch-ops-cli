@@ -349,7 +349,6 @@ main (int argc, char **argv, char **env)
   vty->node = VIEW_NODE;
   cmd_init(0);
   plugins_cli_init(FEATURES_CLI_PATH);
-
   ret = pthread_create(&vtysh_ovsdb_if_thread,
                        (pthread_attr_t *)NULL,
                        vtysh_ovsdb_main_thread,
