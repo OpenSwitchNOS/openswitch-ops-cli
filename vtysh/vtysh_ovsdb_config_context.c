@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,8 +44,8 @@
 
 char globalconfigclientname[] = "vtysh_config_context_global_clientcallback";
 char vrfconfigclientname[]= "vtysh_config_context_vrf_clientcallback";
-char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback";
-char ledconfigclientname[]= "vtysh_config_context_led_clientcallback";
+char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback_old";
+char ledconfigclientname[]= "vtysh_config_context_led_clientcallback_old";
 char staticrouteconfigclientname[]= "vtysh_config_context_staticroute_clientcallback";
 char ecmpconfigclientname[] = "vtysh_config_context_ecmp_clientcallback";
 char ntpconfigclientname[] = "vtysh_config_context_ntp_clientcallback";
@@ -588,19 +588,19 @@ vtysh_ovsdb_subsystemtable_parse_othercfg(const struct smap *subsystemrow_config
 
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_config_context_fan_clientcallback
+| Function : vtysh_config_context_fan_clientcallback_old
 | Responsibility : fan config client callback routine
 | Parameters :
 |     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_config_context_fan_clientcallback(void *p_private)
+vtysh_config_context_fan_clientcallback_old(void *p_private)
 {
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
     const struct ovsrec_subsystem *subsysrow;
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
-                           "vtysh_config_context_fan_clientcallback entered");
+                           "vtysh_config_context_fan_clientcallback_old entered");
     subsysrow = ovsrec_subsystem_first(p_msg->idl);
     if(subsysrow)
     {
@@ -611,7 +611,7 @@ vtysh_config_context_fan_clientcallback(void *p_private)
 }
 
 /***************************************************************************
-* @function      : vtysh_config_context_led_clientcallback
+* @function      : vtysh_config_context_led_clientcallback_old
 * @detail    : client callback routine for LED configuration
 * @parame[in]
 *   p_private: Void pointer for holding address of vtysh_ovsdb_cbmsg_ptr
@@ -619,7 +619,7 @@ vtysh_config_context_fan_clientcallback(void *p_private)
 * @return : e_vtysh_ok on success
 ***************************************************************************/
 vtysh_ret_val
-vtysh_config_context_led_clientcallback(void *p_private)
+vtysh_config_context_led_clientcallback_old(void *p_private)
 {
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
     const struct ovsrec_led *pLedRow = NULL;
@@ -867,6 +867,80 @@ vtysh_init_config_context_clients()
   vtysh_context_client client;
   vtysh_ret_val retval = e_vtysh_error;
 
+  retval = install_show_run_config_context(e_vtysh_config_context,
+                                  &vtysh_config_context_global_clientcallback,
+                                  NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                        "config context unable to add global client callback");
+    assert(0);
+    return retval;
+  }
+
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_vrf,
+                                     &vtysh_config_context_vrf_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "config context unable to add vrf client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = install_show_run_config_context(e_vtysh_dependent_config,
+                                  NULL, NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                    "config context unable to add dependent config  callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_dependent_config,
+                              e_vtysh_dependent_config_staticroute,
+                              &vtysh_config_context_staticroute_clientcallback,
+                              NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                "dependent config unable to add static route client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_ecmp,
+                                     &vtysh_config_context_ecmp_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                          "config context unable to add ecmp client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_ntp,
+                                     &vtysh_config_context_ntp_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "config context unable to add ntp client callback");
+    assert(0);
+    return retval;
+  }
+
   client.p_client_name = globalconfigclientname;
   client.client_id = e_vtysh_config_context_global;
   client.p_callback = &vtysh_config_context_global_clientcallback;
@@ -897,7 +971,7 @@ vtysh_init_config_context_clients()
   memset(&client, 0, sizeof(vtysh_context_client));
   client.p_client_name = fanconfigclientname;
   client.client_id = e_vtysh_config_context_fan;
-  client.p_callback = &vtysh_config_context_fan_clientcallback;
+  client.p_callback = &vtysh_config_context_fan_clientcallback_old;
   retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_fan, &client);
   if(e_vtysh_ok != retval)
   {
@@ -912,7 +986,7 @@ vtysh_init_config_context_clients()
   memset(&client, 0, sizeof(vtysh_context_client));
   client.p_client_name = ledconfigclientname;
   client.client_id = e_vtysh_config_context_led;
-  client.p_callback = &vtysh_config_context_led_clientcallback;
+  client.p_callback = &vtysh_config_context_led_clientcallback_old;
   retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_led, &client);
   if(e_vtysh_ok != retval)
   {

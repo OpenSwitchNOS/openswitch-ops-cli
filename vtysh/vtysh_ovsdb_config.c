@@ -339,8 +339,9 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     vtysh_contextlist *subcontext_list;
     vtysh_ovsdb_cbmsg msg;
     const struct ovsrec_interface *ifrow;
-    feature_row_list *row_list = NULL;
-    feature_row_list *temp_row_list= NULL;
+    struct feature_sorted_list *list = NULL;
+    const struct shash_node **nodes;
+    int idx, count;
 
     VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl,
              ovsdb_idl_get_seqno(idl));
@@ -356,15 +357,17 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
 
     while (current != NULL)
     {
-        row_list = NULL;
+        list = NULL;
+        idx = count = 0;
         if (current->context_callback_init != NULL) {
-            row_list = current->context_callback_init(&msg);
+            list = current->context_callback_init(&msg);
+            nodes = list->nodes;
+            count = list->count;
         }
 
-        temp_row_list = row_list;
         do {
-            if (temp_row_list != NULL) {
-                msg.feature_row = temp_row_list->row;
+            if (list != NULL) {
+                msg.feature_row = nodes[idx]->data;
             }
 
             msg.disp_header_cfg = false;
@@ -380,8 +383,8 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
             /* Skip iteration over sub-context list. */
             if (msg.skip_subcontext_list) {
                 msg.feature_row = NULL;
-                if (temp_row_list != NULL)
-                    temp_row_list = temp_row_list->next;
+                if (list != NULL)
+                    idx++;
                 continue;
             }
 
@@ -400,14 +403,14 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
             }
 
             msg.feature_row = NULL;
-            if (temp_row_list != NULL) {
-                temp_row_list = temp_row_list->next;
+            if (list != NULL) {
+                idx++;
             }
 
-        } while (temp_row_list != NULL);
+        } while (idx < count);
 
         if (current->context_callback_exit != NULL) {
-            current->context_callback_exit(row_list);
+            current->context_callback_exit(list);
         }
 
         current = current->next;
@@ -640,8 +643,8 @@ vtysh_ovsdb_init_clients(void)
 vtysh_ret_val
 install_show_run_config_context(vtysh_contextid index,
                           vtysh_ret_val (*funcptr) (void* p_private),
-                          feature_row_list * (*init_funcptr) (void* p_private),
-                          void (*exit_funcptr) (feature_row_list * head))
+                          struct feature_sorted_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (struct feature_sorted_list * head))
 {
     vtysh_contextlist *current;
     vtysh_contextlist *new_context = (vtysh_contextlist *)
@@ -705,8 +708,8 @@ vtysh_ret_val
 install_show_run_config_subcontext(vtysh_contextid index,
                           vtysh_contextid subcontext_index,
                           vtysh_ret_val (*funcptr) (void* p_private),
-                          feature_row_list * (*init_funcptr) (void* p_private),
-                          void (*exit_funcptr) (feature_row_list * head))
+                          struct feature_sorted_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (struct feature_sorted_list * head))
 {
     vtysh_contextlist *current, *new_subcontext, *temp;
 
@@ -769,4 +772,5 @@ install_show_run_config_subcontext(vtysh_contextid index,
             }
         }
     }
+    return e_vtysh_ok;
 }
