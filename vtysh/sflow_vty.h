@@ -29,6 +29,10 @@
 #define IP_ADDRESS_LENGTH 18
 #define OVSDB_SFLOW_GLOBAL_ROW_NAME "global"
 
+#define SFLOW_PER_INTERFACE_KEY_STR "sflow-enable"
+#define SFLOW_PER_INTERFACE_VALUE_TRUE "true"
+#define SFLOW_PER_INTERFACE_VALUE_FALSE "false"
+
 void
 sflow_vty_init(void);
 

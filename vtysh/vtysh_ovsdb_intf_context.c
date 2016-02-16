@@ -358,6 +358,9 @@ vtysh_intf_context_clientcallback(void *p_private)
         vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "no shutdown");
      }
 
+     /* sFlow config */
+     show_sflow_config(ifrow->name, "   ");
+
      cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
 
      if ((NULL != cur_state)
