@@ -257,13 +257,122 @@ static int sflow_show(void)
 
 }
 
+/* [en/dis]able sflow on interface. */
+static int
+sflow_set_port_config(bool set)
+{
+  enum ovsdb_idl_txn_status txn_status;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  struct smap other_config;
+  const struct ovsrec_port *port_row = NULL;
+  const char *value;
+  const struct ovsrec_system *system_row = NULL;
+  const struct ovsrec_sflow *sflow_row = NULL;
+  const struct ovsdb_datum *datum = NULL;
+
+  if (status_txn == NULL)
+    {
+      VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  system_row = ovsrec_system_first (idl);
+  if (system_row == NULL)
+    {
+      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+    }
+
+  if (system_row->sflow == NULL)
+    {
+      vty_out (vty, "sFlow must be enabled globally before configuring "
+              "per-interface.%s", VTY_NEWLINE);
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  sflow_row = ovsrec_sflow_first (idl);
+  if (sflow_row == NULL)
+    {
+      vty_out (vty, "sFlow must have sampling rate and collectors "
+              "configured before configuring per-interface.%s", VTY_NEWLINE);
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  datum = ovsrec_sflow_get_sampling(sflow_row, OVSDB_TYPE_INTEGER);
+  if (datum == NULL || datum->n == 0)
+    {
+      vty_out (vty, "sFlow sampling rate must be configured before "
+              "configuring per-interface.%s", VTY_NEWLINE);
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  datum = ovsrec_sflow_get_targets(sflow_row, OVSDB_TYPE_STRING);
+  if (datum == NULL || datum->n == 0)
+    {
+      vty_out (vty, "sFlow collectors must be configured before "
+              "configuring per-interface.%s", VTY_NEWLINE);
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+      if (strcmp(port_row->name, (const char *) vty->index) == 0) {
+          break;
+      }
+    }
+
+  if (port_row == NULL)
+    {
+      VLOG_ERR("Null port row, can't [un]set sflow on it.");
+      return CMD_SUCCESS;
+    }
+
+  smap_init(&other_config);
+  value = set ? SFLOW_PER_INTERFACE_VALUE_TRUE : SFLOW_PER_INTERFACE_VALUE_FALSE;
+
+  if (smap_is_empty(&port_row->other_config))
+    {
+      smap_add(&other_config, SFLOW_PER_INTERFACE_KEY_STR, value);
+    } else
+    {
+      smap_clone(&other_config, &port_row->other_config);
+      smap_replace(&other_config, SFLOW_PER_INTERFACE_KEY_STR, value);
+    }
+
+  ovsrec_port_set_other_config(port_row, &other_config);
+
+  smap_destroy(&other_config);
+
+  txn_status = cli_do_config_finish(status_txn);
+
+  if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
+    {
+      return CMD_SUCCESS;
+    }
+  else
+    {
+      VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  return CMD_SUCCESS;
+}
+
 /* This function sets/unsets the row name in the sFlow table and a reference
- * to it in the System table. As of now, we provide support for setting  sflow
- * only at the global level*/
+ * to it in the System table. This is done when sflow is [en/dis]abled
+ * respectively in CLI in config node.
+ */
 static int sflow_set_global_status(bool status)
 {
   const struct ovsrec_system *system_row = NULL;
   const struct ovsrec_sflow *sflow_row = NULL;
+
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   const char *sflow_name = OVSDB_SFLOW_GLOBAL_ROW_NAME;
@@ -276,12 +385,12 @@ static int sflow_set_global_status(bool status)
     }
 
   system_row = ovsrec_system_first (idl);
-  if (!system_row)
+  if (system_row == NULL)
     {
       VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
       cli_do_config_abort(status_txn);
       return CMD_SUCCESS;
-     }
+    }
 
   sflow_row = ovsrec_sflow_first (idl);
 
@@ -295,33 +404,39 @@ static int sflow_set_global_status(bool status)
         }
       else
         {
-          if(!sflow_row)
+          if(sflow_row == NULL)
             {
               sflow_row = ovsrec_sflow_insert (status_txn);
               ovsrec_sflow_set_name (sflow_row, sflow_name);
             }
           ovsrec_system_set_sflow (system_row, sflow_row);
         }
-     }
-   else
-     {
-       if(sflow_row && system_row->sflow != NULL)
-         ovsrec_system_set_sflow (system_row, NULL);
-       else
-         {
-           vty_out (vty, "\nsFlow already disabled.%s\n", VTY_NEWLINE);
-           cli_do_config_abort (status_txn);
-           return CMD_SUCCESS;
-         }
-     }
+
+    }
+  else
+    {
+      if(sflow_row && system_row->sflow != NULL)
+        {
+          ovsrec_system_set_sflow (system_row, NULL);
+        }
+      else
+        {
+          vty_out (vty, "\nsFlow already disabled.%s\n", VTY_NEWLINE);
+          cli_do_config_abort (status_txn);
+          return CMD_SUCCESS;
+        }
+    }
+
   txn_status = cli_do_config_finish(status_txn);
 
   if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
-    return CMD_SUCCESS;
+    {
+      return CMD_SUCCESS;
+    }
   else
     {
-       VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
-       return CMD_OVSDB_FAILURE;
+      VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+      return CMD_OVSDB_FAILURE;
     }
 }
 
@@ -563,8 +678,7 @@ static int sflow_set_agent_interface(const char *interface, const char *family,
 {
   const struct ovsrec_system *system_row = NULL;
   const struct ovsrec_sflow *sflow_row = NULL;
-  const struct ovsrec_port *port_row = NULL;
-  const struct ovsrec_interface * intf_row = NULL;
+  const struct ovsrec_interface *intf_row = NULL;
   enum ovsdb_idl_txn_status txn_status;
   struct ovsdb_idl_txn *status_txn = cli_do_config_start();
   const char *sflow_name = OVSDB_SFLOW_GLOBAL_ROW_NAME;
@@ -648,6 +762,10 @@ DEFUN (cli_sflow_set_global_status,
        SFLOW_STR
        "Enable sflow feature\n")
 {
+    if (vty->node == INTERFACE_NODE) {
+        return sflow_set_port_config(true);
+    }
+
     return sflow_set_global_status(true);
 }
 
@@ -658,6 +776,10 @@ DEFUN (cli_sflow_no_set_global_status,
        SFLOW_STR
        "Enable sflow feature\n")
 {
+    if (vty->node == INTERFACE_NODE) {
+        return sflow_set_port_config(false);
+    }
+
     return sflow_set_global_status(false);
 }
 
@@ -764,7 +886,9 @@ void
 sflow_vty_init (void)
 {
   install_element (CONFIG_NODE, &cli_sflow_set_global_status_cmd);
+  install_element (INTERFACE_NODE, &cli_sflow_set_global_status_cmd);
   install_element (CONFIG_NODE, &cli_sflow_no_set_global_status_cmd);
+  install_element (INTERFACE_NODE, &cli_sflow_no_set_global_status_cmd);
   install_element (CONFIG_NODE, &cli_sflow_set_sampling_rate_cmd);
   install_element (CONFIG_NODE, &cli_sflow_no_set_sampling_rate_cmd);
   install_element (CONFIG_NODE, &cli_sflow_set_collector_cmd);
