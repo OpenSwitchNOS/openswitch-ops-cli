@@ -743,6 +743,8 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
     int i = 0, found_vlan = 0;
+    int64_t* tag = NULL;
+    int tag_count = 0;
 
     if (NULL == status_txn)
     {
@@ -834,6 +836,7 @@ DEFUN(cli_intf_vlan_trunk_allowed,
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
+        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
     }
 
@@ -971,6 +974,13 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
         return CMD_SUCCESS;
     }
 
+    if(vlan_port_row->n_tag == 1 && *vlan_port_row->tag == vlan_id )
+    {
+        vty_out(vty, "Not permitted, VLAN configured as native vlan.%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
     trunk_count = vlan_port_row->n_trunks;
     for (i = 0; i < vlan_port_row->n_trunks; i++)
     {
@@ -1034,10 +1044,10 @@ DEFUN(cli_intf_no_vlan_trunk_allowed,
 
 DEFUN(cli_intf_vlan_trunk_native,
     cli_intf_vlan_trunk_native_cmd,
-    "vlan trunk native <1-4094>",
+    "vlan trunk native-untag <1-4094>",
     VLAN_STR
     TRUNK_STR
-    "Native VLAN on the trunk port\n"
+    "Native untagged VLAN on the trunk port\n"
     "VLAN identifier\n")
 {
     const struct ovsrec_port *port_row = NULL;
@@ -1103,7 +1113,7 @@ DEFUN(cli_intf_vlan_trunk_native,
 
     if (!check_iface_in_bridge(ifname))
     {
-        vty_out(vty, "Failed to add native vlan. Disable routing on the interface.%s", VTY_NEWLINE);
+        vty_out(vty, "Failed to add native-untag vlan. Disable routing on the interface.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1136,17 +1146,41 @@ DEFUN(cli_intf_vlan_trunk_native,
     {
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED);
     }
-    else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
-        strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
+    else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED);
     }
 
     int64_t* tag = NULL;
+    int64_t* trunks = NULL;
     tag = xmalloc(sizeof *vlan_port_row->tag);
     tag[0] = vlan_id;
     int tag_count = 1;
     ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
+
+    found_vlan = 0;
+
+    for (i = 0; i < vlan_port_row->n_trunks; i++)
+    {
+        if (vlan_id == vlan_port_row->trunks[i])
+        {
+            found_vlan = 1;
+            break;
+        }
+    }
+
+    if (found_vlan == 0)
+    {
+        trunks = xmalloc(sizeof *vlan_port_row->trunks * (vlan_port_row->n_trunks + 1));
+        for (i = 0; i < vlan_port_row->n_trunks; i++)
+        {
+            trunks[i] = vlan_port_row->trunks[i];
+        }
+        trunks[vlan_port_row->n_trunks] = vlan_id;
+        int trunk_count = vlan_port_row->n_trunks + 1;
+        ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
+        free(trunks);
+    }
 
     status = cli_do_config_finish(status_txn);
     free(tag);
@@ -1157,7 +1191,7 @@ DEFUN(cli_intf_vlan_trunk_native,
     }
     else
     {
-        VLOG_DBG("Transaction failed to set native vlan %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
+        VLOG_DBG("Transaction failed to set native-untag vlan %d. Function:%s, Line:%d", vlan_id, __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_TRUNK_NATIVE_ERROR, vlan_id, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1165,11 +1199,11 @@ DEFUN(cli_intf_vlan_trunk_native,
 
 DEFUN(cli_intf_no_vlan_trunk_native,
     cli_intf_no_vlan_trunk_native_cmd,
-    "no vlan trunk native [<1-4094>]",
+    "no vlan trunk native-untag [<1-4094>]",
     NO_STR
     VLAN_STR
     TRUNK_STR
-    "Native VLAN on the trunk port\n"
+    "Native untagged VLAN on the trunk port\n"
     "VLAN identifier\n")
 {
     const struct ovsrec_port *port_row = NULL;
@@ -1178,6 +1212,8 @@ DEFUN(cli_intf_no_vlan_trunk_native,
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int i = 0;
+    int64_t* tag = NULL;
+    int tag_count = 0;
 
     if (NULL == status_txn)
     {
@@ -1233,16 +1269,15 @@ DEFUN(cli_intf_no_vlan_trunk_native,
 
     if (!check_iface_in_bridge(ifname))
     {
-        vty_out(vty, "Failed to remove native VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
+        vty_out(vty, "Failed to remove native-untag VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
     if (vlan_port_row->vlan_mode != NULL &&
-        strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
-        vty_out(vty, "The interface is not in native mode.%s", VTY_NEWLINE);
+        vty_out(vty, "The interface is not in native-untag mode.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
@@ -1254,14 +1289,15 @@ DEFUN(cli_intf_no_vlan_trunk_native,
 
     if (trunk_count)
     {
+        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
     }
     else
     {
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
         ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
-        int64_t* tag = xmalloc(sizeof *port_row->tag);
-        int tag_count = 1;
+        tag = xmalloc(sizeof *port_row->tag);
+        tag_count = 1;
 
         tag[0] = DEFAULT_VLAN;
         ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
@@ -1275,7 +1311,7 @@ DEFUN(cli_intf_no_vlan_trunk_native,
     }
     else
     {
-        VLOG_DBG("Transaction failed to remove native VLAN. Function:%s, Line:%d", __func__, __LINE__);
+        VLOG_DBG("Transaction failed to remove native-untag VLAN. Function:%s, Line:%d", __func__, __LINE__);
         vty_out(vty, OVSDB_INTF_VLAN_REMOVE_TRUNK_NATIVE_ERROR, VTY_NEWLINE);
         return CMD_SUCCESS;
     }
@@ -1283,18 +1319,20 @@ DEFUN(cli_intf_no_vlan_trunk_native,
 
 DEFUN(cli_intf_vlan_trunk_native_tag,
     cli_intf_vlan_trunk_native_tag_cmd,
-    "vlan trunk native tag",
+    "vlan trunk native-tag <1-4094>",
     VLAN_STR
     TRUNK_STR
-    "Native VLAN on the trunk port\n"
-    "Tag configuration on the trunk port\n")
+    "Native tagged VLAN on the trunk port\n"
+    "VLAN identifier\n")
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_port *vlan_port_row = NULL;
     const struct ovsrec_interface *intf_row = NULL;
+    const struct ovsrec_vlan *vlan_row = NULL;
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
-    int i = 0;
+    int vlan_id = atoi((char *) argv[0]);
+    int i = 0, found_vlan = 0;
 
     if (NULL == status_txn)
     {
@@ -1350,22 +1388,77 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
 
     if (!check_iface_in_bridge(ifname))
     {
-        vty_out(vty, "Failed to set native VLAN tagging. Disable routing on the interface.%s", VTY_NEWLINE);
+        vty_out(vty, "Failed to set native-tag VLAN. Disable routing on the interface.%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
-    if (vlan_port_row->vlan_mode != NULL &&
-        strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_ACCESS) == 0)
+    vlan_row = ovsrec_vlan_first(idl);
+    if (NULL == vlan_row)
     {
-        vty_out(vty, "The interface is in access mode.%s", VTY_NEWLINE);
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
         cli_do_config_abort(status_txn);
         return CMD_SUCCESS;
     }
 
-    ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED);
+    OVSREC_VLAN_FOR_EACH(vlan_row, idl)
+    {
+        if (vlan_row->id == vlan_id)
+        {
+            found_vlan = 1;
+            break;
+        }
+    }
+
+    if (found_vlan == 0)
+    {
+        vty_out(vty, "VLAN %d not found%s", vlan_id, VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    if (NULL == vlan_port_row->vlan_mode)
+    {
+        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED);
+    }
+    else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0)
+    {
+        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED);
+    }
+
+    int64_t* tag = NULL;
+    int64_t* trunks = NULL;
+    tag = xmalloc(sizeof *vlan_port_row->tag);
+    tag[0] = vlan_id;
+    int tag_count = 1;
+    ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
+
+    found_vlan = 0;
+
+    for (i = 0; i < vlan_port_row->n_trunks; i++)
+    {
+        if (vlan_id == vlan_port_row->trunks[i])
+        {
+            found_vlan = 1;
+            break;
+        }
+    }
+
+    if (found_vlan == 0)
+    {
+        trunks = xmalloc(sizeof *vlan_port_row->trunks * (vlan_port_row->n_trunks + 1));
+        for (i = 0; i < vlan_port_row->n_trunks; i++)
+        {
+            trunks[i] = vlan_port_row->trunks[i];
+        }
+        trunks[vlan_port_row->n_trunks] = vlan_id;
+        int trunk_count = vlan_port_row->n_trunks + 1;
+        ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
+        free(trunks);
+    }
 
     status = cli_do_config_finish(status_txn);
+    free(tag);
 
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
     {
@@ -1381,11 +1474,11 @@ DEFUN(cli_intf_vlan_trunk_native_tag,
 
 DEFUN(cli_intf_no_vlan_trunk_native_tag,
     cli_intf_no_vlan_trunk_native_tag_cmd,
-    "no vlan trunk native tag",
+    "no vlan trunk native-tag [<1-4094>]",
     NO_STR
     VLAN_STR
     TRUNK_STR
-    "Native VLAN on the trunk port\n"
+    "Native tagged VLAN on the trunk port\n"
     "VLAN identifier\n")
 {
     const struct ovsrec_port *port_row = NULL;
@@ -1394,6 +1487,8 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
     struct ovsdb_idl_txn *status_txn = cli_do_config_start();
     enum ovsdb_idl_txn_status status;
     int i = 0;
+    int64_t* tag = NULL;
+    int tag_count = 0;
 
     if (NULL == status_txn)
     {
@@ -1462,7 +1557,27 @@ DEFUN(cli_intf_no_vlan_trunk_native_tag,
         return CMD_SUCCESS;
     }
 
-    ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED);
+    int64_t* trunks = NULL;
+    int trunk_count = 0;
+    trunk_count = vlan_port_row->n_trunks;
+
+    if (trunk_count)
+    {
+        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
+        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
+    }
+    else
+    {
+        ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
+        ovsrec_port_set_trunks(vlan_port_row, trunks, trunk_count);
+        tag = xmalloc(sizeof *port_row->tag);
+        tag_count = 1;
+
+        tag[0] = DEFAULT_VLAN;
+        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
+        free(tag);
+    }
+
     status = cli_do_config_finish(status_txn);
 
     if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
@@ -1652,6 +1767,8 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     enum ovsdb_idl_txn_status status;
     int vlan_id = atoi((char *) argv[0]);
     int i = 0, found_vlan = 0;
+    int64_t* tag = NULL;
+    int tag_count = 0;
 
     if (NULL == status_txn)
     {
@@ -1709,6 +1826,7 @@ DEFUN(cli_lag_vlan_trunk_allowed,
     else if (strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_TAGGED) != 0 &&
         strcmp(vlan_port_row->vlan_mode, OVSREC_PORT_VLAN_MODE_NATIVE_UNTAGGED) != 0)
     {
+        ovsrec_port_set_tag(vlan_port_row, tag, tag_count);
         ovsrec_port_set_vlan_mode(vlan_port_row, OVSREC_PORT_VLAN_MODE_TRUNK);
     }
 

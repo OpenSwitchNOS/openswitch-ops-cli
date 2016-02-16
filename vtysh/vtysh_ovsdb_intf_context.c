@@ -487,7 +487,7 @@ vtysh_ovsdb_intftable_parse_vlan(const char *if_name,
     {
         if (port_row->n_tag == 1)
         {
-            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native ",
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native-untag ",
                 *port_row->tag);
         }
         for (i = 0; i < port_row->n_trunks; i++)
@@ -500,10 +500,10 @@ vtysh_ovsdb_intftable_parse_vlan(const char *if_name,
     {
         if (port_row->n_tag == 1)
         {
-            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native ",
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk native-tag ",
                 *port_row->tag);
         }
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "vlan trunk native tag");
+
         for (i = 0; i < port_row->n_trunks; i++)
         {
             vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "", "vlan trunk allowed ",
