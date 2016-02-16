@@ -24,6 +24,9 @@
  */
 #ifndef _SFLOW_VTY_H
 #define _SFLOW_VTY_H
+
+#include "openswitch-idl.h"
+
 #define IPV6_ADDRESS_LENGTH 49
 #define MAX_PORT_SIZE 5
 #define IP_ADDRESS_LENGTH 18

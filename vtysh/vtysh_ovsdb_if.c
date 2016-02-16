@@ -230,6 +230,10 @@ sflow_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_agent_addr_family);
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_sflow);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
 }
 
 static void
@@ -291,6 +295,7 @@ intf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
 }
 
 /***********************************************************
