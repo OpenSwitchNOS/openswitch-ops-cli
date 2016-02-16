@@ -29,8 +29,8 @@
 int vtysh_init_config_context_clients();
 vtysh_ret_val vtysh_config_context_global_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_vrf_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_fan_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_led_clientcallback(void *p_private);
+vtysh_ret_val vtysh_config_context_fan_clientcallback_old(void *p_private);
+vtysh_ret_val vtysh_config_context_led_clientcallback_old(void *p_private);
 vtysh_ret_val vtysh_config_context_staticroute_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_ntp_clientcallback(void *p_private);
 
