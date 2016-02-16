@@ -24,6 +24,13 @@
 #ifndef _INTF_VTYSH_UTILS_H
 #define _INTF_VTYSH_UTILS_H
 
+#define PRINT_INTERFACE_NAME(name_written, p_msg, if_name)\
+  if (!(name_written))\
+  {\
+    vtysh_ovsdb_cli_print(p_msg, "interface %s", if_name);\
+    name_written = true;\
+  }
+
 int show_ip_addresses(const char *if_name, struct vty *vty);
 
 const struct ovsrec_port* port_find(const char *if_name);
