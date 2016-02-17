@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015 - 2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -663,6 +663,25 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
                                       area_str);
                 i++;
             }
+
+            /* max-metric  admin */
+            val = smap_get(&ospf_router_row->stub_router_adv,
+                            OSPF_KEY_ROUTER_STUB_ADMIN);
+            if(val && (strcmp(val, "true") == 0))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s", "",
+                        "max-metric router-lsa");
+            }
+
+            /* max-metric  startup */
+            val = smap_get(&ospf_router_row->stub_router_adv,
+                            OSPF_KEY_ROUTER_STUB_STARTUP);
+            if(val)
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
+                        "max-metric router-lsa on-startup", val);
+            }
+
         }
     }
 

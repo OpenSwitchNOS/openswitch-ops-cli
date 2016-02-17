@@ -43,16 +43,29 @@
 #define ROUTER_SHOW_STR     "Display router information\n"
 #define OSPF_ROUTER_ID_STR  "Configure router identifier for the OSPF instance\n"
 #define OSPF_ROUTER_ID_VAL_STR "Configure OSPF router-id in IP address format\n"
-#define OSPF_NEIGHBOR_ID_STR     "Enter the neighbor router id\n"
-#define OSPF_NEIGHBOR_SHOW_STR    "OSPF neighbor information\n"
+#define OSPF_NEIGHBOR_ID_STR        "Enter the neighbor router id\n"
+#define OSPF_NEIGHBOR_SHOW_STR      "OSPF neighbor information\n"
+#define OSPF_HELLO_INTERVAL_STR     "Time between HELLO packets\n"
+#define OSPF_HELLO_INTERVAL_VAL_STR "Time between HELLO packets in seconds\n"
+#define OSPF_DEAD_INTERVAL_STR      \
+                        "Interval after which a neighbor is declared dead\n"
+#define OSPF_DEAD_INTERVAL_VAL_STR      \
+                         "Interval value in seconds\n"
 
-#define OSPF_DEFAULT_STR    "0.0.0.0"
-#define OSPF_STRING_NULL    "null"
+#define OSPF_MAX_METRIC_STR     "OSPF maximum / infinite-distance metric\n"
+#define OSPF_ROUTER_LSA_STR     \
+    "Advertise own Router-LSA with infinite distance (stub router)\n"
+#define OSPF_ON_STARTUP_STR     \
+    "Automatically advertise stub Router-LSA on startup of OSPF\n"
+#define OSPF_STARTUP_TIME_STR   \
+"Time (seconds) to advertise self as stub-router\n"
 
-#define OSPF_SHOW_STR_LEN   25
 
-#define OSPF_NETWORK_RANGE_LEN  25
-
+#define OSPF_DEFAULT_STR            "0.0.0.0"
+#define OSPF_STRING_NULL            "null"
+#define OSPF_SHOW_STR_LEN           25
+#define OSPF_NETWORK_RANGE_LEN      25
+#define OSPF_TIMER_KEY_MAX_LENGTH   80
 
 /* Neighbor FSM states */
 #define OSPF_NFSM_STATE_ATTEMPT           "Attempt"
@@ -132,22 +145,50 @@ cli_command_result (enum ovsdb_idl_txn_status status)
 #define OSPF_OPTION_DC                   0x20
 #define OSPF_OPTION_O                    0x40
 
-#define OSPF_NBR_OPTION_T           "type_of_service"
-#define OSPF_NBR_OPTION_E           "external_routing"
-#define OSPF_NBR_OPTION_MC          "multicast"
-#define OSPF_NBR_OPTION_NP          "type_7_lsa"
-#define OSPF_NBR_OPTION_EA          "external_attributes_lsa"
-#define OSPF_NBR_OPTION_DC          "demand_circuits"
-#define OSPF_NBR_OPTION_O           "opaque_lsa"
-
-
 #define OSPF_TIME_SIZE              25
 #define OSPF_OPTION_STR_MAXLEN      24
 
 void ospf_vty_init (void);
+/*Funtion to get the intervals from port table. */
+int64_t
+ospf_get_port_intervals(const struct ovsrec_port* port_row,
+                            const char *key);
 
 /* OSPF KEYS */
 
 #define OSPF_KEY_STUB_ROUTER_STATE_ACTIVE       "stub_router_state_active"
+#define OSPF_KEY_ROUTE_AREA_ID                  "area_id"
+#define OSPF_KEY_ROUTE_TYPE_ABR                 "area_type_abr"
+#define OSPF_KEY_ROUTE_TYPE_ASBR                "area_type_asbr"
+#define OSPF_KEY_ROUTE_EXT_TYPE                 "ext_type"
+#define OSPF_KEY_ROUTE_EXT_TAG                  "ext_tag"
+#define OSPF_KEY_ROUTE_TYPE2_COST               "type2_cost"
 
+#define OSPF_KEY_ROUTE_COST                     "cost"
+
+
+#define OSPF_NBR_OPTION_STRING_T               "type_of_service"
+#define OSPF_NBR_OPTION_STRING_E               "external_routing"
+#define OSPF_NBR_OPTION_STRING_MC              "multicast"
+#define OSPF_NBR_OPTION_STRING_NP              "type_7_lsa"
+#define OSPF_NBR_OPTION_STRING_EA              "external_attributes_lsa"
+#define OSPF_NBR_OPTION_STRING_DC              "demand_circuits"
+#define OSPF_NBR_OPTION_STRING_O               "opaque_lsa"
+
+#define OSPF_PATH_TYPE_STRING_INTER_AREA       "inter_area"
+#define OSPF_PATH_TYPE_STRING_INTRA_AREA       "intra_area"
+#define OSPF_PATH_TYPE_STRING_EXTERNAL         "external"
+
+#define OSPF_EXT_TYPE_STRING_TYPE1             "ext_type_1"
+#define OSPF_EXT_TYPE_STRING_TYPE2             "ext_type_2"
+
+
+/* OSPF Default values */
+#define OSPF_HELLO_INTERVAL_DEFAULT         10
+#define OSPF_DEAD_INTERVAL_DEFAULT         (4 * OSPF_HELLO_INTERVAL_DEFAULT)
+#define OSPF_TRANSMIT_DELAY_DEFAULT         1
+#define OSPF_RETRANSMIT_INTERVAL_DEFAULT    5
+#define OSPF_ROUTE_TYPE2_COST_DEFAULT       16777215
+/* TBD - To be modified when auto reference bandwidth is supported. */
+#define OSPF_DEFAULT_COST                   10
 #endif /* _OSPF_VTY_H */
