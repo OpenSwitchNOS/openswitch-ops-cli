@@ -175,6 +175,96 @@ def unsetNetworkAreaIdTest(dut01):
     return True
 
 
+def setMaxMetricAdminTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="max-metric router-lsa")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set max-metric admin failed"
+
+    return True
+
+
+def unsetMaxMetricAdminTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no max-metric router-lsa")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset max-metric admin failed"
+
+    return True
+
+
+def setMaxMetricStartupTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="max-metric router-lsa "
+                                                "on-startup 100")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set max-metric startup failed"
+
+    return True
+
+
+def unsetMaxMetricStartupTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no max-metric router-lsa "
+                                                "on-startup")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset max-metric startup failed"
+
+    return True
+
+
+def setHelloIntervalTest(dut01):
+    if (enterInterfaceContext(dut01, "1", True) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="ip ospf hello-interval 25")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set hello interval failed"
+
+    return True
+
+
+def unsetHelloIntervalTest(dut01):
+    if (enterInterfaceContext(dut01, "1", True) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no ip ospf hello-interval")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset hello interval failed"
+
+    return True
+
+
+def setDeadIntervalTest(dut01):
+    if (enterInterfaceContext(dut01, "1", True) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="ip ospf dead-interval 50")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set dead interval failed"
+
+    return True
+
+
+def unsetDeadIntervalTest(dut01):
+    if (enterInterfaceContext(dut01, "1", True) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no ip ospf dead-interval")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset dead interval failed"
+
+    return True
+
+
 def runningConfigTest(dut01):
     if (enterRouterContext(dut01) is False):
         return False
@@ -187,14 +277,22 @@ def runningConfigTest(dut01):
     retCode = devIntReturn.get('returnCode')
     assert retCode == 0, "Test to set network area id failed"
 
+    devIntReturn = dut01.DeviceInteract(command="max-metric router-lsa "
+                                                "on-startup 200")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set max-metric startup failed"
+
     if (exitContext(dut01) is False):
         return False
 
     cmdOut = dut01.cmdVtysh(command="show running-config")
+
     assert 'router-id 1.2.3.4' in cmdOut, "Test to show router id in " \
                                           "running config failed"
     assert 'network 10.0.0.0/24 area 0.0.0.100' in cmdOut, \
         "Test to show network in running config failed"
+    assert 'max-metric router-lsa on-startup 200' in cmdOut, \
+        "Test to show max-metric in running config failed"
 
     return True
 
@@ -212,14 +310,22 @@ def noRunningConfigTest(dut01):
     retCode = devIntReturn.get('returnCode')
     assert retCode == 0, "Test to unset network area id failed"
 
+    devIntReturn = dut01.DeviceInteract(command="no max-metric router-lsa "
+                                                "on-startup")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset max-metric startup failed"
+
     if (exitContext(dut01) is False):
         return False
 
     cmdOut = dut01.cmdVtysh(command="show running-config")
+
     assert 'router-id 1.2.3.4' not in cmdOut, "Test to show router id " \
                                               "in running config failed"
     assert 'network 10.0.0.0/24 area 0.0.0.100' not in cmdOut, \
         "Test to show network in running config failed"
+    assert 'max-metric router-lsa on-startup 200' not in cmdOut, \
+        "Test to show max-metric in running config failed"
 
     return True
 
@@ -283,6 +389,70 @@ class Test_ospf_configuration:
             LogOutput('info', "Unset network area id - passed")
         else:
             LogOutput('error', "Unset network area id - failed")
+
+    def test_setMaxMetricAdminTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setMaxMetricAdminTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Set max metric admin - passed")
+        else:
+            LogOutput('error', "Set max metric admin - failed")
+
+    def test_unsetMaxMetricAdminTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetMaxMetricAdminTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset max metric admin - passed")
+        else:
+            LogOutput('error', "Unset max metric admin - failed")
+
+    def test_setMaxMetricStartupTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setMaxMetricStartupTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Set max metric startup - passed")
+        else:
+            LogOutput('error', "Set max metric startup - failed")
+
+    def test_unsetMaxMetricStartupTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetMaxMetricStartupTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset max metric startup - passed")
+        else:
+            LogOutput('error', "Unset max metric startup - failed")
+
+    def test_setHelloIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setHelloIntervalTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Set hello interval - passed")
+        else:
+            LogOutput('error', "Set hello interval - failed")
+
+    def test_unsetHelloIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetHelloIntervalTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset hello interval - passed")
+        else:
+            LogOutput('error', "Unset hello interval - failed")
+
+    def test_setDeadIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setDeadIntervalTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Set Dead interval - passed")
+        else:
+            LogOutput('error', "Set Dead interval - failed")
+
+    def test_unsetDeadIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetDeadIntervalTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset Dead interval - passed")
+        else:
+            LogOutput('error', "Unset Dead interval - failed")
 
     def test_runningConfigTest(self):
         dut01Obj = self.topoObj.deviceObjGet(device="dut01")
