@@ -84,4 +84,6 @@ const struct ovsrec_vrf* vrf_lookup(const char *vrf_name);
 
 bool check_if_internal_vlan(const struct ovsrec_vlan *vlan_row);
 
+void vtysh_ovsdb_show_version_detail();
+
 #endif /* VTYSH_OVSDB_IF_H */
