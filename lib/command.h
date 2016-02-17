@@ -627,6 +627,10 @@ struct dyn_cb_func
 #define ECMP_STR                     "Configure ECMP\n"
 #define LOAD_BAL_STR                 "Configure hashing parameters\n"
 
+/* Show version detail help strings */
+#define SHOW_VERSION_STR           "Displays switch version\n"
+#define SHOW_VERSION_DETAIL_STR    "Show git-hashes of each repository\n"
+
 
 /* Prototypes. */
 extern void install_node (struct cmd_node *, int (*) (struct vty *));

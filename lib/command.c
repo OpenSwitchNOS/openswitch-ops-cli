@@ -3427,6 +3427,17 @@ DEFUN (show_version,
 }
 #endif /* ENABLE_OVSDB */
 
+/* Show version detail. */
+DEFUN (show_version_detail,
+       show_version_detail_cmd,
+       "show version detail",
+       SHOW_STR
+       SHOW_VERSION_STR
+       SHOW_VERSION_DETAIL_STR)
+{
+  return CMD_SUCCESS;
+}
+
 /* Help display function for all node. */
 DEFUN (config_help,
        config_help_cmd,
@@ -4577,6 +4588,7 @@ cmd_init (int terminal)
 
   /* Each node's basic commands. */
   install_element (VIEW_NODE, &show_version_cmd);
+  install_element (VIEW_NODE, &show_version_detail_cmd);
   if (terminal)
     {
       install_element (VIEW_NODE, &config_list_cmd);
@@ -4610,6 +4622,7 @@ cmd_init (int terminal)
   install_element (ENABLE_NODE, &show_startup_config_cmd);
 #endif
   install_element (ENABLE_NODE, &show_version_cmd);
+  install_element (ENABLE_NODE, &show_version_detail_cmd);
 
   if (terminal)
     {
