@@ -143,6 +143,33 @@ typedef struct route_psd_bgp_s {
     const char *uptime;           /* Specifies uptime of route. */
 } route_psd_bgp_t;
 
+/* Prefix List. */
+const struct lookup_entry match_table[] = {
+    {"ip address prefix-list", "prefix_list"},
+    {"ipv6 address prefix-list", "ipv6_prefix_list"},
+    {"community", "community"},
+    {"extcommunity", "extcommunity"},
+    {"as-path","as_path"},
+    {"origin", "origin"},
+    {"metric", "metric"},
+    {"comm-list", "comm_list"},
+    {"ipv6 next-hop","ipv6_next_hop"},
+    {"probability","probability"},
+    {NULL, NULL},
+};
+
+const struct lookup_entry set_table[] = {
+    {"community", "community"},
+    {"metric", "metric"},
+    {"as-path exclude", "as_path_exclude"},
+    {"as-path prepend", "as_path_prepend"},
+    {"origin", "origin"},
+    {"ipv6 next-hop global", "ipv6_next_hop_global"},
+    {"comm-list", "comm_list"},
+    {"extcommunity rt", "extcommunity rt"},
+    {"extcommunity soo", "extcommunity soo"},
+    {NULL, NULL},
+};
 
 /********************** Simple error handling ***********************/
 
@@ -732,6 +759,76 @@ static void show_ipv6_routes(struct vty *vty,
     vty_out(vty, "Total number of entries %d\n", ipv6_count);
     bgp_rib_sort_fin(&rib_sorted);
 }
+
+
+DEFUN(vtysh_show_ip_bgp_route_map,
+      vtysh_show_ip_bgp_route_map_cmd,
+      "show ip bgp route-map WORD",
+      SHOW_STR
+      IP_STR
+      BGP_STR
+      "Route Map reference"
+      "Pointer to route-map entries")
+{
+    const struct ovsrec_route_map *rt_map_row;
+    struct ovsrec_route_map_entry *rt_map_entry_row;
+    int i = 0, idx;
+    char *name = argv[0];
+    char *value;
+    OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
+        if (strcmp(name, rt_map_row->name) == 0) {
+            vty_out (vty, "BGP route map table entry for %s%s",
+                 name, VTY_NEWLINE);
+            for ( i = 0 ; i < rt_map_row->n_route_map_entries; i++) {
+                 rt_map_entry_row = rt_map_row->value_route_map_entries[i];
+                 vty_out (vty, "Entry %d:%s",
+                 i+1, VTY_NEWLINE);
+                 if (rt_map_entry_row->description) {
+                     vty_out (vty, "%4s %s : %s %s",
+                         "","description", rt_map_entry_row->description,
+                             VTY_NEWLINE);
+                 }
+                 if (rt_map_entry_row->action) {
+                     vty_out (vty, "%4s %s : %s %s",
+                         "","action", rt_map_entry_row->action,
+                             VTY_NEWLINE);
+                 }
+
+                 vty_out (vty, "%4s %s :%s",
+                         "","Set parameters",
+                             VTY_NEWLINE);
+
+                 for (idx = 0; set_table[idx].table_key; idx++) {
+                     VLOG_DBG("Checking value for set : %s",
+                         set_table[idx].table_key);
+                     value = smap_get(&rt_map_entry_row->set,
+                         set_table[idx].table_key);
+                     if (value) {
+                         vty_out(vty, "%4s %s : %s %s",
+                             "", set_table[idx].table_key, value,
+                                 VTY_NEWLINE);
+                     }
+                 }
+
+                 vty_out (vty, "%4s %s :%s",
+                         "","Match parameters",
+                             VTY_NEWLINE);
+                 for (idx = 0; match_table[idx].table_key; idx++) {
+                     VLOG_DBG("Checking value for match: %s",
+                         match_table[idx].table_key);
+                     value = smap_get(&rt_map_entry_row->match,
+                         match_table[idx].table_key);
+                     if (value) {
+                         vty_out(vty, "%4s %s : %s %s",
+                             "", match_table[idx].table_key, value,
+                                 VTY_NEWLINE);
+                     }
+                 }
+            }
+        }
+    }
+}
+
 
 DEFUN(vtysh_show_ip_bgp,
       vtysh_show_ip_bgp_cmd,
@@ -9797,6 +9894,7 @@ bgp_vty_init(void)
     install_element(ENABLE_NODE, &vtysh_show_ip_bgp_cmd);
     install_element(ENABLE_NODE, &vtysh_show_ip_bgp_route_cmd);
     install_element(ENABLE_NODE, &vtysh_show_ip_bgp_prefix_cmd);
+    install_element(ENABLE_NODE, &vtysh_show_ip_bgp_route_map_cmd);
 
     /* Install bgp top node. */
     install_node(&bgp_ipv4_unicast_node, NULL);
@@ -10964,23 +11062,6 @@ bgp_vty_init(void)
     install_element(ENABLE_NODE, &show_bgp_views_cmd);
 }
 
-/* Prefix List. */
-const struct lookup_entry match_table[] = {
-    {"ip address prefix-list", "prefix_list"},
-    {"ipv6 address prefix-list", "ipv6_prefix_list"},
-    {"community", "community"},
-    {"extcommunity", "extcommunity"},
-    {NULL, NULL},
-};
-
-const struct lookup_entry set_table[] = {
-    {"community", "community"},
-    {"metric", "metric"},
-    {"extcommunity rt", "extcommunity rt"},
-    {"extcommunity soo", "extcommunity soo"},
-    {NULL, NULL},
-};
-
 /*
  * Map 'CLI command argument list' to 'smap key'
  * Input
@@ -12006,6 +12087,229 @@ DEFUN(match_ip_address_prefix_list,
                                                argv[0]);
 }
 
+DEFUN (match_aspath,
+       match_aspath_cmd,
+       "match as-path WORD",
+       MATCH_STR
+       "Match BGP AS path list\n"
+       "AS path access-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "as-path",
+                                               argv[0]);
+}
+
+DEFUN (no_match_aspath,
+       no_match_aspath_cmd,
+       "no match as-path",
+       NO_STR
+       MATCH_STR
+       "Match BGP AS path list\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "as-path",
+                                               NULL);
+}
+
+ALIAS (no_match_aspath,
+       no_match_aspath_val_cmd,
+       "no match as-path WORD",
+       NO_STR
+       MATCH_STR
+       "Match BGP AS path list\n"
+       "AS path access-list name\n")
+
+
+DEFUN (match_origin,
+       match_origin_cmd,
+       "match origin (egp|igp|incomplete)",
+       MATCH_STR
+       "BGP origin code\n"
+       "remote EGP\n"
+       "local IGP\n"
+       "unknown heritage\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (strncmp (argv[0], "igp", 2) == 0)
+      return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "origin",
+                                               "igp");
+    if (strncmp (argv[0], "egp", 1) == 0)
+      return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "origin",
+                                               "egp");
+    if (strncmp (argv[0], "incomplete", 2) == 0)
+      return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "origin",
+                                               "incomplete");
+    return CMD_WARNING;
+}
+
+DEFUN (no_match_origin,
+       no_match_origin_cmd,
+       "no match origin",
+       NO_STR
+       MATCH_STR
+       "BGP origin code\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "origin",
+                                               NULL);
+}
+
+ALIAS (no_match_origin,
+       no_match_origin_val_cmd,
+       "no match origin (egp|igp|incomplete)",
+       NO_STR
+       MATCH_STR
+       "BGP origin code\n"
+       "remote EGP\n"
+       "local IGP\n"
+       "unknown heritage\n")
+
+
+DEFUN (match_metric,
+       match_metric_cmd,
+       "match metric <0-4294967295>",
+       MATCH_STR
+       "Match metric of route\n"
+       "Metric value\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "metric",
+                                               argv[0]);
+}
+
+DEFUN (no_match_metric,
+       no_match_metric_cmd,
+       "no match metric",
+       NO_STR
+       MATCH_STR
+       "Match metric of route\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "metric",
+                                               NULL);
+}
+
+ALIAS (no_match_metric,
+       no_match_metric_val_cmd,
+       "no match metric <0-4294967295>",
+       NO_STR
+       MATCH_STR
+       "Match metric of route\n"
+       "Metric value\n")
+
+DEFUN (match_ipv6_next_hop,
+       match_ipv6_next_hop_cmd,
+       "match ipv6 next-hop X:X::X:X",
+       MATCH_STR
+       IPV6_STR
+       "Match IPv6 next-hop address of route\n"
+       "IPv6 address of next hop\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 next-hop",
+                                               argv[0]);
+}
+
+DEFUN (no_match_ipv6_next_hop,
+       no_match_ipv6_next_hop_cmd,
+       "no match ipv6 next-hop X:X::X:X",
+       NO_STR
+       MATCH_STR
+       IPV6_STR
+       "Match IPv6 next-hop address of route\n"
+       "IPv6 address of next hop\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 next-hop",
+                                               NULL);
+}
+
+
+DEFUN (match_probability,
+       match_probability_cmd,
+       "match probability <0-100>",
+       MATCH_STR
+       "Match portion of routes defined by percentage value\n"
+       "Percentage of routes\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "probability",
+                                               argv[0]);
+}
+
+DEFUN (no_match_probability,
+       no_match_probability_cmd,
+       "no match probability",
+       NO_STR
+       MATCH_STR
+       "Match portion of routes defined by percentage value\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "probability",
+                                               NULL);
+}
+
+ALIAS (no_match_probability,
+       no_match_probability_val_cmd,
+       "no match probability <1-99>",
+       NO_STR
+       MATCH_STR
+       "Match portion of routes defined by percentage value\n"
+       "Percentage of routes\n")
+
+
+
 static int
 policy_set_route_map_set_in_ovsdb(struct vty *vty,
                                   const struct ovsrec_route_map_entry *
@@ -12041,6 +12345,354 @@ policy_set_route_map_set_in_ovsdb(struct vty *vty,
     smap_destroy (&smap_set);
     END_DB_TXN (policy_txn);
 }
+
+
+static int
+verify_as_path_string(int argc, const char **argv)
+{
+    int base = 10;
+    char *endptr, *str;
+    long val;
+    int index;
+
+    if ((argc < 0) || (argv == NULL)) {
+        return 1;
+    }
+
+    for (index = 0; index < argc; index++) {
+       str = argv[index];
+       errno = 0;    /* To distinguish success/failure after call */
+       val = strtol(str, &endptr, base);
+       /* Check for various possible errors */
+       if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN))
+               || (errno != 0 && val == 0)) {
+           return 1;
+       }
+       if ((endptr == str) || (*endptr != '\0')) {
+           return 1;
+       }
+       if ((val < 1) || (val > 4294967295)) {
+           return 1;
+       }
+    }
+    return 0;
+}
+
+
+static int
+policy_set_route_map_set_as_path_exclude_str_in_ovsdb(struct vty *vty,
+                                                const int argc,
+                                                const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (verify_as_path_string(argc, argv)) {
+        vty_out (vty, "%% Malformed argument%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    str = argv_concat (argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                      "as-path exclude", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+static int
+policy_set_route_map_set_as_path_prepend_str_in_ovsdb(struct vty *vty,
+                                                const int argc,
+                                                const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (verify_as_path_string(argc, argv)) {
+        vty_out (vty, "%% Malformed argument%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    str = argv_concat (argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                      "as-path prepend", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+
+
+DEFUN (set_aspath_exclude,
+       set_aspath_exclude_cmd,
+       "set as-path exclude .<1-4294967295>",
+       SET_STR
+       "Transform BGP AS_PATH attribute\n"
+       "Exclude from the as-path\n"
+       "AS number\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_as_path_exclude_str_in_ovsdb(vty, argc,
+                                                                      argv);
+}
+
+DEFUN (no_set_aspath_exclude,
+       no_set_aspath_exclude_cmd,
+       "no set as-path exclude",
+       NO_STR
+       SET_STR
+       "Transform BGP AS_PATH attribute\n"
+       "Exclude from the as-path\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+               policy_get_route_map_entry_in_ovsdb (rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "as-path exclude", NULL);
+}
+
+ALIAS (no_set_aspath_exclude,
+       no_set_aspath_exclude_val_cmd,
+       "no set as-path exclude .<1-4294967295>",
+       NO_STR
+       SET_STR
+       "Transform BGP AS_PATH attribute\n"
+       "Exclude from the as-path\n"
+       "AS number\n")
+
+DEFUN (set_aspath_prepend,
+       set_aspath_prepend_cmd,
+       "set as-path prepend ." CMD_AS_RANGE,
+       SET_STR
+       "Transform BGP AS_PATH attribute\n"
+       "Prepend to the as-path\n"
+       "AS number\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_as_path_prepend_str_in_ovsdb(vty, argc,
+                                                                 argv);
+}
+
+DEFUN (no_set_aspath_prepend,
+       no_set_aspath_prepend_cmd,
+       "no set as-path prepend",
+       NO_STR
+       SET_STR
+       "Transform BGP AS_PATH attribute\n"
+       "Prepend to the as-path\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+               policy_get_route_map_entry_in_ovsdb (rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "as-path prepend", NULL);
+}
+
+ALIAS (no_set_aspath_prepend,
+       no_set_aspath_prepend_val_cmd,
+       "no set as-path prepend ." CMD_AS_RANGE,
+       NO_STR
+       SET_STR
+       "Transform BGP AS_PATH attribute\n"
+       "Prepend to the as-path\n"
+       "AS number\n")
+
+DEFUN (set_origin,
+       set_origin_cmd,
+       "set origin (egp|igp|incomplete)",
+       SET_STR
+       "BGP origin code\n"
+       "remote EGP\n"
+       "local IGP\n"
+       "unknown heritage\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (strncmp (argv[0], "igp", 2) == 0) {
+        return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", "igp");
+    }
+    if (strncmp (argv[0], "egp", 1) == 0) {
+        return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", "egp");
+    }
+    if (strncmp (argv[0], "incomplete", 2) == 0) {
+        return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", "incomplete");
+    }
+    return 0;
+}
+
+DEFUN (no_set_origin,
+       no_set_origin_cmd,
+       "no set origin",
+       NO_STR
+       SET_STR
+       "BGP origin code\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", NULL);
+}
+
+ALIAS (no_set_origin,
+       no_set_origin_val_cmd,
+       "no set origin (egp|igp|incomplete)",
+       NO_STR
+       SET_STR
+       "BGP origin code\n"
+       "remote EGP\n"
+       "local IGP\n"
+       "unknown heritage\n")
+
+DEFUN (set_ipv6_nexthop_global,
+       set_ipv6_nexthop_global_cmd,
+       "set ipv6 next-hop global X:X::X:X",
+       SET_STR
+       IPV6_STR
+       "IPv6 next-hop address\n"
+       "IPv6 global address\n"
+       "IPv6 address of next hop\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "ipv6 next-hop global", argv[0]);
+}
+
+DEFUN (no_set_ipv6_nexthop_global,
+       no_set_ipv6_nexthop_global_cmd,
+       "no set ipv6 next-hop global",
+       NO_STR
+       SET_STR
+       IPV6_STR
+       "IPv6 next-hop address\n"
+       "IPv6 global address\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "ipv6 next-hop global", NULL);
+}
+
+ALIAS (no_set_ipv6_nexthop_global,
+       no_set_ipv6_nexthop_global_val_cmd,
+       "no set ipv6 next-hop global X:X::X:X",
+       NO_STR
+       SET_STR
+       IPV6_STR
+       "IPv6 next-hop address\n"
+       "IPv6 global address\n"
+       "IPv6 address of next hop\n")
+
+static int
+policy_set_route_map_set_comm_list_str_in_ovsdb(struct vty *vty,
+                                                const int argc,
+                                                const char **argv)
+{
+    char *argstr;
+    int ret = 0;
+    struct in_addr address;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    argstr = xmalloc(1024);
+
+    if (!argstr) {
+        return 0;
+    }
+
+    sprintf (argstr, "%s delete", argv[0]);
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                      "comm-list", argstr);
+
+    free (argstr);
+    return ret;
+}
+
+
+DEFUN (set_community_delete,
+       set_community_delete_cmd,
+       "set comm-list (<1-99>|<100-500>|WORD) delete",
+       SET_STR
+       "set BGP community list (for deletion)\n"
+       "Community-list number (standard)\n"
+       "Community-list number (expanded)\n"
+       "Community-list name\n"
+       "Delete matching communities\n")
+{
+    return policy_set_route_map_set_comm_list_str_in_ovsdb (vty, argc,
+                                                                 argv);
+}
+
+DEFUN (no_set_community_delete,
+       no_set_community_delete_cmd,
+       "no set comm-list",
+       NO_STR
+       SET_STR
+       "set BGP community list (for deletion)\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "comm-list", NULL);
+}
+
+ALIAS (no_set_community_delete,
+       no_set_community_delete_val_cmd,
+       "no set comm-list (<1-99>|<100-500>|WORD) delete",
+       NO_STR
+       SET_STR
+       "set BGP community list (for deletion)\n"
+       "Community-list number (standard)\n"
+       "Communitly-list number (expanded)\n"
+       "Community-list name\n"
+       "Delete matching communities\n")
+
+
 
 DEFUN(no_match_ip_address_prefix_list,
       no_match_ip_address_prefix_list_cmd,
@@ -13808,6 +14460,35 @@ void policy_vty_init(void)
     install_element(RMAP_NODE, &match_ecommunity_cmd);
     install_element(RMAP_NODE, &no_match_ecommunity_cmd);
     install_element(RMAP_NODE, &no_match_ecommunity_val_cmd);
+    install_element(RMAP_NODE, &match_aspath_cmd);
+    install_element(RMAP_NODE, &no_match_aspath_cmd);
+    install_element(RMAP_NODE, &no_match_aspath_val_cmd);
+    install_element(RMAP_NODE, &set_aspath_exclude_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_exclude_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_exclude_val_cmd);
+    install_element(RMAP_NODE, &set_aspath_prepend_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_prepend_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_prepend_val_cmd);
+    install_element(RMAP_NODE, &set_community_delete_cmd);
+    install_element(RMAP_NODE, &no_set_community_delete_cmd);
+    install_element(RMAP_NODE, &no_set_community_delete_val_cmd);
+    install_element(RMAP_NODE, &match_origin_cmd);
+    install_element(RMAP_NODE, & no_match_origin_cmd);
+    install_element(RMAP_NODE, & no_match_origin_val_cmd);
+    install_element(RMAP_NODE, &set_origin_cmd);
+    install_element(RMAP_NODE, &no_set_origin_cmd);
+    install_element(RMAP_NODE, &no_set_origin_val_cmd);
+    install_element(RMAP_NODE, &match_metric_cmd);
+    install_element(RMAP_NODE, &no_match_metric_cmd);
+    install_element(RMAP_NODE, &no_match_metric_val_cmd);
+    install_element(RMAP_NODE, &match_ipv6_next_hop_cmd);
+    install_element(RMAP_NODE, &no_match_ipv6_next_hop_cmd);
+    install_element(RMAP_NODE, &set_ipv6_nexthop_global_cmd);
+    install_element(RMAP_NODE, &no_set_ipv6_nexthop_global_cmd);
+    install_element(RMAP_NODE, &no_set_ipv6_nexthop_global_val_cmd);
+    install_element(RMAP_NODE, &match_probability_cmd);
+    install_element(RMAP_NODE, &no_match_probability_cmd);
+    install_element(RMAP_NODE, &no_match_probability_val_cmd);
     install_element(RMAP_NODE, &set_metric_cmd);
     install_element(RMAP_NODE, &no_set_metric_cmd);
     install_element(RMAP_NODE, &no_set_metric_val_cmd);
