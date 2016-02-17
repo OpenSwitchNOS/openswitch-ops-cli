@@ -25,6 +25,8 @@
 
 #define VERIFY_VLAN_IFNAME(s) strncasecmp(s, "vlan", 4)
 
+#define DEFAULT_VLAN    1
+
 #define GET_VLANIF(s, a) \
         strcpy(s, "vlan"); \
         strcat(s, (a+4));
