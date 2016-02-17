@@ -166,6 +166,16 @@ class bgpCLItest(OpsVsiTest):
         match_community_str_flag = False
         match_extcommunity_str = "match extcommunity e1"
         match_extcommunity_str_flag = False
+	match_aspath_str = "match as-path 20"
+	match_aspath_flag = False
+        match_origin_str = "match origin egp"
+        match_origin_flag = False
+        match_metric_str = "match metric 22"
+        match_metric_flag = False
+        match_ipv6_nexthop_str = "match ipv6 next-hop 20:10::20:20"
+        match_ipv6_nexthop_flag = False
+        match_probability_str = "match probability 22"
+        match_probability_flag = False
 
         s1 = self.net.switches[0]
         s1.cmdCLI("configure terminal")
@@ -173,6 +183,11 @@ class bgpCLItest(OpsVsiTest):
         s1.cmdCLI(match_ipv6_prefix_list_str)
         s1.cmdCLI(match_community_str)
         s1.cmdCLI(match_extcommunity_str)
+	s1.cmdCLI(match_aspath_str)
+	s1.cmdCLI(match_origin_str)
+	s1.cmdCLI(match_metric_str)
+	s1.cmdCLI(match_ipv6_nexthop_str)
+        s1.cmdCLI(match_probability_str)
         s1.cmdCLI("end")
 
         dump = s1.cmdCLI("show running-config")
@@ -184,6 +199,18 @@ class bgpCLItest(OpsVsiTest):
                 match_community_str_flag = True
             elif match_extcommunity_str in line:
                 match_extcommunity_str_flag = True
+	    elif match_aspath_str in line:
+		match_aspath_flag = True
+            elif match_origin_str in line:
+                match_origin_flag = True
+            elif match_metric_str in line:
+                match_metric_flag = True
+            elif match_ipv6_nexthop_str in line:
+                match_ipv6_nexthop_flag = True
+            elif match_probability_str in line:
+                match_probability_flag = True
+
+
 
         if match_ipv6_prefix_list_flag is False:
             info("###  Error configuring 'match ipv6 address prefix-list' ###\n")
@@ -191,10 +218,26 @@ class bgpCLItest(OpsVsiTest):
             info("###  Error configuring 'match community' ###\n")
         elif match_extcommunity_str_flag is False:
             info("###  Error configuring 'match extcommunity' ###\n")
+	elif match_aspath_flag is False:
+	    info("###  Error configuring 'match as-path' ###\n")
+        elif match_origin_flag is False:
+            info("###  Error configuring 'match origin' ###\n")
+        elif match_metric_flag is False:
+            info("###  Error configuring 'match metric' ###\n")
+        elif match_ipv6_nexthop_flag is False:
+            info("###  Error configuring 'match ipv6 address next-hop' ###\n")
+        elif match_probability_flag is False:
+            info("###  Error configuring 'match probability' ###\n")
+
 
         if match_ipv6_prefix_list_flag is False or \
            match_community_str_flag is False or \
-           match_extcommunity_str_flag is False:
+           match_extcommunity_str_flag is False or \
+	   match_aspath_flag is False or \
+	   match_metric_flag is False or \
+           match_origin_flag is False or \
+	   match_ipv6_nexthop_flag is False or \
+           match_probability_flag is False:
             info("### Test to configure Route-Map match commands FAILED! ###\n")
 
     def unconfigure_routemap_match(self):
@@ -210,6 +253,23 @@ class bgpCLItest(OpsVsiTest):
         match_extcommunity_str = "match extcommunity e1"
         no_match_extcommunity_str = "no match extcommunity e1"
         match_extcommunity_str_flag = False
+        match_aspath_str = "match as-path 20"
+	no_match_aspath_str = "no match as-path 20"
+        match_aspath_flag = False
+        match_metric_str = "match metric 22"
+        no_match_metric_str = "no match metric 22"
+        match_metric_flag = False
+        match_origin_str = "match origin egp"
+        no_match_origin_str = "no match origin egp"
+        match_origin_flag = False
+        match_ipv6_nexthop_str = "match ipv6 next-hop 20:10::20:20"
+        no_match_ipv6_nexthop_str = "no match ipv6 next-hop 20:10::20:20"
+        match_ipv6_nexthop_flag = False
+        match_probability_str = "match probability 22"
+        no_match_probability_str = "no match probability 22"
+        match_probability_flag = False
+
+
 
         s1 = self.net.switches[0]
         s1.cmdCLI("configure terminal")
@@ -217,6 +277,11 @@ class bgpCLItest(OpsVsiTest):
         s1.cmdCLI(no_match_ipv6_prefix_list_str)
         s1.cmdCLI(no_match_community_str)
         s1.cmdCLI(no_match_extcommunity_str)
+	s1.cmdCLI(no_match_aspath_str)
+        s1.cmdCLI(no_match_ipv6_nexthop_str)
+        s1.cmdCLI(no_match_metric_str)
+        s1.cmdCLI(no_match_origin_str)
+        s1.cmdCLI(no_match_probability_str)
         s1.cmdCLI("end")
 
         dump = s1.cmdCLI("show running-config")
@@ -228,6 +293,17 @@ class bgpCLItest(OpsVsiTest):
                 match_community_str_flag = True
             elif match_extcommunity_str in line:
                 match_extcommunity_str_flag = True
+	    elif match_aspath_str in line:
+		match_aspath_flag = True
+            elif match_ipv6_nexthop_str in line:
+                match_ipv6_nexthop_flag = True
+            elif match_metric_str in line:
+                match_metric_flag = True
+            elif match_origin_str in line:
+                match_origin_flag = True
+            elif match_probability_str in line:
+                match_probability_flag = True
+
 
         if match_ipv6_prefix_list_flag is True:
             info("###  Error unconfiguring 'match ipv6 address prefix-list' ###\n")
@@ -235,10 +311,26 @@ class bgpCLItest(OpsVsiTest):
             info("###  Error unconfiguring 'match community' ###\n")
         elif match_extcommunity_str_flag is True:
             info("###  Error unconfiguring 'match extcommunity' ###\n")
+	elif match_aspath_flag is True:
+	    info("###  Error unconfiguring 'match as-path' ###\n")
+        elif match_ipv6_nexthop_flag is True:
+            info("###  Error unconfiguring 'match ipv6 address next-hop' ###\n")
+        elif match_metric_flag is True:
+            info("###  Error unconfiguring 'match metric' ###\n")
+        elif match_origin_flag is True:
+            info("###  Error unconfiguring 'match origin' ###\n")
+        elif match_probability_flag is True:
+            info("###  Error unconfiguring 'match probability' ###\n")
+
 
         if match_ipv6_prefix_list_flag is True or \
            match_community_str_flag is True or \
-           match_extcommunity_str_flag is True:
+           match_extcommunity_str_flag is True or \
+           match_ipv6_nexthop_flag is True or \
+           match_metric_flag is True or \
+           match_origin_flag is True or \
+	   match_aspath_flag is True or \
+           match_probability_flag is True:
             info("### Test to unconfigure Route-Map match commands FAILED! ###\n")
 
 
