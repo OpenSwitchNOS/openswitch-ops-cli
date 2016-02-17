@@ -595,6 +595,14 @@ ovsdb_init(const char *db_path)
     /* Add switch version column */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_switch_version);
 
+    /* Add Source Repository table for show version detail. */
+    ovsdb_idl_add_table(idl, &ovsrec_table_source_repository);
+
+    /* Add name, src_uri and version column for show version detail. */
+    ovsdb_idl_add_column(idl, &ovsrec_source_repository_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_source_repository_col_src_uri);
+    ovsdb_idl_add_column(idl, &ovsrec_source_repository_col_version);
+
     /* Add hostname columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
@@ -1512,6 +1520,24 @@ utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
                         token->desc);
                 }
             }
+        }
+    }
+}
+
+/* Show version detail */
+void
+vtysh_ovsdb_show_version_detail()
+{
+    struct ovsrec_source_repository *src_repo_row = NULL;
+
+    vty_out(vty, "----------------------------------------------------------------------------------------------------------------------\n");
+    vty_out(vty, " %-64s  %-128s  %-128s\n",
+        "NAME", "SOURCE URI", "VERSION");
+    vty_out(vty, "----------------------------------------------------------------------------------------------------------------------\n");
+    OVSREC_SOURCE_REPOSITORY_FOR_EACH(src_repo_row, idl) {
+        if (src_repo_row) {
+            vty_out(vty, " %-64s %-128s %-128s\n",
+                src_repo_row->name, src_repo_row->src_uri, src_repo_row->version);
         }
     }
 }
