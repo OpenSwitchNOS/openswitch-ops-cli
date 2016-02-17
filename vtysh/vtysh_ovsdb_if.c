@@ -580,6 +580,15 @@ ovsdb_init(const char *db_path)
     /* Add switch version column */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_switch_version);
 
+    /* Add Package_Info table for show version detail. */
+    ovsdb_idl_add_table(idl, &ovsrec_table_package_info);
+
+    /* Add name, src_url, src_type version column for show version detail. */
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_version);
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_src_type);
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_src_url);
+
     /* Add hostname columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
@@ -1481,6 +1490,25 @@ utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
                         token->desc);
                 }
             }
+        }
+    }
+}
+
+/* Show version detail */
+void
+vtysh_ovsdb_show_version_detail(void)
+{
+    const struct ovsrec_package_info *row = NULL;
+
+    OVSREC_PACKAGE_INFO_FOR_EACH(row, idl) {
+        if (row) {
+            vty_out(vty, "PACKAGE     : %-128s\n",  row->name);
+            vty_out(vty, "VERSION     : %-128s\n",
+                (row->version[0] == '\0') ? "Not Available" : row->version);
+            vty_out(vty, "SOURCE TYPE : %-128s\n",
+                (row->src_type[0] == '\0') ? "Not Available" : row->src_type);
+            vty_out(vty, "SOURCE URL  : %-128s\n\n",
+                (row->src_url[0] == '\0') ? "Not Available" : row->src_url);
         }
     }
 }
