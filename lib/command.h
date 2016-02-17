@@ -307,6 +307,7 @@ struct dyn_cb_func
  *                    | range
  *                    | ipv4
  *                    | ipv4_prefix
+ *                    | ipv4_netmask
  *                    | ipv6
  *                    | ipv6_prefix ;
  *
@@ -330,6 +331,7 @@ struct dyn_cb_func
  * range = "<" , number , "-" , number , ">" ;
  * ipv4 = "A.B.C.D" ;
  * ipv4_prefix = "A.B.C.D/M" ;
+ * ipv4_netmask = "A.B.C.D/W.X.Y.Z" ;
  * ipv6 = "X:X::X:X" ;
  * ipv6_prefix = "X:X::X:X/M" ;
  * option = "[" , variable , "]" ;
@@ -531,6 +533,7 @@ struct dyn_cb_func
 
 #define CMD_IPV4(S)	   ((strcmp ((S), "A.B.C.D") == 0))
 #define CMD_IPV4_PREFIX(S) ((strcmp ((S), "A.B.C.D/M") == 0))
+#define CMD_IPV4_NETMASK(S) ((strcmp ((S), "A.B.C.D/W.X.Y.Z") == 0))
 #define CMD_IPV6(S)        ((strcmp ((S), "X:X::X:X") == 0))
 #define CMD_IPV6_PREFIX(S) ((strcmp ((S), "X:X::X:X/M") == 0))
 
