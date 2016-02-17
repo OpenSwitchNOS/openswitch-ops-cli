@@ -625,6 +625,9 @@ struct dyn_cb_func
 
 #endif /* HAVE_IPV6 */
 
+/* Show version detail help strings */
+#define SHOW_VERSION_STR           "Displays switch version\n"
+#define SHOW_VERSION_DETAIL_STR    "Show version of each package/daemon\n"
 
 /* Prototypes. */
 extern void install_node (struct cmd_node *, int (*) (struct vty *));
