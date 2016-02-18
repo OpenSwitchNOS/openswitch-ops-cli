@@ -679,4 +679,31 @@ extern char *command_cr;
 void install_dyn_helpstr_funcptr(char *funcname,
                    void (*funcptr)(struct cmd_token *token, struct vty *vty, \
                             char * const dyn_helpstr_ptr, int max_strlen));
+
+#define MAX_IFNAME_LENGTH 50
+#define DECIMAL_STRLEN_MAX 10
+#define COMMA_ERR  1
+#define COMMA_STR_VALID 0
+
+struct range_list
+{
+    char value[DECIMAL_STRLEN_MAX +1];
+    struct range_list *link;
+};
+
+void cmd_display_range_list(struct range_list *);
+struct range_list *cmd_free_memory_range_list(struct range_list *);
+char *cmd_allocate_memory_str(const char *);
+
+enum cli_int_type
+{
+    COMMA_OPERATOR=0,
+    RANGE_OPERATOR,
+    BOTH_OPERATOR
+};
+
+struct range_list* cmd_get_range_value(const char *, int);
+int cmd_input_comma_str_is_valid(const char *, enum cli_int_type);
+int cmd_input_range_match(const char *, const char *, enum cli_int_type);
+
 #endif /* _ZEBRA_COMMAND_H */

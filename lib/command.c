@@ -890,6 +890,9 @@ enum match_type
   range_match,
   vararg_match,
   partly_match,
+  range_match_comma,
+  range_match_list,
+  range_match_comma_list,
   exact_match
 };
 
@@ -1329,8 +1332,43 @@ cmd_word_match(struct cmd_token *token,
     }
   else if (CMD_RANGE(str))
     {
-      if (cmd_range_match(str, word))
-        return range_match;
+        if ((str[1] == 'C') && (str[2] == ':'))
+        {
+            char *buf = cmd_allocate_memory_str(str);
+            buf[2] = '<';
+            if (cmd_input_range_match(buf+2, word, COMMA_OPERATOR) == 1)
+            {
+                free(buf);
+                return range_match_comma;
+            }
+            free(buf);
+        }
+        else if ((str[1] == 'L') && (str[2] == ':'))
+        {
+            char *buf = cmd_allocate_memory_str(str);
+            buf[2] = '<';
+            if (cmd_input_range_match(buf+2, word, RANGE_OPERATOR) == 1)
+            {
+                free(buf);
+                return range_match_list;
+            }
+            free(buf);
+        }
+        else if ((str[1] == 'A') && (str[2] == ':'))
+        {
+            char *buf = cmd_allocate_memory_str(str);
+            buf[2] = '<';
+            if (cmd_input_range_match(buf+2, word, BOTH_OPERATOR) == 1)
+            {
+                free(buf);
+                return range_match_comma_list;
+            }
+            free(buf);
+        }
+        else if (cmd_range_match(str, word))
+        {
+            return range_match;
+        }
     }
 #ifdef HAVE_IPV6
   else if (CMD_IPV6(str))
@@ -1365,8 +1403,57 @@ cmd_word_match(struct cmd_token *token,
 #ifdef ENABLE_OVSDB
   else if (CMD_IFNAME(str))
     {
-      if(cmd_ifname_match(word) == 0)
-        return ifname_match;
+        if (cmd_input_comma_str_is_valid(word, BOTH_OPERATOR) != COMMA_ERR)
+        {
+            char *buf = cmd_allocate_memory_str(word);
+            char *temp = buf;
+            int flag = 0;
+            unsigned long min_max[2];
+            unsigned long i = 0;
+            char buf_temp[DECIMAL_STRLEN_MAX + 1];
+            temp = strtok (temp, ",");
+            while (temp)
+            {
+                if (strchr(temp, '-'))
+                {
+                    if (cmd_ifname_match (temp) != 0)
+                    {
+                        get_list_value (temp, min_max);
+                        if (min_max[0] >= min_max[1])
+                            return no_match;
+                        for (i = min_max[0]; i<=min_max[1]; i++)
+                        {
+                            sprintf(buf_temp, "%lu", i);
+                            if (cmd_ifname_match(buf_temp) != 0)
+                            {
+                                flag = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if(cmd_ifname_match(temp) != 0)
+                    {
+                        flag =1;
+                        break;
+                    }
+                }
+                temp = strtok(NULL, ",");
+            }
+            if (flag == 0)
+            {
+                free(buf);
+                return ifname_match;
+            }
+            free(buf);
+        }
+        else if (cmd_ifname_match (word) == 0)
+        {
+            return ifname_match;
+        }
+        return no_match;
     }
   else if (CMD_PORT(str))
     {
@@ -2056,6 +2143,7 @@ is_cmd_ambiguous (vector cmd_vector,
   const char *matched = NULL;
   vector match_vector;
   struct cmd_token *cmd_token;
+  char *buf = NULL;
 
   if (command == NULL)
     command = "";
@@ -2104,6 +2192,36 @@ is_cmd_ambiguous (vector cmd_vector,
 		      match++;
 		    }
 		  break;
+                case range_match_comma:
+                  buf = cmd_allocate_memory_str(str);
+                  buf[2] = '<';
+                  if (cmd_input_range_match(buf+2, command, COMMA_OPERATOR) == 1)
+                  {
+                      matched = str;
+                      match++;
+                  }
+                  free(buf);
+                  break;
+                case range_match_list:
+                   buf = cmd_allocate_memory_str(str);
+                   buf[2] = '<';
+                   if (cmd_input_range_match(buf+2, command, RANGE_OPERATOR) == 1)
+                   {
+                       matched = str;
+                       match++;
+                   }
+                   free(buf);
+                   break;
+                case range_match_comma_list:
+                   buf = cmd_allocate_memory_str(str);
+                   buf[2] = '<';
+                   if (cmd_input_range_match(buf+2, command, BOTH_OPERATOR) == 1)
+                   {
+                       matched = str;
+                       match++;
+                   }
+                   free(buf);
+                   break;
 #ifdef HAVE_IPV6
 		case ipv6_match:
 		  if (CMD_IPV6 (str))
@@ -2196,10 +2314,44 @@ cmd_entry_function_desc (const char *src, const char *dst)
 
   if (CMD_RANGE (dst))
     {
-      if (cmd_range_match (dst, src))
-	return dst;
-      else
-	return NULL;
+      if ((dst[1] == 'C') && (dst[2] == ':'))
+      {
+          char *buf = cmd_allocate_memory_str(dst);
+          buf[2] = '<';
+          if (cmd_input_range_match(buf+2, src, COMMA_OPERATOR) == 1)
+          {
+              free(buf);
+              return dst;
+          }
+          free(buf);
+      }
+      else if((dst[1] == 'L') && (dst[2] == ':'))
+      {
+          char *buf = cmd_allocate_memory_str(dst);
+          buf[2] = '<';
+          if (cmd_input_range_match(buf+2, src, RANGE_OPERATOR) == 1)
+          {
+              free(buf);
+              return dst;
+          }
+          free(buf);
+      }
+      else if ((dst[1] == 'A') && (dst[2] == ':'))
+      {
+          char *buf = cmd_allocate_memory_str(dst);
+          buf[2] = '<';
+          if (cmd_input_range_match(buf+2, src, BOTH_OPERATOR) == 1)
+          {
+              free(buf);
+              return dst;
+          }
+          free(buf);
+      }
+      else if (cmd_range_match (dst, src))
+      {
+          return dst;
+      }
+      return NULL;
     }
 
 #ifdef HAVE_IPV6
@@ -2238,7 +2390,9 @@ cmd_entry_function_desc (const char *src, const char *dst)
 
 #ifdef ENABLE_OVSDB
   if (CMD_IFNAME(dst))
+  {
     return dst;
+  }
 
   if (CMD_PORT(dst))
     return dst;
@@ -2986,15 +3140,52 @@ cmd_execute_command_real (vector vline,
   /* Execute matched command. */
   if(((matched_element->attr) & CMD_ATTR_NOLOCK) == 0)
   {
-    VTYSH_OVSDB_LOCK;
-    VLOG_DBG("Setting the latch");
-    latch_set(&ovsdb_latch);
-    ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
-    VTYSH_OVSDB_UNLOCK;
+      //VTYSH_OVSDB_LOCK;
+      VLOG_DBG("Setting the latch");
+      latch_set(&ovsdb_latch);
+      struct range_list *temp = vty->index_list;
+      static char ifnumber[MAX_IFNAME_LENGTH +1];
+      if (temp != NULL)
+      {
+          while (temp != NULL)
+          {
+              VTYSH_OVSDB_LOCK;
+              strcpy(ifnumber, temp->value);
+              vty->index = ifnumber;
+              ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              temp = temp->link;
+              VTYSH_OVSDB_UNLOCK;
+              if (vty->index == NULL)
+                  break;
+          }
+      }
+      else
+      {
+          VTYSH_OVSDB_LOCK;
+          ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+          VTYSH_OVSDB_UNLOCK;
+      }
   }
   else
   {
-    ret = (*matched_element->func)(matched_element, vty, 0, argc, argv);
+      struct range_list *temp = vty->index_list;
+      static char ifnumber[MAX_IFNAME_LENGTH];
+      if (temp != NULL)
+      {
+          while (temp != NULL)
+          {
+              strcpy(ifnumber, temp->value);
+              vty->index = ifnumber;
+              ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              temp = temp->link;
+              if (vty->index == NULL)
+                  break;
+          }
+      }
+      else
+      {
+          ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+      }
   }
   return ret;
 }
@@ -3024,6 +3215,8 @@ cmd_execute_command (vector vline, struct vty *vty, struct cmd_element **cmd,
 
   if ( cmd_try_do_shortcut(vty->node, vector_slot(vline, 0) ) )
     {
+      struct range_list* temp = vty->index_list;
+      vty->index_list = NULL;
       vector shifted_vline;
       unsigned int index;
 
@@ -3041,6 +3234,7 @@ cmd_execute_command (vector vline, struct vty *vty, struct cmd_element **cmd,
 
       vector_free(shifted_vline);
       vty->node = onode;
+      vty->index_list = temp;
       return ret;
   }
 
@@ -3298,6 +3492,7 @@ DEFUN (config_exit,
 	vty->status = VTY_CLOSE;
       break;
     case CONFIG_NODE:
+      vty->index_list = cmd_free_memory_range_list (vty->index_list);
       vty->node = ENABLE_NODE;
       vty_config_unlock (vty);
       break;
@@ -3338,6 +3533,8 @@ DEFUN (config_exit,
     default:
       break;
     }
+    vty->index = NULL;
+    vty->index_list = NULL;
   return CMD_SUCCESS;
 }
 
@@ -3395,6 +3592,7 @@ DEFUN (config_end,
     default:
       break;
     }
+  vty->index_list = cmd_free_memory_range_list (vty->index_list);
   return CMD_SUCCESS;
 }
 
@@ -4865,33 +5063,41 @@ cmd_terminate_node_element (void *del_ptr, enum data_type del_type)
   if (cmdvec)
   {
       for (i = 0; i < vector_active (cmdvec); i++)
-        if ((cmd_node = vector_slot (cmdvec, i)) != NULL)
-        {
-            if ((del_type == NODE) && (cmd_node == del_ptr)) {
-                    cmd_node_v = cmd_node->cmd_vector;
-                    for (j = 0; j < vector_active (cmd_node_v); j++) {
-                      if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL) {
-                                vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
-                          }
+      {
+          if ((cmd_node = vector_slot (cmdvec, i)) != NULL)
+          {
+              if ((del_type == NODE) && (cmd_node == del_ptr))
+              {
+                  cmd_node_v = cmd_node->cmd_vector;
+                  for (j = 0; j < vector_active (cmd_node_v); j++)
+                  {
+                      if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL)
+                      {
+                          vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
                       }
-                vector_free (cmd_node_v);
-                cmdvec->index[i] = NULL;
-                break;
-
-            } else if ((del_type == ELEMENT)) {
-                cmd_node_v = cmd_node->cmd_vector;
-                for (j = 0; j < vector_active (cmd_node_v); j++) {
-                        if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL) {
-                                if (cmd_element == del_ptr) {
-                                        vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
-                                        break;
-                                }
-                        }
-                }
-
-            }
-       }
-   }
+                  }
+                  vector_free (cmd_node_v);
+                  cmdvec->index[i] = NULL;
+                  break;
+              }
+              else if ((del_type == ELEMENT))
+              {
+                  cmd_node_v = cmd_node->cmd_vector;
+                  for (j = 0; j < vector_active (cmd_node_v); j++)
+                  {
+                      if ((cmd_element = vector_slot (cmd_node_v, j)) != NULL)
+                      {
+                          if (cmd_element == del_ptr)
+                          {
+                              vector_slot (cmd_node_v, j) = cmd_terminate_element(cmd_element);
+                              break;
+                          }
+                       }
+                  }
+              }
+          }
+      }
+  }
 }
 /*
  * Function : install_dyn_helpstr_funcptr
@@ -4915,4 +5121,314 @@ install_dyn_helpstr_funcptr(char *funcname,
     dyn_cb_lookup = new_node;
 
     return;
+}
+
+#define COMMA_ERR  1
+#define COMMA_STR_VALID 0
+char *
+cmd_allocate_memory_str(const char *str)
+{
+    char *buf = NULL;
+    buf = (char*)malloc(strlen(str)+1);
+    if (buf)
+        strcpy(buf,str);
+    return buf;
+}
+
+void
+cmd_free_memory_str(char *str)
+{
+    free(str);
+}
+
+int
+get_list_value(const char *str, unsigned long *num_range)
+{
+    char *endptr = NULL;
+    char *p;
+    char buf[DECIMAL_STRLEN_MAX + 1];
+    unsigned long start,end;
+
+    p = strchr (str, '-');
+    if (p == NULL)
+        return 0;
+    strncpy (buf, str, p-str);
+    buf[p-str] = '\0';
+    start = strtoul (buf, &endptr, 10);
+    if (*endptr != '\0')
+        return 0;
+    str=p+1;
+    if (*str == '\0')
+        return 0;
+    end = strtoul (str, &endptr, 10);
+    if (*endptr != '\0')
+        return 0;
+    num_range[0] = start;
+    num_range[1] = end;
+    if(start >= end)
+        return 0;
+    return 1;
+}
+
+int
+cmd_input_comma_str_is_valid(const char *str, enum cli_int_type type)
+{
+    char *p = str;
+
+    if (str == NULL)
+        return COMMA_ERR;
+
+    if (*p < '0' || *p > '9')
+        return COMMA_ERR;
+    p++;
+    if (*p =='\0' && type == RANGE_OPERATOR)
+    {
+        return COMMA_ERR;
+    }
+    while (*p)
+    {
+        if ( ((type == BOTH_OPERATOR) && ((*p == ',' || *p == '-'))) ||
+           ((type == COMMA_OPERATOR) && (*p == ',')) ||
+           ((type == RANGE_OPERATOR) && (*p == '-')) )
+        {
+            if (*(p+1) >= '0' && *(p+1) <= '9')
+            {
+                p += 2;
+                continue;
+            }
+            else
+            {
+                return COMMA_ERR;
+            }
+        }
+        if (*p >= '0' && *p <= '9')
+        {
+            p++;
+            continue;
+        }
+        return COMMA_ERR;
+    }
+    return COMMA_STR_VALID;
+}
+
+int
+cmd_input_is_within_range(const char *str, const char *range)
+{
+    if (str == NULL || range == NULL)
+        return COMMA_ERR;
+
+    unsigned long min_max[2];
+    unsigned long temp_min_max[2];
+    unsigned long val;
+
+    char *tmp = NULL;
+    char *temp_free = NULL;
+    char *endptr = NULL;
+
+    char *buf = cmd_allocate_memory_str(range);
+    char *first_ptr  = strchr(buf,'<');
+    char *second_ptr = strchr(buf,'>');
+
+    first_ptr++;
+    *second_ptr = '\0';
+    get_list_value(first_ptr, min_max);
+    cmd_free_memory_str(buf);
+
+    temp_free = tmp = cmd_allocate_memory_str (str);
+
+    tmp = strtok(tmp, ",");
+    while (tmp)
+    {
+        if (strchr(tmp,'-'))
+        {
+            get_list_value(tmp, temp_min_max);
+            if (temp_min_max[0] < min_max[0] || temp_min_max[0] > min_max[1])
+            {
+                cmd_free_memory_str (temp_free);
+                return COMMA_ERR;
+            }
+            if (temp_min_max[1] < min_max[0] || temp_min_max[1] > min_max[1])
+            {
+                cmd_free_memory_str (temp_free);
+                return COMMA_ERR;
+            }
+            if (temp_min_max[0] >= temp_min_max[1])
+            {
+                cmd_free_memory_str (temp_free);
+                return COMMA_ERR;
+            }
+        }
+        else
+        {
+            val = strtoul (tmp, &endptr, 10);
+            if (*endptr != '\0')
+            {
+                cmd_free_memory_str (temp_free);
+                return COMMA_ERR;
+            }
+            if(val < min_max[0] || val  > min_max[1])
+            {
+                cmd_free_memory_str (temp_free);
+                return COMMA_ERR;
+            }
+        }
+        tmp = strtok (NULL, ",");
+    }
+    cmd_free_memory_str (temp_free);
+    return COMMA_STR_VALID;
+}
+
+void
+cmd_display_range_list(struct range_list *list)
+{
+   if (list == NULL)
+       return;
+   while (list->link != NULL)
+   {
+       //vty_out (vty, "%s, ", (list->value));
+       printf ("%s, ", (list->value));
+       list = list->link;
+   }
+   //vty_out (vty, "%s ", (list->value));
+   printf ("%s ", (list->value));
+   list = NULL;
+}
+
+struct range_list *
+cmd_free_memory_range_list(struct range_list *list)
+{
+    while(list != NULL)
+    {
+        struct range_list *temp = list;
+        list = list->link;
+        free(temp);
+    }
+    return NULL;
+}
+
+struct range_list*
+cmd_insert_value_list(struct range_list *node, char *str)
+{
+    struct range_list *temp = NULL;
+    if (node == NULL)
+    {
+        temp = (struct range_list*)malloc (sizeof(struct range_list));
+        if (temp)
+        {
+            strcpy (temp->value, str);
+            temp->link = NULL;
+            return temp;
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+    else
+    {
+        node->link = cmd_insert_value_list (node->link, str);
+    }
+    return node;
+}
+
+struct range_list*
+cmd_get_list_from_range_str (const char *str_ptr, int flag_intf)
+{
+    unsigned long i;
+    char *tmp = NULL;
+    unsigned long num[2];
+    struct range_list *node = NULL;
+    char buf[DECIMAL_STRLEN_MAX + 1];
+
+    if (strchr (str_ptr, '-'))
+    {
+        tmp = str_ptr;
+        if ((flag_intf == 1) && (cmd_ifname_match (tmp) == 0))
+        {
+            node = cmd_insert_value_list (node,tmp);
+        }
+        else if (get_list_value (tmp, num) == 1)
+        {
+            for(i = num[0]; i <= num[1]; i++)
+            {
+                sprintf(buf, "%lu", i);
+                node = cmd_insert_value_list (node, buf);
+            }
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+    return node;
+}
+
+struct range_list*
+cmd_get_range_value (const char *value, int flag_intf)
+{
+    struct range_list *node = NULL;
+    struct range_list *temp, *temp_node = NULL;
+    char *str_ptr = value;
+    char *tmp = NULL;
+    unsigned long i = 0;
+    char *endptr = NULL;
+    if (strchr (str_ptr, ','))
+    {
+        tmp = strtok (str_ptr, ",");
+        while (tmp != NULL)
+        {
+            if(strchr (tmp, '-'))
+            {
+                if (node == NULL)
+                {
+                    node = cmd_get_list_from_range_str (tmp, flag_intf);
+                }
+                else
+                {
+                    temp_node = node;
+                    temp = cmd_get_list_from_range_str (tmp, flag_intf);
+                    if (temp != NULL)
+                    {
+                         while(temp_node->link != NULL)
+                             temp_node = temp_node->link;
+                         temp_node->link = temp;
+                    }
+                }
+            }
+            else
+            {
+                node = cmd_insert_value_list (node, tmp);
+            }
+            tmp = strtok (NULL, ",");
+        }
+    }
+    else if (strchr (str_ptr, '-'))
+    {
+       node = cmd_get_list_from_range_str (str_ptr, flag_intf);
+       if (node == NULL)
+           return NULL;
+    }
+    else
+    {
+        node = cmd_insert_value_list (node, str_ptr);
+    }
+    return node;
+}
+
+int
+cmd_input_range_match(const char *range, const char *str, enum cli_int_type type)
+{
+    if (str == NULL)
+        return 1;
+    if (cmd_input_comma_str_is_valid(str, type) != COMMA_ERR)
+    {
+        if ((type == COMMA_OPERATOR) || (type == BOTH_OPERATOR))
+        {
+            if (cmd_input_is_within_range (str, range) == COMMA_ERR)
+                return 0;
+        }
+        return 1;
+    }
+    else
+        return 0;
 }
