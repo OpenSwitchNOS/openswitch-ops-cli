@@ -61,7 +61,6 @@ class staticRouteConfigTest(OpsVsiTest):
 
     def test_ipv4(self):
         info('''
-
 ########## Test to verify IPv4 static routes ##########
 ''')
         s1 = self.net.switches[0]
@@ -178,11 +177,36 @@ class staticRouteConfigTest(OpsVsiTest):
             and 'static' in ret, 'Multiple nexthops verification failed'
         info('### Multiple nexthops verification successful ###\n')
 
+        info('''
+### Verify if nexthop is not assigned locally to an interface as a primary '''
+             '''ip address ###\n''')
+        s1.cmdCLI('ip route 192.168.3.0/24 192.168.2.1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 192.168.3.0/24 192.168.2.1' in ret, \
+                'Primary ip address check for nexthop failed'
+        info('### Nexthop ip address verification successful against local '
+             'primary address  ###\n')
+
+        info('''
+### Verify if nexthop is not assigned locally to an interface as a '''
+             '''secondary ip address ###\n''')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('ip address 192.168.2.2/24 secondary')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('ip route 192.168.3.0/24 192.168.2.2')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 192.168.3.0/24 192.168.2.2'in ret, \
+                'Secondary ip address check for nexthop failed'
+        info('### Nexthop ip address verification successful against local '
+             'secondary address ###\n\n\n')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('no ip address 192.168.2.2/24 secondary')
+        s1.cmdCLI('exit')
+
+
     def test_ipv6(self):
 
         info('''
-
-
 ########## Test to verify IPv6 static routes ##########
 ''')
         s1 = self.net.switches[0]
@@ -265,10 +289,35 @@ class staticRouteConfigTest(OpsVsiTest):
             'Multiple nexthops prefix verification failed'
         info('### Multiple nexthops verification successful ###\n')
 
+        info('''
+### Verify if nexthop is not assigned locally to an interface as a primary '''
+             '''ipv6 address ###\n''')
+        s1.cmdCLI('ipv6 route 2002::/120 2001::1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route 2002::/120 2001::1' in ret, \
+                'Primary ipv6 address check for nexthop failed'
+        info('### Nexthop ip address verification successful against local '
+             'primary address  ###\n')
+
+        info('''
+### Verify if nexthop is not assigned locally to an interface as a '''
+             '''secondary ipv6 address ###\n''')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('ipv6 address 2000::3/120 secondary')
+        s1.cmdCLI('exit')
+        s1.cmdCLI('ipv6 route 2002::/120 2000::3')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route 2002::/120 2000::3' in ret, \
+                'Secondary ipv6 address check for nexthop failed'
+        info('### Nexthop ipv6 address verification successful against local '
+             'secondary address ###\n\n')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('no ipv6 address 2000::2/120 secondary')
+        s1.cmdCLI('exit')
+
+
     def test_show_rib(self):
         info("""
-
-
 ########## Test to verify 'show rib' ##########
 """)
         s1 = self.net.switches[0]
@@ -291,10 +340,9 @@ class staticRouteConfigTest(OpsVsiTest):
         s1.cmdCLI('no ipv6 route 2002::/120 1')
         s1.cmdCLI('no ipv6 route 2002::/120 2')
 
+
     def test_show_running_config(self):
         info("""
-
-
 ########## Test to verify 'show running-config' ##########
 """)
         s1 = self.net.switches[0]
