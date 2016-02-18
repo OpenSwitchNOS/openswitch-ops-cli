@@ -355,6 +355,23 @@ vtysh_execute_func (const char *line, int pager)
    /* If command doesn't succeeded in current node, try to walk up in node tree.
     * Changing vty->node is enough to try it just out without actual walkup in
     * the vtysh. */
+
+   struct range_list *temp_list = NULL;
+   char *temp_index = NULL;
+
+   if (ret != CMD_SUCCESS && ret != CMD_SUCCESS_DAEMON && ret != CMD_WARNING
+#ifdef ENABLE_OVSDB
+         && ret != CMD_OVSDB_FAILURE
+#endif
+         && vty->node > CONFIG_NODE)
+   {
+       temp_list = vty->index_list;
+       temp_index = vty->index;
+
+       vty->index_list = NULL;
+       vty->index = NULL;
+   }
+
    while (ret != CMD_SUCCESS && ret != CMD_SUCCESS_DAEMON && ret != CMD_WARNING
 #ifdef ENABLE_OVSDB
          && ret != CMD_OVSDB_FAILURE
@@ -397,14 +414,18 @@ vtysh_execute_func (const char *line, int pager)
     * first try. */
    else if (tried)
    {
-      ret = saved_ret;
+       vty->index_list = temp_list;
+       vty->index = temp_index;
+       ret = saved_ret;
    }
 #else
 
    if (ret != CMD_SUCCESS && tried)
    {
-      vty->node = saved_node;
-      ret = saved_ret;
+       vty->index_list = temp_list;
+       vty->index = temp_index;
+       vty->node = saved_node;
+       ret = saved_ret;
    }
 
 #endif
@@ -1295,6 +1316,7 @@ vtysh_exit (struct vty *vty)
     default:
       break;
     }
+  vty->index_list = cmd_free_memory_range_list (vty->index_list);
   return CMD_SUCCESS;
 }
 

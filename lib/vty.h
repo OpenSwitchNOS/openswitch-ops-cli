@@ -72,6 +72,9 @@ struct vty
      access-list etc... */
   void *index;
 
+  /* For storing list of interface, vlan etc... */
+  struct range_list *index_list;
+
   /* For multiple level index treatment such as key chain and key. */
   void *index_sub;
 
