@@ -68,8 +68,6 @@
 #include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
-
-void ospf_vty_init(void);
 #endif
 
 #include "sub_intf_vty.h"

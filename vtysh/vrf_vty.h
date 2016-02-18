@@ -41,4 +41,6 @@ const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 
 const struct ovsrec_vrf* vrf_lookup(const char *vrf_name);
 
+static int vrf_proxy_arp_toggle_state(const char *if_name, const char* value);
+
 #endif /* _VRF_VTY_H */
