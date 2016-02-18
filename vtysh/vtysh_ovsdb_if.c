@@ -1468,18 +1468,50 @@ utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
 {
     struct cmd_token *token;
     int i;
-    for (i = 0; i < vector_active (describe); i++) {
-        if ((token = vector_slot (describe, i)) != NULL) {
+    char *p;
+    char *str;
+    for (i = 0; i < vector_active (describe); i++)
+    {
+        if ((token = vector_slot (describe, i)) != NULL)
+        {
             if (token->cmd == NULL || token->cmd[0] == '\0')
                 continue;
 
-            if (! token->desc)
+            if (!token->desc)
                 fprintf (stdout,"  %-s\n",
                          token->cmd[0] == '.' ? token->cmd + 1 : token->cmd);
             else
-                fprintf (stdout,"  %-*s  %s\n", width,
-                         token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
-                         token->desc);
+            {
+                str = p = NULL;
+                str = token->cmd[0] == '.' ? token->cmd + 1 : token->cmd;
+                if ((str != NULL) && (str[0] == '<'))
+                {
+                    p = strchr (str, ':');
+                    if (p != NULL)
+                    {
+                        char *val_p = (char*)malloc(strlen(str));
+                        if (val_p != NULL)
+                        {
+                            *val_p = '<';
+                            strcpy ((val_p + 1), (p + 1));
+                            fprintf (stdout,"  %-*s  %s\n", width,val_p, token->desc);
+                            free(val_p);
+                        }
+                    }
+                    else
+                    {
+                        fprintf (stdout,"  %-*s  %s\n", width,
+                           token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                           token->desc);
+                    }
+                }
+                else
+                {
+                    fprintf (stdout,"  %-*s  %s\n", width,
+                        token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                        token->desc);
+                }
+            }
         }
     }
 }
