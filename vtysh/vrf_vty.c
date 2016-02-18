@@ -782,7 +782,7 @@ vrf_no_routing (const char *if_name)
       return CMD_OVSDB_FAILURE;
     }
 
-  /* Check for spit interface conditions */
+  /* Check for split interface conditions */
   if (!check_split_iface_conditions (if_name))
     {
       cli_do_config_abort (status_txn);
@@ -791,6 +791,8 @@ vrf_no_routing (const char *if_name)
   port_row = port_check_and_add (if_name, true, false, status_txn);
   if (check_iface_in_bridge (if_name))
     {
+      vty_out(vty,"Interface \"%s\" is already L2. No change required.%s",
+              if_name, VTY_NEWLINE);
       VLOG_DBG ("%s Interface \"%s\" is already L2. No change required.",
                 __func__, if_name);
       cli_do_config_abort (status_txn);
