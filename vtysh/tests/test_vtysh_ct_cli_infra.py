@@ -75,7 +75,6 @@ class VtyshInfraCommandsTests(OpsVsiTest):
         return True
 
 
-@pytest.mark.skipif(True, reason="Does not work")
 class Test_vtyshInfraCommands:
 
     def setup(self):
