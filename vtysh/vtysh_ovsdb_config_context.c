@@ -597,7 +597,7 @@ vtysh_config_context_sflow_clientcallback(void *p_private)
         }
       else if(sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
         {
-           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s agent-address-family %s", sflow_row->agent, sflow_row->agent_addr_family);
+           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s %s", sflow_row->agent, sflow_row->agent_addr_family);
         }
       if(sflow_row->sampling != NULL)
         {
