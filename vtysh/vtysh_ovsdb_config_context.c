@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -597,7 +597,7 @@ vtysh_config_context_sflow_clientcallback(void *p_private)
         }
       else if(sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
         {
-           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s agent-address-family %s", sflow_row->agent, sflow_row->agent_addr_family);
+           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s %s", sflow_row->agent, sflow_row->agent_addr_family);
         }
       if(sflow_row->sampling != NULL)
         {

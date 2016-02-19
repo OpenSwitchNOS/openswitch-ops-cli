@@ -129,6 +129,12 @@ class sflowConfigTest(OpsVsiTest):
         assert '255.255.255.254/1234/vrf_default' in out[word_index + 3], \
         'collector ip and port with default vrf not set'
 
+        info("### Passing first sflow collector ip again and "
+                "verifying if duplicate collector error thrown ###\n")
+        ret = s1.cmdCLI("sflow collector 255.255.255.254 port 1234")
+        assert 'sFlow collector already present.' in ret, \
+        'Duplicate sFlow collector validation failed'
+
         info("### Passing IPv4 sflow collector ip, port and default vrf and "
                 "verifying 'ip, port and vrf set ###\n")
         s1.cmdCLI("sflow collector 255.255.255.253 port 5678 vrf vrf_default")
@@ -137,6 +143,24 @@ class sflowConfigTest(OpsVsiTest):
         word_index = out.index('sFlow Configuration ')
         assert '255.255.255.253/5678/vrf_default' in out[word_index + 3], \
         'collector ip, port and vrf not set'
+
+        info("### Passing fourth sflow collector ip and "
+                "verifying if error is thrown for more than 3 collectors ###\n")
+        ret = s1.cmdCLI("sflow collector 255.255.255.252")
+        assert 'Maximum of 3 sFlow collectors allowed.' in ret, \
+        'Maximum sFlow collectors validation failed'
+
+        info("### Removing second and third collectors and verifying the 'no'"
+                " form of the command ###\n")
+        s1.cmdCLI("no sflow collector 255.255.255.254 port 1234")
+        s1.cmdCLI("no sflow collector 255.255.255.253 port 5678 vrf "
+                "vrf_default")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert not ('255.255.255.254/1234/vrf_default' \
+                in out and '255.255.255.253/5678/vrf_default' in out), \
+                'sFlow collectors could not be deleted'
 
         info("### Passing non-default vrf and verifying the default vrf "
                 "check ###\n")
@@ -152,20 +176,8 @@ class sflowConfigTest(OpsVsiTest):
         out = ret.split('\n')
         word_index = out.index('sFlow Configuration ')
         assert 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/65535/vrf_default' \
-                in out[word_index + 6], 'IPv6 collector ip, port and vrf \
+                in out[word_index + 4], 'IPv6 collector ip, port and vrf \
                 not set'
-
-        info("### Removing second and third collectors and verifying the 'no'"
-                " form of the command ###\n")
-        s1.cmdCLI("no sflow collector 255.255.255.254 port 1234")
-        s1.cmdCLI("no sflow collector 255.255.255.253 port 5678 vrf "
-                "vrf_default")
-        ret = s1.cmdCLI("do show sflow")
-        out = ret.split('\n')
-        word_index = out.index('sFlow Configuration ')
-        assert not ('255.255.255.254/1234/vrf_default' \
-                in out and '255.255.255.253/5678/vrf_default' in out), \
-                'collectors could not get deleted'
 
     def test_sflow_agent_intf(self):
         '''
@@ -179,11 +191,6 @@ class sflowConfigTest(OpsVsiTest):
         info("### Verfiying check for invalid interface ###\n")
         ret = s1.cmdCLI("sflow agent-interface 100")
         assert 'Invalid interface' in ret, 'Interface check not successful'
-
-        info("### Verfiying check for L3 interface ###\n")
-        ret = s1.cmdCLI("sflow agent-interface 19")
-        assert 'Interface 19 is not L3' in ret, \
-                'L3 interface check not successful'
 
         info("### Verifying correct setting of L3 agent interface ###\n")
         s1.cmdCLI("interface 19")
@@ -201,7 +208,7 @@ class sflowConfigTest(OpsVsiTest):
         s1.cmdCLI("interface 29")
         s1.cmdCLI("ip address 20.20.20.20/32")
         s1.cmdCLI("exit")
-        s1.cmdCLI("sflow agent-interface 29 agent-address-family ipv4")
+        s1.cmdCLI("sflow agent-interface 29 ipv4")
         ret = s1.cmdCLI("do show sflow")
         out = ret.split('\n')
         word_index = out.index('sFlow Configuration ')
@@ -229,15 +236,15 @@ class sflowConfigTest(OpsVsiTest):
 
         s1.cmdCLI("sflow enable")
         s1.cmdCLI("sflow sampling 54321")
-        s1.cmdCLI("sflow agent-interface 19 agent-address-family ipv6")
+        s1.cmdCLI("sflow agent-interface 19 ipv6")
         ret = s1.cmdCLI("do show running-config")
         out = ret.split('\n')
         word_index = out.index('sflow enable')
         assert 'sflow collector 255.255.255.255' in \
-                out[word_index+1] and \
-                'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff port 65535 vrf ' \
-                'vrf_default' in out[word_index+2] and \
-                'sflow agent-interface 19 agent-address-family ipv6' in \
+                out[word_index+1] and 'sflow collector ' \
+                'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff port 65535 ' \
+                'vrf vrf_default' in out[word_index+2] and \
+                'sflow agent-interface 19 ipv6' in \
                 out[word_index+3] and 'sflow sampling 54321' in \
                 out[word_index+4], 'show running-config failure'
         info("### 'show running-config' verification successful###\n\n\n")
