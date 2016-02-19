@@ -487,16 +487,35 @@ static int sflow_set_collector(const char *ip, const char *port,
             {
               if (collector_port && port)
                 {
-                  if (strcmp (port, collector_port) == 0)
+                  if(strcmp (port, collector_port) == 0)
                     {
                       vty_out (vty, "\nsFlow collector already present%s\n",
                               VTY_NEWLINE);
                       cli_do_config_abort (status_txn);
                       return CMD_SUCCESS;
                     }
+                  else if (sflow_row->n_targets > 2)
+                    {
+                      vty_out (vty, "\nMaximum of 3 sFlow collectors allowed.%s\n", VTY_NEWLINE);
+                      cli_do_config_abort (status_txn);
+                      return CMD_SUCCESS;
+                    }
+                }
+              else if (!collector_port && !port)
+                {
+                    vty_out (vty, "\nsFlow collector already present%s\n",VTY_NEWLINE);
+                    cli_do_config_abort (status_txn);
+                    return CMD_SUCCESS;
                 }
             }
         }
+      if (sflow_row->n_targets > 2)
+        {
+          vty_out (vty, "\nMaximum of 3 sFlow collectors allowed.%s\n", VTY_NEWLINE);
+          cli_do_config_abort (status_txn);
+          return CMD_SUCCESS;
+        }
+
       target = xmalloc(MAX_CMD_LEN * (sflow_row->n_targets + 1));
 
       for (i = 0; i <sflow_row->n_targets; i++) {
