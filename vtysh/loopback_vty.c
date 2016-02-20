@@ -195,17 +195,16 @@ DEFUN (vtysh_loopback_interface,
 static int
 mask_ip4_subnet(const char* ip4)
 {
-   char ipAddressString[16];
+   char ipAddressString[24]="";
    int mask_bits, addr;
    unsigned int i = 0;
    unsigned int subnet_bits = 0;
 
+   mask_bits = atoi(strchr(ip4,'/') + 1);
    strcpy(ipAddressString, ip4);
    strcpy(strchr(ipAddressString, '/'), "\0");
-   mask_bits = atoi(strchr(ip4,'/') + 1);
 
-   int domain, s;
-   s = inet_pton(AF_INET, ipAddressString, &addr);
+   inet_pton(AF_INET, ipAddressString, &addr);
 
    while(i < mask_bits)
        subnet_bits |= (1 << i++);
