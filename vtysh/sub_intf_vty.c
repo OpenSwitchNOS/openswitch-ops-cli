@@ -67,16 +67,15 @@ extern struct ovsdb_idl *idl;
 static int
 mask_ip4_subnet(const char* ip4)
 {
-   char ipAddressString[16];
+   char ipAddressString[24]="";
    int mask_bits = 0, addr = 0;
    unsigned int i = 0;
    unsigned int subnet_bits = 0;
 
+   mask_bits = atoi(strchr(ip4,'/') + 1);
    strcpy(ipAddressString, ip4);
    strcpy(strchr(ipAddressString, '/'), "\0");
-   mask_bits = atoi(strchr(ip4,'/') + 1);
 
-   int domain, s;
    inet_pton(AF_INET, ipAddressString, &addr);
 
    while(i < mask_bits)
