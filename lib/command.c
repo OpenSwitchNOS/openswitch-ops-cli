@@ -122,7 +122,6 @@ static struct cmd_node config_node =
 static const char *default_motd =
 "\r\n\
 Hello, this is " QUAGGA_PROGNAME " (version " QUAGGA_VERSION ").\r\n\
-" QUAGGA_COPYRIGHT "\r\n\
 " GIT_INFO "\r\n";
 
 
@@ -194,8 +193,6 @@ void
 print_version (const char *progname)
 {
   printf ("%s version %s\n", progname, QUAGGA_VERSION);
-  printf ("%s\n", QUAGGA_COPYRIGHT);
-  printf ("configured with:\n\t%s\n", QUAGGA_CONFIG_ARGS);
 }
 
 
@@ -3406,11 +3403,9 @@ DEFUN (show_version,
        SHOW_STR
        "Displays zebra version\n")
 {
-  vty_out (vty, "Quagga %s (%s).%s", QUAGGA_VERSION, host.name?host.name:"",
-	   VTY_NEWLINE);
-  vty_out (vty, "%s%s%s", QUAGGA_COPYRIGHT, GIT_INFO, VTY_NEWLINE);
-  vty_out (vty, "configured with:%s    %s%s", VTY_NEWLINE,
-           QUAGGA_CONFIG_ARGS, VTY_NEWLINE);
+  vty_out (vty, "%s %s (%s).%s", QUAGGA_PROGNAME, QUAGGA_VERSION,
+	   host.name?host.name:"", VTY_NEWLINE);
+  vty_out (vty, "%s%s", GIT_INFO, VTY_NEWLINE);
 
   return CMD_SUCCESS;
 }
