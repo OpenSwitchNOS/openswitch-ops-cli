@@ -1,8 +1,8 @@
-Makefile.in
-build
-configure
-config.h.in~
-m4
-autom4te.cache
-ltmain.sh
-aclocal.m4
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Makefile
+cmake_install.cmake
+install_manifest.txt
+*.so
+*.pc

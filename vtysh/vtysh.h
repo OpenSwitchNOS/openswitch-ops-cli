@@ -119,7 +119,6 @@ extern int vtysh_show_startup;
 #endif
 
 void vtysh_init_vty (void);
-void vtysh_init_cmd (void);
 extern int vtysh_connect_all (const char *optional_daemon_name);
 void vtysh_readline_init (void);
 void vtysh_user_init (void);
