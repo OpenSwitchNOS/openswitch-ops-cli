@@ -516,7 +516,6 @@ static int sflow_set_collector(const char *ip, const char *port,
   char temp_ip[MAX_CMD_LEN];
   char *sflow_name = OVSDB_SFLOW_GLOBAL_ROW_NAME;
   int DFLT_PORT_LEN = 5;
-  char dflt_port[DFLT_PORT_LEN];
   int ret;
   struct prefix p;
   char prefix_str[256];
@@ -619,9 +618,8 @@ static int sflow_set_collector(const char *ip, const char *port,
       }
 
       target[sflow_row->n_targets] = cmd_str;
-      if(sflow_row)
-          ovsrec_sflow_set_targets(sflow_row, target,
-                                   sflow_row->n_targets + 1);
+      ovsrec_sflow_set_targets(sflow_row, target,
+                                sflow_row->n_targets + 1);
       free (target);
     }
   else
@@ -672,7 +670,14 @@ static int sflow_set_collector(const char *ip, const char *port,
 
 /* This function sets/unsets agent interface and its address family to be
  * used to communicate with the collector. Interface needs to be an L3
- * interface. */
+ * interface.
+ *
+ * OPS_TODO: An interface can be configured to be sFlow's agent interface.
+ * It may not have IPv4 (or v6) address configured on it. Backend is
+ * supposed to handle it. Issues to be handled in near future: Once
+ * configured, removing IPv4 (or v6) address from agent interface and
+ * handling it in sFlow.
+ */
 static int sflow_set_agent_interface(const char *interface, const char *family,
                                      bool set)
 {
@@ -701,7 +706,7 @@ static int sflow_set_agent_interface(const char *interface, const char *family,
 
   if (set)
     {
-      /* Validating if the interface is a valid interface */
+      /* Validating the interface */
       OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
         {
           if (strcmp(intf_row->name, interface) == 0)

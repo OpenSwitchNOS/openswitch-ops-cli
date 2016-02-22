@@ -1296,7 +1296,7 @@ show_sflow_config(const char *name, const char *align)
 
     port_row = port_find(name);
     if (port_row == NULL) {
-        VLOG_ERR("No port entry found for %s. Can't display sflow info on it.", name);
+        VLOG_DBG("No port entry found for %s. Can't display sflow info on it.", name);
         return;
     }
 
