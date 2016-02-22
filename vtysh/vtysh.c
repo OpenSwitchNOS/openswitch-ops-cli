@@ -1849,8 +1849,8 @@ DEFUN(vtysh_no_vlan,
             }
         }
         ovsrec_bridge_set_vlans(default_bridge_row, vlans,
-            default_bridge_row->n_vlans - 1);
-
+                                default_bridge_row->n_vlans - 1);
+        vlan_found = 0;
         OVSREC_PORT_FOR_EACH(port_row, idl)
         {
             int64_t* trunks = NULL;
@@ -1859,6 +1859,7 @@ DEFUN(vtysh_no_vlan,
             {
                 if (vlan_id == port_row->trunks[i])
                 {
+                    vlan_found = 1;
                     trunks = xmalloc(sizeof *port_row->trunks * (port_row->n_trunks - 1));
                     for (i = n = 0; i < port_row->n_trunks; i++)
                     {
@@ -1872,7 +1873,11 @@ DEFUN(vtysh_no_vlan,
                     break;
                 }
             }
-            if (port_row->n_tag == 1 && *port_row->tag == vlan_row->id)
+
+            if ( port_row->n_tag == 1 && *port_row->tag == vlan_row->id)
+                vlan_found = 1;
+
+            if (vlan_found )
             {
                 int64_t* tag = NULL;
                 int tag_count = 0;
