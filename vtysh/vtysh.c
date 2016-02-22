@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <arpa/inet.h>
@@ -325,6 +326,133 @@ vtysh_pager_init (void)
       vtysh_pager_name = strdup ("more");
 }
 
+#define MAX_SHELL_CMD_LEN 500
+#define MAX_SHELL_CMD_ALLOWED 6
+
+/*A function to validate that the entered shell command is supported or not.
+USAGE:
+The following commands are supported after vtysh command
+include <pattern to be searched>
+tail -n <no. of lines>
+head -n <no. of lines>
+less, more, sort without options
+*/
+
+bool
+validate_shell_cmd(char *user_shell_cmd,
+        char *final_cmd, int final_cmd_max_len, struct vty *vty)
+{
+
+    char *ptr = NULL, *ptr1 = NULL;
+    char word[MAX_SHELL_CMD_LEN];
+    int count;
+    int final_cmd_len = 0, ret_cmp = 0, j;
+    char *shell_commands_supported[MAX_SHELL_CMD_ALLOWED] = {"include", "less" , "more", "tail", "head", "sort"};
+
+    memset(final_cmd, 0, final_cmd_max_len);
+    final_cmd_len = 0;
+
+
+    for(ptr = user_shell_cmd; *ptr != '\0'; ptr++)
+    {
+        if(*ptr == '&' || *ptr == ';' ||
+                *ptr == '\'' || *ptr == '/' ||
+                *ptr == '>' || *ptr == '<')
+        {
+            return FALSE;
+        }
+    }
+
+    ptr = user_shell_cmd;
+    do
+    {
+        while(isspace(*ptr))ptr++;
+        if(*ptr == '|')
+        {
+           final_cmd_len+= strcat(final_cmd, "|");
+           ptr++;
+        }
+        count = 0;
+        while(isspace(*ptr))ptr++;
+        ptr1 = ptr;
+        while( *ptr1 != ' ' && *ptr1 != '\0' && *ptr1 != '|')
+        {
+            ptr1++;
+            count++;
+        }
+        strncpy(word, ptr, count);
+        word[count] = '\0';
+
+        ptr = ptr1;
+        for(j = 0; j < MAX_SHELL_CMD_ALLOWED; j++)
+        {
+            ret_cmp = strncmp(word, shell_commands_supported[j], count);
+            if(ret_cmp == 0)
+            break;
+        }
+        if(ret_cmp != 0)
+        {
+            return FALSE;
+        }
+        while(isspace(*ptr))ptr++;
+        if((strcmp(word, "more") == 0)||(strcmp(word, "less") == 0))
+        {
+            final_cmd_len+= strcat(final_cmd, " ");
+            final_cmd_len+= strcat(final_cmd, word);
+        }
+
+        else if((strcmp(word, "tail") == 0)||(strcmp(word, "head") == 0))
+        {
+            final_cmd_len+= strcat(final_cmd, " ");
+            final_cmd_len+= strcat(final_cmd, word);
+            while(' ' == ptr)
+            {
+            ptr++;
+            }
+            if(0 == strncmp(ptr, "-n " , 3))
+            {
+                final_cmd_len+= strcat(final_cmd, " -n " );
+                ptr+= 3;
+                while(' ' == *ptr)
+                {
+                    ptr++;
+                }
+                while(isdigit(*ptr))
+                {
+                    final_cmd_len+= strncat(final_cmd, ptr, 1);
+                    ptr++;
+                }
+            }
+        }
+        else if(strcmp(word, "sort") == 0)
+        {
+            final_cmd_len+= strcat(final_cmd, " ");
+            final_cmd_len+= strcat(final_cmd, word);
+        }
+        else if(strcmp(word, "include") == 0)
+        {
+            final_cmd_len+= strcat(final_cmd, " grep ");
+            ptr1 = ptr;
+            count = 0;
+            while( *ptr1 != ' ' && *ptr1 != '\0' && *ptr1 != '|')
+            {
+                ptr1++;
+                count++;
+            }
+            strncpy(word, ptr, count);
+            word[count] = '\0';
+            final_cmd_len+= strcat(final_cmd, word);
+        }
+        while(*ptr != '|')
+        {
+           if(*ptr == '\0')
+              return TRUE;
+           ptr++;
+        }
+    }while(*ptr == '|');
+    return TRUE;
+}
+
 /* Command execution over the vty interface. */
 static int
 vtysh_execute_func (const char *line, int pager)
@@ -335,12 +463,50 @@ vtysh_execute_func (const char *line, int pager)
    struct cmd_element *cmd;
    FILE *fp = NULL;
    int closepager = 0;
-   int tried = 0;
+   int tried = 0, vty_len = 0, shellcmd_len = 0, flag = 0;
    int saved_ret, saved_node;
+   int count , ret_cmp = 0, j;
+   char vty_cmd[MAX_SHELL_CMD_LEN], shell_cmd[MAX_SHELL_CMD_LEN];
+   bool is_pipe_found = false, return_val = false;
+   const char *ptr = line, *ptr1;
+   while(*ptr != '\0')
+   {
+      if('|' == *ptr)
+      {
+         is_pipe_found = true;
+         break;
+      }
+      ptr++;
+      vty_len++;
+   }
+   if(is_pipe_found)
+   {
+      shellcmd_len = strlen(line) - vty_len;
+      strncpy(vty_cmd, line, vty_len);
+      vty_cmd[vty_len] = '\0';
+      ptr++;
 
-   /* Split readline string up into the vector. */
-   vline = cmd_make_strvec (line);
+      if(TRUE != validate_shell_cmd(ptr, shell_cmd, MAX_SHELL_CMD_LEN, vty))
+      {
+         vty_out(vty, "Command not supported.%s", VTY_NEWLINE);
+         return CMD_SUCCESS;
+      }
+      shell_cmd[0] =' ';
 
+      vty->type = VTY_FILE;
+      vline = cmd_make_strvec(vty_cmd);
+      vty->file = popen(shell_cmd, "w");
+      if(vty->file < 0)
+      {
+         VLOG_ERR("Error in opening the file\n");
+         return CMD_WARNING;
+      }
+   }
+   else
+   {
+      /* Split readline string up into the vector. */
+      vline = cmd_make_strvec (line);
+   }
    if (vline == NULL)
       return CMD_SUCCESS;
 
@@ -531,6 +697,15 @@ vtysh_execute_func (const char *line, int pager)
          perror ("pclose failed for pager");
       }
       fp = NULL;
+   }
+
+   if(is_pipe_found)
+   {
+      vty->type = VTY_SHELL;
+      if(flag != 1)
+      {
+         pclose(vty->file);
+      }
    }
    return cmd_stat;
 }

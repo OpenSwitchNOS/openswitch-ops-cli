@@ -74,6 +74,20 @@ class VtyshInfraCommandsTests(OpsVsiTest):
             return False
         return True
 
+    def pipeCLIFunctionTest(self):
+        info('''
+########## Test to create VLAN ##########
+''')
+        pipe_working = False
+        s1 = self.net.switches[0]
+        out = s1.cmdCLI('show system | include "Fan details:"')
+        lines = out.split('\n')
+        for line in lines:
+            if 'Fan details:' in line:
+                 pipe_working = True
+        assert ( pipe_working is True), 'Test to check pipe functionality - FAILED!'
+        return True
+
 
 class Test_vtyshInfraCommands:
 
@@ -85,6 +99,7 @@ class Test_vtyshInfraCommands:
 
     def setup_class(cls):
         Test_vtyshInfraCommands.test = VtyshInfraCommandsTests()
+
 
     def teardown_class(cls):
 
@@ -107,3 +122,9 @@ class Test_vtyshInfraCommands:
             print 'Passed aliasCliCommandTest'
         else:
             assert 0, 'Failed aliasCliCommandTest'
+
+    def test_pipeFunctionnality(self):
+        if self.test.aliasCliCommandTest():
+            info('''
+########## Test to check pipe functionality in CLI - SUCCESS!  ##########
+''')
