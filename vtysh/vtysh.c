@@ -2117,17 +2117,6 @@ DEFUN_HIDDEN (vtysh_show_running_config_new,
    return CMD_SUCCESS;
 }
 
-DEFUN_HIDDEN (vtysh_show_context_client_list,
-              vtysh_show_context_client_list_cmd,
-              "show context-client-list",
-              SHOW_STR
-              "Vtysh Context Table Client List\n")
-{
-   vty_out (vty, "%sCurrent Context Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
-
-   vtysh_context_table_list_clients (vty);
-   return CMD_SUCCESS;
-}
 #else
 ALIAS (vtysh_write_terminal,
       vtysh_show_running_config_cmd,
@@ -3881,8 +3870,6 @@ vtysh_init_vty (void)
    vtysh_install_default (KEYCHAIN_KEY_NODE);
    vtysh_install_default (VTY_NODE);
 #ifdef ENABLE_OVSDB
-  install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
-  install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 
 

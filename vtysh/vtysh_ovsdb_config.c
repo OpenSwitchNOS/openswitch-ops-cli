@@ -488,58 +488,6 @@ vtysh_ovsdb_read_config(FILE *fp)
   }
 }
 
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_context_table_list_clients
-| Responsibility : list the registered client callback for all config contexts
-| Parameters:
-|           vty - pointer to object type struct vty
-| Return: void
------------------------------------------------------------------------------*/
-void
-vtysh_context_table_list_clients(struct vty *vty)
-{
-  vtysh_contextid contextid=0;
-  int maxclientid = 0, i =0, minclientid = 0;
-  vtysh_context_client *povs_client = NULL;
-
-  if(NULL == vty)
-  {
-    return;
-  }
-
-  for (contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
-  {
-    vty_out(vty, "%s:%s", vtysh_context_table[contextid].name, VTY_NEWLINE);
-
-    maxclientid = vtysh_context_get_maxclientid(contextid);
-    if (e_vtysh_error == maxclientid )
-    {
-      return;
-    }
-
-    minclientid = vtysh_context_get_minclientid(contextid);
-    if (minclientid == (maxclientid -1))
-    {
-      vty_out(vty, "%8s%s%s", "", "No clients registered", VTY_NEWLINE);
-      continue;
-    }
-    else
-    {
-      vty_out(vty, "%8s%s: %d %s", "", "clients registered", maxclientid -1, VTY_NEWLINE);
-    }
-
-    for (i = 0; i < maxclientid-1; i++)
-    {
-      povs_client = &(*vtysh_context_table[contextid].clientlist)[i];
-      if (NULL != povs_client->p_callback)
-      {
-        vty_out(vty, "%8s%s%s", "", povs_client->p_client_name, VTY_NEWLINE);
-      }
-    }
-  }
-}
-
 /*-----------------------------------------------------------------------------
 | Function: vtysh_ovsdb_cli_print
 | Responsibility : prints the command in given format
