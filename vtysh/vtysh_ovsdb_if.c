@@ -58,6 +58,7 @@
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
+#include "vrf-utils.h"
 
 #define TMOUT_POLL_INTERVAL 20
 
@@ -1303,21 +1304,6 @@ check_port_in_bridge(const char *port_name)
 
 
 /*
- * Check for presence of VRF and return VRF row.
- */
-const struct ovsrec_vrf*
-vrf_lookup (const char *vrf_name)
-{
-    const struct ovsrec_vrf *vrf_row = NULL;
-    OVSREC_VRF_FOR_EACH (vrf_row, idl)
-      {
-        if (strcmp (vrf_row->name, vrf_name) == 0)
-        return vrf_row;
-      }
-    return NULL;
-}
-
-/*
  * This functions is used to check if port row exists.
  *
  * Variables:
@@ -1368,7 +1354,7 @@ port_check_and_add (const char *port_name, bool create,
             const struct ovsrec_vrf *default_vrf_row = NULL;
             struct ovsrec_port **ports = NULL;
             size_t i;
-            default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
+            default_vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
             ports = xmalloc (
                     sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
             for (i = 0; i < default_vrf_row->n_ports; i++)

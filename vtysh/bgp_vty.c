@@ -306,15 +306,6 @@ string_is_a_name (const char *string)
     return (str2sockunion(string, &su) < 0);
 }
 #endif
-/*
- * Find the vrf with matching name.
- */
-static const struct ovsrec_vrf *
-get_ovsrec_vrf_with_name(char *name)
-{
-    /* TODO change this later when multi vrf's are supported */
-    return ovsrec_vrf_first(idl);
-}
 
 /*
  * Find the bgp router with matching asn.
@@ -1158,7 +1149,7 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "VRF not found");
     }
@@ -1244,7 +1235,7 @@ cli_no_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -1312,7 +1303,7 @@ cli_bgp_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
 
         VLOG_DBG("vty_index for router_id: %ld\n",(int64_t)vty->index);
 
-        vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+        vrf_row = vrf_lookup(idl, vrf_name);
         if (vrf_row == NULL) {
             ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
         }
@@ -1359,7 +1350,7 @@ cli_no_bgp_router_id_cmd_execute(char *vrf_name)
 
         VLOG_DBG("vty_index for router_id: %ld\n",(int64_t)vty->index);
 
-        vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+        vrf_row = vrf_lookup(idl, vrf_name);
         if (vrf_row == NULL) {
             ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
         }
@@ -1400,7 +1391,7 @@ cli_no_bgp_router_id_val_cmd_execute(char *vrf_name, char *router_ip_addr)
 
         VLOG_DBG("vty_index for router_id: %ld\n",(int64_t)vty->index);
 
-        vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+        vrf_row = vrf_lookup(idl, vrf_name);
         if (vrf_row == NULL) {
             ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
         }
@@ -1563,7 +1554,7 @@ cli_bgp_maxpaths_cmd_execute(char *vrf_name, int64_t max_paths)
 
     VLOG_DBG("vty_index for maxpaths : %ld\n", (int64_t)vty->index);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -1663,7 +1654,7 @@ cli_bgp_timers_cmd_execute(char *vrf_name, int64_t keepalive, int64_t holdtime)
 
     VLOG_DBG("vty_index for timers : %ld\n",(int64_t)vty->index);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -1719,7 +1710,7 @@ cli_no_bgp_timers_cmd_execute(char *vrf_name)
 
     VLOG_DBG("vty_index for timers : %ld\n",(int64_t)(vty->index));
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -1907,7 +1898,7 @@ cli_bgp_fast_external_failover_cmd_execute(char *vrf_name)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -1950,7 +1941,7 @@ cli_no_bgp_fast_external_failover_cmd_execute(char *vrf_name)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -2121,7 +2112,7 @@ cli_bgp_log_neighbor_changes_cmd_execute (char *vrf_name)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -2162,7 +2153,7 @@ cli_no_bgp_log_neighbor_changes_cmd_execute (char *vrf_name)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -2324,7 +2315,7 @@ cli_bgp_network_cmd_execute(char *vrf_name, char *network)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -2409,7 +2400,7 @@ cli_no_bgp_network_cmd_execute(char *vrf_name, const char *network)
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -2584,7 +2575,7 @@ cli_neighbor_remote_as_cmd_execute(char *vrf_name, struct vty *vty,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -2789,7 +2780,7 @@ cli_no_neighbor_cmd_execute(char *vrf_name, const char *peer_str)
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -2851,7 +2842,7 @@ cli_no_neighbor_peer_group_cmd_execute(char *vrf_name, const char *name)
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if(vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -2882,7 +2873,7 @@ cli_neighbor_peer_group_cmd_execute(char *vrf_name, const char *groupName)
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3041,7 +3032,7 @@ cli_neighbor_password_execute(char *vrf_name, int argc, const char *argv[])
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3095,7 +3086,7 @@ DEFUN(no_neighbor_password,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3157,7 +3148,7 @@ cli_neighbor_set_peer_group_cmd_execute(char *vrf_name, const char *ip_addr,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3247,7 +3238,7 @@ cli_no_neighbor_set_peer_group_cmd_execute(char *vrf_name,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3343,7 +3334,7 @@ DEFUN(neighbor_shutdown,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3384,7 +3375,7 @@ DEFUN(no_neighbor_shutdown,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3559,7 +3550,7 @@ cli_neighbor_remove_private_as_cmd_execute(struct vty *vty,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3611,7 +3602,7 @@ cli_no_neighbor_remove_private_as_cmd_execute(struct vty *vty,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3714,7 +3705,7 @@ cli_neighbor_soft_reconfiguration_inbound_cmd_execute(char *vrf_name,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -3767,7 +3758,7 @@ cli_no_neighbor_soft_reconfiguration_inbound_cmd_execute(char *vrf_name,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4180,7 +4171,7 @@ cli_neighbor_ebgp_multihop_execute(char* vrf_name,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4249,7 +4240,7 @@ DEFUN(no_neighbor_ebgp_multihop,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4339,7 +4330,7 @@ cli_neighbor_description_execute(int argc, const char *argv[])
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4396,7 +4387,7 @@ DEFUN(no_neighbor_description,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4437,7 +4428,7 @@ cli_neighbor_update_source_execute(char* vrf_name,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4499,7 +4490,7 @@ DEFUN(no_neighbor_update_source,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4720,7 +4711,7 @@ cli_neighbor_timers_execute(char *vrf_name, int argc, const char *argv[])
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4781,7 +4772,7 @@ DEFUN(no_neighbor_timers,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4858,7 +4849,7 @@ cli_neighbor_advertisement_interval_cmd_execute(int argc, const char *argv[])
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -4911,7 +4902,7 @@ DEFUN(no_neighbor_advertise_interval,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -5034,7 +5025,7 @@ cli_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr, char *name, 
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "VRF not found");
     }
@@ -5127,7 +5118,7 @@ cli_no_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "VRF not found");
     }
@@ -5233,7 +5224,7 @@ get_bgp_neighbor(const struct ovsdb_idl_txn *txn, char *vrf_name, char *ip_addr)
     const struct ovsrec_bgp_router *bgp_router_context;
     const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "VRF does not exist");
     }
@@ -5662,7 +5653,7 @@ cli_neighbor_route_map_cmd_execute(char *vrf_name, char *ipAddr, char *name,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -5753,7 +5744,7 @@ cli_no_neighbor_route_map_cmd_execute(char *vrf_name, char *ipAddr,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -6029,7 +6020,7 @@ cli_allow_as_in_execute(char *vrf_name, int argc, const char *argv[])
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -6092,7 +6083,7 @@ DEFUN(no_neighbor_allowas_in,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -6124,7 +6115,7 @@ cli_neighbor_ttl_security_hops_execute(char* vrf_name,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -6194,7 +6185,7 @@ DEFUN(no_neighbor_ttl_security,
 
     START_DB_TXN(txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(txn, "no vrf found");
     }
@@ -8988,7 +8979,7 @@ cli_show_ip_bgp_neighbors_cmd_execute(char *vrf_name, struct vty *vty,
         peer = argv[0];
     }
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         VLOG_DBG("No VRF found!");
     } else {
@@ -9449,7 +9440,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -9616,7 +9607,7 @@ cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = vrf_lookup(idl, vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
