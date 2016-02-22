@@ -49,6 +49,7 @@
 #include "openswitch-dflt.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh/utils/vrf_vtysh_utils.h"
+#include "vrf-utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -206,7 +207,7 @@ vrf_add (const char *vrf_name)
 
   /* OPS_TODO: In case multiple vrfs. */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (vrf_row)
     {
       vty_out (vty, "VRF already exists.%s", VTY_NEWLINE);
@@ -216,7 +217,7 @@ vrf_add (const char *vrf_name)
       return CMD_SUCCESS;
     }
 #else
-  vrf_row = ovsrec_vrf_first (idl);
+  vrf_row = get_default_vrf(idl);
   if (vrf_row)
     {
       vty_out (vty, "Non-default VRFs not supported%s", VTY_NEWLINE);
@@ -327,7 +328,7 @@ vrf_delete (const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -336,7 +337,7 @@ vrf_delete (const char *vrf_name)
       return CMD_SUCCESS;
     }
 #else
-  vrf_row = ovsrec_vrf_first (idl);
+  vrf_row = get_default_vrf(idl);
   if (vrf_row)
     {
       vty_out (vty, "Non-default VRFs not supported%s", VTY_NEWLINE);
@@ -466,7 +467,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -475,7 +476,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
       return CMD_SUCCESS;
     }
 #else
-  vrf_row = ovsrec_vrf_first (idl);
+  vrf_row = get_default_vrf(idl);
   if (vrf_row)
     {
       vty_out (vty, "Non-default VRFs not supported%s", VTY_NEWLINE);
@@ -577,7 +578,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -586,7 +587,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
       return CMD_SUCCESS;
     }
 #else
-  vrf_row = ovsrec_vrf_first (idl);
+  vrf_row = get_default_vrf(idl);
   if (vrf_row)
     {
       vty_out (vty, "Non-default VRFs not supported%s", VTY_NEWLINE);

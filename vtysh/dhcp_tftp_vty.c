@@ -45,6 +45,7 @@
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
 #include "dhcp_tftp_vty.h"
+#include "vrf-utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_dhcp_tftp_cli);
 extern struct ovsdb_idl *idl;
@@ -687,18 +688,6 @@ static int show_tftp_server(void)
 }
 
 
-static const struct ovsrec_vrf* dhcp_server_vrf_lookup(const char *vrf_name)
-{
-    const struct ovsrec_vrf *vrf_row = NULL;
-    OVSREC_VRF_FOR_EACH (vrf_row, idl)
-    {
-        if (strcmp(vrf_row->name, vrf_name) == 0) {
-            return vrf_row;
-        }
-    }
-    return NULL;
-}
-
 static int tftp_server_enable_disable(bool enable)
 {
     const struct ovsrec_system *ovs_row = NULL;
@@ -946,7 +935,7 @@ static int dhcp_server_delete_bootp(dhcp_srv_bootp_params_t *bootp_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1020,7 +1009,7 @@ static int dhcp_server_add_bootp(dhcp_srv_bootp_params_t *bootp_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1117,7 +1106,7 @@ static int dhcp_server_delete_match(dhcp_srv_match_params_t *match_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1222,7 +1211,7 @@ static int dhcp_server_add_match(dhcp_srv_match_params_t *match_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1348,7 +1337,7 @@ static int dhcp_server_delete_option(dhcp_srv_option_params_t *option_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1525,7 +1514,7 @@ static int dhcp_server_add_option(dhcp_srv_option_params_t *option_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1691,7 +1680,7 @@ static int dhcp_server_add_static_host(
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1880,7 +1869,7 @@ static int dhcp_server_delete_static_host(
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -1991,7 +1980,7 @@ static int dhcp_server_delete_range(dhcp_srv_range_params_t *range_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
@@ -2099,7 +2088,7 @@ static int dhcp_server_add_range(dhcp_srv_range_params_t *range_params)
         return CMD_OVSDB_FAILURE;
     }
 
-    vrf_row = dhcp_server_vrf_lookup(DEFAULT_VRF_NAME);
+    vrf_row = vrf_lookup(idl, DEFAULT_VRF_NAME);
     if (!vrf_row) {
         vty_out(vty, "Error: Could not fetch default VRF data.%s",
                      VTY_NEWLINE);
