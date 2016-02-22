@@ -461,6 +461,38 @@ vtysh_init_dhcp_tftp_context_clients(void)
     vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
+    retval = install_show_run_config_context(e_vtysh_dhcp_tftp_context,
+                                  NULL, NULL, NULL);
+    if(e_vtysh_ok != retval)
+    {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                            "config context unable to add dhcp_tftp callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = install_show_run_config_subcontext(e_vtysh_dhcp_tftp_context,
+                                  e_vtysh_dhcp_tftp_context_dhcp,
+                                  &vtysh_dhcp_tftp_context_dhcp_clientcallback,
+                                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                    "dhcp-tftpcontext unable to add dhcp client callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = install_show_run_config_subcontext(e_vtysh_dhcp_tftp_context,
+                                  e_vtysh_dhcp_tftp_context_tftp,
+                                  &vtysh_dhcp_tftp_context_tftp_clientcallback,
+                                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                        "dhcp-tftp context unable to tftp client callback");
+        assert(0);
+        return retval;
+    }
+
     client.p_client_name = dhcpclientname;
     client.client_id = e_vtysh_dhcp_tftp_context_dhcp;
     client.p_callback = &vtysh_dhcp_tftp_context_dhcp_clientcallback;
