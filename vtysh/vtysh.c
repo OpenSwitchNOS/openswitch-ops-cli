@@ -59,7 +59,6 @@
 #include "smap.h"
 #include "lldp_vty.h"
 #include "vrf_vty.h"
-#include "neighbor_vty.h"
 #include "l3routes_vty.h"
 #include "vlan_vty.h"
 #include "system_vty.h"

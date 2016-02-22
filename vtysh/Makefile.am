@@ -24,7 +24,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_vlan_context.c \
                  sub_intf_vty.c loopback_vty.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
-                 logrotate_vty.c neighbor_vty.c traceroute_vty.c \
+                 logrotate_vty.c  traceroute_vty.c \
                  traceroute_handler.c \
                  source_interface_selection_vty.c \
                  vtysh_ovsdb_source_interface_context.c \
