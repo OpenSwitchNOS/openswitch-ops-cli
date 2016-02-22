@@ -112,6 +112,15 @@ vty_out (struct vty *vty, const char *format, ...)
       vprintf (format, args);
       va_end (args);
     }
+  else if(VTY_FILE == vty->type)
+  {
+  /* write into a file shell_buffer_file for storing
+      intermediate output of vtysh command if pipe is found */
+      va_start (args, format);
+      vfprintf(vty->file, format, args);
+      va_end (args);
+  }
+
   else
     {
       /* Try to write to initial buffer.  */
@@ -123,7 +132,7 @@ vty_out (struct vty *vty, const char *format, ...)
       if (len < 0 || len >= size)
 	{
 	  while (1)
-	    {
+    {
 	      if (len > -1)
 		size = len + 1;
 	      else

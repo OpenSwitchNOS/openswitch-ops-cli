@@ -120,6 +120,9 @@ struct vty
 
   /* What address is this vty comming from. */
   char address[SU_ADDRSTRLEN];
+
+  /*file descriptor of the type FILE */
+  FILE * file;
 };
 
 /* Integrated configuration file. */

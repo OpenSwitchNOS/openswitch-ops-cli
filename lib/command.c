@@ -2985,6 +2985,11 @@ cmd_execute_command_real (vector vline,
     ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
     VTYSH_OVSDB_UNLOCK;
   }
+  else if(VTY_FILE == vty->type)
+  {
+    ret = (*matched_element->func)(matched_element, vty, 0, argc, argv);
+    vty->type = VTY_SHELL;
+  }
   else
   {
     ret = (*matched_element->func)(matched_element, vty, 0, argc, argv);

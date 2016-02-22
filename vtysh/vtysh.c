@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <arpa/inet.h>
@@ -339,6 +340,8 @@ vtysh_pager_init (void)
       vtysh_pager_name = strdup ("more");
 }
 
+#define MAX_SHELL_CMD_LEN 500
+
 /* Command execution over the vty interface. */
 static int
 vtysh_execute_func (const char *line, int pager)
@@ -349,12 +352,50 @@ vtysh_execute_func (const char *line, int pager)
    struct cmd_element *cmd;
    FILE *fp = NULL;
    int closepager = 0;
-   int tried = 0;
+   int tried = 0, vty_len = 0, shellcmd_len = 0;
    int saved_ret, saved_node;
+   char vty_cmd[MAX_SHELL_CMD_LEN], shell_cmd[MAX_SHELL_CMD_LEN];
+   bool is_shell_cmd_found = false;
+   char filename[50] = "";
+   sprintf(filename, "%s-%d.txt", "/tmp/shell-buffer-file", getpid());
+   char complete_shell_cmd[MAX_SHELL_CMD_LEN] = "cat ";
+   strcat(complete_shell_cmd,filename);
+   const char *ptr = line;
+   while(*ptr != '\0')
+   {
+       if('|' == *ptr || '>' == *ptr)
+       {
+          is_shell_cmd_found = true;
+          vty->type = VTY_FILE;
+          break;
+       }
+       ptr++;
+       vty_len++;
+    }
 
-   /* Split readline string up into the vector. */
-   vline = cmd_make_strvec (line);
-
+    if(is_shell_cmd_found)
+    {
+        shellcmd_len = strlen(line) - vty_len;
+        strncpy(vty_cmd, line, vty_len);
+        vty_cmd[vty_len] = '\0';
+        strncpy(shell_cmd, ptr, shellcmd_len);
+        shell_cmd[shellcmd_len] = '\0';
+        strcat(complete_shell_cmd,shell_cmd);
+        /*Split only the vtysh command into vector format if pipe is found*/
+        vline = cmd_make_strvec(vty_cmd);
+        vty->file = fopen(filename,"w+");
+        if(vty->file < 0)
+        {
+            VLOG_ERR("Error in opening the file\n");
+            return ;
+        }
+        vty->type = VTY_FILE;
+    }
+    else
+    {
+        /* Split readline string up into the vector. */
+        vline = cmd_make_strvec (line);
+    }
    if (vline == NULL)
       return CMD_SUCCESS;
 
@@ -525,6 +566,14 @@ vtysh_execute_func (const char *line, int pager)
       }
       fp = NULL;
    }
+
+   if(is_shell_cmd_found)
+    {
+       fclose(vty->file);
+       system(complete_shell_cmd);
+       vty->type = VTY_SHELL;
+    }
+   remove(filename);
    return cmd_stat;
 }
 
