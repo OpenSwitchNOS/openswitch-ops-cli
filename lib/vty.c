@@ -107,41 +107,48 @@ vty_out (struct vty *vty, const char *format, ...)
   char *p = NULL;
 
   if (vty_shell (vty))
-    {
-      va_start (args, format);
-      vprintf (format, args);
-      va_end (args);
-    }
+  {
+     va_start (args, format);
+     vprintf (format, args);
+     va_end (args);
+  }
+  else if(VTY_FILE == vty->type)
+  {
+     /* write into a file shell_buffer_file for storing
+     intermediate output of vtysh command if pipe is found */
+     va_start (args, format);
+     vfprintf(vty->file, format, args);
+     va_end (args);
+  }
   else
-    {
-      /* Try to write to initial buffer.  */
-      va_start (args, format);
-      len = vsnprintf (buf, sizeof buf, format, args);
-      va_end (args);
+  {
+     /* Try to write to initial buffer.  */
+     va_start (args, format);
+     len = vsnprintf (buf, sizeof buf, format, args);
+     va_end (args);
 
       /* Initial buffer is not enough.  */
-      if (len < 0 || len >= size)
-	{
-	  while (1)
-	    {
-	      if (len > -1)
-		size = len + 1;
-	      else
-		size = size * 2;
+     if (len < 0 || len >= size)
+     {
+	     while (1)
+        {
+	        if (len > -1)
+		        size = len + 1;
+	        else
+		        size = size * 2;
 
-	      p = XREALLOC (MTYPE_VTY_OUT_BUF, p, size);
-	      if (! p)
-		return -1;
+	        p = XREALLOC (MTYPE_VTY_OUT_BUF, p, size);
+	        if (! p)
+	           return -1;
 
-	      va_start (args, format);
-	      len = vsnprintf (p, size, format, args);
-	      va_end (args);
+	        va_start (args, format);
+	        len = vsnprintf (p, size, format, args);
+	        va_end (args);
 
-	      if (len > -1 && len < size)
-		break;
-	    }
-	}
-
+	        if (len > -1 && len < size)
+		        break;
+        }
+     }
       /* When initial buffer is enough to store all output.  */
       if (! p)
 	p = buf;

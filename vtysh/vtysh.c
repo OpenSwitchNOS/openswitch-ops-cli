@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <arpa/inet.h>
@@ -339,6 +340,8 @@ vtysh_pager_init (void)
       vtysh_pager_name = strdup ("more");
 }
 
+#define MAX_SHELL_CMD_LEN 500
+#define MAX_SHELL_CMD_ALLOWED 7
 /* Command execution over the vty interface. */
 static int
 vtysh_execute_func (const char *line, int pager)
@@ -349,12 +352,86 @@ vtysh_execute_func (const char *line, int pager)
    struct cmd_element *cmd;
    FILE *fp = NULL;
    int closepager = 0;
-   int tried = 0;
+   int tried = 0, vty_len = 0, shellcmd_len = 0, flag =0;
    int saved_ret, saved_node;
+   int count , ret_cmp = 0, j;
+   char vty_cmd[MAX_SHELL_CMD_LEN], shell_cmd[MAX_SHELL_CMD_LEN];
+   bool is_pipe_found = false;
+   char word[MAX_SHELL_CMD_LEN];
+   char *shell_commands_supported[MAX_SHELL_CMD_ALLOWED] = {"less" , "more", "grep", "wc", "tail", "head", "sort"};
+   const char *ptr = line, *ptr1;
+   while(*ptr != '\0')
+   {
+       if('|' == *ptr)
+       {
+          is_pipe_found = true;
+          break;
+       }
+       ptr++;
+       vty_len++;
+    }
+    if(is_pipe_found)
+    {
+        shellcmd_len = strlen(line) - vty_len;
+        strncpy(vty_cmd, line, vty_len);
+        vty_cmd[vty_len] = '\0';
+        ptr++;
+        strncpy(shell_cmd, ptr, shellcmd_len);
+        shell_cmd[shellcmd_len] = '\0';
+        /*Split only the vtysh command into vector format if pipe is found*/
+        do
+        {
+           while( *ptr == ' ' || *ptr == '|')
+           {
+               ptr++;
+           }
+           ptr1 = ptr;
+           count = 0;
+           while( *ptr != ' ' && *ptr != '\0')
+           {
+              ptr++;
+              count++;
+           }
+           strncpy(word, ptr1, count);
+           word[count] = '\0';
+           for(j = 0; j < MAX_SHELL_CMD_ALLOWED; j++)
+           {
+              ret_cmp = strncmp(word, shell_commands_supported[j], count);
+              if(ret_cmp == 0)
+                  break;
+           }
+           if(ret_cmp != 0)
+           {
+              vty_out(vty, "Command not allowed.%s", VTY_NEWLINE);
+              return CMD_SUCCESS;
+           }
+           while(*ptr != '|')
+           {
+              ptr++;
+              if(*ptr == '\0')
+                 break;
+              if(*ptr == '&' || *ptr == ';' || *ptr == '\'')
+              {
+                 vty_out(vty, "Command not allowed.%s", VTY_NEWLINE);
+                 return CMD_SUCCESS;
+              }
+           }
+        }while(*ptr == '|');
 
-   /* Split readline string up into the vector. */
-   vline = cmd_make_strvec (line);
-
+        vty->type = VTY_FILE;
+        vline = cmd_make_strvec(vty_cmd);
+        vty->file = popen(shell_cmd, "w");
+        if(vty->file < 0)
+        {
+           VLOG_ERR("Error in opening the file\n");
+           return CMD_WARNING;
+        }
+    }
+    else
+    {
+        /* Split readline string up into the vector. */
+        vline = cmd_make_strvec (line);
+    }
    if (vline == NULL)
       return CMD_SUCCESS;
 
@@ -525,6 +602,15 @@ vtysh_execute_func (const char *line, int pager)
       }
       fp = NULL;
    }
+
+   if(is_pipe_found)
+   {
+       vty->type = VTY_SHELL;
+       if(flag != 1)
+       {
+          pclose(vty->file);
+       }
+   }
    return cmd_stat;
 }
 
@@ -606,7 +692,7 @@ vtysh_config_from_file (struct vty *vty, FILE *fp)
             fprintf (stdout,"%% Unknown command: %s", vty->buf);
             break;
          case CMD_ERR_INCOMPLETE:
-            fprintf (stdout,"%% Command incomplete.\n");
+            fprintf (stdout,"%%  incomplete.\n");
             break;
          case CMD_SUCCESS_DAEMON:
             {
