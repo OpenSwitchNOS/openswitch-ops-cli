@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -91,6 +91,18 @@ vtysh_init_source_interface_context_clients(void)
 {
     vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
+
+    retval = install_show_run_config_context(
+                                e_vtysh_source_interface_context,
+                                &vtysh_source_interface_context_clientcallback,
+                                NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                     "source_interface context unable to add config callback");
+        assert(0);
+        return retval;
+    }
+
     memset(&client, 0, sizeof(vtysh_context_client));
     client.p_client_name = source_interface_context_client_name;
     client.client_id = e_vtysh_source_interface_context_config;

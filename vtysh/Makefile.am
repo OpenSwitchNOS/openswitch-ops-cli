@@ -20,6 +20,7 @@ if ENABLE_OVSDB
 vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  vtysh_ovsdb_config.c vtysh_ovsdb_config_context.c \
                  l3routes_vty.c system_vty.c \
+                 vtysh_ovsdb_vrf_context.c \
                  sub_intf_vty.c loopback_vty.c \
                  vtysh_ovsdb_router_context.c aaa_vty.c \
                  logrotate_vty.c  traceroute_vty.c \
