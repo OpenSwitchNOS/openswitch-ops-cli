@@ -81,6 +81,19 @@ vtysh_init_sftp_context_clients (void)
     vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
+    retval = install_show_run_config_context(
+                                  e_vtysh_sftp_server_context,
+                                  &vtysh_sftp_server_context_clientcallback,
+                                  NULL, NULL);
+    if (e_vtysh_ok != retval)
+    {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "SFTP server context unable "\
+                           "to add config callback");
+        assert(0);
+        return retval;
+    }
+
     client.p_client_name = sftp_server_context_client_name;
     client.client_id = e_vtysh_sftp_server_context_config;
     client.p_callback = &vtysh_sftp_server_context_clientcallback;
