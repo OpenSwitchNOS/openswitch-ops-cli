@@ -31,9 +31,12 @@
 #define NUM_OF_FEATURES     1
 #define ENABLE_STR          "Enable the feature\n"
 #define OSPF_CONF_STR       "Configure OSPF\n"
-#define OSPF_AREA_STR       "Configure area related information\n"
-#define OSPF_AREA_RANGE     "Enter an area id\n"
-#define OSPF_AREA_IP_STR    "Enter an area id in IP address format\n"
+#define OSPF_AREA_STR       "Configure area parameters\n"
+#define OSPF_AREA_RANGE     "Configure an area id as a decimal value\n"
+#define OSPF_AREA_IP_STR    \
+                "Specify an area id by IPv4 address notation(e.g. 0.0.0.0)\n"
+#define OSPF_AUTH_ENABLE    "Enable authentication\n"
+#define OSPF_AUTH_MD5       "Use message-digest authentication\n"
 #define BORDER_ROUTER_STR   "Border router information\n"
 #define DETAIL_STR          "Display detailed information\n"
 #define ALL_STR             "Display all the information\n"
@@ -42,15 +45,17 @@
 #define RUNNING_CONFIG_STR        "Current running configuration\n"
 #define ROUTER_SHOW_STR     "Display router information\n"
 #define OSPF_ROUTER_ID_STR  "Configure router identifier for the OSPF instance\n"
-#define OSPF_ROUTER_ID_VAL_STR "Configure OSPF router-id in IP address format\n"
+#define OSPF_ROUTER_ID_VAL_STR  \
+            "Configure OSPF router-id in IPv4 address notation(e.g. 0.0.0.0)\n"
 #define OSPF_NEIGHBOR_ID_STR        "Enter the neighbor router id\n"
 #define OSPF_NEIGHBOR_SHOW_STR      "OSPF neighbor information\n"
 #define OSPF_HELLO_INTERVAL_STR     "Time between HELLO packets\n"
-#define OSPF_HELLO_INTERVAL_VAL_STR "Time between HELLO packets in seconds\n"
+#define OSPF_HELLO_INTERVAL_VAL_STR  \
+                    "Time between HELLO packets in seconds (Default: 10)\n"
 #define OSPF_DEAD_INTERVAL_STR      \
-                        "Interval after which a neighbor is declared dead\n"
+                    "Interval after which a neighbor is declared dead\n"
 #define OSPF_DEAD_INTERVAL_VAL_STR      \
-                         "Interval value in seconds\n"
+                    "Interval value in seconds (Default: 40)\n"
 
 #define OSPF_MAX_METRIC_STR     "OSPF maximum / infinite-distance metric\n"
 #define OSPF_ROUTER_LSA_STR     \
@@ -60,6 +65,8 @@
 #define OSPF_STARTUP_TIME_STR   \
 "Time (seconds) to advertise self as stub-router\n"
 
+#define OSPF_AREA_ID_FORMAT_ADDRESS         1
+#define OSPF_AREA_ID_FORMAT_DECIMAL         2
 
 #define OSPF_DEFAULT_STR            "0.0.0.0"
 #define OSPF_STRING_NULL            "null"
