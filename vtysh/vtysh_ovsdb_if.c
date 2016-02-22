@@ -723,14 +723,6 @@ ovsdb_init(const char *db_path)
     /* Add tables/columns needed for LACP config commands. */
     lacp_ovsdb_init();
 
-    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
-
     /* Add tables/columns needed for NTP config commands. */
     ntp_ovsdb_init();
 }

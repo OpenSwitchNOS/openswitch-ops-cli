@@ -59,7 +59,6 @@
 #include "smap.h"
 #include "lldp_vty.h"
 #include "vrf_vty.h"
-#include "neighbor_vty.h"
 #include "l3routes_vty.h"
 #include "system_vty.h"
 #include "ecmp_vty.h"
@@ -4328,7 +4327,6 @@ vtysh_init_vty (void)
   vtysh_cli_post_init();
   lldp_vty_init();
   vrf_vty_init();
-  neighbor_vty_init();
   l3routes_vty_init();
   aaa_vty_init();
   dhcp_tftp_vty_init();
