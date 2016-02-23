@@ -66,6 +66,9 @@ static char *cli_disable_plugins[] = {
   "lacpd",
   "lldp",
   "lacp",
+  "dhcp",
+  "aaa",
+  "sys",
   NULL
 };
 
