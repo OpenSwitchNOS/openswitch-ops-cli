@@ -68,6 +68,9 @@ static char *cli_disable_plugins[] = {
   "arpmgrd",
   "lldp",
   "lacp",
+  "dhcp",
+  "aaa",
+  "sys",
   NULL
 };
 
