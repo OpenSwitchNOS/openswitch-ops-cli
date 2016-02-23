@@ -935,6 +935,11 @@ DEFUN (cli_intf_show_subintferface_if_all,
     int idx, count;
     bool brief = false;
 
+    if ((argv[0] != NULL) && (strchr(argv[0], '.'))){
+         vty_out(vty, "%s is not a parent interface.%s", argv[0], VTY_NEWLINE);
+         return CMD_SUCCESS;
+    }
+
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;
