@@ -27,8 +27,7 @@ vtysh_SOURCES += vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c \
                  traceroute_handler.c \
                  source_interface_selection_vty.c \
                  vtysh_ovsdb_source_interface_context.c \
-                 vtysh_ovsdb_intf_lag_context.c \
-                 lacp_vty.c ecmp_vty.c dhcp_tftp_vty.c \
+                 ecmp_vty.c dhcp_tftp_vty.c \
                  vtysh_ovsdb_dhcp_tftp_context.c ping_vty.c \
                  ping_handler.c sftp_vty.c \
                  ospf_vty.c \
