@@ -875,14 +875,6 @@ static struct cmd_node loopback_interface_node =
   "%s(config-loopback-if)# ",
 };
 
-
-static struct cmd_node link_aggregation_node =
-{
-  LINK_AGGREGATION_NODE,
-  "%s(config-lag-if)# ",
-};
-
-
 #endif
 
 static struct cmd_node rmap_node =
@@ -1547,101 +1539,6 @@ ALIAS (vtysh_exit_tftp_server,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUN (vtysh_intf_link_aggregation,
-       vtysh_intf_link_aggregation_cmd,
-       "interface lag <1-2000>",
-       "Select an interface to configure\n"
-       "Configure link-aggregation parameters\n"
-       "LAG number ranges from 1 to 2000\n")
-{
-  const struct ovsrec_port *port_row = NULL;
-  bool port_found = false;
-  struct ovsdb_idl_txn *txn = NULL;
-  enum ovsdb_idl_txn_status status_txn;
-  static char lag_number[LAG_NAME_LENGTH]={0};
-  const struct ovsrec_vrf *default_vrf_row = NULL;
-  const struct ovsrec_vrf *vrf_row = NULL;
-  int i=0;
-  struct ovsrec_port **ports = NULL;
-
-  snprintf(lag_number, LAG_NAME_LENGTH, "%s%s","lag", argv[0]);
-
-  OVSREC_PORT_FOR_EACH(port_row, idl)
-  {
-    if (strcmp(port_row->name, lag_number) == 0)
-    {
-      port_found = true;
-      break;
-    }
-  }
-
-  if(!port_found)
-  {
-    if(lacp_exceeded_maximum_lag())
-    {
-      vty_out(vty, "Cannot create LAG interface. Maximum LAG interface count is already reached.%s",VTY_NEWLINE);
-      return CMD_SUCCESS;
-    }
-    txn = cli_do_config_start();
-    if (txn == NULL)
-    {
-      VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d",
-               " cli_do_config_start()", __func__, __LINE__);
-          cli_do_config_abort(txn);
-          return CMD_OVSDB_FAILURE;
-    }
-
-    port_row = ovsrec_port_insert(txn);
-    ovsrec_port_set_name(port_row, lag_number);
-
-    OVSREC_VRF_FOR_EACH (vrf_row, idl)
-    {
-        if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
-            default_vrf_row = vrf_row;
-            break;
-        }
-    }
-
-    if(default_vrf_row == NULL)
-    {
-      assert(0);
-      VLOG_DBG("Couldn't fetch default VRF row. Function=%s, Line=%d",
-                __func__, __LINE__);
-      cli_do_config_abort(txn);
-      return CMD_OVSDB_FAILURE;
-    }
-
-    ports = xmalloc(sizeof *default_vrf_row->ports *
-                   (default_vrf_row->n_ports + 1));
-    for (i = 0; i < default_vrf_row->n_ports; i++)
-    {
-      ports[i] = default_vrf_row->ports[i];
-    }
-    ports[default_vrf_row->n_ports] = CONST_CAST(struct ovsrec_port*,port_row);
-    ovsrec_vrf_set_ports(default_vrf_row, ports,
-                         default_vrf_row->n_ports + 1);
-    free(ports);
-
-    status_txn = cli_do_config_finish(txn);
-    if(status_txn == TXN_SUCCESS || status_txn == TXN_UNCHANGED)
-    {
-      vty->node = LINK_AGGREGATION_NODE;
-      vty->index = lag_number;
-      return CMD_SUCCESS;
-    }
-    else
-    {
-      VLOG_ERR("Transaction commit failed in function=%s, line=%d",__func__,__LINE__);
-      return CMD_OVSDB_FAILURE;
-    }
-  }
-  else
-  {
-    vty->node = LINK_AGGREGATION_NODE;
-    vty->index = lag_number;
-    return CMD_SUCCESS;
-  }
-}
 #endif
 #ifndef ENABLE_OVSDB
 /* TODO Implement "no interface command in isisd. */
@@ -3994,7 +3891,6 @@ vtysh_init_vty (void)
    install_node (&rip_node, NULL);
 #endif
 #ifdef ENABLE_OVSDB
-   install_node (&link_aggregation_node, NULL);
    /* Sub-interafce and Loopback nodes. */
    install_node (&sub_interface_node, NULL);
    install_node (&loopback_interface_node, NULL);
@@ -4035,7 +3931,6 @@ vtysh_init_vty (void)
 #endif
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
-   vtysh_install_default (LINK_AGGREGATION_NODE);
    vtysh_install_default (DHCP_SERVER_NODE);
    vtysh_install_default (TFTP_SERVER_NODE);
    /* Sub-interafce and Loopback nodes. */
@@ -4211,11 +4106,7 @@ vtysh_init_vty (void)
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
    install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
-#ifdef ENABLE_OVSDB
-   install_element (CONFIG_NODE, &vtysh_intf_link_aggregation_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_exit_interface_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
-#endif /* ENABLE_OVSDB */
+
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
   install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
@@ -4346,8 +4237,6 @@ vtysh_init_vty (void)
   traceroute_vty_init();
   /* Initialise SFTP CLI */
   sftp_vty_init();
-
-  lacp_vty_init();
 
   /* Initialize ospf commands*/
   ospf_vty_init();
