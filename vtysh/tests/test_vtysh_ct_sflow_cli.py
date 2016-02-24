@@ -101,6 +101,107 @@ class sflowConfigTest(OpsVsiTest):
         assert '4096' in out[word_index + 6], 'default sflow sampling \
                 rate not reset'
 
+    def test_sflow_header_size(self):
+        '''
+        This function verifies correct setting/unsetting of sflow default and
+        non-default header size
+        '''
+        info("\n\n######## Test to Verify Correct Setting of sFlow Header "
+        "Size ########\n")
+        s1 = self.net.switches[0]
+
+        info("### Verifying default sflow header size ###\n")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '128' in out[word_index + 8], 'default sflow header size \
+                not set'
+
+        info("### Setting and Verifiying specific sflow header size ###\n")
+        s1.cmdCLI("sflow header-size 70")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '70' in out[word_index + 8], 'non-default sflow header \
+                size not set'
+
+        info("### Unsetting specific header size set and verifying sflow header size "
+                "getting set back to default ###\n")
+        s1.cmdCLI("no sflow header-size")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '128' in out[word_index + 8], 'default sflow header \
+                size not reset'
+
+    def test_sflow_max_datagram_size(self):
+        '''
+        This function verifies correct setting/unsetting of sflow default and
+        non-default max-datagram size
+        '''
+        info("\n\n######## Test to Verify Correct Setting of sFlow Max-"
+        "Datagram Size ########\n")
+        s1 = self.net.switches[0]
+
+        info("### Verifying default sflow max-datagram size ###\n")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '1400' in out[word_index + 9], 'default sflow max-datagram \
+                size not set'
+
+        info("### Setting and Verifiying specific sflow max-datagram size "
+        "###\n")
+        s1.cmdCLI("sflow max-datagram-size 10")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '10' in out[word_index + 9], 'non-default sflow max-\
+                datagram size not set'
+
+        info("### Unsetting specific max-datagram size set and verifying sflow" \
+        "max-datagram size getting set back to default ###\n")
+        s1.cmdCLI("no sflow max-datagram-size")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '1400' in out[word_index + 9], 'default sflow max-datagram \
+                size not reset'
+
+    def test_sflow_polling(self):
+        '''
+        This function verifies correct setting/unsetting of sflow default and
+        non-default polling interval
+        '''
+        info("\n\n######## Test to Verify Correct Setting of sFlow Polling "
+        "interval ########\n")
+        s1 = self.net.switches[0]
+
+        info("### Verifying default sflow polling interval ###\n")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '30' in out[word_index + 7], 'default sflow polling interval\
+                not set'
+
+        info("### Setting and Verifiying specific sflow polling interval "
+        "###\n")
+        s1.cmdCLI("sflow polling 10")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '10' in out[word_index + 7], 'non-default sflow polling\
+                interval not set'
+
+        info("### Unsetting specific polling interval set and verifying sflow" \
+        " polling interval getting set back to default ###\n")
+        s1.cmdCLI("no sflow polling")
+        ret = s1.cmdCLI("do show sflow")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration ')
+        assert '30' in out[word_index + 7], 'default sflow polling \
+                interval not reset'
+
     def test_sflow_collector(self):
         '''
         Thus function checks whether collector ip, port and vrf gets correctly
@@ -225,6 +326,40 @@ class sflowConfigTest(OpsVsiTest):
                 out[word_index + 6]), 'L3 agent-interface and family not \
                 correctly set'
 
+    def test_sflow_show_interface(self):
+        '''
+        This function verifies the output of 'show sflow interface INTERFACE' command
+        across the configuration set in the sFlow table
+        '''
+        info("\n\n######## Test to Verify 'show sflow INTERFACE' for sFlow "
+                "Configuration ########\n")
+        s1 = self.net.switches[0]
+
+        s1.cmdCLI("sflow enable")
+        s1.cmdCLI("sflow sampling 20")
+        s1.cmdCLI("sflow collector 255.255.255.254 port 1234")
+        ret = s1.cmdCLI("do show sflow interface 1")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration - Interface 1')
+        assert 'sFlow                         enabled' in out[word_index + 2] \
+                and 'Sampling Rate                 20' in out[word_index + 3] \
+                and 'Number of Samples             0' in out[word_index + 4], \
+                "### 'show sflow INTERFACE' verification failed###\n"
+        s1.cmdCLI("interface 1")
+        s1.cmdCLI("no sflow enable")
+        s1.cmdCLI("exit")
+        ret = s1.cmdCLI("do show sflow interface 1")
+        out = ret.split('\n')
+        word_index = out.index('sFlow Configuration - Interface 1')
+        assert 'sFlow                         disabled' in \
+                out[word_index + 2] , \
+               "### 'show sflow INTERFACE' verification failed###\n"
+        info("### 'show sflow INTERFACE' verification successful###\n")
+        '''Removing configuration'''
+        s1.cmdCLI("no sflow enable")
+        s1.cmdCLI("no sflow sampling")
+        s1.cmdCLI("no sflow collector 255.255.255.254 port 1234")
+
     def test_sflow_show_running(self):
         '''
         This function verifies the output of 'show running-config' command
@@ -263,11 +398,23 @@ class Test_vtysh_ct_sflow_cli:
     def test_sflow_sampling_rate(self):
         self.test.test_sflow_sampling_rate()
 
+    def test_sflow_max_datagram_size(self):
+        self.test.test_sflow_max_datagram_size()
+
+    def test_sflow_header_size(self):
+        self.test.test_sflow_header_size()
+
+    def test_sflow_polling(self):
+        self.test.test_sflow_polling()
+
     def test_sflow_collector(self):
         self.test.test_sflow_collector()
 
     def test_sflow_agent_intf(self):
         self.test.test_sflow_agent_intf()
+
+    def test_sflow_show_interface(self):
+        self.test.test_sflow_show_interface()
 
     def test_sflow_show_running(self):
         self.test.test_sflow_show_running()
