@@ -410,6 +410,8 @@ sflow_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_sampling);
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_header);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_max_datagram);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_polling);
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_targets);
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_agent);
     ovsdb_idl_add_column(idl, &ovsrec_sflow_col_agent_addr_family);

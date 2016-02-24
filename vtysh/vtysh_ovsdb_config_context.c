@@ -585,57 +585,80 @@ vtysh_config_context_sflow_clientcallback(void *p_private)
   const struct ovsrec_sflow *sflow_row = NULL;
   const char delim[2] = "/";
   OVSREC_SFLOW_FOR_EACH(sflow_row, p_msg->idl){
-    if (ovs_row->sflow != NULL) {
-    vtysh_ovsdb_cli_print(p_msg, "sflow enable");
+    if (ovs_row->sflow != NULL)
+      {
+        vtysh_ovsdb_cli_print(p_msg, "sflow enable");
+      }
       if (sflow_row->n_targets > 0)
         {
-          for(i = 0; i < sflow_row->n_targets; i++)
+          for (i = 0; i < sflow_row->n_targets; i++)
             {
               copy = xstrdup(sflow_row->targets[i]);
               ptr = strtok(copy, delim);
-              if (ptr != NULL) {
+              if (ptr != NULL)
+                {
                   ip = xstrdup(ptr);
                   ptr = strtok(NULL, delim);
-              }
-              if(ptr != NULL)
+                }
+              if (ptr != NULL)
                 {
                   port = xstrdup(ptr);
                   ptr = strtok(NULL, delim);
                 }
-              if(ptr != NULL)
+              if (ptr != NULL)
                 {
                   vrf = xstrdup(ptr);
                 }
-              if(port == NULL)
+              if (port == NULL)
                 {
                   vtysh_ovsdb_cli_print(p_msg, "sflow collector %s",ip);
+                  free (ip);
+                  free (copy);
                 }
-              if(port != NULL && vrf == NULL)
+              if (port != NULL && vrf == NULL)
                 {
                   vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s", ip, port);
+                  free (ip);
+                  free (port);
+                  free (copy);
                 }
-              if(port != NULL && vrf != NULL)
+              if (port != NULL && vrf != NULL)
                 {
                   vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s vrf %s", ip, port, vrf);
+                  free (ip);
+                  free (port);
+                  free (vrf);
+                  free (copy);
                 }
-                    }
-     }
-      if(sflow_row->agent != NULL && sflow_row->agent_addr_family == NULL)
+            }
+        }
+      if (sflow_row->agent != NULL && sflow_row->agent_addr_family == NULL)
         {
           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s", sflow_row->agent);
         }
-      else if(sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
+      else if (sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
         {
            vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s %s", sflow_row->agent, sflow_row->agent_addr_family);
         }
-      if(sflow_row->sampling != NULL)
+      if (sflow_row->sampling != NULL)
         {
           vtysh_ovsdb_cli_print(p_msg, "sflow sampling %lld", *(sflow_row->sampling));
 
         }
-  }
+      if (sflow_row->header != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow header-size %lld", *(sflow_row->header));
+        }
+      if (sflow_row->max_datagram != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow max-datagram-size %lld", *(sflow_row->max_datagram));
+        }
+      if (sflow_row->polling != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow polling %lld", *(sflow_row->polling));
+        }
   return e_vtysh_ok;
- }
+  }
 
 }
 
