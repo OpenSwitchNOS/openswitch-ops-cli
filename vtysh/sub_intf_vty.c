@@ -48,6 +48,7 @@
 #include <vector.h>
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
+#include "vlan_vty.h"
 #include "vrf_vty.h"
 #include "vtysh/vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
@@ -90,7 +91,7 @@ mask_ip4_subnet(const char* ip4)
 DEFUN (cli_sub_intf_shutdown,
         cli_sub_intf_shutdown_cmd,
         "shutdown",
-        "Enable/disable an interface. Default Enabled.\n")
+        "Enable/disable an interface. Default disabled.\n")
 {
     const struct ovsrec_interface * row = NULL;
     const struct ovsrec_port * port_row = NULL;
@@ -722,16 +723,15 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
 
         if ((NULL != ifrow->admin_state)
                 && strcmp(ifrow->admin_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
-        {
-            vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
-            vty_out (vty, " Admin state is down%s",
-                    VTY_NEWLINE);
-        }
-        else
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0)
         {
             vty_out (vty, "%s", VTY_NEWLINE);
             vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
+        }
+        else
+        {
+            vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
+            vty_out (vty, " Admin state is down%s", VTY_NEWLINE);
         }
 
         vty_out (vty, " Parent interface is %s %s",
@@ -1118,6 +1118,7 @@ create_sub_interface(char* subifname)
         intf_row = ovsrec_interface_insert(txn);
         ovsrec_interface_set_name(intf_row, ifnumber);
         ovsrec_interface_set_type(intf_row, OVSREC_INTERFACE_TYPE_VLANSUBINT);
+        ovsrec_interface_set_admin_state(intf_row, OVSREC_INTERFACE_ADMIN_STATE_DOWN);
 
         /* Set the parent interface & encapsulation vlan id. */
         key_subintf_parent = xmalloc(sizeof(int64_t) * new_size);
