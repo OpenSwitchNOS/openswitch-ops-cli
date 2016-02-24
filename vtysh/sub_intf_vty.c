@@ -90,7 +90,7 @@ mask_ip4_subnet(const char* ip4)
 DEFUN (cli_sub_intf_shutdown,
         cli_sub_intf_shutdown_cmd,
         "shutdown",
-        "Enable/disable an interface. Default Enabled.\n")
+        "Enable/disable an interface. Default disabled.\n")
 {
     const struct ovsrec_interface * row = NULL;
     const struct ovsrec_port * port_row = NULL;
@@ -722,16 +722,15 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
 
         if ((NULL != ifrow->admin_state)
                 && strcmp(ifrow->admin_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
-        {
-            vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
-            vty_out (vty, " Admin state is down%s",
-                    VTY_NEWLINE);
-        }
-        else
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0)
         {
             vty_out (vty, "%s", VTY_NEWLINE);
             vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
+        }
+        else
+        {
+            vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
+            vty_out (vty, " Admin state is down%s", VTY_NEWLINE);
         }
 
         vty_out (vty, " Parent interface is %s %s",
