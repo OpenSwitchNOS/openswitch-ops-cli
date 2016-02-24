@@ -593,15 +593,6 @@ mgmt_intf_ovsdb_init()
 }
 
 static void
-lacp_ovsdb_init()
-{
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_lacp_config);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_lacp);
-}
-
-static void
 ntp_ovsdb_init()
 {
     /* Add System Table */
@@ -720,8 +711,6 @@ ovsdb_init(const char *db_path)
     dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init();
-    /* Add tables/columns needed for LACP config commands. */
-    lacp_ovsdb_init();
 
     /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands. */
     ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
