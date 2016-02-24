@@ -238,14 +238,14 @@ static int sflow_show(void)
 
   if(sflow_row->header != NULL)
     vty_out(vty, "Header Size                   %lld%s",
-            sflow_row->header, VTY_NEWLINE);
+            *(sflow_row->header), VTY_NEWLINE);
   else
     vty_out(vty, "Header Size                   %d%s",
             SFL_DEFAULT_HEADER_SIZE, VTY_NEWLINE);
 
   if(sflow_row->max_datagram != NULL)
     vty_out(vty, "Max Datagram Size             %lld%s",
-            sflow_row->max_datagram, VTY_NEWLINE);
+            *(sflow_row->max_datagram), VTY_NEWLINE);
   else
     vty_out(vty, "Max Datagram Size             %d%s",
             SFL_DEFAULT_DATAGRAM_SIZE, VTY_NEWLINE);
@@ -755,6 +755,116 @@ static int sflow_set_agent_interface(const char *interface, const char *family,
     }
 }
 
+/* This function sets/unsets the sflow header size provided by the user */
+static int
+sflow_set_header_size( int64_t *size )
+{
+  const struct ovsrec_system *system_row = NULL;
+  enum ovsdb_idl_txn_status txn_status;
+  const struct ovsrec_sflow *sflow_row = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  const char *sflow_name = OVSDB_SFLOW_GLOBAL_ROW_NAME;
+
+  if (status_txn == NULL)
+    {
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort (status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+  system_row = ovsrec_system_first (idl);
+  if (!system_row)
+    {
+        VLOG_ERR (OVSDB_ROW_FETCH_ERROR);
+        cli_do_config_abort (status_txn);
+        return CMD_SUCCESS;
+    }
+  sflow_row = ovsrec_sflow_first (idl);
+
+  if(!sflow_row && !size)
+    {
+      vty_out (vty, "\nNo sFlow configuration present.%s\n", VTY_NEWLINE);
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  if(!sflow_row && size)
+    {
+      sflow_row = ovsrec_sflow_insert (status_txn);
+      ovsrec_sflow_set_name (sflow_row, sflow_name);
+    }
+
+  if (size)
+    ovsrec_sflow_set_header(sflow_row, size, 1);
+  else
+    ovsrec_sflow_set_header(sflow_row, size, 0);
+
+  txn_status = cli_do_config_finish(status_txn);
+  if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
+    return CMD_SUCCESS;
+  else
+    {
+      VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+      return CMD_OVSDB_FAILURE;
+    }
+
+}
+
+/* This function sets/unsets the sflow max datagram size provided by the user */
+static int
+sflow_set_max_datagram_size( int64_t *size )
+{
+  const struct ovsrec_system *system_row = NULL;
+  enum ovsdb_idl_txn_status txn_status;
+  const struct ovsrec_sflow *sflow_row = NULL;
+  struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+  const char *sflow_name = OVSDB_SFLOW_GLOBAL_ROW_NAME;
+
+  if (status_txn == NULL)
+    {
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort (status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+  system_row = ovsrec_system_first (idl);
+  if (!system_row)
+    {
+        VLOG_ERR (OVSDB_ROW_FETCH_ERROR);
+        cli_do_config_abort (status_txn);
+        return CMD_SUCCESS;
+    }
+  sflow_row = ovsrec_sflow_first (idl);
+
+  if(!sflow_row && !size)
+    {
+      vty_out (vty, "\nNo sFlow configuration present.%s\n", VTY_NEWLINE);
+      cli_do_config_abort (status_txn);
+      return CMD_SUCCESS;
+    }
+
+  if(!sflow_row && size)
+    {
+      sflow_row = ovsrec_sflow_insert (status_txn);
+      ovsrec_sflow_set_name (sflow_row, sflow_name);
+    }
+
+  if (size)
+    ovsrec_sflow_set_max_datagram(sflow_row, size, 1);
+  else
+    ovsrec_sflow_set_max_datagram(sflow_row, size, 0);
+
+  txn_status = cli_do_config_finish(status_txn);
+  if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED)
+    return CMD_SUCCESS;
+  else
+    {
+      VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+      return CMD_OVSDB_FAILURE;
+    }
+
+}
+
 
 DEFUN (cli_sflow_set_global_status,
        cli_sflow_set_global_status_cmd,
@@ -872,6 +982,53 @@ DEFUN (cli_sflow_no_set_agent_interface,
     return sflow_set_agent_interface(NULL, NULL, false);
 }
 
+
+DEFUN (cli_sflow_set_header_size,
+       cli_sflow_set_header_size_cmd,
+       "sflow header-size <64-256>",
+       SFLOW_STR
+       "Set header size\n"
+       "Header size range\n")
+{
+    int64_t h_size = (int64_t) atoi(argv[0]);
+    return sflow_set_header_size(&h_size);
+}
+
+
+DEFUN (cli_sflow_no_set_header_size,
+       cli_sflow_no_set_header_size_cmd,
+       "no sflow header-size",
+       NO_STR
+       SFLOW_STR
+       "Set header size\n")
+{
+    return sflow_set_header_size(NULL);
+}
+
+
+DEFUN (cli_sflow_set_max_datagram_size,
+       cli_sflow_set_max_datagram_size_cmd,
+       "sflow max-datagram-size <1-9000>",
+       SFLOW_STR
+       "Set max datagram size\n"
+       "Header size range\n")
+{
+    int64_t d_size = (int64_t) atoi(argv[0]);
+    return sflow_set_max_datagram_size(&d_size);
+}
+
+
+DEFUN (cli_sflow_no_set_max_datagram_size,
+       cli_sflow_no_set_max_datagram_size_cmd,
+       "no sflow max-datagram-size",
+       NO_STR
+       SFLOW_STR
+       "Set max datagram size\n")
+{
+    return sflow_set_max_datagram_size(NULL);
+}
+
+
 DEFUN (cli_sflow_show,
        cli_sflow_show_cmd,
        "show sflow",
@@ -896,5 +1053,9 @@ sflow_vty_init (void)
   install_element (CONFIG_NODE, &cli_sflow_set_agent_interface_cmd);
   install_element (CONFIG_NODE, &cli_sflow_set_agent_interface_family_cmd);
   install_element (CONFIG_NODE, &cli_sflow_no_set_agent_interface_cmd);
+  install_element (CONFIG_NODE, &cli_sflow_set_header_size_cmd);
+  install_element (CONFIG_NODE, &cli_sflow_no_set_header_size_cmd);
+  install_element (CONFIG_NODE, &cli_sflow_set_max_datagram_size_cmd);
+  install_element (CONFIG_NODE, &cli_sflow_no_set_max_datagram_size_cmd);
   install_element (ENABLE_NODE, &cli_sflow_show_cmd);
 }

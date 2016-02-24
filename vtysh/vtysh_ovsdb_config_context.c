@@ -604,6 +604,14 @@ vtysh_config_context_sflow_clientcallback(void *p_private)
           vtysh_ovsdb_cli_print(p_msg, "sflow sampling %lld", *(sflow_row->sampling));
 
         }
+      if(sflow_row->header != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow header-size %lld", *(sflow_row->header));
+        }
+      if(sflow_row->max_datagram != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow max-datagram-size %lld", *(sflow_row->max_datagram));
+        }
   }
   return e_vtysh_ok;
  }
