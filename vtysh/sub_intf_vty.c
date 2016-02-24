@@ -675,8 +675,9 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
         vty_out (vty, "%-6s ",
                 ((strcmp(if_parent_row->link_state,
                         OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
-                (strcmp(ifrow->admin_state,
-                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN))) ?
+                ((ifrow->admin_state != NULL) &&
+                 (strcmp(ifrow->admin_state,
+                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN)))) ?
                 ifrow->link_state :
                 if_parent_row->link_state);
 
@@ -934,6 +935,9 @@ DEFUN (cli_intf_show_subintferface_if_all,
     int idx, count;
     bool brief = false;
 
+    if ((argv[0] != NULL) && (strchr(argv[0], '.'))){
+         return CMD_ERR_NO_MATCH;
+    }
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;
@@ -1117,7 +1121,10 @@ create_sub_interface(char* subifname)
         /* Adding an interface  table entry. */
         intf_row = ovsrec_interface_insert(txn);
         ovsrec_interface_set_name(intf_row, ifnumber);
-        ovsrec_interface_set_type(intf_row, OVSREC_INTERFACE_TYPE_VLANSUBINT);
+        ovsrec_interface_set_type(intf_row,
+                                   OVSREC_INTERFACE_TYPE_VLANSUBINT);
+        ovsrec_interface_set_admin_state(intf_row,
+                                   OVSREC_INTERFACE_ADMIN_STATE_DOWN);
 
         /* Set the parent interface & encapsulation vlan id. */
         key_subintf_parent = xmalloc(sizeof(int64_t) * new_size);
