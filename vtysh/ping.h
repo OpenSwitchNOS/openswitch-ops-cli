@@ -1,6 +1,6 @@
 /* Ping CLI commands header file
  *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 
-#define PING_STR            "Ping Utility\n"
+#define PING_STR            "Send ping requests to a device on the network\n"
 #define PING_IP             "Enter IP address of the device to ping\n"
 #define PING_HOST           "Enter Hostname of the device to ping\n"
 #define PATTERN             "Enter Hexadecimal pattern (Default: AB)\n"
@@ -38,6 +38,8 @@
 #define TSADDR              "include-timestamp-and-address"
 #define RR                  "record-route"
 
+#define PING6_STR \
+"Send IPv6 ping requests to a device on the network\n"
 #define PING_IP_OPT \
 "Specify the IP option - Record Route or Timestamp option\n"
 #define PING_DSIZE \
@@ -62,7 +64,7 @@
 "Enter Repetition value in the range. (Default: 5)\n"
 
 #define PING_MAX_HOSTNAME_LENGTH 256
-#define MAX_PATTERN_LENGTH       16
+#define MAX_PATTERN_LENGTH       32
 
 /* ping options default values */
 #define PING_DEF_TIMEOUT        2
@@ -72,9 +74,8 @@
 /* default ping cmd */
 #define PING4_DEF_CMD       "ping"
 
-/* ping6 : use -n to suppress lookup of symbolic names.
-Display numeric output only */
-#define PING6_DEF_CMD       "ping6 -n"
+/* default ping6 cmd */
+#define PING6_DEF_CMD       "ping6"
 
 /* cmd to execute in namespace swns */
 #define SWNS_EXEC            "/sbin/ip netns exec swns"

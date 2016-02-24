@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2015-2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -83,7 +83,7 @@ class ShowRunningConfigTests(OpsVsiTest):
         assert '_uuid' in ovsout, 'Unable to find Interface 1 in OVSDB'
         out = s1.cmdCLI('configure terminal')
         out = s1.cmdCLI('interface 1')
-        out = s1.cmdCLI('no lldp transmission')
+        out = s1.cmdCLI('no lldp transmit')
         out = s1.cmdCLI('do show running-config')
         s1.cmdCLI('exit')
         lines = out.split('\n')
@@ -92,7 +92,7 @@ class ShowRunningConfigTests(OpsVsiTest):
                 lldp_txrx_disabled = True
         assert lldp_txrx_disabled is True, \
             'Test to verify show running-config for ' \
-            'lldp transmission - FAILED!'
+            'lldp transmit - FAILED!'
         return True
 
     def setLogrotatePeriodTest(self):
@@ -268,6 +268,85 @@ timeout #########
             'Test to configure no session timeout - Failed!'
         return True
 
+    def createLacpTest(self):
+        info("\n########## "
+             "Test to verify lacp configuration"
+             "in show running-config command "
+             "#########\n\n")
+        s1 = self.net.switches[0]
+        success = 0
+        s1.cmdCLI('configure terminal')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('interface 1')
+        s1.cmdCLI('lag 1')
+        out = s1.cmdCLI('do show running-config')
+        s1.cmdCLI('exit')
+        lines = out.split('\n')
+        for line in lines:
+            if 'interface lag 1' in line:
+                success += 1
+            if 'lacp mode active' in line:
+                success += 1
+            if line.lstrip().startswith("lag 1"):
+                success += 1
+        assert success == 3,\
+            'Test to configure lacp - Failed!'
+        return True
+
+    def restoreConfigFromRunningConfig(self):
+        info("########## "
+             "Test to verify show running-config output used "
+             "to restore configuration "
+             "#########\n\n")
+        s1 = self.net.switches[0]
+        commands = ['vlan 900', 'no shutdown', 'interface lag 1',
+                    'no routing', 'vlan access 900', 'interface 1',
+                    'no shutdown', 'no routing', 'vlan access 900',
+                    'interface 2', 'no shutdown', 'lag 1']
+        restoreCommands = ['no vlan 900', 'no interface lag 1', 'interface 1',
+                           'shutdown', 'routing', 'no vlan access 900',
+                           'interface 2', 'shutdown', 'no lag 1']
+
+        s1.cmdCLI('configure terminal')
+        # Applying configuration for the first time
+        for element in commands:
+            s1.cmdCLI(element)
+
+        # Saving first configuration
+        firstOut = s1.cmdCLI('do show running-config')
+        firstLines = firstOut.split('\n')
+
+        #Erasing configuration
+        for element in restoreCommands:
+            s1.cmdCLI(element)
+
+        # Applying configuration with show running-config output
+        for line in firstLines:
+            s1.cmdCLI(line)
+
+        # Saving configuration for the second time
+        secondOut = s1.cmdCLI('do show running-config')
+        secondLines = secondOut.split('\n')
+
+        # Eliminating last element from list, this is the name
+        # of the switch that the test should not validate
+        del firstLines[-1]
+        del secondLines[-1]
+
+        # If list don't have the same elements mean that the
+        # configuration was not properly applied
+        assert sorted(firstLines) == sorted(secondLines),   \
+            'Test to restore config with output from show ' \
+            'running-config - Failed!'
+
+        # Cleaning configuration to not affect other tests
+        for element in restoreCommands:
+            s1.cmdCLI(element)
+
+        s1.cmdCLI('end')
+        return True
+
 
 class Test_showrunningconfig:
 
@@ -281,6 +360,12 @@ class Test_showrunningconfig:
         Test_showrunningconfig.test = ShowRunningConfigTests()
 
   # show running config tests.
+
+    def test_restore_config(self):
+        if self.test.restoreConfigFromRunningConfig():
+            info("########## Test to verify show running-config "
+                 "output used to restore configuration - SUCCESS! "
+                 "########## \n")
 
     def test_enable_lldp_commands(self):
         if self.test.enablelldpTest():
@@ -326,6 +411,11 @@ class Test_showrunningconfig:
         if self.test.setdefaultSessionTimeoutTest():
             print '########## Test to verify show running-config ' \
                   'for no session timeout - SUCCESS! ##########'
+
+    def test_set_default_sessionTimeout(self):
+        if self.test.createLacpTest():
+            info('########## Test to verify show running-config '
+                 'for lacp configuration - SUCCESS! ##########\n')
 
     def teardown_class(cls):
 

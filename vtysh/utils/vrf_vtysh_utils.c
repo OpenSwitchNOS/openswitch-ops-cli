@@ -1,6 +1,5 @@
-/* LED CLI commands.
- *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+/*
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,27 +15,30 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: led_vty.h
- *
- * Purpose: To add LED Platform CLI configuration and display commands.
+ * File: vrf_vtysh_utils.c
+ * Responsibility : Definition of common vrf CLI function.
  */
 
-#ifndef _LED_VTY_H
-#define _LED_VTY_H
+#include "ovsdb-idl.h"
+#include "vswitch-idl.h"
 
-#ifndef SYS_STR
-#define SYS_STR		"System information\n"
-#endif
+extern struct ovsdb_idl *idl;
 
-#define LED_STR 	"LED information\n"
-#define LED_SET_STR 	"Set LED state\n"
-
-int cli_system_no_set_led(char* sLedName);
-
-int cli_system_get_led();
-
-int cli_system_set_led(char* sLedName,char* sLedState);
-
-void led_vty_init();
-
-#endif //_LED_VTY_H
+/*
+ * Check if port is part of any VRF and return the VRF row.
+ */
+const struct ovsrec_vrf*
+port_vrf_lookup (const struct ovsrec_port *port_row)
+{
+    const struct ovsrec_vrf *vrf_row = NULL;
+    size_t i;
+    OVSREC_VRF_FOR_EACH (vrf_row, idl)
+    {
+        for (i = 0; i < vrf_row->n_ports; i++)
+        {
+            if (vrf_row->ports[i] == port_row)
+                return vrf_row;
+        }
+    }
+    return NULL;
+}

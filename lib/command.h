@@ -95,10 +95,10 @@ struct format_parser_state
 #endif
 
 /* There are some command levels which called from command node. */
-enum node_type 
+enum node_type
 {
   AUTH_NODE,			/* Authentication mode of vty interface. */
-  RESTRICTED_NODE,		/* Restricted view mode */ 
+  RESTRICTED_NODE,		/* Restricted view mode */
   VIEW_NODE,			/* View node. Default mode of vty interface. */
   AUTH_ENABLE_NODE,		/* Authentication mode for change enable. */
   ENABLE_NODE,			/* Enable node. */
@@ -111,7 +111,7 @@ enum node_type
   INTERFACE_NODE,		/* Interface mode node. */
   ZEBRA_NODE,			/* zebra connection node. */
   TABLE_NODE,			/* rtm_table selection node. */
-  RIP_NODE,			/* RIP protocol mode node. */ 
+  RIP_NODE,			/* RIP protocol mode node. */
   RIPNG_NODE,			/* RIPng protocol mode node. */
   BABEL_NODE,			/* Babel protocol mode node. */
   BGP_NODE,			/* BGP protocol mode which includes BGP4+ */
@@ -125,7 +125,7 @@ enum node_type
   ISIS_NODE,			/* ISIS protocol mode */
   PIM_NODE,			/* PIM protocol mode */
   MASC_NODE,			/* MASC for multicast.  */
-  IRDP_NODE,			/* ICMP Router Discovery Protocol mode. */ 
+  IRDP_NODE,			/* ICMP Router Discovery Protocol mode. */
   IP_NODE,			/* Static ip route node. */
   ACCESS_NODE,			/* Access list node. */
   PREFIX_NODE,			/* Prefix list node. */
@@ -145,28 +145,30 @@ enum node_type
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
+  SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
+  LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
 #endif
   VTY_NODE,			/* Vty node. */
 };
 
 /* Node which has some commands and prompt string and configuration
    function pointer . */
-struct cmd_node 
+struct cmd_node
 {
   /* Node index. */
-  enum node_type node;		
+  enum node_type node;
 
   /* Prompt character at vty interface. */
-  const char *prompt;			
+  const char *prompt;
 
   /* Is this node's configuration goes to vtysh ? */
   int vtysh;
-  
+
   /* Node's configuration write function */
   int (*func) (struct vty *);
 
   /* Vector of this node's command list. */
-  vector cmd_vector;	
+  vector cmd_vector;
 };
 
 /* MACROS TO BE USED AS COMMAND ATTRIBUTES */
@@ -179,7 +181,7 @@ struct cmd_node
 #define CMD_FLAG_NO_CMD      1
 
 /* Structure of command element. */
-struct cmd_element 
+struct cmd_element
 {
   const char *string;			/* Command specification by string. */
   int (*func) (struct cmd_element *, struct vty *, int, int, const char *[]);
@@ -218,6 +220,15 @@ struct cmd_token
                                  /* Command's dynamic callback func pointer. */
 };
 
+/* Structure for dynamic help string */
+struct dyn_cb_func
+{
+    char * funcname;
+    void (*funcptr)(struct cmd_token *token, struct vty *vty, \
+                    char * const dyn_helpstr_ptr, int max_strlen);
+    struct dyn_cb_func *next;
+ };
+
 /* Return value of the commands. */
 #ifdef ENABLE_OVSDB
 #define CMD_OVSDB_FAILURE       -1
@@ -238,7 +249,7 @@ struct cmd_token
 #define CMD_ARGC_MAX   25
 
 /* Turn off these macros when uisng cpp with extract.pl */
-#ifndef VTYSH_EXTRACT_PL  
+#ifndef VTYSH_EXTRACT_PL
 
 /* helper defines for end-user DEFUN* macros */
 #define DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attrs, dnum, dyn_cbstr) \
@@ -534,8 +545,12 @@ struct cmd_token
 #define HOSTNAME_SET_STR "Configure hostname\n"
 #define HOSTNAME_GET_STR "Display hostname\n"
 #define HOSTNAME_NO_STR "Reset hostname\n"
+#define DOMAINNAME_SET_STR "Configure domain name\n"
+#define DOMAINNAME_GET_STR "Display domain name\n"
+#define DOMAINNAME_NO_STR "Reset domain name\n"
 #define SHOW_STR    "Show running system information\n"
 #define COPY_STR    "Copy from one config to another\n"
+#define ERASE_STR   "Erase configuration\n"
 #define AAA_STR     "Authentication, Authorization and Accounting\n"
 #define IP_STR      "IP information\n"
 #define IPV6_STR    "IPv6 information\n"
@@ -587,7 +602,6 @@ struct cmd_token
 
 /* Help strings for show commands */
 #define SHOW_ARP_STR    "Show IPv4 addresses from neighbor table\n"
-#define SHOW_IPV6_STR   "Show IPv6 info\n"
 #define SHOW_IPV6_NEIGHBOR_STR "Show IPv6 addresses from neighbor table\n"
 
 #define CONF_BACKUP_EXT ".sav"
@@ -610,11 +624,6 @@ struct cmd_token
 #define NEIGHBOR_ADDR_STR2 "Neighbor address\nNeighbor tag\n"
 
 #endif /* HAVE_IPV6 */
-
-/* ECMP CLI help strings */
-#define ECMP_CONFIG_DISABLE_STR      "Completely disable ECMP\n"
-#define ECMP_STR                     "Configure ECMP\n"
-#define LOAD_BAL_STR                 "Configure hashing parameters\n"
 
 
 /* Prototypes. */
@@ -658,8 +667,11 @@ extern void host_config_set (char *);
 extern void print_version (const char *);
 
 /* struct host global, ick */
-extern struct host host; 
+extern struct host host;
 
 /* "<cr>" global */
 extern char *command_cr;
+void install_dyn_helpstr_funcptr(char *funcname,
+                   void (*funcptr)(struct cmd_token *token, struct vty *vty, \
+                            char * const dyn_helpstr_ptr, int max_strlen));
 #endif /* _ZEBRA_COMMAND_H */

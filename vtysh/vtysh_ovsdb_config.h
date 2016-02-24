@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,7 +28,8 @@
 #ifndef VTYSH_OVSDB_CONFIG_H
 #define VTYSH_OVSDB_CONFIG_H
 
-#include "lib/vty.h"
+#include "vty.h"
+#include <stdbool.h>
 
 /* general vtysh return type */
 typedef enum vtysh_ret_val_enum
@@ -65,6 +66,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_led,
   e_vtysh_config_context_staticroute,
   e_vtysh_config_context_ecmp,
+  e_vtysh_config_context_ntp,
   e_vtysh_config_context_client_id_max
 } vtysh_config_context_clientid;
 
@@ -73,6 +75,8 @@ typedef enum vtysh_router_context_client_idenum
 {
   e_vtysh_router_context_client_id_first = 0,
   e_vtysh_router_context_bgp_ip_prefix,
+  e_vtysh_router_context_bgp_ip_community_filter,
+  e_vtysh_router_context_bgp_ip_filter_list,
   e_vtysh_router_context_bgp_routemap,
   e_vtysh_router_context_bgp,
   e_vtysh_router_context_ospf,
@@ -87,6 +91,20 @@ typedef enum vtysh_interface_context_client_idenum
   e_vtysh_interface_context_config,
   e_vtysh_interface_context_client_id_max
 } vtysh_interface_context_clientid;
+
+/* Interface Context client-id type */
+typedef enum vtysh_intf_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_intf_context_client_id_first = 0,
+  e_vtysh_intf_context_config,
+  e_vtysh_interface_context_lldp,
+  e_vtysh_interface_context_lacp,
+  e_vtysh_interface_context_lag,
+  e_vtysh_interface_context_vlan,
+  e_vtysh_interface_context_vrf,
+  e_vtysh_intf_context_client_id_max
+} vtysh_intf_context_clientid;
 
 /* Mgmt Interface Context client-id type */
 typedef enum vtysh_mgmt_interface_context_client_idenum
@@ -158,6 +176,9 @@ typedef struct vtysh_ovsdb_cbmsg_struct
   struct ovsdb_idl *idl;
   vtysh_contextid contextid;
   int clientid;
+  bool disp_header_cfg;
+  void *feature_row;
+  bool skip_subcontext_list;
 }vtysh_ovsdb_cbmsg;
 
 typedef struct vtysh_ovsdb_cbmsg_struct *vtysh_ovsdb_cbmsg_ptr;
@@ -222,4 +243,41 @@ enum ovsdb_idl_txn_status cli_do_config_finish(struct ovsdb_idl_txn* txn);
 
 void cli_do_config_abort(struct ovsdb_idl_txn* txn);
 
+struct vtysh_context_feature_row_list {
+    void * row;
+    struct vtysh_context_feature_row_list *next;
+};
+typedef struct vtysh_context_feature_row_list feature_row_list;
+
+struct feature_sorted_list {
+    const struct shash_node **nodes;
+    int count;
+};
+
+struct vtysh_contextlist_struct {
+    /* Enum value of the context */
+    int index;
+    /* Context callback function */
+    vtysh_ret_val (*vtysh_context_callback) (void* p_private);
+    /* Init callback function to be called before vtysh_context_callback */
+    struct feature_sorted_list * (*context_callback_init) (void* p_private);
+    /* Exit callback function to be called after vtysh_context_callback */
+    void (*context_callback_exit) (struct feature_sorted_list * row_list);
+    /* Sub-context list for running-config context */
+    struct vtysh_contextlist_struct * subcontext_list;
+    /* Pointer to next context callback node */
+    struct vtysh_contextlist_struct * next;
+};
+
+typedef struct vtysh_contextlist_struct vtysh_contextlist;
+
+vtysh_ret_val install_show_run_config_context(vtysh_contextid index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          struct feature_sorted_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (struct feature_sorted_list * head));
+vtysh_ret_val install_show_run_config_subcontext(vtysh_contextid index,
+                          vtysh_contextid subcontext_index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          struct feature_sorted_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (struct feature_sorted_list * head));
 #endif /* VTYSH_OVSDB_CONFIG_H */

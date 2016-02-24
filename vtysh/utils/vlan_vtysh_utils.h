@@ -1,6 +1,5 @@
-/* Interface CLI commands header file
- *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+/*
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,21 +15,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: intf_vty.h
+ * File: vlan_vtysh_utils.h
  *
- * Purpose:  To add declarations required for intf_vty.c
+ * Purpose: header file for common vtysh utility macros and functions
  */
 
-#ifndef _INTF_VTY_H
-#define _INTF_VTY_H
+#ifndef _VLAN_VTYSH_UTILS_H
+#define _VLAN_VTYSH_UTILS_H
 
-#define INTERFACE_USER_CONFIG_MAP_MTU_DEFAULT                   "auto"
-#define INTERFACE_USER_CONFIG_MAP_PAUSE_DEFAULT                 "none"
-#define INTERFACE_USER_CONFIG_MAP_DUPLEX_DEFAULT                "full"
-#define INTERFACE_USER_CONFIG_MAP_SPEEDS_DEFAULT                "auto"
-
-#ifdef ENABLE_OVSDB
 #define VERIFY_VLAN_IFNAME(s) strncasecmp(s, "vlan", 4)
+
+#define DEFAULT_VLAN    1
 
 #define GET_VLANIF(s, a) \
         strcpy(s, "vlan"); \
@@ -40,15 +35,10 @@
         strcpy(vif, "vlan"); \
         strcat(vif, s);
 
-void
-intf_vty_init (void);
+const struct ovsrec_port* port_lookup(const char *if_name,
+                                const struct ovsdb_idl *idl);
+int check_internal_vlan(uint16_t vlanid);
 int create_vlan_interface(const char *vlan_if);
 int delete_vlan_interface(const char *vlan_if);
 bool verify_ifname(char *str);
-void dyncb_helpstr_speeds(struct cmd_token *token, struct vty *vty, \
-                          char * const helpstr, int max_len);
-void dyncb_helpstr_mtu(struct cmd_token *token, struct vty *vty, \
-                       char * const helpstr, int max_strlen);
-#endif
-
-#endif /* _INFT_VTY_H */
+#endif /* _VLAN_VTYSH_UTILS_H  */

@@ -35,9 +35,9 @@ Boston, MA 02111-1307, USA.  */
 #include "workqueue.h"
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_if.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
-#include "dyn_helpstr.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
@@ -77,6 +77,8 @@ enum matcher_rv
 /* Host information structure. */
 struct host host;
 
+/* list of callback functions for dynamic helpstr */
+static struct dyn_cb_func *dyn_cb_lookup = NULL;
 /* Standard command node structures. */
 static struct cmd_node auth_node =
 {
@@ -549,6 +551,7 @@ format_parser_read_word(struct format_parser_state *state)
   int len, i;
   char *cmd;
   struct cmd_token *token;
+  struct dyn_cb_func * dyn_cb_temp;
 
   start = state->cp;
 
@@ -573,10 +576,14 @@ format_parser_read_word(struct format_parser_state *state)
 
     if (token->dyn_cb != NULL)
     {
-      for (i = 0; i < (sizeof(dyn_cb_lookup)/sizeof(dyn_cb_lookup[0])); i++)
+      dyn_cb_temp = dyn_cb_lookup;
+      while (dyn_cb_temp != NULL)
       {
-        if(!strcmp(dyn_cb_lookup[i].funcname, token->dyn_cb))
-          token->dyn_cb_func = dyn_cb_lookup[i].funcptr;
+          if (!strcmp(dyn_cb_temp->funcname, token->dyn_cb)) {
+              token->dyn_cb_func = dyn_cb_temp->funcptr;
+              break;
+          }
+          dyn_cb_temp = dyn_cb_temp->next;
       }
     }
   }
@@ -3392,6 +3399,7 @@ DEFUN (config_end,
 }
 
 /* Show version. */
+#ifndef ENABLE_OVSDB
 DEFUN (show_version,
        show_version_cmd,
        "show version",
@@ -3406,6 +3414,18 @@ DEFUN (show_version,
 
   return CMD_SUCCESS;
 }
+#else
+DEFUN (show_version,
+       show_version_cmd,
+       "show version",
+       SHOW_STR
+       "Displays switch version\n")
+{
+  vty_out (vty, "%s %s%s", vtysh_ovsdb_os_name_get(),
+           vtysh_ovsdb_switch_version_get(), VTY_NEWLINE);
+  return CMD_SUCCESS;
+}
+#endif /* ENABLE_OVSDB */
 
 /* Help display function for all node. */
 DEFUN (config_help,
@@ -3691,9 +3711,13 @@ DEFUN (config_no_hostname,
 }
 #else
 #define MAX_HOSTNAME_LEN 32
+#define MAX_DOMAINNAME_LEN 32
 extern void  vtysh_ovsdb_hostname_set(const char * in);
 extern int vtysh_ovsdb_hostname_reset(char *hostname_arg);
 extern const char* vtysh_ovsdb_hostname_get();
+extern void  vtysh_ovsdb_domainname_set(const char * in);
+extern int vtysh_ovsdb_domainname_reset(char *domainname_arg);
+extern const char* vtysh_ovsdb_domainname_get();
 
 /* CLI for hostname configuration */
 DEFUN (config_hostname,
@@ -3756,6 +3780,71 @@ DEFUN (config_no_hostname_arg,
        "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
     return vtysh_ovsdb_hostname_reset(argv[0]);
+}
+
+/* Domain name configuration */
+DEFUN (config_domainname,
+       domainname_cmd,
+       "domain-name WORD",
+       DOMAINNAME_SET_STR
+       "Domain name string(Max Length 32), first letter must be an alphabet\n")
+{
+
+    if (strlen (argv[0]) > MAX_DOMAINNAME_LEN)
+    {
+        vty_out (vty, "Specify string of max %d characters.%s",
+                                    MAX_DOMAINNAME_LEN, VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    if (!isalpha((int) *argv[0]))
+    {
+        vty_out (vty, "Please specify string starting with an alphabet.%s",
+                                    VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    vtysh_ovsdb_domainname_set(argv[0]);
+    return CMD_SUCCESS;
+}
+
+/* CLI for dislplaying domain name */
+DEFUN (config_show_domainname,
+       show_domainname_cmd,
+       "show domain-name",
+       SHOW_STR
+       DOMAINNAME_GET_STR)
+{
+    const char* domainname = NULL;
+    domainname = vtysh_ovsdb_domainname_get();
+    if (domainname)
+    {
+        vty_out (vty, "%s%s", domainname, VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "%s%s", "", VTY_NEWLINE);
+    }
+    return CMD_SUCCESS;
+}
+
+/* CLI for resetting domain name, without argument  */
+DEFUN (config_no_domainname,
+       no_domainname_cmd,
+       "no domain-name",
+       NO_STR
+       DOMAINNAME_NO_STR)
+{
+       vtysh_ovsdb_domainname_set("");
+       return CMD_SUCCESS;
+}
+/* CLI for resetting domain name with argument */
+DEFUN (config_no_domainname_arg,
+       no_domainname_cmd_arg,
+       "no domain-name WORD",
+       NO_STR
+       DOMAINNAME_NO_STR
+       "Domain name string(Max Length 32), first letter must be an alphabet\n")
+{
+    return vtysh_ovsdb_domainname_reset(argv[0]);
 }
 
 #endif //ENABLE_OVSDB
@@ -4606,6 +4695,10 @@ cmd_init (int terminal)
   install_element (ENABLE_NODE, &show_hostname_cmd);
   install_element (CONFIG_NODE, &no_hostname_cmd);
   install_element (CONFIG_NODE, &no_hostname_cmd_arg);
+  install_element (CONFIG_NODE, &domainname_cmd);
+  install_element (ENABLE_NODE, &show_domainname_cmd);
+  install_element (CONFIG_NODE, &no_domainname_cmd);
+  install_element (CONFIG_NODE, &no_domainname_cmd_arg);
 
   if (terminal)
     {
@@ -4799,4 +4892,27 @@ cmd_terminate_node_element (void *del_ptr, enum data_type del_type)
             }
        }
    }
+}
+/*
+ * Function : install_dyn_helpstr_funcptr
+ * Responsibility : install dynamic helpstring callback function in global list.
+ * Parameters : char *funcname : dynamic helpstring callback function name.
+ *              void (*funcptr): callback function pointer.
+ * Return : void.
+ */
+void
+install_dyn_helpstr_funcptr(char *funcname,
+                   void (*funcptr)(struct cmd_token *token, struct vty *vty, \
+                            char * const dyn_helpstr_ptr, int max_strlen))
+{
+    /* allocate node */
+    struct dyn_cb_func* new_node =
+                    (struct dyn_cb_func*) malloc(sizeof(struct dyn_cb_func));
+    /* put in the data  */
+    new_node->funcname  = funcname;
+    new_node->funcptr =  funcptr;
+    new_node->next = dyn_cb_lookup;
+    dyn_cb_lookup = new_node;
+
+    return;
 }

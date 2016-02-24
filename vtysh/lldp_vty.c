@@ -1,7 +1,7 @@
 /* LLDP CLI commands
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -215,6 +215,88 @@ DEFUN (cli_lldp_no_set_hold_time,
   char def_holdtime[LLDP_TIMER_MAX_STRING_LENGTH]={0};
   snprintf(def_holdtime,LLDP_TIMER_MAX_STRING_LENGTH, "%d",SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
   return set_global_hold_time(def_holdtime);
+}
+
+/*
+ * Function: set_global_reinit_time
+ * Responsibility: Sets LLDP reinit time if the reinit time
+ * passed is non-default. If the reinit is default then
+ * deletes the key from the column.
+ * Parameters:
+ *     reinit_time: reinit time delay value configured by user.
+ * Return: On success returns CMD_SUCCESS,
+ *         On failure returns CMD_OVSDB_FAILURE.
+ */
+static int
+set_global_reinit_time(const char *reinit_time)
+{
+  const struct ovsrec_system *row = NULL;
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn* status_txn = cli_do_config_start();
+  struct smap smap_other_config;
+
+  if (NULL == status_txn)
+  {
+    VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort(status_txn);
+    return CMD_OVSDB_FAILURE;
+  }
+
+  row = ovsrec_system_first(idl);
+
+  if (!row)
+  {
+    VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+    cli_do_config_abort(status_txn);
+    return CMD_OVSDB_FAILURE;
+  }
+
+  smap_clone(&smap_other_config, &row->other_config);
+  if (SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT_DEFAULT != atoi(reinit_time))
+    smap_replace(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT,
+                 reinit_time);
+  else
+    smap_remove(&smap_other_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT);
+
+  ovsrec_system_set_other_config(row, &smap_other_config);
+
+  status = cli_do_config_finish(status_txn);
+  smap_destroy(&smap_other_config);
+  if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
+  {
+    return CMD_SUCCESS;
+  }
+  else
+  {
+    VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+    return CMD_OVSDB_FAILURE;
+  }
+}
+
+DEFUN (cli_lldp_set_reinit_time,
+       lldp_set_global_reinit_time_cmd,
+       "lldp reinit <1-10>",
+       CONFIG_LLDP_STR
+       "Set reinit timer, time in seconds to wait before performing LLDP"
+       "initialization on any interface\n"
+       "Reinit time (Default: 2)\n")
+{
+  return set_global_reinit_time(argv[0]);
+}
+
+DEFUN (cli_lldp_no_set_reinit_time,
+       lldp_no_set_global_reinit_time_cmd,
+       "no lldp reinit [<1-10>]",
+        NO_STR
+       CONFIG_LLDP_STR
+       "Set reinit timer, time in seconds to wait before performing LLDP"
+       "initialization on any interface\n"
+       "Reinit time (Default: 2)\n")
+{
+  char def_reinit_time[LLDP_TIMER_MAX_STRING_LENGTH] = {0};
+  snprintf(def_reinit_time, LLDP_TIMER_MAX_STRING_LENGTH, "%d",
+           SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT_DEFAULT );
+  return set_global_reinit_time(def_reinit_time);
 }
 
 /* Sets LLDP transmission time if the transmision time passed is non-default.
@@ -720,6 +802,35 @@ DEFUN (cli_lldp_show_intf_statistics,
 
   return CMD_SUCCESS;
 }
+/* qsort comparator function.
+ * This may need to be modified depending on the format of interface name
+ */
+static inline int compare_intf(const void*a, const void* b)
+{
+  lldp_neighbor_info* s1 = (lldp_neighbor_info*)a;
+  lldp_neighbor_info* s2 = (lldp_neighbor_info*)b;
+  uint i1=0,i2=0,i3=0,i4=0;
+
+  /* For sorting number with 21-1 etc. name */
+  sscanf(s1->name,"%d-%d",&i1,&i2);
+  sscanf(s2->name,"%d-%d",&i3,&i4);
+
+  if(i1 == i3)
+  {
+    if(i2 == i4)
+      return 0;
+    else if(i2 < i4)
+      return -1;
+    else
+      return 1;
+  }
+  else if (i1 < i3)
+    return -1;
+  else
+    return 1;
+
+  return 0;
+}
 
 DEFUN (cli_lldp_show_config,
        lldp_show_config_cmd,
@@ -734,16 +845,19 @@ DEFUN (cli_lldp_show_config,
   int tx_interval = 0;
   int hold_time = 0;
   lldp_intf_stats *intf_stats = NULL;
-  lldp_intf_stats *new_intf_stats = NULL;
-  lldp_intf_stats *temp = NULL, *current = NULL;
-
+  uint  iter = 0, nIntf = 0;
+  const struct ovsrec_subsystem *sub_row = NULL;
   row = ovsrec_system_first(idl);
-
+  sub_row = ovsrec_subsystem_first(idl);
   if(!row)
   {
-     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-     return CMD_OVSDB_FAILURE;
+    VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+    return CMD_OVSDB_FAILURE;
   }
+  if(sub_row) {
+    nIntf = sub_row->n_interfaces;
+  }
+  intf_stats = xcalloc(nIntf, sizeof(lldp_intf_stats));
 
   vty_out(vty, "LLDP Global Configuration:%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
@@ -777,90 +891,66 @@ DEFUN (cli_lldp_show_config,
   {
     if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
     {
-       /* Skipping internal interfaces */
-       continue;
+      /* Skipping internal interfaces */
+      continue;
     }
-    new_intf_stats = xcalloc(1, sizeof *new_intf_stats);
-    const char *lldp_enable_dir = smap_get(&ifrow->other_config , INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
+  const char *lldp_enable_dir = smap_get(&ifrow->other_config , INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR);
 
-    memset(new_intf_stats->name, '\0', INTF_NAME_SIZE);
-    strncpy(new_intf_stats->name, ifrow->name, INTF_NAME_SIZE);
-    if(!lldp_enable_dir)
-    {
-      new_intf_stats->lldp_dir = LLDP_TXRX;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_OFF;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_TX;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_RX;
-    }
-    else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0)
-    {
-      new_intf_stats->lldp_dir = LLDP_TXRX;
-    }
-    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
-    {
-      new_intf_stats->next = intf_stats;
-      intf_stats = new_intf_stats;
-    }
-    else
-    {
-      current = intf_stats;
-
-      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
-      {
-        current = current->next;
-      }
-      new_intf_stats->next = current->next;
-      current->next = new_intf_stats;
-    }
+  strncpy(intf_stats[iter].name, ifrow->name, INTF_NAME_SIZE);
+  if(!lldp_enable_dir)
+  {
+    intf_stats[iter].lldp_dir = LLDP_TXRX;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_OFF) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_OFF;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_TX) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_TX;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RX) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_RX;
+  }
+  else if(strcmp(lldp_enable_dir, INTERFACE_OTHER_CONFIG_MAP_LLDP_ENABLE_DIR_RXTX) == 0)
+  {
+    intf_stats[iter].lldp_dir = LLDP_TXRX;
+  }
+  iter++;
   }
 
-  current = intf_stats;
-  while(NULL != current)
+  qsort((void*)intf_stats,nIntf,sizeof(lldp_intf_stats),compare_intf);
+  iter = 0;
+  while(iter < nIntf)
   {
-    vty_out (vty, "%-6s", current->name);
+    vty_out (vty, "%-6s", intf_stats[iter].name);
 
-    if(current->lldp_dir == LLDP_OFF)
+    if(intf_stats[iter].lldp_dir == LLDP_OFF)
     {
       vty_out(vty, "%-25s", "No");
       vty_out(vty, "%-25s", "No");
     }
-    else if(current->lldp_dir == LLDP_TX)
+    else if(intf_stats[iter].lldp_dir == LLDP_TX)
     {
       vty_out(vty, "%-25s", "Yes");
       vty_out(vty, "%-25s", "No");
     }
-    else if(current->lldp_dir == LLDP_RX)
+    else if(intf_stats[iter].lldp_dir == LLDP_RX)
     {
       vty_out(vty, "%-25s", "No");
       vty_out(vty, "%-25s", "Yes");
     }
-    else if(current->lldp_dir == LLDP_TXRX)
+    else if(intf_stats[iter].lldp_dir == LLDP_TXRX)
     {
       vty_out(vty, "%-25s", "Yes");
       vty_out(vty, "%-25s", "Yes");
     }
     printf("\n");
-    current = current->next;
+    iter++;
   }
-
-  temp = intf_stats;
-  current = intf_stats;
-  while(NULL != current)
-  {
-    temp = current;
-    current = current->next;
-    free(temp);
-  }
-
+  if(intf_stats)
+    free(intf_stats);
   return CMD_SUCCESS;
 }
 
@@ -996,10 +1086,11 @@ DEFUN (cli_lldp_show_statistics,
 {
   const struct ovsrec_interface *ifrow = NULL;
   const struct ovsrec_system *row = NULL;
-  lldp_intf_stats *intf_stats = NULL;
-  lldp_intf_stats *new_intf_stats = NULL;
-  lldp_intf_stats *temp = NULL, *current = NULL;
+  const struct ovsrec_subsystem *sub_row = NULL;
   const struct ovsdb_datum *datum = NULL;
+  lldp_intf_stats  *intf_stats = NULL;
+  uint  iter = 0, nIntf = 0;
+
   static char *lldp_interface_statistics_keys [] = {
     INTERFACE_STATISTICS_LLDP_TX_COUNT,
     INTERFACE_STATISTICS_LLDP_RX_COUNT,
@@ -1013,72 +1104,59 @@ DEFUN (cli_lldp_show_statistics,
   unsigned int index;
 
   row = ovsrec_system_first(idl);
-
+  sub_row=ovsrec_subsystem_first(idl);
   if(!row)
   {
-     VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
-     return CMD_OVSDB_FAILURE;
+    VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+    return CMD_OVSDB_FAILURE;
+  }
+  if(sub_row)
+  {
+    nIntf = sub_row->n_interfaces;
   }
 
+  intf_stats = xcalloc(nIntf, sizeof (lldp_neighbor_info));
   OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
   {
     if(ifrow && (0 != strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_SYSTEM)))
     {
-       /* Skipping internal interfaces */
-       continue;
+      /* Skipping internal interfaces */
+      continue;
     }
     union ovsdb_atom atom;
-    new_intf_stats = xcalloc(1, sizeof *new_intf_stats);
-
-    memset(new_intf_stats->name, '\0', INTF_NAME_SIZE);
-    strncpy(new_intf_stats->name, ifrow->name, INTF_NAME_SIZE);
+    strncpy(intf_stats[iter].name, ifrow->name,INTF_NAME_SIZE);
 
     datum = ovsrec_interface_get_lldp_statistics(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
 
     atom.string = lldp_interface_statistics_keys[0];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->tx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
+    intf_stats[iter].tx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
 
     atom.string = lldp_interface_statistics_keys [1];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->rx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
+    intf_stats[iter].rx_packets = (index == UINT_MAX)? 0 : datum->values[index].integer ;
 
     atom.string = lldp_interface_statistics_keys[2];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->rx_discared = (index == UINT_MAX)? 0 : datum->values[index].integer ;
+    intf_stats[iter].rx_discared = (index == UINT_MAX)? 0 : datum->values[index].integer ;
 
     atom.string = lldp_interface_statistics_keys[3];
     index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-    new_intf_stats->rx_unrecognized = (index == UINT_MAX)? 0 : datum->values[index].integer;
-
-    if((NULL == intf_stats) || (strncmp(intf_stats->name, new_intf_stats->name, INTF_NAME_SIZE) > 0))
-    {
-      new_intf_stats->next = intf_stats;
-      intf_stats = new_intf_stats;
-    }
-    else
-    {
-      current = intf_stats;
-
-      while(NULL != current->next && (strncmp(current->next->name, new_intf_stats->name, INTF_NAME_SIZE) < 0))
-      {
-        current = current->next;
-      }
-      new_intf_stats->next = current->next;
-      current->next = new_intf_stats;
-    }
+    intf_stats[iter].rx_unrecognized = (index == UINT_MAX)? 0 : datum->values[index].integer;
+    iter++;
   }
 
-  current = intf_stats;
-  while(NULL != current)
+  iter =0;
+  while(iter < nIntf)
   {
-    total_tx_packets += current->tx_packets;
-    total_rx_packets += current->rx_packets;
-    total_rx_discared += current->rx_discared;
-    total_rx_unrecognized += current->rx_unrecognized;
-    current = current->next;
+    total_tx_packets += intf_stats[iter].tx_packets;
+    total_rx_packets += intf_stats[iter].rx_packets;
+    total_rx_discared += intf_stats[iter].rx_discared;
+    total_rx_unrecognized += intf_stats[iter].rx_unrecognized;
+    iter++;
   }
-
+  qsort((void*)intf_stats,nIntf,sizeof(lldp_intf_stats),compare_intf);
+  iter=0;
   vty_out(vty, "LLDP Global statistics:\n\n");
   vty_out(vty, "Total Packets transmitted : %u\n",total_tx_packets);
   vty_out(vty, "Total Packets received : %u\n",total_rx_packets);
@@ -1092,59 +1170,18 @@ DEFUN (cli_lldp_show_statistics,
   vty_out(vty, "%-20s","Rx-discarded");
   vty_out(vty, "%-20s","TLVs-Unknown");
   vty_out(vty, "%s", VTY_NEWLINE);
-
-  current = intf_stats;
-  while(NULL != current)
-  {
-    vty_out (vty, "%-10s", current->name);
-    vty_out (vty, "%-15d", current->tx_packets);
-    vty_out (vty, "%-15d", current->rx_packets);
-    vty_out (vty, "%-20d", current->rx_discared);
-    vty_out (vty, "%-20d", current->rx_unrecognized);
+  while(iter<nIntf) {
+    vty_out (vty, "%-10s", intf_stats[iter].name);
+    vty_out (vty, "%-15d", intf_stats[iter].tx_packets);
+    vty_out (vty, "%-15d", intf_stats[iter].rx_packets);
+    vty_out (vty, "%-20d", intf_stats[iter].rx_discared);
+    vty_out (vty, "%-20d", intf_stats[iter].rx_unrecognized);
     printf("\n");
-    current = current->next;
+    iter++;
   }
-
-  temp = intf_stats;
-  current = intf_stats;
-  while(NULL != current)
-  {
-    temp = current;
-    current = current->next;
-    free(temp);
-  }
-
+  if(intf_stats)
+    free(intf_stats);
   return CMD_SUCCESS;
-}
-
-/* qsort comparator function.
- * This may need to be modified depending on the format of interface name
- */
-static inline int compare_intf(const void*a, const void* b)
-{
-    lldp_neighbor_info* s1 = (lldp_neighbor_info*)a;
-    lldp_neighbor_info* s2 = (lldp_neighbor_info*)b;
-    uint i1=0,i2=0,i3=0,i4=0;
-
-    /* For sorting number with 21-1 etc. name */
-    sscanf(s1->name,"%d-%d",&i1,&i2);
-    sscanf(s2->name,"%d-%d",&i3,&i4);
-
-    if(i1 == i3)
-    {
-        if(i2 == i4)
-            return 0;
-        else if(i2 < i4)
-            return -1;
-        else
-            return 1;
-    }
-    else if (i1 < i3)
-        return -1;
-    else
-        return 1;
-
-    return 0;
 }
 
 DEFUN (cli_lldp_show_neighbor_info,
@@ -1756,9 +1793,9 @@ int lldp_ovsdb_if_lldp_state(const char *ifvalue, const lldp_tx_rx state) {
 
 DEFUN (lldp_if_lldp_tx,
        lldp_if_lldp_tx_cmd,
-       "lldp transmission",
+       "lldp transmit",
        INTF_LLDP_STR
-       "Set the transmission\n")
+       "Enable LLDP transmission on interface\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission");
@@ -1768,9 +1805,9 @@ DEFUN (lldp_if_lldp_tx,
 
 DEFUN (lldp_if_lldp_rx,
        lldp_if_lldp_rx_cmd,
-       "lldp reception",
+       "lldp receive",
        INTF_LLDP_STR
-       "Set the reception\n")
+       "Enable LLDP reception on interface\n")
 {
   if(lldp_ovsdb_if_lldp_state((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception");
@@ -1882,10 +1919,10 @@ int lldp_ovsdb_if_lldp_nodirstate(const char *ifvalue, const lldp_tx_rx state)
 
 DEFUN (lldp_if_no_lldp_tx,
        lldp_if_no_lldp_tx_cmd,
-       "no lldp transmission",
+       "no lldp transmit",
        NO_STR
        INTF_LLDP_STR
-       "Set the transmission\n")
+       "Disable LLDP transmission on interface\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_TX) != 0)
     VLOG_ERR("Failed to set lldp transmission");
@@ -1895,10 +1932,10 @@ DEFUN (lldp_if_no_lldp_tx,
 
 DEFUN (lldp_if_no_lldp_rx,
        lldp_if_no_lldp_rx_cmd,
-       "no lldp reception",
+       "no lldp receive",
        NO_STR
        INTF_LLDP_STR
-       "Set the reception\n")
+       "Disable LLDP reception on interface\n")
 {
   if(lldp_ovsdb_if_lldp_nodirstate((char*)vty->index, LLDP_RX) != 0)
     VLOG_ERR("Failed to set lldp reception");
@@ -1914,6 +1951,8 @@ lldp_vty_init (void)
   install_element (CONFIG_NODE, &lldp_no_set_global_status_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_hold_time_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_hold_time_cmd);
+  install_element (CONFIG_NODE, &lldp_set_global_reinit_time_cmd);
+  install_element (CONFIG_NODE, &lldp_no_set_global_reinit_time_cmd);
   install_element (CONFIG_NODE, &lldp_set_global_timer_cmd);
   install_element (CONFIG_NODE, &lldp_no_set_global_timer_cmd);
   install_element (CONFIG_NODE, &lldp_select_tlv_cmd);

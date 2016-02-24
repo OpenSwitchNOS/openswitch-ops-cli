@@ -1,6 +1,5 @@
-/* FAN CLI commands header file
- *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+/*
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,22 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: fan_vty.h
+ * File: vrf_vtysh_utils.h
  *
- * Purpose:  To add declarations required for fan_vty.c
+ * Purpose: This file contains common macro and function of vrf vtysh utility.
  */
 
-#ifndef _FAN_VTY_H
-#define _FAN_VTY_H
+#ifndef _VRF_VTY_UTILS_H
+#define _VRF_VTY_UTILS_H
 
-#ifndef SYS_STR
-#define SYS_STR "System information\n"
-#endif
+const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 
-#define FAN_STR "Fan information\n"
-#define FAN_SET_STR "Override fan speed\n"
-#define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
-
-void fan_vty_init (void);
-
-#endif /* _FAN_VTY_H */
+#endif  /*_VRF_VTY_UTILS_H */

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,20 +33,21 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_config_context.h"
-#include "fan_vty.h"
 #include "aaa_vty.h"
 #include "logrotate_vty.h"
 #include "openswitch-dflt.h"
 #include "ecmp_vty.h"
+#include "utils/system_vtysh_utils.h"
 
 #define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
 
 char globalconfigclientname[] = "vtysh_config_context_global_clientcallback";
 char vrfconfigclientname[]= "vtysh_config_context_vrf_clientcallback";
-char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback";
-char ledconfigclientname[]= "vtysh_config_context_led_clientcallback";
+char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback_old";
+char ledconfigclientname[]= "vtysh_config_context_led_clientcallback_old";
 char staticrouteconfigclientname[]= "vtysh_config_context_staticroute_clientcallback";
 char ecmpconfigclientname[] = "vtysh_config_context_ecmp_clientcallback";
+char ntpconfigclientname[] = "vtysh_config_context_ntp_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_parse_othercfg
@@ -60,7 +61,7 @@ static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
 {
   const char *data = NULL;
-  int hold_time = 0, transmit_interval = 0;
+  int hold_time = 0, transmit_interval = 0, reinit_time = 0;
 
   if(NULL == ifrow_config)
   {
@@ -95,6 +96,17 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
     if ( SYSTEM_OTHER_CONFIG_MAP_LLDP_TX_INTERVAL_DEFAULT != hold_time)
     {
       vtysh_ovsdb_cli_print(p_msg, "lldp timer %d", transmit_interval);
+    }
+  }
+
+  data = NULL;
+  data = smap_get(ifrow_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT);
+  if (data)
+  {
+    reinit_time = atoi(data);
+    if (SYSTEM_OTHER_CONFIG_MAP_LLDP_REINIT_DEFAULT != reinit_time)
+    {
+      vtysh_ovsdb_cli_print(p_msg, "lldp reinit %d", reinit_time);
     }
   }
 
@@ -457,6 +469,26 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_ntp_cfg
+| Responsibility : parse ntp_config in system table
+| Parameters :
+|    ifrow_config : ntp_config object pointer
+|    pmsg         : callback arguments from show running config handler|
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_ntp_cfg(const struct smap *ifrow_config, vtysh_ovsdb_cbmsg *p_msg)
+{
+    bool status = false;
+
+    status = smap_get_bool(ifrow_config, SYSTEM_NTP_CONFIG_AUTHENTICATION_ENABLE, false);
+    if (status != SYSTEM_NTP_CONFIG_AUTHENTICATION_DEFAULT) {
+        vtysh_ovsdb_cli_print(p_msg, "ntp authentication enable");
+    }
+
+    return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_config_context_global_clientcallback
 | Responsibility : client callback routine
 | Parameters :
@@ -480,6 +512,10 @@ vtysh_config_context_global_clientcallback(void *p_private)
     {
       vtysh_ovsdb_cli_print(p_msg, "hostname %s", vswrow->hostname);
     }
+    if ((vswrow->domain_name != NULL) && (vswrow->domain_name[0] != '\0'))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "domain-name %s", vswrow->domain_name);
+    }
 
     /* parse the alias coumn */
     vtysh_ovsdb_ovstable_parse_alias(p_msg);
@@ -495,6 +531,9 @@ vtysh_config_context_global_clientcallback(void *p_private)
 
     /* parse aaa config param */
     vtysh_ovsdb_ovstable_parse_aaa_cfg(&vswrow->aaa, p_msg);
+
+    /* parse ntp config param */
+    vtysh_ovsdb_ovstable_parse_ntp_cfg(&vswrow->ntp_config, p_msg);
   }
 
   /* display radius server commands */
@@ -552,19 +591,19 @@ vtysh_ovsdb_subsystemtable_parse_othercfg(const struct smap *subsystemrow_config
 
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_config_context_fan_clientcallback
+| Function : vtysh_config_context_fan_clientcallback_old
 | Responsibility : fan config client callback routine
 | Parameters :
 |     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_config_context_fan_clientcallback(void *p_private)
+vtysh_config_context_fan_clientcallback_old(void *p_private)
 {
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
     const struct ovsrec_subsystem *subsysrow;
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
-                           "vtysh_config_context_fan_clientcallback entered");
+                           "vtysh_config_context_fan_clientcallback_old entered");
     subsysrow = ovsrec_subsystem_first(p_msg->idl);
     if(subsysrow)
     {
@@ -575,7 +614,7 @@ vtysh_config_context_fan_clientcallback(void *p_private)
 }
 
 /***************************************************************************
-* @function      : vtysh_config_context_led_clientcallback
+* @function      : vtysh_config_context_led_clientcallback_old
 * @detail    : client callback routine for LED configuration
 * @parame[in]
 *   p_private: Void pointer for holding address of vtysh_ovsdb_cbmsg_ptr
@@ -583,7 +622,7 @@ vtysh_config_context_fan_clientcallback(void *p_private)
 * @return : e_vtysh_ok on success
 ***************************************************************************/
 vtysh_ret_val
-vtysh_config_context_led_clientcallback(void *p_private)
+vtysh_config_context_led_clientcallback_old(void *p_private)
 {
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
     const struct ovsrec_led *pLedRow = NULL;
@@ -661,8 +700,22 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
                 if (row_route->n_nexthops && row_route->nexthops[i]->ip_address &&
                     row_route->distance) {
                     if (*row_route->distance == 1) {
+#ifdef VRF_ENABLE
+                        if (strncmp(row_route->vrf->name, DEFAULT_VRF_NAME,
+                                    OVSDB_VRF_NAME_MAXLEN)) {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s vrf %s",
+                                             str_temp,
+                                             row_route->nexthops[i]->ip_address,
+                                             row_route->vrf->name);
+                        } else {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                               row_route->nexthops[i]->ip_address);
+                        }
+#else
                         vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
                             row_route->nexthops[i]->ip_address);
+#endif
+
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
                             row_route->nexthops[i]->ip_address, *row_route->distance);
@@ -671,8 +724,22 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
                 } else if (row_route->n_nexthops && row_route->nexthops[i]->ports
                     && row_route->distance) {
                     if (*row_route->distance == 1) {
+#ifdef VRF_ENABLE
+                        if (strncmp(row_route->vrf->name, DEFAULT_VRF_NAME,
+                                    OVSDB_VRF_NAME_MAXLEN)) {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s vrf %s",
+                                       str_temp,
+                                       row_route->nexthops[i]->ports[0]->name,
+                                       row_route->vrf->name);
+                        } else {
+                            vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
+                                row_route->nexthops[i]->ports[0]->name);
+                        }
+#else
                         vtysh_ovsdb_cli_print(p_msg,"%s %s", str_temp,
                             row_route->nexthops[i]->ports[0]->name);
+#endif
+
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"%s %s %d", str_temp,
                             row_route->nexthops[i]->ports[0]->name, *row_route->distance);
@@ -704,22 +771,22 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
                               "vtysh_config_context_ecmp_clientcallback entered");
 
     ovs_row = ovsrec_system_first(p_msg->idl);
-    if(!ovs_row)
+    if (!ovs_row)
     {
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                             "vtysh_config_context_ecmp_clientcallback: error ovs_row");
         return e_vtysh_error;
     }
 
-    if(!GET_ECMP_CONFIG_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp disable");
     }
-    if(!GET_ECMP_CONFIG_HASH_SRC_IP_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_HASH_SRC_IP_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance src-ip disable");
     }
-    if(!GET_ECMP_CONFIG_HASH_SRC_PORT_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_HASH_SRC_PORT_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance src-port disable");
     }
@@ -727,9 +794,67 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance dst-ip disable");
     }
-    if(!GET_ECMP_CONFIG_HASH_DST_PORT_STATUS(ovs_row))
+    if (!GET_ECMP_CONFIG_HASH_DST_PORT_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance dst-port disable");
+    }
+    if (!GET_ECMP_CONFIG_HASH_RESILIENT_STATUS(ovs_row))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance resilient disable");
+    }
+
+    return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_config_context_ntp_clientcallback
+| Responsibility : NTP config client callback routine
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : error/ok
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_config_context_ntp_clientcallback(void *p_private)
+{
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+    const char *buf = NULL;
+    struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
+    struct ovsrec_ntp_association *ntp_assoc_row = NULL;
+    char str_temp[80] = "";
+    bool status = false;
+
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                              "vtysh_config_context_ntp_clientcallback entered");
+
+    /* Generate CLI for the NTP_Key Table */
+    OVSREC_NTP_KEY_FOR_EACH(ntp_auth_key_row, p_msg->idl) {
+        vtysh_ovsdb_cli_print(p_msg, "ntp authentication-key %d md5 %s", ntp_auth_key_row->key_id, ntp_auth_key_row->key_password);
+
+        if (ntp_auth_key_row->trust_enable) {
+            vtysh_ovsdb_cli_print(p_msg, "ntp trusted-key %d", ntp_auth_key_row->key_id);
+        }
+    }
+
+    /* Generate CLI for the NTP_Association Table */
+    OVSREC_NTP_ASSOCIATION_FOR_EACH(ntp_assoc_row, p_msg->idl) {
+        strcpy(str_temp, "");
+ 
+        if (NULL != ntp_assoc_row->key_id) {
+            snprintf(str_temp, sizeof(str_temp), " key-id %d", ((struct ovsrec_ntp_key *)ntp_assoc_row->key_id)->key_id);
+        }
+
+        buf = smap_get(&ntp_assoc_row->association_attributes, NTP_ASSOC_ATTRIB_VERSION);
+        if (buf && (0 != strncmp(buf, NTP_ASSOC_ATTRIB_VERSION_DEFAULT, strlen(NTP_ASSOC_ATTRIB_VERSION_DEFAULT)))) {
+            strcat(str_temp, " version ");
+            strcat(str_temp, buf);
+        }
+
+        status = smap_get_bool(&ntp_assoc_row->association_attributes, NTP_ASSOC_ATTRIB_PREFER, false);
+        if (status != NTP_ASSOC_ATTRIB_PREFER_DEFAULT_VAL) {
+            strcat(str_temp, " prefer");
+        }
+
+        vtysh_ovsdb_cli_print(p_msg, "ntp server %s%s", ntp_assoc_row->address, str_temp);
     }
 
     return e_vtysh_ok;
@@ -746,6 +871,80 @@ vtysh_init_config_context_clients()
 {
   vtysh_context_client client;
   vtysh_ret_val retval = e_vtysh_error;
+
+  retval = install_show_run_config_context(e_vtysh_config_context,
+                                  &vtysh_config_context_global_clientcallback,
+                                  NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                        "config context unable to add global client callback");
+    assert(0);
+    return retval;
+  }
+
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_vrf,
+                                     &vtysh_config_context_vrf_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "config context unable to add vrf client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = install_show_run_config_context(e_vtysh_dependent_config,
+                                  NULL, NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                    "config context unable to add dependent config  callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_dependent_config,
+                              e_vtysh_dependent_config_staticroute,
+                              &vtysh_config_context_staticroute_clientcallback,
+                              NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                "dependent config unable to add static route client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_ecmp,
+                                     &vtysh_config_context_ecmp_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                          "config context unable to add ecmp client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_ntp,
+                                     &vtysh_config_context_ntp_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "config context unable to add ntp client callback");
+    assert(0);
+    return retval;
+  }
 
   client.p_client_name = globalconfigclientname;
   client.client_id = e_vtysh_config_context_global;
@@ -777,7 +976,7 @@ vtysh_init_config_context_clients()
   memset(&client, 0, sizeof(vtysh_context_client));
   client.p_client_name = fanconfigclientname;
   client.client_id = e_vtysh_config_context_fan;
-  client.p_callback = &vtysh_config_context_fan_clientcallback;
+  client.p_callback = &vtysh_config_context_fan_clientcallback_old;
   retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_fan, &client);
   if(e_vtysh_ok != retval)
   {
@@ -792,7 +991,7 @@ vtysh_init_config_context_clients()
   memset(&client, 0, sizeof(vtysh_context_client));
   client.p_client_name = ledconfigclientname;
   client.client_id = e_vtysh_config_context_led;
-  client.p_callback = &vtysh_config_context_led_clientcallback;
+  client.p_callback = &vtysh_config_context_led_clientcallback_old;
   retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_led, &client);
   if(e_vtysh_ok != retval)
   {
@@ -827,6 +1026,20 @@ vtysh_init_config_context_clients()
   {
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                               "config context unable to add ecmp client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  memset(&client, 0, sizeof(vtysh_context_client));
+  client.p_client_name = ntpconfigclientname;
+  client.client_id = e_vtysh_config_context_ntp;
+  client.p_callback = &vtysh_config_context_ntp_clientcallback;
+  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_ntp, &client);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                              "config context unable to add ntp client callback");
     assert(0);
     return retval;
   }
