@@ -63,7 +63,6 @@
 #include "system_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
-#include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
 
@@ -958,21 +957,6 @@ static struct cmd_node keychain_key_node =
       "%s(config-keychain-key)# "
    };
 
-#ifdef ENABLE_OVSDB
-
-static struct cmd_node dhcp_server_node =
-{
-  DHCP_SERVER_NODE,
-  "%s(config-dhcp-server)# ",
-};
-
-static struct cmd_node tftp_server_node =
-{
-  TFTP_SERVER_NODE,
-  "%s(config-tftp-server)# ",
-};
-
-#endif
 /* Defined in lib/vty.c */
 extern struct cmd_node vty_node;
 
@@ -1486,60 +1470,6 @@ ALIAS (vtysh_exit_line_vty,
 #endif
 
 
-#ifdef ENABLE_OVSDB
-DEFUN (vtysh_dhcp_server,
-      vtysh_dhcp_server_cmd,
-      "dhcp-server",
-      "DHCP Server Configuration\n")
-{
-
-   vty->node = DHCP_SERVER_NODE;
-
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_exit_dhcp_server,
-      vtysh_exit_dhcp_server_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
-{
-   return vtysh_exit (vty);
-}
-
-#ifndef ENABLE_OVSDB
-ALIAS (vtysh_exit_dhcp_server,
-      vtysh_quit_dhcp_server_cmd,
-      "quit",
-      "Exit current mode and down to previous mode\n")
-#endif
-
-DEFUN (vtysh_tftp_server,
-      vtysh_tftp_server_cmd,
-      "tftp-server",
-      "TFTP Server Configuration\n")
-{
-
-   vty->node = TFTP_SERVER_NODE;
-
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_exit_tftp_server,
-      vtysh_exit_tftp_server_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
-{
-   return vtysh_exit (vty);
-}
-
-#ifndef ENABLE_OVSDB
-ALIAS (vtysh_exit_tftp_server,
-      vtysh_quit_tftp_server_cmd,
-      "quit",
-      "Exit current mode and down to previous mode\n")
-#endif
-
-#endif
 #ifndef ENABLE_OVSDB
 /* TODO Implement "no interface command in isisd. */
 DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D,
@@ -3919,8 +3849,6 @@ vtysh_init_vty (void)
    install_node (&isis_node, NULL);
 #endif
    install_node (&vty_node, NULL);
-   install_node (&dhcp_server_node, NULL);
-   install_node (&tftp_server_node, NULL);
 
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
@@ -3931,8 +3859,6 @@ vtysh_init_vty (void)
 #endif
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
-   vtysh_install_default (DHCP_SERVER_NODE);
-   vtysh_install_default (TFTP_SERVER_NODE);
    /* Sub-interafce and Loopback nodes. */
    vtysh_install_default (SUB_INTERFACE_NODE);
    vtysh_install_default (LOOPBACK_INTERFACE_NODE);
@@ -3959,13 +3885,7 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 
-   install_element (CONFIG_NODE, &vtysh_dhcp_server_cmd);
-   install_element (DHCP_SERVER_NODE, &config_exit_cmd);
-   install_element (DHCP_SERVER_NODE, &config_end_cmd);
 
-   install_element (CONFIG_NODE, &vtysh_tftp_server_cmd);
-   install_element (TFTP_SERVER_NODE, &config_exit_cmd);
-   install_element (TFTP_SERVER_NODE, &config_end_cmd);
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
@@ -4220,7 +4140,6 @@ vtysh_init_vty (void)
   vrf_vty_init();
   l3routes_vty_init();
   aaa_vty_init();
-  dhcp_tftp_vty_init();
   /* Sub-interafce and Loopback init. */
   sub_intf_vty_init();
   loopback_intf_vty_init();
