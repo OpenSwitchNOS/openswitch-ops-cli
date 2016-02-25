@@ -27,6 +27,8 @@
 
 #define OSPF_CMD_AS_RANGE "<0-4294967295>"
 
+#define SAFE_FREE(x) if (x) {free(x);x=NULL;}
+
 #define OSPF_FEATURE        "ospfv2"
 #define NUM_OF_FEATURES     1
 #define ENABLE_STR          "Enable the feature\n"
