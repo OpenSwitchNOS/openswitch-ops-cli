@@ -199,6 +199,10 @@ vtysh_config_parse_line (const char *line)
 #endif
       else if (strncmp (line, "interface lag", strlen ("interface lag")) == 0)
           config = config_get (LINK_AGGREGATION_NODE, line);
+      else if (strncmp (line, "qos queue-profile", strlen ("qos queue-profile")) == 0)
+          config = config_get (QOS_QUEUE_PROFILE_NODE, line);
+      else if (strncmp (line, "qos schedule-profile", strlen ("qos schedule-profile")) == 0)
+          config = config_get (QOS_SCHEDULE_PROFILE_NODE, line);
       else if (strncmp (line, "router-id", strlen ("router-id")) == 0)
 	config = config_get (ZEBRA_NODE, line);
       else if (strncmp (line, "router rip", strlen ("router rip")) == 0)
