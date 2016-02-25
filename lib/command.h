@@ -142,6 +142,8 @@ enum node_type
   VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
+  QOS_QUEUE_PROFILE_NODE,       /* QoS Queue Profile Node. */
+  QOS_SCHEDULE_PROFILE_NODE,    /* QoS Schedule Profile Node. */
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
   SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
   LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
