@@ -53,6 +53,10 @@ typedef enum vtysh_context_idenum
   e_vtysh_sftp_server_context,
   e_vtysh_dhcp_relay_context,
   e_vtysh_udp_forwarder_context,
+  e_vtysh_qos_apply_global_context,
+  e_vtysh_qos_trust_global_context,
+  e_vtysh_qos_cos_map_context,
+  e_vtysh_qos_dscp_map_context,
 } vtysh_contextid;
 
 /* Config Context Client ID type */

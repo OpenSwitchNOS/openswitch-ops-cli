@@ -3594,6 +3594,8 @@ DEFUN (config_exit,
     case TFTP_SERVER_NODE:
 #endif
     case LINK_AGGREGATION_NODE:
+    case QOS_QUEUE_PROFILE_NODE:
+    case QOS_SCHEDULE_PROFILE_NODE:
     case ZEBRA_NODE:
     case BGP_NODE:
     case RIP_NODE:
@@ -3650,6 +3652,8 @@ DEFUN (config_end,
     case INTERFACE_NODE:
     case VLAN_NODE:
     case LINK_AGGREGATION_NODE:
+    case QOS_QUEUE_PROFILE_NODE:
+    case QOS_SCHEDULE_PROFILE_NODE:
     case MGMT_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_INTERFACE_NODE:

@@ -1278,6 +1278,8 @@ vtysh_exit (struct vty *vty)
     case MGMT_INTERFACE_NODE:
     case VLAN_INTERFACE_NODE:
     case LINK_AGGREGATION_NODE:
+    case QOS_QUEUE_PROFILE_NODE:
+    case QOS_SCHEDULE_PROFILE_NODE:
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
 #endif
