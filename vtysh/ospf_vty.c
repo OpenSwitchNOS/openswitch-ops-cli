@@ -3603,6 +3603,308 @@ DEFUN (cli_ip_ospf_running_config_show,
     return CMD_SUCCESS;
 }
 
+DEFUN (cli_ospf_admin_distance,
+       cli_ospf_admin_distance_cmd,
+       "distance <1-255>",
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        distance = (unsigned char)atoi (argv[0]);
+        if (distance < 1 && distance > 255)
+        {
+            VLOG_DBG ("Invalid  OSPF administrative distance");
+            break;
+        }
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(!strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_ALL))
+                value_distance[i] = (int64_t)distance;
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_admin_distance,
+       cli_no_ospf_admin_distance_cmd,
+       "no distance <1-255>",
+       NO_STR
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        distance = OSPF_ROUTER_DISTANCE_DEFAULT;
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(!strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_ALL))
+                value_distance[i] = (int64_t)distance;
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_ospf_distance_ospf,
+       cli_ospf_distance_ospf_cmd,
+       "distance ospf "
+         "{intra-area <1-255>|inter-area <1-255>|external <1-255>}",
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n"
+       "Intra-area routes\n"
+       "Distance for intra-area routes\n"
+       "Inter-area routes\n"
+       "Distance for inter-area routes\n"
+       "External routes\n"
+       "Distance for external routes\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance_intra = 0,distance_inter = 0,distance_external = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+  if (argc < 3) /* should not happen */
+    return CMD_WARNING;
+
+  /* As just distance ospf will also be allowed*/
+  if (!argv[0] && !argv[1] && !argv[2])
+    {
+      vty_out(vty, "%% Command incomplete. (Arguments required)%s",
+              VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+  if (argv[0])
+    distance_intra = atoi (argv[0]);
+  if (argv[1])
+    distance_inter = atoi (argv[1]);
+  if (argv[2])
+    distance_external = atoi (argv[2]);
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(argv[0] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTRA_AREA))
+                value_distance[i] = (int64_t)distance_intra;
+            else if (argv[1] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTER_AREA))
+                value_distance[i] = (int64_t)distance_inter;
+            else if (argv[2] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_EXTERNAL))
+                value_distance[i] = (int64_t)distance_external;
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_distance_ospf,
+       cli_no_ospf_distance_ospf_cmd,
+       "no distance ospf {intra-area|inter-area|external}",
+       NO_STR
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n"
+       "OSPF Distance\n"
+       "Intra-area routes\n"
+       "Inter-area routes\n"
+       "External routes\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+  if (argc < 3) /* should not happen */
+    return CMD_WARNING;
+
+  /* As just distance ospf will also be allowed*/
+  if (!argv[0] && !argv[1] && !argv[2])
+    {
+      vty_out(vty, "%% Command incomplete. (Arguments required)%s",
+              VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        distance = OSPF_ROUTER_DISTANCE_DEFAULT;
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(argv[0] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTRA_AREA))
+                value_distance[i] = (int64_t)distance;
+            else if (argv[1] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTER_AREA))
+                value_distance[i] = (int64_t)distance;
+            else if (argv[2] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_EXTERNAL))
+                value_distance[i] = (int64_t)distance;
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+
+  return CMD_SUCCESS;
+}
+
 void
 ospf_vty_init(void)
 {
@@ -3620,6 +3922,10 @@ ospf_vty_init(void)
     install_element(OSPF_NODE, &cli_ospf_router_network_area_ip_cmd);
     install_element(OSPF_NODE, &cli_ospf_router_no_network_area_id_cmd);
     install_element(OSPF_NODE, &cli_ospf_router_no_network_area_ip_cmd);
+    install_element(OSPF_NODE, &cli_ospf_admin_distance_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_admin_distance_cmd);
+    install_element(OSPF_NODE, &cli_ospf_distance_ospf_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_distance_ospf_cmd);
 
     /* max-metric command */
     install_element(OSPF_NODE, &cli_ospf_router_max_metric_cmd);
