@@ -1574,7 +1574,7 @@ DEFUN (cli_lldp_show_local_device,
                              SYSTEM_OTHER_CONFIG_MAP_LLDP_HOLD_DEFAULT);
 
     br = ovsrec_bridge_first(idl);
-    vrf = ovsrec_vrf_first(idl);
+    vrf = get_default_vrf(idl);
 
     lldp_mgmt_pattern = smap_get(&system->other_config,
                      SYSTEM_OTHER_CONFIG_MAP_LLDP_MGMT_ADDR);

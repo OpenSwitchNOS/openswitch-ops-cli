@@ -80,8 +80,6 @@ const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                              bool attach_to_default_vrf,
                                              struct ovsdb_idl_txn *txn);
 
-const struct ovsrec_vrf* vrf_lookup(const char *vrf_name);
-
 bool check_if_internal_vlan(const struct ovsrec_vlan *vlan_row);
 
 #endif /* VTYSH_OVSDB_IF_H */
