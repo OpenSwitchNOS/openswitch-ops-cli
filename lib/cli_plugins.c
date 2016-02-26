@@ -66,6 +66,7 @@ static char *cli_disable_plugins[] = {
   "lldp",
   "aaa",
   "sys",
+  "ipapps",
   NULL
 };
 
