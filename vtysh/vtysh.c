@@ -3643,7 +3643,7 @@ vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
          vty->buf = strt;
          vty->length = strlen(strt);
          //vty_out(vty, "Executing the command \"%s\" %s", strt, VTY_NEWLINE);
-         vty_command (vty, vty->buf);
+         vtysh_execute(vty->buf);
 
          memset(current_cmd, 0, VTYSH_MAX_ALIAS_LIST_LEN);
          i = 0;
@@ -3682,7 +3682,7 @@ vtysh_alias_callback(struct cmd_element *self, struct vty *vty,
       //vty_out(vty, "Executing the command \"%s\" \n", current_cmd);
       vty->buf = strt;
       vty->length = strlen(strt);
-      vty_command (vty, vty->buf);
+      vtysh_execute(vty->buf);
    }
    vty->buf = prev_buf;
    return CMD_SUCCESS;
