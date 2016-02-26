@@ -3130,8 +3130,8 @@ ospf_ip_route_show()
     }
 
     vty_out(vty, "%s%s%s%s",
-            "Codes: N - Network, IA - Inter Area, E1 - External Type 1,",
-            VTY_NEWLINE, "       E2 - External Type 2", VTY_NEWLINE);
+            "Codes: N - Network, R - Router, IA - Inter Area,", VTY_NEWLINE,
+            "       E1 - External Type 1, E2 - External Type 2", VTY_NEWLINE);
 
     /* Show Network routes. */
     ospf_route_network_show (ospf_router_row);
