@@ -77,6 +77,37 @@ ospf_string_is_an_ip_addr(const char *string)
     return (str2sockunion(string, &su) >= 0);
 }
 
+/* Utility functions. */
+static int
+ospf_str_to_area_id (const char *str, struct in_addr *area_id)
+{
+  char *endptr = NULL;
+  unsigned long ret;
+
+  /* match "A.B.C.D". */
+  if (strchr (str, '.') != NULL)
+    {
+      ret = inet_aton (str, area_id);
+      if (!ret)
+        return -1;
+    }
+  /* match "<0-4294967295>". */
+  else
+    {
+      if (*str == '-')
+        return -1;
+      errno = 0;
+      ret = strtoul (str, &endptr, 10);
+      if (*endptr != '\0' || errno || ret > UINT32_MAX)
+        return -1;
+
+      area_id->s_addr = htonl (ret);
+    }
+
+  return 0;
+}
+
+
 /* Function to get the statistics from neighbor table. */
 int64_t
 ospf_get_statistics_from_neighbor(const struct ovsrec_ospf_neighbor *
@@ -345,8 +376,9 @@ ospf_get_vrf_by_name(const char *name)
 
 /* Remove the area row matching the area id and remove reference from the router table. */
 int
-ospf_area_remove_from_router(const struct ovsrec_ospf_router *ospf_router_row,
-                              int64_t area_id)
+ospf_area_remove_from_router(
+                             const struct ovsrec_ospf_router *ospf_router_row,
+                             int64_t area_id)
 {
     int64_t *area;
     struct ovsrec_ospf_area **area_list;
@@ -360,6 +392,8 @@ ospf_area_remove_from_router(const struct ovsrec_ospf_router *ospf_router_row,
 
     if (!area || !area_list)
     {
+        SAFE_FREE(area);
+        SAFE_FREE(area_list);
         VLOG_DBG("Memory alloc failed, could not remove area from router.%s",
                  VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
@@ -381,8 +415,8 @@ ospf_area_remove_from_router(const struct ovsrec_ospf_router *ospf_router_row,
         ovsrec_ospf_router_set_areas(ospf_router_row, area, area_list,
                                    (ospf_router_row->n_areas - 1));
 
-    free(area);
-    free(area_list);
+    SAFE_FREE(area);
+    SAFE_FREE(area_list);
 
     return CMD_SUCCESS;
 }
@@ -391,7 +425,7 @@ ospf_area_remove_from_router(const struct ovsrec_ospf_router *ospf_router_row,
  * Find the ospf router with matching instance id
  */
 static const struct ovsrec_ospf_router *
-get_ovsrec_ospf_router_with_instance_id(const struct ovsrec_vrf *vrf_row,
+ospf_router_lookup_by_instance_id(const struct ovsrec_vrf *vrf_row,
                                               int64_t instance_tag)
 {
     int i = 0;
@@ -460,7 +494,7 @@ ospf_neighbor_remove_from_interface(const struct
         ovsrec_ospf_interface_set_neighbors(interface_row, ospf_nbr_list,
                                             (interface_row->n_neighbors - 1));
 
-    free(ospf_nbr_list);
+    SAFE_FREE(ospf_nbr_list);
 
     return CMD_SUCCESS;
 }
@@ -483,6 +517,8 @@ ospf_router_insert_to_vrf(const struct ovsrec_vrf *vrf_row,
 
     if (!instance_list || !ospf_routers_list)
     {
+        SAFE_FREE(instance_list);
+        SAFE_FREE(ospf_routers_list);
         VLOG_DBG("Memory alloc failed, could not insert router in VRF.%s",
                  VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
@@ -499,8 +535,8 @@ ospf_router_insert_to_vrf(const struct ovsrec_vrf *vrf_row,
                       CONST_CAST(struct ovsrec_ospf_router *, ospf_router_row);
     ovsrec_vrf_set_ospf_routers(vrf_row, instance_list, ospf_routers_list,
                                (vrf_row->n_ospf_routers + 1));
-    free(instance_list);
-    free(ospf_routers_list);
+    SAFE_FREE(instance_list);
+    SAFE_FREE(ospf_routers_list);
 
     return CMD_SUCCESS;
 }
@@ -620,7 +656,7 @@ ospf_router_cmd_execute(char *vrf_name, int64_t instance_tag)
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
     }
     /* See if it already exists. */
-    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
                                                               instance_tag);
 
     /* If does not exist, create a new one. */
@@ -654,6 +690,8 @@ ospf_router_remove_from_vrf(const struct ovsrec_vrf *vrf_row,
 
     if (!instance_list || !ospf_routers_list)
     {
+        SAFE_FREE(instance_list);
+        SAFE_FREE(ospf_routers_list);
         VLOG_DBG("Memory alloc failed, could not remove router from VRF.%s",
                  VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
@@ -677,8 +715,8 @@ ospf_router_remove_from_vrf(const struct ovsrec_vrf *vrf_row,
         ovsrec_vrf_set_ospf_routers(vrf_row, instance_list, ospf_routers_list,
                                    (vrf_row->n_ospf_routers - 1));
 
-    free(instance_list);
-    free(ospf_routers_list);
+    SAFE_FREE(instance_list);
+    SAFE_FREE(ospf_routers_list);
 
     return CMD_SUCCESS;
 }
@@ -720,7 +758,7 @@ ospf_interface_remove_from_area(const struct ovsrec_ospf_area *area_row,
     if (is_present == true)
         ovsrec_ospf_area_set_ospf_interfaces(area_row, ospf_interface_list,
                                    (area_row->n_ospf_interfaces - 1));
-    free(ospf_interface_list);
+    SAFE_FREE(ospf_interface_list);
 
     return CMD_SUCCESS;
 }
@@ -747,7 +785,7 @@ ospf_no_router_cmd_execute(char *vrf_name, int64_t instance_id)
     }
 
     /* See if it already exists. */
-    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
                                                               instance_id);
 
     /* If does not exist, nothing to delete. */
@@ -837,7 +875,7 @@ ospf_router_id_cmd_execute(char *vrf_name, char *router_ip_addr)
 
         /* See if it already exists. */
         ospf_router_row =
-        get_ovsrec_ospf_router_with_instance_id(vrf_row, (int64_t)vty->index);
+        ospf_router_lookup_by_instance_id(vrf_row, (int64_t)vty->index);
 
         /* If does not exist, nothing to modify. */
         if (ospf_router_row == NULL)
@@ -886,7 +924,7 @@ ospf_no_router_id_cmd_execute(char *vrf_name)
         OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
     }
     /* See if it already exists. */
-    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
                                                     (int64_t)vty->index);
 
     /* If does not exist, nothing to modify. */
@@ -910,25 +948,68 @@ ospf_no_router_id_cmd_execute(char *vrf_name)
 
 
 /* Get the area row matching the area id from the OSPF_Router table.*/
-struct ovsrec_ospf_area *
-ospf_area_get(const struct ovsrec_ospf_router *ospf_router_row,int area_id)
+static struct ovsrec_ospf_area *
+ospf_area_lookup_by_area_id(
+                            const struct ovsrec_ospf_router *router_row,
+                            int64_t area_id)
 {
-    struct ovsrec_ospf_area *area_row = NULL;
-    int area;
-    int i;
+    int i = 0;
 
-    for (i = 0; i < ospf_router_row->n_areas; i++)
+    for (i = 0; i < router_row->n_areas; i++)
     {
-        area = ospf_router_row->key_areas[i];
-
-        if (area == area_id)
+        if (router_row->key_areas[i] == area_id)
         {
-            area_row = ospf_router_row->value_areas[i];
-            break;
+            return router_row->value_areas[i];
         }
     }
 
-    return area_row;
+    return NULL;
+}
+
+/* Set the default values for the area row. */
+void
+ospf_area_tbl_default_set (const struct ovsrec_ospf_area *area_row)
+{
+    char** key_area_statistics = NULL;
+    int64_t *area_stat_value = NULL;
+
+    if (area_row == NULL)
+    {
+        return;
+    }
+    ovsrec_ospf_area_set_area_type(area_row,
+                             OVSREC_OSPF_AREA_AREA_TYPE_DEFAULT);
+    ovsrec_ospf_area_set_nssa_translator_role(area_row,
+                             OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_CANDIDATE);
+
+    key_area_statistics =
+        xmalloc(OSPF_STAT_NAME_LEN * (OSPF_AREA_STATISTICS_MAX));
+    area_stat_value =
+        xmalloc(sizeof *area_row->value_statistics *
+                              (OSPF_AREA_STATISTICS_MAX));
+
+    if (!key_area_statistics || !area_stat_value)
+    {
+        SAFE_FREE(key_area_statistics);
+        SAFE_FREE(area_stat_value);
+        return;
+    }
+    key_area_statistics[OSPF_AREA_STATISTICS_SPF_CALC] =
+                           OSPF_KEY_AREA_STATS_SPF_EXEC;
+    key_area_statistics[OSPF_AREA_STATISTICS_ABR_COUNT] =
+                           OSPF_KEY_AREA_STATS_ABR_COUNT;
+    key_area_statistics[OSPF_AREA_STATISTICS_ASBR_COUNT] =
+                           OSPF_KEY_AREA_STATS_ASBR_COUNT;
+
+    area_stat_value[OSPF_AREA_STATISTICS_SPF_CALC] = 0;
+    area_stat_value[OSPF_AREA_STATISTICS_ABR_COUNT] = 0;
+    area_stat_value[OSPF_AREA_STATISTICS_ASBR_COUNT] = 0;
+
+    ovsrec_ospf_area_set_statistics(area_row,key_area_statistics,
+                        area_stat_value,OSPF_AREA_STATISTICS_MAX);
+
+    SAFE_FREE (key_area_statistics);
+    SAFE_FREE(area_stat_value);
 }
 
 /* Insert the area row into the OSPF_Router table. */
@@ -948,6 +1029,8 @@ ospf_area_insert_to_router(const struct ovsrec_ospf_router *ospf_router_row,
 
     if (!area || !area_list)
     {
+        SAFE_FREE(area);
+        SAFE_FREE(area_list);
         VLOG_DBG("Memory alloc failed, could not insert area in router.%s",
                  VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
@@ -964,8 +1047,10 @@ ospf_area_insert_to_router(const struct ovsrec_ospf_router *ospf_router_row,
     ovsrec_ospf_router_set_areas(ospf_router_row, area, area_list,
                                (ospf_router_row->n_areas + 1));
 
-    free(area);
-    free(area_list);
+    SAFE_FREE(area);
+    SAFE_FREE(area_list);
+
+    ospf_area_tbl_default_set(area_row);
 
     return CMD_SUCCESS;
 }
@@ -1024,7 +1109,7 @@ ospf_area_set_interface(const struct ovsrec_ospf_area *area_row,
     ovsrec_ospf_area_set_ospf_interfaces(area_row, ospf_interface_list,
                                (area_row->n_ospf_interfaces + 1));
 
-    free(ospf_interface_list);
+    SAFE_FREE(ospf_interface_list);
     return CMD_SUCCESS;
 }
 
@@ -1047,6 +1132,8 @@ ospf_network_insert_ospf_router(const struct ovsrec_ospf_router *
 
     if (!network_list || !area_list)
     {
+        SAFE_FREE(network_list);
+        SAFE_FREE(area_list);
         VLOG_DBG("Memory alloc failed, could not add network to router.%s",
                  VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
@@ -1067,8 +1154,8 @@ ospf_network_insert_ospf_router(const struct ovsrec_ospf_router *
                                         area_list,
                                         (ospf_router_row->n_networks +
                                         1));
-    free(network_list);
-    free(area_list);
+    SAFE_FREE(network_list);
+    SAFE_FREE(area_list);
     return CMD_SUCCESS;
 }
 
@@ -1091,6 +1178,8 @@ ospf_network_remove_from_ospf_router(
 
     if (!network_list || !area_list)
     {
+        SAFE_FREE(network_list);
+        SAFE_FREE(area_list);
         VLOG_DBG("Memory alloc failed, could not remove network from router.%s",
                  VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
@@ -1115,8 +1204,8 @@ ospf_network_remove_from_ospf_router(
                                         network_list,
                                         area_list,
                                         (ospf_router_row->n_networks - 1));
-    free(network_list);
-    free(area_list);
+    SAFE_FREE(network_list);
+    SAFE_FREE(area_list);
 
     return CMD_SUCCESS;
 }
@@ -1184,7 +1273,7 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
     }
 
     /* See if it already exists. */
-    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
                                                               instance_id);
 
     if (ospf_router_row == NULL)
@@ -1254,7 +1343,26 @@ ospf_one_area_show(struct vty *vty,int64_t area_id,
     }
     else
     {
-        vty_out(vty, "  Area ID:  %s %s", area_str, VTY_NEWLINE);
+        vty_out(vty, "  Area ID:  %s", area_str);
+        if (!strcmp(ospf_area_row->area_type, OSPF_AREA_TYPE_NSSA))
+        {
+            vty_out(vty, " (NSSA)");
+        }
+        else if (!strcmp(ospf_area_row->area_type,
+                         OSPF_AREA_TYPE_NSSA_NO_SUMMARY))
+        {
+            vty_out(vty, " (NSSA, no summary)");
+        }
+        else if (!strcmp(ospf_area_row->area_type, OSPF_AREA_TYPE_STUB))
+        {
+            vty_out(vty, " (Stub)");
+        }
+        else if (!strcmp(ospf_area_row->area_type,
+                         OSPF_AREA_TYPE_STUB_NO_SUMMARY))
+        {
+            vty_out(vty, " (Stub, no summary)");
+        }
+        vty_out(vty, " %s", VTY_NEWLINE);
     }
 
     /* Number of interfaces */
@@ -1296,13 +1404,13 @@ ospf_one_area_show(struct vty *vty,int64_t area_id,
     /* auth type */
     if(ospf_area_row->ospf_auth_type)
     {
-        vty_out(vty, "    Area has %s authentication: %s",
+        vty_out(vty, "    Area has %s authentication %s",
         strcmp(ospf_area_row->ospf_auth_type,
                OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_MD5)== 0 ?
-               "message digest authentication":
+               "message digest":
         strcmp(ospf_area_row->ospf_auth_type,
                OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_TEXT) == 0 ?
-               "simple password authentication" : "no",
+               "simple password" : "no ",
         VTY_NEWLINE);
     }
     else
@@ -1498,7 +1606,7 @@ ospf_ip_router_show()
 
     /* See if it already exists. */
     ospf_router_row =
-    get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_tag);
+    ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
     if (ospf_router_row == NULL)
     {
         vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
@@ -1760,6 +1868,8 @@ ospf_add_port_intervals(const struct ovsrec_port* port_row,
 
     if (!ospf_key_timers || !intervals_list)
     {
+        SAFE_FREE(ospf_key_timers);
+        SAFE_FREE(intervals_list);
         VLOG_DBG("Memory alloc failed, could not add port intervals.%s",
                  VTY_NEWLINE);
         return CMD_OVSDB_FAILURE;
@@ -1776,10 +1886,12 @@ ospf_add_port_intervals(const struct ovsrec_port* port_row,
 
     ovsrec_port_set_ospf_intervals(port_row, ospf_key_timers, intervals_list,
                                   (port_row->n_ospf_intervals + 1));
+
+    SAFE_FREE(ospf_key_timers);
+    SAFE_FREE(intervals_list);
+
     return CMD_SUCCESS;
 }
-
-
 
 /*Function to set the OSPF intervals in the port table. */
 int
@@ -1920,7 +2032,7 @@ static int ospf_max_metric_startup_cmd_execute(bool no_flag,
     }
 
     /* See if it already exists. */
-    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
                                                               instance_id);
 
     if (ospf_router_row == NULL)
@@ -1972,7 +2084,7 @@ static int ospf_max_metric_admin_cmd_execute(bool no_flag,
     }
 
     /* See if it already exists. */
-    ospf_router_row = get_ovsrec_ospf_router_with_instance_id(vrf_row,
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
                                                               instance_id);
 
     if (ospf_router_row == NULL)
@@ -2032,7 +2144,7 @@ ospf_interface_one_row_print(struct vty *vty,const char* ifname,
 
     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     ospf_router_row =
-    get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_id);
+    ospf_router_lookup_by_instance_id(vrf_row, instance_id);
 
     /* Get the port row. */
     port_row = ospf_interface_row->port;
@@ -2447,7 +2559,7 @@ ospf_neighbor_one_row_print(
 
     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     ospf_router_row =
-    get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_id);
+    ospf_router_lookup_by_instance_id(vrf_row, instance_id);
 
     /* Get router id from the OSPF_Router table. */
     val = smap_get(&ospf_router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
@@ -2582,7 +2694,7 @@ ospf_neighbor_one_row_detail_print(
 
     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     ospf_router_row =
-    get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_id);
+    ospf_router_lookup_by_instance_id(vrf_row, instance_id);
 
     // Get router id from the OSPF_Router table.
     val = smap_get(&ospf_router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
@@ -2696,7 +2808,7 @@ ospf_neighbor_one_row_detail_print(
 
     if (interface_row)
     {
-        vty_out(vty, "via interface %s%s", interface_row->name,
+        vty_out(vty, " via interface %s%s", interface_row->name,
                 VTY_NEWLINE);
     }
 
@@ -2846,12 +2958,116 @@ ospf_ip_router_neighbor_show(const char* ifname,
     }
 }
 
+int64_t
+ospf_get_distance(const struct ovsrec_ospf_router *router_row,
+                      const char *key)
+{
+    int i = 0;
+
+    if (!strcmp(router_row->key_distance[i], key))
+        return router_row->value_distance[i];
+
+    return 0;
+}
+
+/* Function to display the show running of area related commands */
+void ospf_area_show_running(const struct ovsrec_ospf_router *router_row)
+{
+    const struct ovsrec_ospf_area *area_row = NULL;
+    int i = 0;
+    const char *val = NULL;
+    char area_str[OSPF_SHOW_STR_LEN];
+    char disp_str[OSPF_SHOW_STR_LEN];
+    bool is_present = false;
+
+    for (i = 0; i < router_row->n_areas; i++)
+    {
+        OSPF_IP_STRING_CONVERT(area_str, ntohl(router_row->key_areas[i]));
+        area_row = router_row->value_areas[i];
+
+        /* area authentication */
+        if(area_row->ospf_auth_type)
+        {
+            if (!strcmp(area_row->ospf_auth_type,
+                        OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_MD5 ))
+            {
+                vty_out(vty, "%4sarea %s authentication message-digest%s", "",
+                        area_str, VTY_NEWLINE);
+            }
+            else if (!strcmp(area_row->ospf_auth_type,
+                             OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_TEXT))
+            {
+                vty_out(vty, "%4sarea %s authentication%s", "",
+                        area_str, VTY_NEWLINE);
+            }
+        }
+
+        /* area type */
+        if (area_row->nssa_translator_role)
+        {
+            if (!strcmp(area_row->nssa_translator_role,
+                OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_NEVER))
+            {
+                strncpy(disp_str, "translate-never", OSPF_SHOW_STR_LEN);
+                is_present = true;
+            }
+            else if (!strcmp(area_row->nssa_translator_role,
+                OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_ALWAYS))
+            {
+                strncpy(disp_str, "translate-always", OSPF_SHOW_STR_LEN);
+                is_present = true;
+            }
+        }
+
+        if (area_row->area_type)
+        {
+            if (!strcmp(area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_NSSA))
+            {
+                vty_out(vty, "%4sarea %s nssa", "", area_str);
+
+                if (is_present == true)
+                {
+                    vty_out(vty, " %s", disp_str);
+                }
+                vty_out(vty, "%s", VTY_NEWLINE);
+            }
+            else if (!strcmp(area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_NSSA_NO_SUMMARY))
+            {
+                vty_out(vty, "%4sarea %s nssa", "", area_str);
+
+                if (is_present == true)
+                {
+                    vty_out(vty, " %s", disp_str);
+                }
+
+                vty_out(vty, " no-summary%s", VTY_NEWLINE);
+            }
+            else if (!strcmp(area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_STUB))
+            {
+                vty_out(vty, "%4sarea %s stub%s", "", area_str, VTY_NEWLINE);
+            }
+            else if (!strcmp(area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_STUB_NO_SUMMARY))
+            {
+                vty_out(vty, "%4sarea %s stub no-summary%s", "", area_str,
+                        VTY_NEWLINE);
+            }
+        }
+    }
+
+}
+
+/* Function to display the configurations made. */
 void
 ospf_running_config_show()
 {
     const struct ovsrec_vrf *ovs_vrf = NULL;
     const struct ovsrec_ospf_router *ospf_router_row = NULL;
     int i = 0, j = 0;
+    int64_t distance = 0;
     const char *val = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
 
@@ -2859,6 +3075,8 @@ ospf_running_config_show()
     {
         for (j = 0; j < ovs_vrf->n_ospf_routers; j++)
         {
+            /* OPS_TODO: Have to check if router table is not default and then print show
+                                          running. */
             vty_out (vty, "%s%s", "router ospf", VTY_NEWLINE);
 
             ospf_router_row = ovs_vrf->value_ospf_routers[j];
@@ -2899,6 +3117,16 @@ ospf_running_config_show()
                 vty_out(vty, "%4s%s %s%s", "",
                         "max-metric router-lsa on-startup", val, VTY_NEWLINE);
             }
+
+            /* Distance */
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_ALL);
+            if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vty_out(vty, "%4s%s %d%s", "", "distance", distance, VTY_NEWLINE);
+            }
+
+            ospf_area_show_running(ospf_router_row);
         }
     }
 
@@ -3106,7 +3334,7 @@ ospf_ip_route_show()
 
     /* Get the OSPF_Router row. */
     ospf_router_row =
-    get_ovsrec_ospf_router_with_instance_id(vrf_row, instance_tag);
+    ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
     if (ospf_router_row == NULL)
     {
         vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
@@ -3416,6 +3644,775 @@ DEFUN(cli_ospf_router_no_dead_interval,
                                      OSPF_DEAD_INTERVAL_DEFAULT);
 }
 
+static int ospf_area_auth_cmd_execute(bool no_flag, int instance_id,
+                                              int64_t area_id, bool md5_auth)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    int i = 0;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
+                                                              instance_id);
+
+    if (ospf_router_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id);
+
+    if (!no_flag)
+    {
+        /* Insert the new row and link the area row to the router table. */
+        if (area_row == NULL)
+        {
+            area_row = ovsrec_ospf_area_insert(ospf_router_txn);
+            if (ospf_area_insert_to_router(ospf_router_row, area_row, area_id)
+                != CMD_SUCCESS)
+            {
+                OSPF_ERRONEOUS_DB_TXN(ospf_router_txn,
+                                      "Could not update configuration.");
+            }
+        }
+
+        if (md5_auth == true)
+        {
+            ovsrec_ospf_area_set_ospf_auth_type(area_row,
+                                        OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_MD5);
+        }
+        else
+        {
+            ovsrec_ospf_area_set_ospf_auth_type(area_row,
+                                        OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_TEXT);
+        }
+    }
+    else
+    {
+        if (area_row == NULL)
+        {
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn,
+                                  "Configuration is not present.");
+        }
+
+        ovsrec_ospf_area_set_ospf_auth_type(area_row, NULL);
+    }
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+DEFUN (cli_ospf_area_auth,
+          cli_ospf_area_auth_cmd,
+          "area (A.B.C.D|<0-4294967295>) authentication",
+          OSPF_AREA_STR
+          OSPF_AREA_IP_STR
+          OSPF_AREA_RANGE
+          OSPF_AUTH_ENABLE)
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID (area_id, argv[0]);
+
+    return ospf_area_auth_cmd_execute(false, 1, area_id.s_addr, false);
+}
+
+DEFUN (cli_ospf_area_auth_message_digest,
+       cli_ospf_area_auth_message_digest_cmd,
+       "area (A.B.C.D|<0-4294967295>) authentication message-digest",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       OSPF_AUTH_ENABLE
+       OSPF_AUTH_MD5)
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID (area_id, argv[0]);
+
+    return ospf_area_auth_cmd_execute(false, 1, area_id.s_addr, true);
+}
+
+
+DEFUN (cli_no_ospf_area_authentication,
+       cli_no_ospf_area_authentication_cmd,
+       "no area (A.B.C.D|<0-4294967295>) authentication",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       OSPF_AUTH_ENABLE)
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID (area_id, argv[0]);
+
+    return ospf_area_auth_cmd_execute(true, 1, area_id.s_addr, false);
+}
+
+static int
+ospf_interface_auth_cmd_execute(const char* ifname,
+                                        const char* auth_type)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    /* Get the interface row for the interface name passed. */
+    OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+    {
+        if (strcmp(ospf_interface_row->name, ifname) == 0)
+            break;
+    }
+
+    if (ospf_interface_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn, "Interface is not present.");
+    }
+    else
+    {
+        port_row = ospf_interface_row->port;
+    }
+
+    if (port_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interface is not attached to any port.");
+    }
+
+        ovsrec_port_set_ospf_auth_type(port_row, auth_type);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+/* `ip ospf authentication {message-digest}`*/
+DEFUN (cli_ospf_interface_auth,
+       cli_ospf_interface_auth_cmd,
+       "ip ospf authentication",
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_AUTH_ENABLE)
+{
+    return ospf_interface_auth_cmd_execute(vty->index,
+                                           OVSREC_PORT_OSPF_AUTH_TYPE_TEXT);
+}
+
+DEFUN (cli_ospf_interface_auth_message_digest,
+       cli_ospf_interface_auth_message_digest_cmd,
+       "ip ospf authentication message-digest",
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_AUTH_ENABLE
+       OSPF_AUTH_MD5)
+{
+    return ospf_interface_auth_cmd_execute(vty->index,
+                                           OVSREC_PORT_OSPF_AUTH_TYPE_MD5);
+}
+
+DEFUN (cli_ospf_interface_auth_null,
+       cli_ospf_interface_auth_null_cmd,
+       "ip ospf authentication null",
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_AUTH_ENABLE
+       OSPF_AUTH_NULL_STR)
+{
+    return ospf_interface_auth_cmd_execute(vty->index,
+                                           OVSREC_PORT_OSPF_AUTH_TYPE_NULL);
+}
+
+
+/* `no ip ospf authentication`*/
+DEFUN (cli_no_ospf_interface_auth,
+       cli_no_ospf_interface_auth_cmd,
+       "no ip ospf authentication",
+       NO_STR
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_AUTH_ENABLE)
+{
+         return ospf_interface_auth_cmd_execute(vty->index, NULL);
+}
+
+
+/* Update the key if key id is already present.
+    Insert md5 key in the Port table if not present */
+int
+ospf_md5_key_update_to_port(const struct ovsrec_port *port_row,
+                           int64_t key_id,const char *key)
+{
+    int64_t *key_id_list;
+    char **key_list;
+    int i = 0;
+
+    key_id_list = xmalloc(sizeof(int64_t) * (port_row->n_ospf_auth_md5_keys + 1));
+    key_list = xmalloc(sizeof * port_row->key_ospf_auth_md5_keys*
+                              (port_row->n_ospf_auth_md5_keys + 1));
+
+    if (!key_id_list || !key_list)
+    {
+        SAFE_FREE(key_id_list);
+        SAFE_FREE(key_list);
+        VLOG_DBG("Memory alloc failed, could not update md5 key in port.%s",
+                 VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    for (i = 0; i < port_row->n_ospf_auth_md5_keys; i++)
+    {
+        if (port_row->key_ospf_auth_md5_keys[i] == key_id)
+        {
+            SAFE_FREE(key_id_list);
+            SAFE_FREE(key_list);
+            return CMD_ERR_AMBIGUOUS;
+        }
+        else
+        {
+            key_id_list[i] = port_row->key_ospf_auth_md5_keys[i];
+            key_list[i] = port_row->value_ospf_auth_md5_keys[i];
+        }
+    }
+
+    key_id_list[port_row->n_ospf_auth_md5_keys] = key_id;
+    key_list[port_row->n_ospf_auth_md5_keys] = CONST_CAST(char *, key);
+    ovsrec_port_set_ospf_auth_md5_keys(port_row, key_id_list, key_list,
+                                      (port_row->n_ospf_auth_md5_keys + 1));
+
+    SAFE_FREE(key_id_list);
+    SAFE_FREE(key_list);
+
+    return CMD_SUCCESS;
+}
+
+
+/* Delete the key if key id is already present.*/
+int
+ospf_md5_key_remove_from_port(const struct ovsrec_port *port_row,
+                              int64_t key_id)
+{
+    int64_t *key_id_list;
+    char **key_list;
+    int i = 0, j =0;
+    bool is_present = false;
+    int res = CMD_ERR_NO_MATCH;
+
+    key_id_list = xmalloc(sizeof(int64_t) * (port_row->n_ospf_auth_md5_keys));
+    key_list = xmalloc(sizeof * port_row->key_ospf_auth_md5_keys*
+                              (port_row->n_ospf_auth_md5_keys));
+
+    if (!key_id_list || !key_list)
+    {
+        SAFE_FREE(key_id_list);
+        SAFE_FREE(key_list);
+        VLOG_DBG("Memory alloc failed, could not update md5 key in port.%s",
+                 VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    for (i = 0; i < port_row->n_ospf_auth_md5_keys; i++)
+    {
+        if (port_row->key_ospf_auth_md5_keys[i] == key_id)
+        {
+            is_present = true;
+            res = CMD_SUCCESS;
+        }
+        else
+        {
+            key_id_list[j] = port_row->key_ospf_auth_md5_keys[i];
+            key_list[j] = port_row->value_ospf_auth_md5_keys[i];
+            j++;
+        }
+    }
+
+    if(is_present == true)
+    {
+        ovsrec_port_set_ospf_auth_md5_keys(port_row, key_id_list, key_list,
+                                   (port_row->n_ospf_auth_md5_keys - 1));
+    }
+
+    SAFE_FREE(key_id_list);
+    SAFE_FREE(key_list);
+
+    return res;
+}
+
+
+static int
+ospf_interface_auth_key_cmd_execute(const char* ifname, bool no_flag,
+                                             int64_t key_id, const char* key)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    /* Get the interface row for the interface name passed. */
+    OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+    {
+        if (strcmp(ospf_interface_row->name, ifname) == 0)
+            break;
+    }
+
+    if (ospf_interface_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn, "Interface is not present.");
+    }
+    else
+    {
+        port_row = ospf_interface_row->port;
+    }
+
+    if (port_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interface is not attached to any port.");
+    }
+
+    if(!no_flag)
+    {
+        if (key_id == 0)
+            ovsrec_port_set_ospf_auth_text_key(port_row, key);
+        else
+        {
+            int result = ospf_md5_key_update_to_port(port_row, key_id, key);
+            if ( result != CMD_ERR_AMBIGUOUS)
+            {
+                OSPF_ABORT_DB_TXN(ospf_router_txn, "MD5 key is already present.");
+            }
+            else if ( result != CMD_SUCCESS)
+            {
+                OSPF_ABORT_DB_TXN(ospf_router_txn, "MD5 key updation failed.");
+            }
+        }
+    }
+    else
+    {
+        if (key_id == 0)
+            ovsrec_port_set_ospf_auth_text_key(port_row, NULL);
+        else
+        {
+            int res = CMD_OVSDB_FAILURE;
+            res = ospf_md5_key_remove_from_port(port_row, key_id);
+            if (res == CMD_ERR_NO_MATCH)
+            {
+                OSPF_ABORT_DB_TXN(ospf_router_txn,
+                                  "MD5 key id is not present.");
+            }
+            else if(res != CMD_SUCCESS)
+            {
+                OSPF_ABORT_DB_TXN(ospf_router_txn,
+                                  "MD5 key id deletion failed.");
+            }
+        }
+
+    }
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+/* `ip ospf authentication-key <key>`*/
+DEFUN (cli_ospf_interface_auth_key,
+       cli_ospf_interface_auth_key_cmd,
+       "ip ospf authentication-key AUTH_KEY",
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_AUTH_KEY
+       OSPF_AUTH_KEY_VAL)
+{
+    return ospf_interface_auth_key_cmd_execute(vty->index, false, 0, argv[0]);
+}
+
+/* `no ip ospf authentication-key`*/
+DEFUN (cli_no_ospf_interface_auth_key,
+       cli_no_ospf_interface_auth_key_cmd,
+       "no ip ospf authentication-key",
+       NO_STR
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_AUTH_KEY)
+{
+        return ospf_interface_auth_key_cmd_execute(vty->index, true,
+                                                   0, NULL);
+}
+
+
+/* `ip ospf message-digest-key <key_id> md5 <message_digest_key>`*/
+DEFUN (cli_ip_ospf_message_digest_key,
+       cli_ip_ospf_message_digest_key_cmd,
+       "ip ospf message-digest-key <1-255> md5 KEY",
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_MD5_KEY
+       OSPF_MD5_KEY_ID
+       OSPF_MD5
+       OSPF_MD5_PASSWORD)
+{
+    return ospf_interface_auth_key_cmd_execute(vty->index, false,
+                                               atol(argv[0]), argv[1]);
+}
+
+/* `no ip ospf message-digest-key <key_id>`*/
+DEFUN (cli_no_ip_ospf_message_digest_key,
+       cli_no_ip_ospf_message_digest_key_cmd,
+       "no ip ospf message-digest-key <1-255>",
+       NO_STR
+       IP_STR
+       OSPF_CONF_STR
+       OSPF_MD5_KEY
+       OSPF_MD5_KEY_ID)
+{
+    return ospf_interface_auth_key_cmd_execute(vty->index, true,
+                                               atol(argv[0]), NULL);
+}
+
+static int ospf_area_type_cmd_execute(bool no_flag, int instance_id,
+                                      int64_t area_id, const char *area_type,
+                                      const char *nssa_role)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
+                                                        instance_id);
+
+    if (ospf_router_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id);
+
+    if (!no_flag)
+    {
+        /* Insert the new row and link the area row to the router table. */
+        if (area_row == NULL)
+        {
+            area_row = ovsrec_ospf_area_insert(ospf_router_txn);
+            if (ospf_area_insert_to_router(ospf_router_row, area_row, area_id)
+                != CMD_SUCCESS)
+            {
+                OSPF_ERRONEOUS_DB_TXN(ospf_router_txn,
+                                      "Could not update configuration.");
+            }
+        }
+    }
+    else
+    {
+        if (area_row == NULL)
+        {
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn,
+                                  "Configuration is not present.");
+        }
+    }
+
+    ovsrec_ospf_area_set_area_type(area_row, area_type);
+
+    if(nssa_role)
+        ovsrec_ospf_area_set_nssa_translator_role(area_row, nssa_role);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+
+
+DEFUN (cli_ospf_area_nssa_translate,
+       cli_ospf_area_nssa_translate_cmd,
+       "area (A.B.C.D|<0-4294967295>) nssa (translate-candidate|"
+       "translate-never|translate-always)",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as nssa\n"
+       "Configure NSSA-ABR for translate election (default)\n"
+       "Configure NSSA-ABR to never translate\n"
+       "Configure NSSA-ABR to always translate\n")
+{
+    struct in_addr area_id;
+    char nssa_role[OSPF_SHOW_STR_LEN];
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("NSSA", area_id, argv[0]);
+
+    if (!strcmp(argv[1], "translate-candidate"))
+        strncpy(nssa_role, OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_CANDIDATE,
+                OSPF_SHOW_STR_LEN);
+    else if (!strcmp(argv[1], "translate-never"))
+        strncpy(nssa_role, OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_NEVER,
+                OSPF_SHOW_STR_LEN);
+    else if (!strcmp(argv[1], "translate-always"))
+        strncpy(nssa_role, OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_ALWAYS,
+                OSPF_SHOW_STR_LEN);
+    else
+    {
+        vty_out(vty, "NSSA type passed is incorrect.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    return ospf_area_type_cmd_execute(false, 1, area_id.s_addr,
+                                      OVSREC_OSPF_AREA_AREA_TYPE_NSSA,
+                                      nssa_role);
+}
+
+DEFUN (cli_ospf_area_nssa_translate_no_summary,
+       cli_ospf_area_nssa_translate_no_summary_cmd,
+       "area (A.B.C.D|<0-4294967295>) nssa (translate-candidate|"
+       "translate-never|translate-always) no-summary",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as nssa\n"
+       "Configure NSSA-ABR for translate election (default)\n"
+       "Configure NSSA-ABR to never translate\n"
+       "Configure NSSA-ABR to always translate\n"
+       OSPF_NO_SUMMARY_STR)
+{
+    struct in_addr area_id;
+    char nssa_role[OSPF_SHOW_STR_LEN];
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("NSSA", area_id, argv[0]);
+
+    if (!strcmp(argv[1], "translate-candidate"))
+        strncpy(nssa_role, OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_CANDIDATE,
+                OSPF_SHOW_STR_LEN);
+    else if (!strcmp(argv[1], "translate-never"))
+        strncpy(nssa_role, OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_NEVER,
+                OSPF_SHOW_STR_LEN);
+    else if (!strcmp(argv[1], "translate-always"))
+        strncpy(nssa_role, OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_ALWAYS,
+                OSPF_SHOW_STR_LEN);
+    else
+    {
+        vty_out(vty, "NSSA type passed is incorrect.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    return ospf_area_type_cmd_execute(false, 1, area_id.s_addr,
+                                    OVSREC_OSPF_AREA_AREA_TYPE_NSSA_NO_SUMMARY,
+                                    nssa_role);
+}
+
+/* `area (<area_ip>|<area_id>) nssa [no_summary]` */
+DEFUN (cli_ospf_area_nssa,
+       cli_ospf_area_nssa_cmd,
+       "area (A.B.C.D|<0-4294967295>) nssa",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as nssa\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("NSSA", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(false, 1, area_id.s_addr,
+                               OVSREC_OSPF_AREA_AREA_TYPE_NSSA,
+                               OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_CANDIDATE);
+}
+
+
+DEFUN (cli_ospf_area_nssa_no_summary,
+       cli_ospf_area_nssa_no_summary_cmd,
+       "area (A.B.C.D|<0-4294967295>) nssa no-summary",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as nssa\n"
+       OSPF_NO_SUMMARY_STR)
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("NSSA", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(false, 1, area_id.s_addr,
+                               OVSREC_OSPF_AREA_AREA_TYPE_NSSA_NO_SUMMARY,
+                               OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_CANDIDATE);
+}
+
+
+/* `no area (<area_ip>|<area_id>) nssa [no_summary]` */
+DEFUN (cli_ospf_area_no_nssa_translate,
+       cli_ospf_area_no_nssa_translate_cmd,
+       "no area (A.B.C.D|<0-4294967295>) nssa",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as nssa\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("NSSA", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(true, 1, area_id.s_addr,
+                               OVSREC_OSPF_AREA_AREA_TYPE_DEFAULT,
+                               OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_CANDIDATE);
+}
+
+
+DEFUN (cli_ospf_area_no_nssa_no_summary,
+       cli_ospf_area_no_nssa_no_summary_cmd,
+       "no area (A.B.C.D|<0-4294967295>) nssa no-summary",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as nssa\n"
+       OSPF_NO_SUMMARY_STR)
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("NSSA", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(true, 1, area_id.s_addr,
+                                      OVSREC_OSPF_AREA_AREA_TYPE_NSSA, NULL);
+}
+
+
+/* `area (<area_ip>|<area_id>) stub ` */
+DEFUN (cli_ospf_area_stub,
+       cli_ospf_area_stub_cmd,
+       "area (A.B.C.D|<0-4294967295>) stub",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as stub\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("stub", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(false, 1, area_id.s_addr,
+                                      OVSREC_OSPF_AREA_AREA_TYPE_STUB,
+                                      NULL);
+}
+
+/* `area (<area_ip>|<area_id>) stub [no_summary]` */
+DEFUN (cli_ospf_area_stub_no_summary,
+       cli_ospf_area_stub_no_summary_cmd,
+       "area (A.B.C.D|<0-4294967295>) stub no-summary",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as stub\n"
+       "Do not inject inter-area routes into area\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("stub", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(false, 1, area_id.s_addr,
+                                     OVSREC_OSPF_AREA_AREA_TYPE_STUB_NO_SUMMARY,
+                                     NULL);
+}
+
+/* `no area (<area_ip>|<area_id>) stub ` */
+DEFUN (cli_no_ospf_area_stub,
+       cli_no_ospf_area_stub_cmd,
+       "no area (A.B.C.D|<0-4294967295>) stub",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as stub\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("stub", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(true, 1, area_id.s_addr,
+                                      OVSREC_OSPF_AREA_AREA_TYPE_DEFAULT,
+                                      NULL);
+}
+
+/* `no area (<area_ip>|<area_id>) stub [no_summary]` */
+DEFUN (cli_no_ospf_area_stub_no_summary,
+       cli_no_ospf_area_stub_no_summary_cmd,
+       "no area (A.B.C.D|<0-4294967295>) stub no-summary",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure OSPF area as stub\n"
+       "Do not inject inter-area routes into area\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID_NO_BB ("stub", area_id, argv[0]);
+
+    return ospf_area_type_cmd_execute(true, 1, area_id.s_addr,
+                                     OVSREC_OSPF_AREA_AREA_TYPE_DEFAULT,
+                                     NULL);
+}
+
+
 
 DEFUN (cli_ip_ospf_show,
        cli_ip_ospf_show_cmd,
@@ -3603,6 +4600,324 @@ DEFUN (cli_ip_ospf_running_config_show,
     return CMD_SUCCESS;
 }
 
+DEFUN (cli_ospf_admin_distance,
+       cli_ospf_admin_distance_cmd,
+       "distance <1-255>",
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        distance = (unsigned char)atoi (argv[0]);
+        if (distance < 1 && distance > 255)
+        {
+            VLOG_DBG ("Invalid  OSPF administrative distance");
+            break;
+        }
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            SAFE_FREE(key_distance);
+            SAFE_FREE(value_distance);
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(!strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_ALL))
+                value_distance[i] = (int64_t)distance;
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_admin_distance,
+       cli_no_ospf_admin_distance_cmd,
+       "no distance <1-255>",
+       NO_STR
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        distance = OSPF_ROUTER_DISTANCE_DEFAULT;
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            SAFE_FREE(key_distance);
+            SAFE_FREE(value_distance);
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(!strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_ALL))
+            {
+                if (value_distance[i] != atoi(argv[0]))
+                {
+                    OSPF_ABORT_DB_TXN(ospf_router_txn,
+                                      "Value was not configured earlier.");
+                    return CMD_SUCCESS;
+                }
+                value_distance[i] = (int64_t)distance;
+            }
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_ospf_distance_ospf,
+       cli_ospf_distance_ospf_cmd,
+       "distance ospf "
+         "{intra-area <1-255>|inter-area <1-255>|external <1-255>}",
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n"
+       "Intra-area routes\n"
+       "Distance for intra-area routes\n"
+       "Inter-area routes\n"
+       "Distance for inter-area routes\n"
+       "External routes\n"
+       "Distance for external routes\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance_intra = 0,distance_inter = 0,distance_external = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+  if (argc < 3) /* should not happen */
+    return CMD_WARNING;
+
+  /* As just distance ospf will also be allowed*/
+  if (!argv[0] && !argv[1] && !argv[2])
+    {
+      vty_out(vty, "%% Command incomplete. (Arguments required)%s",
+              VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+  if (argv[0])
+    distance_intra = atoi (argv[0]);
+  if (argv[1])
+    distance_inter = atoi (argv[1]);
+  if (argv[2])
+    distance_external = atoi (argv[2]);
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            SAFE_FREE(key_distance);
+            SAFE_FREE(value_distance);
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(argv[0] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTRA_AREA))
+                value_distance[i] = (int64_t)distance_intra;
+            else if (argv[1] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTER_AREA))
+                value_distance[i] = (int64_t)distance_inter;
+            else if (argv[2] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_EXTERNAL))
+                value_distance[i] = (int64_t)distance_external;
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_distance_ospf,
+       cli_no_ospf_distance_ospf_cmd,
+       "no distance ospf {intra-area|inter-area|external}",
+       NO_STR
+       "Define an administrative distance\n"
+       "OSPF Administrative distance\n"
+       "OSPF Distance\n"
+       "Intra-area routes\n"
+       "Inter-area routes\n"
+       "External routes\n")
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** key_distance = NULL;
+    int64_t* value_distance = NULL;
+    unsigned char distance = 0;
+    int instance_id = 1;
+    int i = 0;
+    bool key_found = false;
+
+  if (argc < 3) /* should not happen */
+    return CMD_WARNING;
+
+  /* As just distance ospf will also be allowed*/
+  if (!argv[0] && !argv[1] && !argv[2])
+    {
+      vty_out(vty, "%% Command incomplete. (Arguments required)%s",
+              VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+    do {
+        vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+        if (vrf_row == NULL)
+        {
+            VLOG_DBG ("VRF is not present.");
+            break;
+        }
+        /* See if it already exists. */
+        ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                                                  instance_id);
+        if (ospf_router_row == NULL)
+        {
+            VLOG_DBG ("OSPF Router instance not present");
+            break;
+        }
+        /* OPS_TODO : Handle if the keys are not populated in "router ospf" command*/
+        key_distance = xmalloc(sizeof *ospf_router_row->key_distance *
+                                    ospf_router_row->n_distance);
+        value_distance = xmalloc(sizeof *ospf_router_row->value_distance *
+                                     ospf_router_row->n_distance);
+        if (!key_distance || !value_distance)
+        {
+            SAFE_FREE(key_distance);
+            SAFE_FREE(value_distance);
+            VLOG_DBG ("Memory allocation failed");
+            break;
+        }
+        OSPF_START_DB_TXN(ospf_router_txn);
+        distance = OSPF_ROUTER_DISTANCE_DEFAULT;
+        for (i = 0 ; i < ospf_router_row->n_distance;i++)
+        {
+            key_distance[i] = ospf_router_row->key_distance[i];
+            if(argv[0] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTRA_AREA))
+                value_distance[i] = (int64_t)distance;
+            else if (argv[1] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_INTER_AREA))
+                value_distance[i] = (int64_t)distance;
+            else if (argv[2] &&
+                !strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_EXTERNAL))
+                value_distance[i] = (int64_t)distance;
+            else
+                value_distance[i] = ospf_router_row->value_distance[i];
+        }
+        ovsrec_ospf_router_set_distance(ospf_router_row,key_distance,value_distance,
+            ospf_router_row->n_distance);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE (key_distance);
+        SAFE_FREE (value_distance);
+    }while (0);
+
+  return CMD_SUCCESS;
+}
+
 void
 ospf_vty_init(void)
 {
@@ -3620,16 +4935,47 @@ ospf_vty_init(void)
     install_element(OSPF_NODE, &cli_ospf_router_network_area_ip_cmd);
     install_element(OSPF_NODE, &cli_ospf_router_no_network_area_id_cmd);
     install_element(OSPF_NODE, &cli_ospf_router_no_network_area_ip_cmd);
+    install_element(OSPF_NODE, &cli_ospf_admin_distance_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_admin_distance_cmd);
+    install_element(OSPF_NODE, &cli_ospf_distance_ospf_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_distance_ospf_cmd);
 
     /* max-metric command */
     install_element(OSPF_NODE, &cli_ospf_router_max_metric_cmd);
     install_element(OSPF_NODE, &cli_ospf_router_no_max_metric_cmd);
+
+    /* Area Authentication */
+    install_element(OSPF_NODE, &cli_ospf_area_auth_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_auth_message_digest_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_area_authentication_cmd);
+
+    /* Area Type */
+    install_element(OSPF_NODE, &cli_ospf_area_nssa_translate_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_no_nssa_no_summary_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_nssa_translate_no_summary_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_no_nssa_translate_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_nssa_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_nssa_no_summary_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_stub_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_stub_no_summary_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_area_stub_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_area_stub_no_summary_cmd);
 
     /* OSPF Intervals */
     install_element(INTERFACE_NODE, &cli_ospf_router_hello_interval_cmd);
     install_element(INTERFACE_NODE, &cli_ospf_router_no_hello_interval_cmd);
     install_element(INTERFACE_NODE, &cli_ospf_router_dead_interval_cmd);
     install_element(INTERFACE_NODE, &cli_ospf_router_no_dead_interval_cmd);
+
+    /* Interface authentication */
+    install_element(INTERFACE_NODE, &cli_ospf_interface_auth_message_digest_cmd);
+    install_element(INTERFACE_NODE, &cli_ospf_interface_auth_cmd);
+    install_element(INTERFACE_NODE, &cli_ospf_interface_auth_null_cmd);
+    install_element(INTERFACE_NODE, &cli_no_ospf_interface_auth_cmd);
+    install_element(INTERFACE_NODE, &cli_ospf_interface_auth_key_cmd);
+    install_element(INTERFACE_NODE, &cli_no_ospf_interface_auth_key_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_message_digest_key_cmd);
+    install_element(INTERFACE_NODE, &cli_no_ip_ospf_message_digest_key_cmd);
 
     /* Show commands */
     install_element(ENABLE_NODE, &cli_ip_ospf_show_cmd);
