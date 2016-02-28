@@ -34,6 +34,7 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_router_context.h"
+#include "openswitch-dflt.h"
 #include "command.h"
 #include "ospf_vty.h"
 
@@ -744,6 +745,92 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
 |     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
+void vtysh_router_context_ospf_area_callback(vtysh_ovsdb_cbmsg_ptr p_msg,
+                                    const struct ovsrec_ospf_router *router_row)
+{
+    const struct ovsrec_ospf_area *area_row = NULL;
+    int i = 0;
+    const char *val = NULL;
+    char area_str[OSPF_SHOW_STR_LEN];
+    char disp_str[OSPF_SHOW_STR_LEN];
+    bool is_present = false;
+
+    for (i = 0; i < router_row->n_areas; i++)
+    {
+        OSPF_IP_STRING_CONVERT(area_str, ntohl(router_row->key_areas[i]));
+        area_row = router_row->value_areas[i];
+
+        /* area authentication */
+        if(area_row->ospf_auth_type)
+        {
+            if (!strcmp(area_row->ospf_auth_type,
+                        OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_MD5 ))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s authentication "
+                                      "message-digest", "",
+                                      area_str);
+            }
+            else if (!strcmp(area_row->ospf_auth_type,
+                             OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_TEXT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s authentication", "",
+                                      area_str);
+            }
+        }
+
+        /* area type */
+        if (area_row->nssa_translator_role)
+        {
+            if (!strcmp(area_row->nssa_translator_role,
+                OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_NEVER))
+            {
+                strncpy(disp_str, "translate-never", OSPF_SHOW_STR_LEN);
+                is_present = true;
+            }
+            else if (!strcmp(area_row->nssa_translator_role,
+                OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_ALWAYS))
+            {
+                strncpy(disp_str, "translate-always", OSPF_SHOW_STR_LEN);
+                is_present = true;
+            }
+        }
+
+        if (area_row->area_type)
+        {
+            if (!strcmp(area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_NSSA))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s nssa %s", "", area_str,
+                                    (is_present == true) ? disp_str : "");
+            }
+            else if (!strcmp(area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_NSSA_NO_SUMMARY))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s nssa %s no-summary", "",
+                                area_str, (is_present == true) ? disp_str : "");
+            }
+            else if (!strcmp(area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_STUB))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s stub", "", area_str);
+            }
+            else if (!strcmp(area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_STUB_NO_SUMMARY))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s stub no-summary", "",
+                                      area_str);
+            }
+        }
+    }
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_ospf_clientcallback
+| Responsibility : client callback routine
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
 vtysh_ret_val
 vtysh_router_context_ospf_clientcallback(void *p_private)
 {
@@ -753,6 +840,7 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
     const char *val = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
+    int64_t distance = 0;
 
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                              "vtysh_context_router_ospf_clientcallback entered");
@@ -801,6 +889,17 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
                 vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
                         "max-metric router-lsa on-startup", val);
             }
+
+            /* Distance */
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_ALL);
+            if ((distance > 0) && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "distance",
+                                      distance);
+            }
+
+            vtysh_router_context_ospf_area_callback(p_msg, ospf_router_row);
 
         }
     }

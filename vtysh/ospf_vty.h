@@ -27,6 +27,8 @@
 
 #define OSPF_CMD_AS_RANGE "<0-4294967295>"
 
+#define SAFE_FREE(x) if (x) {free(x);x=NULL;}
+
 #define OSPF_FEATURE        "ospfv2"
 #define NUM_OF_FEATURES     1
 #define ENABLE_STR          "Enable the feature\n"
@@ -36,7 +38,8 @@
 #define OSPF_AREA_IP_STR    \
                 "Specify an area id by IPv4 address notation(e.g. 0.0.0.0)\n"
 #define OSPF_AUTH_ENABLE    "Enable authentication\n"
-#define OSPF_AUTH_MD5       "Use message-digest authentication\n"
+#define OSPF_AUTH_MD5       "Configure message-digest authentication\n"
+#define OSPF_AUTH_NULL_STR  "Use null authentication\n"
 #define BORDER_ROUTER_STR   "Border router information\n"
 #define DETAIL_STR          "Display detailed information\n"
 #define ALL_STR             "Display all the information\n"
@@ -64,6 +67,12 @@
     "Automatically advertise stub Router-LSA on startup of OSPF\n"
 #define OSPF_STARTUP_TIME_STR   \
 "Time (seconds) to advertise self as stub-router\n"
+#define OSPF_AUTH_KEY       "Authentication password (key)\n"
+#define OSPF_AUTH_KEY_VAL   "The OSPF password (key)\n"
+#define OSPF_MD5_KEY        "Message digest authentication password (key)\n"
+#define OSPF_MD5_KEY_ID     "Key ID\n"
+#define OSPF_MD5            "Use MD5 algorithm\n"
+#define OSPF_MD5_PASSWORD   "The OSPF password (key)"
 
 #define OSPF_AREA_ID_FORMAT_ADDRESS         1
 #define OSPF_AREA_ID_FORMAT_DECIMAL         2
@@ -73,6 +82,7 @@
 #define OSPF_SHOW_STR_LEN           25
 #define OSPF_NETWORK_RANGE_LEN      25
 #define OSPF_TIMER_KEY_MAX_LENGTH   80
+#define OSPF_STAT_NAME_LEN          64
 
 /* Neighbor FSM states */
 #define OSPF_NFSM_STATE_ATTEMPT           "Attempt"
@@ -142,6 +152,34 @@ cli_command_result (enum ovsdb_idl_txn_status status)
                                           ((ip) >> 8) & 0xFF,                \
                                           ((ip) & 0xFF));
 
+/* Macros. */
+#define OSPF_GET_AREA_ID(V,F,STR)                                             \
+{                                                                             \
+    int retv;                                                                 \
+    retv = ospf_str_to_area_id ((STR), &(V), &(F));                           \
+    if (retv < 0)                                                             \
+    {                                                                         \
+        vty_out (vty, "Invalid OSPF area ID.%s", VTY_NEWLINE);                \
+        return CMD_WARNING;                                                   \
+    }                                                                         \
+}
+
+#define OSPF_GET_AREA_ID_NO_BB(NAME,V,F,STR)                                  \
+{                                                                             \
+    int retv;                                                                 \
+    retv = ospf_str_to_area_id ((STR), &(V), &(F));                           \
+    if (retv < 0)                                                             \
+    {                                                                         \
+        vty_out (vty, "%% Invalid OSPF area ID%s", VTY_NEWLINE);              \
+        return CMD_WARNING;                                                   \
+    }                                                                         \
+    if ((V).s_addr == 0)                                                      \
+    {                                                                         \
+        vty_out (vty, "%% Cannot configure %s to backbone%s",                 \
+                 NAME, VTY_NEWLINE);                                          \
+        return CMD_WARNING;                                                   \
+    }                                                                         \
+}
 
 /* OSPF options. */
 #define OSPF_OPTION_T                    0x01  /* TOS. */
@@ -172,6 +210,9 @@ ospf_get_port_intervals(const struct ovsrec_port* port_row,
 #define OSPF_KEY_ROUTE_TYPE2_COST               "type2_cost"
 
 #define OSPF_KEY_ROUTE_COST                     "cost"
+
+#define OSPF_KEY_AREA_STATS_ABR_COUNT           "abr_count"
+#define OSPF_KEY_AREA_STATS_ASBR_COUNT          "asbr_count"
 
 
 #define OSPF_NBR_OPTION_STRING_T               "type_of_service"
