@@ -54,6 +54,7 @@
 #include "lib/routemap.h"
 #include "lib/plist.h"
 #include "lib/regex-gnu.h"
+#include "vrf-utils.h"
 
 extern struct ovsdb_idl *idl;
 
@@ -326,8 +327,7 @@ string_is_a_name (const char *string)
 static const struct ovsrec_vrf *
 get_ovsrec_vrf_with_name(char *name)
 {
-    /* TODO change this later when multi vrf's are supported */
-    return ovsrec_vrf_first(idl);
+    return vrf_lookup(idl, name);
 }
 
 /*
