@@ -34,7 +34,10 @@
 #include "lib/vty.h"
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
-#include "vtysh_ovsdb_router_context.h"
+#include "vtysh/vtysh_ovsdb_router_context.h"
+#include "vtysh/vtysh_ovsdb_sftp_context.h"
+#include "vtysh/vtysh_ovsdb_source_interface_context.h"
+
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
@@ -336,7 +339,6 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     vtysh_contextlist *current = show_run_contextlist;
     vtysh_contextlist *subcontext_list;
     vtysh_ovsdb_cbmsg msg;
-    const struct ovsrec_interface *ifrow;
     struct feature_sorted_list *list = NULL;
     const struct shash_node **nodes;
     int idx, count;

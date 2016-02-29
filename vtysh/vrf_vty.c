@@ -66,8 +66,8 @@ bool
 check_split_iface_conditions (const char *ifname)
 {
   const struct ovsrec_interface *if_row, *next, *parent_iface;
-  char *lanes_split_value = NULL;
-  char *split_value = NULL;
+  const char *lanes_split_value = NULL;
+  const char *split_value = NULL;
   bool allowed = true;
 
   OVSREC_INTERFACE_FOR_EACH_SAFE(if_row, next, idl)
@@ -772,7 +772,7 @@ vrf_no_routing (const char *if_name)
   int trunk_count = 0;
   int64_t* tag = NULL;
   int tag_count = 0;
-  size_t i, n;
+  size_t i;
 
   status_txn = cli_do_config_start ();
 
@@ -801,7 +801,6 @@ vrf_no_routing (const char *if_name)
     {
         /* Delete subinterfaces configured, if any. */
         const struct ovsrec_port *tmp_port_row = NULL;
-        const struct ovsrec_port *sub_intf_port_row =  NULL;
         const struct ovsrec_vrf *tmp_vrf_row = NULL;
         const struct ovsrec_interface *tmp_intf_row = NULL;
         const struct ovsrec_interface *tmp_parent_intf_row = NULL;
