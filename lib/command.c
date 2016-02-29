@@ -4021,6 +4021,11 @@ DEFUN (config_hostname,
         vty_out (vty, "Please specify string starting with alphabet.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
+    if (strstr(argv[0],"."))
+    {
+        vty_out (vty, "Please use domain-name to specify the domain.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
     vtysh_ovsdb_hostname_set(argv[0]);
     return CMD_SUCCESS;
 }
