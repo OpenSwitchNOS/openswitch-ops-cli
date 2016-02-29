@@ -500,6 +500,7 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 {
     const struct ovsrec_route_map *ovs_route_map = NULL;
     int j = 0;
+    char *smap_match, *smap_set;
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
     OVSREC_ROUTE_MAP_FOR_EACH(ovs_route_map, p_msg->idl)
@@ -516,22 +517,22 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "description",
                                       ovs_route_map->
                                       value_route_map_entries[j]->description);
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "prefix_list");
 
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "prefix_list"))
+            if (smap_match)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
                                       "match ip address prefix-list",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "prefix_list"));
+                                      smap_match);
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "ipv6_prefix_list");
 
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "ipv6_prefix_list"))
+            if (smap_match)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
                                       "match ipv6 address prefix-list",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "ipv6_prefix_list"));
+                                      smap_match);
 
             if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
                 "community"))
@@ -540,116 +541,165 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                       smap_get(&(ovs_route_map->
                                                  value_route_map_entries[j]->
                                                  match), "community"));
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "extcommunity");
 
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "extcommunity"))
+            if (smap_match)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
                                       "match extcommunity",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "extcommunity"));
+                                      smap_match);
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "as_path");
 
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "community"))
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community",
-                                      smap_get(&ovs_route_map->
-                                               value_route_map_entries[j]->set,
-                                               "community"));
-
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "metric"))
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "", "set metric",
-                                      smap_get(&ovs_route_map->
-                                               value_route_map_entries[j]->set,
-                                               "metric"));
-
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "as_path"))
+            if (smap_match)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
                                       "match as-path",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "as_path"));
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "as_path_exclude"))
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
-                    "set as-path exclude",
-                        smap_get(&ovs_route_map->
-                                 value_route_map_entries[j]->set,
-                                 "as_path_exclude"));
+                                      smap_match);
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "ipv6_next_hop");
 
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "as_path_prepend"))
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
-                    "set as-path prepend",
-                        smap_get(&ovs_route_map->
-                                 value_route_map_entries[j]->set,
-                                 "as_path_prepend"));
-
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "origin"))
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
-                                      "match origin",
-                                      smap_get(&(ovs_route_map->
-                                               value_route_map_entries[j]->
-                                               match), "origin"));
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "origin"))
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
-                                      "set origin",
-                                      smap_get(&ovs_route_map->
-                                               value_route_map_entries[j]->set,
-                                               "origin"));
-
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "metric"))
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
-                                      "match metric",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "metric"));
-
-
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "ipv6_next_hop"))
+            if (smap_match)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
                                       "match ipv6 next-hop",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "ipv6_next_hop"));
+                                      smap_match);
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "metric");
 
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "ipv6_next_hop_global"))
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
-                    "set ipv6 next-hop global",
-                        smap_get(&ovs_route_map->
-                                 value_route_map_entries[j]->set,
-                                 "ipv6_next_hop_global"));
+            if (smap_match)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match metric",
+                                      smap_match);
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "origin");
 
-            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
-                "probability"))
+            if (smap_match)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match origin",
+                                      smap_match);
+            smap_match = smap_get(
+                         &(ovs_route_map->value_route_map_entries[j]->match),
+                         "probability");
+
+            if (smap_match)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
                                       "match probability",
-                                      smap_get(&(ovs_route_map->
-                                                 value_route_map_entries[j]->
-                                                 match), "probability"));
+                                      smap_match);
 
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "community");
 
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "extcommunity rt"))
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community",
+                                      smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "metric");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "", "set metric",
+                                      smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "aggregator_as");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set aggregator as",
+                        smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "as_path_exclude");
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set as-path exclude",
+                        smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "as_path_prepend");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set as-path prepend",
+                        smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "atomic_aggregate");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s", "",
+                    "set atomic-aggregate");
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "comm_list");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s delete", "",
+                    "set comm-list",
+                        smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "extcommunity_rt");
+            if (smap_set)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
                     "set extcommunity rt",
-                        smap_get(&ovs_route_map->
-                            value_route_map_entries[j]->set,
-                                "extcommunity rt"));
+                        smap_set);
 
-            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
-                "extcommunity soo"))
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "extcommunity_soo");
+
+            if (smap_set)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
                     "set extcommunity soo",
-                        smap_get(&ovs_route_map->
-                            value_route_map_entries[j]->set,
-                                "extcommunity soo"));
+                        smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "ipv6_next_hop_global");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set ipv6 next-hop global",
+                        smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "local_preference");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set local-preference",
+                        smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "origin");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "", "set origin",
+                    smap_set);
+
+            smap_set = smap_get(
+                       &ovs_route_map->value_route_map_entries[j]->set,
+                       "weight");
+
+            if (smap_set)
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "", "set weight",
+                    smap_set);
+
         }
     }
 
