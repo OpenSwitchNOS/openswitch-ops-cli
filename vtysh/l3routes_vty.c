@@ -380,7 +380,7 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
          return CMD_OVSDB_FAILURE;
        }
 #else
-      row_vrf = ovsrec_vrf_first (idl);
+      row_vrf = get_default_vrf(idl);
       if (!row_vrf)
         {
           VLOG_ERR (OVSDB_ROW_FETCH_ERROR);
@@ -982,7 +982,7 @@ ipv6_route_common (struct vty *vty, char **argv, char *distance)
 
   if (row == NULL)
     {
-      row_vrf = ovsrec_vrf_first (idl);
+      row_vrf = get_default_vrf(idl);
       if (!row_vrf)
         {
           VLOG_ERR (OVSDB_ROW_FETCH_ERROR);
