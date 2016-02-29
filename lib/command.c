@@ -4009,7 +4009,7 @@ DEFUN (config_hostname,
        hostname_cmd,
        "hostname HOSTNAME",
        HOSTNAME_SET_STR
-       "Hostname string(Max Length 32), first letter must be alphabet\n")
+       "Hostname string(Max Length 32), first character must be an alphabet and contain only the special character '-' \n")
 {
     if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
     {
@@ -4019,6 +4019,11 @@ DEFUN (config_hostname,
     if (!isalpha((int) *argv[0]))
     {
         vty_out (vty, "Please specify string starting with alphabet.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    if (strstr(argv[0],"."))
+    {
+        vty_out (vty, "Please use domain-name to specify the domain.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
     vtysh_ovsdb_hostname_set(argv[0]);
