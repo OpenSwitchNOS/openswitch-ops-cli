@@ -32,6 +32,7 @@ include(FindPkgConfig)
 
 pkg_check_modules(OVSCOMMON REQUIRED libovscommon)
 pkg_check_modules(OVSDB REQUIRED libovsdb)
+pkg_check_modules(OPSUTILS REQUIRED opsutils)
 
 add_definitions(-DHAVE_CONFIG_H -DSYSCONFDIR="${CMAKE_INSTALL_SYSCONFDIR}")
 
@@ -67,6 +68,7 @@ target_link_libraries(vtysh PUBLIC
   ${OVSCOMMON_LIBRARIES}
   ${OVSDB_LIBRARIES}
   ${OPSCLI_LIBRARIES}
+  ${OPSUTILS_LIBRARIES}
   crypt pthread readline ops-cli)
 
 install(
