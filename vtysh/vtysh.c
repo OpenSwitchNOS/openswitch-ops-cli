@@ -2892,6 +2892,8 @@ vtysh_prompt (void)
    static char buf[100];
    const char*hostname;
    extern struct host host;
+   char *temp =NULL;
+   char temp_buf[100]={0};
 
 #ifdef ENABLE_OVSDB
    const struct ovsrec_system *ovs = NULL;
@@ -2905,8 +2907,13 @@ vtysh_prompt (void)
       {
          if (host.name)
             XFREE (MTYPE_HOST, host.name);
-
-         host.name = XSTRDUP (MTYPE_HOST, val);
+         strncpy(temp_buf,val,99);
+         temp=strstr(temp_buf,".");
+         if(temp)
+         {
+           *temp='\0';
+         }
+         host.name = XSTRDUP (MTYPE_HOST, temp_buf);
       }
    }
 #endif
@@ -2916,6 +2923,12 @@ vtysh_prompt (void)
    {
      uname (&names);
      hostname = names.nodename;
+     temp=NULL;
+     temp=strstr(hostname,".");
+     if(temp)
+     {
+       *temp='\0';
+     }
      /* do XSTRDUP to avoid crash as it will be free'd later */
      host.name = XSTRDUP (MTYPE_HOST,hostname);
    }
