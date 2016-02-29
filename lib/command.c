@@ -38,6 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
+#include "vtysh/utils/audit_log_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
@@ -47,6 +48,13 @@ VLOG_DEFINE_THIS_MODULE(vtysh_command);
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec = NULL;
+
+#define AUDIT_LOG_USER_MSG(vty,cfgdata,ret) \
+    if (vty->node >= CONFIG_NODE){ \
+       const char *hostname = vtysh_ovsdb_hostname_get(); \
+       strcat (strcpy(op,"op=CLI:command"), " "); \
+       audit_log_user_msg(op,cfgdata,hostname,ret); \
+   }
 
 struct cmd_token token_cr;
 char *command_cr = NULL;
@@ -3117,6 +3125,109 @@ node_parent ( enum node_type node )
   return ret;
 }
 
+/*
+ * Purpose : Autocomplete the command tokens in matching case.
+ * Return  : return cmd_string contains the complete command tokens.
+ * Example : User endered command - "ip add 1.2.3.1/24"
+ *           This function returns  "ip address 1.2.3.1/24"
+*/
+static char *autocomplete_command_tokens(struct cmd_element *matched_element,
+                                vector vline)
+{
+  char cmd_string[MAX_CFGDATA_LEN] = "";
+  char *cmd_token = NULL,*usr_token = NULL;
+  struct cmd_matcher matcher;
+  enum match_type *match_type;
+  unsigned int token_index=0;
+  int flag;
+  unsigned int i;
+  enum match_type word_match;
+  struct cmd_token *word_token;
+  const char *word;
+  vector keyword_vector;
+
+  cmd_matcher_init(&matcher, matched_element, 0,
+                   vline, -1, NULL, NULL);
+
+  for (token_index= 0; token_index < vector_active(matched_element->tokens);token_index++){
+    flag = 1;
+    struct cmd_token *token = vector_slot(matched_element->tokens, token_index);
+
+    switch (token->type)
+       {
+             case TOKEN_TERMINAL:
+                 if (!cmd_matcher_words_left(&matcher))
+                      break;
+                 word = cmd_matcher_get_word(&matcher);
+                 cmd_token = token->cmd;
+                 goto JUMP;
+             case TOKEN_MULTIPLE:
+                 if (!cmd_matcher_words_left(&matcher))
+                       break;
+                 word = cmd_matcher_get_word(&matcher);
+                 for (i = 0;i < vector_active(token->multiple);i++)
+                 {
+                     word_token = vector_slot(token->multiple, i);
+
+                     word_match = cmd_word_match(word_token, 0, word);
+                     if (word_match == no_match)
+                           continue;
+
+                     if (word_match > no_match)
+                        cmd_token = word_token->cmd;
+                 }
+                 goto JUMP;
+             case TOKEN_KEYWORD:
+                  while (1){
+                    flag = 1;
+                    if (!cmd_matcher_words_left(&matcher))
+                      break;
+
+                    word = cmd_matcher_get_word(&matcher);
+                    for (i = 0; i < vector_active(token->keyword); i++)
+                    {
+                      keyword_vector = vector_slot(token->keyword, i);
+                      word_token = vector_slot(keyword_vector, 0);
+
+                      word_match = cmd_word_match(word_token, 0, word);
+                      if (word_match == no_match)
+                        continue;
+
+                      if (word_match > no_match)
+                         cmd_token = word_token->cmd;
+                    }
+                    JUMP:
+                      if ((cmd_token != NULL) && !(strcmp(cmd_token,"alias")))
+                         break;
+
+                      char *matched_string;
+                      matched_string = cmd_token;
+                      usr_token = word;
+                      while (*usr_token != '\0'){
+                        if (*usr_token != *cmd_token){
+                          flag = 0;
+                          break;
+                        }
+                        usr_token++; cmd_token++;
+                      }
+
+                     if (flag == 1)
+                       strcat(strcat(cmd_string, matched_string), " ");
+                     else
+                       strcat(strcat(cmd_string, word), " ");
+
+                     matcher.word_index++;
+                     if (token->type != TOKEN_KEYWORD)
+                       break;
+                   }
+       }
+       if ((cmd_token != NULL) && !(strcmp(cmd_token,"alias")))
+         break;
+  }
+  return cmd_string;
+}
+
+
 /* Execute command by argument vline vector. */
 static int
 cmd_execute_command_real (vector vline,
@@ -3136,6 +3247,8 @@ cmd_execute_command_real (vector vline,
   char *command;
   int ret;
   vector matches;
+  char op[MAX_OP_DESC_LEN];
+  char *cfgdata;
 
   /* Make copy of command elements. */
   cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
@@ -3219,6 +3332,10 @@ cmd_execute_command_real (vector vline,
   if (ret != CMD_SUCCESS)
     return ret;
 
+  /* Complete the command tokens when command match is OK.*/
+  if (vty->node >= CONFIG_NODE && ret == CMD_SUCCESS)
+    cfgdata = autocomplete_command_tokens(matched_element, vline);
+
   /* For vtysh execution. */
   if (cmd)
     *cmd = matched_element;
@@ -3242,6 +3359,7 @@ cmd_execute_command_real (vector vline,
               strcpy(ifnumber, temp->value);
               vty->index = ifnumber;
               ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              AUDIT_LOG_USER_MSG(vty,cfgdata,ret);
               temp = temp->link;
               VTYSH_OVSDB_UNLOCK;
               if (vty->index == NULL)
@@ -3252,6 +3370,7 @@ cmd_execute_command_real (vector vline,
       {
           VTYSH_OVSDB_LOCK;
           ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+          AUDIT_LOG_USER_MSG(vty,cfgdata,ret);
           VTYSH_OVSDB_UNLOCK;
       }
   }
@@ -3266,6 +3385,7 @@ cmd_execute_command_real (vector vline,
               strcpy(ifnumber, temp->value);
               vty->index = ifnumber;
               ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              AUDIT_LOG_USER_MSG(vty,cfgdata,ret);
               temp = temp->link;
               if (vty->index == NULL)
                   break;
@@ -3274,6 +3394,7 @@ cmd_execute_command_real (vector vline,
       else
       {
           ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+          AUDIT_LOG_USER_MSG(vty,cfgdata,ret);
       }
   }
   return ret;
