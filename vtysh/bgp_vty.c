@@ -59,6 +59,7 @@ extern struct ovsdb_idl *idl;
 #define BGP_UPTIME_LEN (25)
 #define NET_BUFSZ    18
 #define BGP_ATTR_DEFAULT_WEIGHT 32768
+#define MAX_ARG_LEN 1024
 /* BGP Information flags taken from bgp_route.h
  * TODO: Remove this duplicate declaration. Need to separate
  * these flags from bgp_route.h
@@ -137,10 +138,16 @@ typedef struct route_psd_bgp_s {
     int flags;                    /* Route status flags. */
     const char *aspath;           /* List of AS path number for a route. */
     const char *origin;           /* Indicates route is IBGP or EBGP. */
-    int local_pref;               /* Local preference path attribute. */
     bool internal;                /* Specifies route is internal or not. */
     bool ibgp;                    /* Specifies router is IBGP or EBGP. */
     const char *uptime;           /* Specifies uptime of route. */
+    int weight;                   /* Specifies weight of route. */
+    int local_pref;               /* Local preference path attribute. */
+    int aggregator_id;            /* Specifies aggregator id of route. */
+    const char *aggregator_addr;  /* Specifies aggregator address of route */
+    const char *atomic_aggregate; /* Specifies if atomic aggregate has occured. */
+    const char *community;        /* Specifies community attribute*/
+    const char *ecommunity;       /* Specifies extended community attribute*/
 } route_psd_bgp_t;
 
 /* Prefix List. */
@@ -160,12 +167,17 @@ static const struct lookup_entry match_table[] = {
 static const struct lookup_entry set_table[] = {
     {"community", "community"},
     {"metric", "metric"},
+    {"aggregator as", "aggregator_as"},
     {"as-path exclude", "as_path_exclude"},
     {"as-path prepend", "as_path_prepend"},
-    {"origin", "origin"},
-    {"ipv6 next-hop global", "ipv6_next_hop_global"},
+    {"atomic-aggregate", "atomic_aggregate"},
+    {"comm-list", "comm_list"},
     {"extcommunity rt", "extcommunity rt"},
     {"extcommunity soo", "extcommunity soo"},
+    {"ipv6 next-hop global", "ipv6_next_hop_global"},
+    {"local-preference", "local_preference"},
+    {"origin", "origin"},
+    {"weight", "weight"},
     {NULL, NULL},
 };
 
@@ -469,6 +481,19 @@ bgp_get_rib_path_attributes(const struct ovsrec_bgp_route *rib_row,
                             OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ORIGIN);
     data->local_pref = smap_get_int(&rib_row->path_attributes,
                                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_LOC_PREF,0);
+    data->weight = smap_get_int(&rib_row->path_attributes,
+                                OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_WEIGHT, BGP_ATTR_DEFAULT_WEIGHT);
+    data->aggregator_id = smap_get_int(&rib_row->path_attributes,
+                                       OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_AGGREGATOR_ID, 0);
+    data->aggregator_addr = smap_get(&rib_row->path_attributes,
+                                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_AGGREGATOR_ADDR);
+    data->atomic_aggregate = smap_get(&rib_row->path_attributes,
+                                      OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ATOMIC_AGGREGATE);
+    data->community = smap_get(&rib_row->path_attributes,
+                               OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_COMMUNITY);
+    data->ecommunity = smap_get(&rib_row->path_attributes,
+                                OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ECOMMUNITY);
+
     const char *value;
     value = smap_get(&rib_row->path_attributes,
                      OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_INTERNAL);
@@ -666,9 +691,7 @@ static void show_routes(struct vty *vty,
                 /* Print local preference. */
                 vty_out (vty, "%7d", ppsd->local_pref);
                 /* Print weight for non-static routes. */
-                vty_out (vty, "%7d ", bgp_get_peer_weight(bgp_row,
-                                                          rib_row,
-                                                          rib_row->peer));
+                vty_out (vty, ", weight %d ", ppsd->weight?ppsd->weight:BGP_ATTR_DEFAULT_WEIGHT);
                 /* Print AS path. */
                 if (ppsd->aspath) {
                     vty_out(vty, "%s", ppsd->aspath);
@@ -736,10 +759,7 @@ static void show_ipv6_routes(struct vty *vty,
                     vty_out (vty, "%7d", def_metric);
                 /* Print local preference. */
                 vty_out (vty, "%7d", ppsd->local_pref);
-                /* Print weight for non-static routes. */
-                vty_out (vty, "%7d ", bgp_get_peer_weight(bgp_row,
-                                                          rib_row,
-                                                          rib_row->peer));
+                vty_out (vty, ", weight %d", ppsd->weight?ppsd->weight:BGP_ATTR_DEFAULT_WEIGHT);
                 /* Print AS path. */
                 if (ppsd->aspath) {
                     vty_out(vty, "%s", ppsd->aspath);
@@ -923,6 +943,12 @@ show_route_detail(struct vty *vty,
         vty_out (vty, ", (removed)");
     if (ppsd->flags & BGP_INFO_STALE)
         vty_out (vty, ", (stale)");
+    if (ppsd->aggregator_addr && (strlen(ppsd->aggregator_addr) != 0)) {
+        if (ppsd->aggregator_id != 0) {
+            vty_out (vty, ", (aggregated by %u %s)", ppsd->aggregator_id,
+                     ppsd->aggregator_addr);
+        }
+    }
     if (ppsd->flags & BGP_INFO_HISTORY)
         vty_out (vty, ", (history entry)");
     if (ppsd->flags & BGP_INFO_DAMPED)
@@ -952,9 +978,7 @@ show_route_detail(struct vty *vty,
     int metric = (rib_row->n_metric) ? *rib_row->metric : 0;
     vty_out (vty, ", metric %d", metric);
     vty_out (vty, ", localpref %d", ppsd->local_pref);
-    vty_out (vty, ", weight %d", bgp_get_peer_weight(bgp_row,
-                                                     rib_row,
-                                                     rib_row->peer));
+    vty_out (vty, ", weight %d", ppsd->weight?ppsd->weight:BGP_ATTR_DEFAULT_WEIGHT);
     if (! (ppsd->flags & BGP_INFO_HISTORY))
         vty_out (vty, ", valid");
     if (!static_route) {
@@ -967,8 +991,20 @@ show_route_detail(struct vty *vty,
     } else {
         vty_out (vty, ", sourced");
     }
+    if (!strcmp(ppsd->atomic_aggregate, "atomic-aggregate")) {
+        vty_out (vty, ", atomic-aggregate");
+    }
     if (ppsd->flags & BGP_INFO_SELECTED)
         vty_out (vty, ", best");
+    vty_out (vty, "%s", VTY_NEWLINE);
+    if (ppsd->community && (strlen(ppsd->community) != 0)) {
+        vty_out (vty, "       Community: %s", ppsd->community);
+        vty_out (vty, "%s", VTY_NEWLINE);
+    }
+    if (ppsd->ecommunity && (strlen(ppsd->ecommunity) != 0)) {
+        vty_out (vty, "       Extended Community: %s", ppsd->ecommunity);
+        vty_out (vty, "%s", VTY_NEWLINE);
+    }
     vty_out (vty, "%s", VTY_NEWLINE);
     /* Line 4 display Uptime */
     vty_out (vty, "      Last update: %s", ppsd->uptime);
@@ -12937,7 +12973,6 @@ ALIAS(no_set_ecommunity_rt,
       "Route Target extended community\n"
       "VPN extended community\n")
 
-
 static int
 policy_set_route_map_set_extcommunity_soo_str_in_ovsdb(struct vty *vty,
                                                        const int argc,
@@ -12949,6 +12984,7 @@ policy_set_route_map_set_extcommunity_soo_str_in_ovsdb(struct vty *vty,
                 policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
                                                     rmp_context.name,
                                                     rmp_context.action);
+
     str = argv_concat(argv, argc, 0);
 
     if (!str) {
@@ -12999,8 +13035,6 @@ ALIAS(no_set_ecommunity_soo,
       "Site-of-Origin extended community\n"
       "VPN extended community\n")
 
-
-
 static int
 policy_set_route_map_set_community_str_in_ovsdb(struct vty *vty,
                                                 const int argc,
@@ -13017,7 +13051,7 @@ policy_set_route_map_set_community_str_in_ovsdb(struct vty *vty,
                                                     rmp_context.name,
                                                     rmp_context.action);
 
-    argstr = xmalloc(1024);
+    argstr = xmalloc(MAX_ARG_LEN);
 
     if (!argstr)
         return 0;
@@ -13027,11 +13061,11 @@ policy_set_route_map_set_community_str_in_ovsdb(struct vty *vty,
             additive = 1;
             continue;
         }
-        n += sprintf(&argstr[n], "%s", argv[i]);
+        n += sprintf(&argstr[n], "%s ", argv[i]);
     }
 
     if (additive) {
-        n += sprintf(&argstr[n], " %s", "additive");
+        n += sprintf(&argstr[n], "%s", "additive");
     }
 
     policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
@@ -14342,6 +14376,253 @@ DEFUN(show_ip_as_path_access_list_all,
     return CMD_SUCCESS;
 }
 
+DEFUN(set_weight,
+      set_weight_cmd,
+      "set weight <0-4294967295>",
+      SET_STR
+      "BGP weight for routing table\n"
+      "Weight value\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "weight", argv[0]);
+}
+
+DEFUN(no_set_weight,
+      no_set_weight_cmd,
+      "no set weight",
+      NO_STR
+      SET_STR
+      "BGP weight for routing table\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "weight", NULL);
+}
+
+ALIAS(no_set_weight,
+      no_set_weight_val_cmd,
+      "no set weight <0-4294967295>",
+      NO_STR
+      SET_STR
+      "BGP weight for routing table\n"
+       "Weight value\n")
+
+DEFUN(set_local_pref,
+      set_local_pref_cmd,
+      "set local-preference <0-4294967295>",
+      SET_STR
+      "BGP local preference path attribute\n"
+      "Preference value\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "local-preference", argv[0]);
+}
+
+DEFUN(no_set_local_pref,
+      no_set_local_pref_cmd,
+      "no set local-preference",
+      NO_STR
+      SET_STR
+      "BGP local preference path attribute\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "local-preference", NULL);
+}
+
+ALIAS(no_set_local_pref,
+      no_set_local_pref_val_cmd,
+      "no set local-preference <0-4294967295>",
+      NO_STR
+      SET_STR
+      "BGP local preference path attribute\n"
+      "Preference value\n")
+
+static int
+policy_set_route_map_set_aggregator_as_in_ovsdb(struct vty *vty,
+                                                const int argc,
+                                                const char **argv)
+{
+    char *argstr;
+    int ret = 0;
+    struct in_addr address;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+
+    ret = inet_aton (argv[1], &address);
+    if (ret == 0)
+    {
+      return 0;
+    }
+
+    argstr = xmalloc(MAX_ARG_LEN);
+
+    if (!argstr) {
+        return 0;
+    }
+
+    snprintf (argstr,MAX_ARG_LEN, "%s %s", argv[0], argv[1]);
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                      "aggregator as", argstr);
+
+    free (argstr);
+    return ret;
+}
+
+DEFUN(set_aggregator_as,
+      set_aggregator_as_cmd,
+      "set aggregator as " CMD_AS_RANGE " A.B.C.D",
+      SET_STR
+      "BGP aggregator attribute\n"
+      "AS number of aggregator\n"
+      "AS number\n"
+      "IP address of aggregator\n")
+{
+     return policy_set_route_map_set_aggregator_as_in_ovsdb (vty, argc,
+                                                                  argv);
+}
+
+DEFUN(no_set_aggregator_as,
+      no_set_aggregator_as_cmd,
+      "no set aggregator as",
+      NO_STR
+      SET_STR
+      "BGP aggregator attribute\n"
+      "AS number of aggregator\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "aggregator as", NULL);
+}
+
+ALIAS(no_set_aggregator_as,
+      no_set_aggregator_as_val_cmd,
+      "no set aggregator as " CMD_AS_RANGE " A.B.C.D",
+      NO_STR
+      SET_STR
+      "BGP aggregator attribute\n"
+      "AS number of aggregator\n"
+      "AS number\n"
+      "IP address of aggregator\n")
+
+DEFUN(set_atomic_aggregate,
+      set_atomic_aggregate_cmd,
+      "set atomic-aggregate",
+      SET_STR
+      "BGP atomic aggregate attribute\n" )
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "atomic-aggregate", "true");
+}
+
+DEFUN(no_set_atomic_aggregate,
+      no_set_atomic_aggregate_cmd,
+      "no set atomic-aggregate",
+      NO_STR
+      SET_STR
+      "BGP atomic aggregate attribute\n" )
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+               policy_get_route_map_entry_in_ovsdb (rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "atomic-aggregate", NULL);
+}
+
+static int
+policy_set_route_map_set_comm_list_str_in_ovsdb(struct vty *vty,
+                                                const int argc,
+                                                const char **argv)
+{
+    char *argstr;
+    int ret = 0;
+    struct in_addr address;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    argstr = xmalloc(MAX_ARG_LEN);
+
+    if (!argstr) {
+        return 0;
+    }
+
+    snprintf (argstr,MAX_ARG_LEN, "%s delete", argv[0]);
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                      "comm-list", argstr);
+
+    free (argstr);
+    return ret;
+}
+
+DEFUN(set_community_delete,
+      set_community_delete_cmd,
+      "set comm-list (<1-99>|<100-500>|WORD) delete",
+      SET_STR
+      "set BGP community list (for deletion)\n"
+      "Community-list number (standard)\n"
+      "Community-list number (expanded)\n"
+      "Community-list name\n"
+      "Delete matching communities\n")
+{
+    return policy_set_route_map_set_comm_list_str_in_ovsdb (vty, argc,
+                                                                 argv);
+}
+
+DEFUN(no_set_community_delete,
+      no_set_community_delete_cmd,
+      "no set comm-list",
+      NO_STR
+      SET_STR
+      "set BGP community list (for deletion)\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+        policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                            rmp_context.name,
+                                            rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "comm-list", NULL);
+}
+
+ALIAS(no_set_community_delete,
+      no_set_community_delete_val_cmd,
+      "no set comm-list (<1-99>|<100-500>|WORD) delete",
+      NO_STR
+      SET_STR
+      "set BGP community list (for deletion)\n"
+      "Community-list number (standard)\n"
+      "Communitly-list number (expanded)\n"
+      "Community-list name\n"
+      "Delete matching communities\n")
+
 void policy_vty_init(void)
 {
     install_element(CONFIG_NODE, &ip_as_path_cmd);
@@ -14366,6 +14647,7 @@ void policy_vty_init(void)
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_name_cmd);
     install_element(ENABLE_NODE, &show_ip_prefix_list_name_cmd);
     install_element(ENABLE_NODE, &show_ip_prefix_list_name_seq_cmd);
+
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_name_seq_cmd);
     install_element(ENABLE_NODE, &show_ip_prefix_list_detail_name_cmd);
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_detail_cmd);
@@ -14440,4 +14722,18 @@ void policy_vty_init(void)
     install_element(RMAP_NODE, &set_ecommunity_soo_cmd);
     install_element(RMAP_NODE, &no_set_ecommunity_soo_cmd);
     install_element(RMAP_NODE, &no_set_ecommunity_soo_val_cmd);
+    install_element(RMAP_NODE, &set_weight_cmd);
+    install_element(RMAP_NODE, &no_set_weight_cmd);
+    install_element(RMAP_NODE, &no_set_weight_val_cmd);
+    install_element(RMAP_NODE, &set_local_pref_cmd);
+    install_element(RMAP_NODE, &no_set_local_pref_cmd);
+    install_element(RMAP_NODE, &no_set_local_pref_val_cmd);
+    install_element(RMAP_NODE, &set_aggregator_as_cmd);
+    install_element(RMAP_NODE, &no_set_aggregator_as_cmd);
+    install_element(RMAP_NODE, &no_set_aggregator_as_val_cmd);
+    install_element(RMAP_NODE, &set_atomic_aggregate_cmd);
+    install_element(RMAP_NODE, &no_set_atomic_aggregate_cmd);
+    install_element(RMAP_NODE, &set_community_delete_cmd);
+    install_element(RMAP_NODE, &no_set_community_delete_cmd);
+    install_element(RMAP_NODE, &no_set_community_delete_val_cmd);
 }
