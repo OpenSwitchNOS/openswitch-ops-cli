@@ -60,14 +60,15 @@ add_executable(vtysh
   vtysh_ovsdb_sftp_context.c
   utils/vlan_vtysh_utils.c
   utils/intf_vtysh_utils.c
-  utils/vrf_vtysh_utils.c)
+  utils/vrf_vtysh_utils.c
+  utils/audit_log_utils.c)
 
 target_link_libraries(vtysh PUBLIC
   ${OVSCOMMON_LIBRARIES}
   ${OVSDB_LIBRARIES}
   ${OPSCLI_LIBRARIES}
   ${OPSUTILS_LIBRARIES}
-  crypt pthread readline ops-cli)
+  crypt pthread readline ops-cli audit)
 
 install(
   TARGETS vtysh
@@ -80,4 +81,5 @@ install(
   FILES
   utils/system_vtysh_utils.h utils/vlan_vtysh_utils.h utils/lacp_vtysh_utils.h
   utils/intf_vtysh_utils.h utils/vrf_vtysh_utils.h utils/ovsdb_vtysh_utils.h
+  utils/audit_log_utils.h
   DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/vtysh/utils")
