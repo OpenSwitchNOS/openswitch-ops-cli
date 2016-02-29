@@ -45,6 +45,7 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_ovsdb_config.h"
+#include "lib/cli_plugins.h"
 #include "log.h"
 #include "bgp_vty.h"
 #include "logrotate_vty.h"
@@ -58,6 +59,7 @@
 #include "vswitch-idl.h"
 #include "smap.h"
 #include "lldp_vty.h"
+#include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "l3routes_vty.h"
 #include "system_vty.h"
@@ -747,7 +749,6 @@ int complete_status;
 int
 default_port_add (const char *if_name)
 {
-    const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
 
@@ -759,7 +760,7 @@ default_port_add (const char *if_name)
         cli_do_config_abort (status_txn);
         return CMD_OVSDB_FAILURE;
       }
-    port_row = port_check_and_add (if_name, true, true, status_txn);
+    port_check_and_add (if_name, true, true, status_txn);
     status = cli_do_config_finish (status_txn);
 
     if (status == TXN_SUCCESS)
@@ -3746,7 +3747,7 @@ DEFUN (vtysh_show_session_timeout_cli,
 {
     int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
 
-    vty_out(vty, "session-timeout: %d minute", timeout_period);
+    vty_out(vty, "session-timeout: %lu minute", timeout_period);
     if (timeout_period > 1)
         vty_out(vty, "s");
     if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)
