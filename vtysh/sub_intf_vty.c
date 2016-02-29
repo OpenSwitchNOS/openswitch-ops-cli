@@ -185,8 +185,8 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
     int64_t *key_subintf_parent;
     struct ovsrec_interface  **val_subintf_parent;
     int new_size = 1;
-    int64_t enc_vlan = 0, prev_key = 0;
-    char parent_intf[MAX_IFNAME_LENGTH] = {0};
+    int64_t enc_vlan = 0;
+    //char parent_intf[MAX_IFNAME_LENGTH] = {0};
 
     if (status_txn == NULL)
     {
@@ -258,7 +258,7 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
         if (val_subintf_parent != NULL)
         {
             key_subintf_parent[0] = enc_vlan;
-            val_subintf_parent[0] = parent_intf_row;
+            val_subintf_parent[0] = (struct ovsrec_interface *)parent_intf_row;
 
             ovsrec_interface_set_subintf_parent(row, key_subintf_parent,
                     val_subintf_parent, new_size);
@@ -303,8 +303,6 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    char **secondary_ip4_addresses;
-    size_t i;
     bool port_found;
     int input_ip_subnet, port_ip_subnet;
 
@@ -413,7 +411,6 @@ DEFUN (cli_sub_intf_del_ip4,
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i, n;
     bool port_found = false;
     const char *if_name = (char*)vty->index;
     char *ip4[IP_ADDRESS_LENGTH];
@@ -488,7 +485,6 @@ DEFUN (cli_sub_intf_config_ipv6,
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i;
     bool is_secondary = false;
 
     const char *if_name = (char*) vty->index;
@@ -638,9 +634,7 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
 
     unsigned int index;
     int64_t intVal = 0;
-    int64_t parent_intf = 0, sub_intf = 0;
     bool parent_intf_down = false;
-    char parent_intf_name[MAX_IFNAME_LENGTH];
     union ovsdb_atom atom;
     int64_t key_subintf_parent = 0;
 
@@ -668,7 +662,7 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
 
         /* Display brief information. */
         vty_out (vty, " %-12s ", ifrow->name);
-        vty_out(vty, "%4d    ", key_subintf_parent ); /*VLAN */
+        vty_out(vty, "%4lu    ", key_subintf_parent ); /*VLAN */
         vty_out(vty, "eth  "); /*type */
         vty_out(vty, "routed "); /* mode - routed or not */
 
@@ -755,7 +749,7 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
 
         if (0 != key_subintf_parent)
         {
-            vty_out (vty, " Encapsulation dot1Q %d %s",
+            vty_out (vty, " Encapsulation dot1Q %lu %s",
                     key_subintf_parent, VTY_NEWLINE);
         }
         else
@@ -930,8 +924,6 @@ DEFUN (cli_intf_show_subintferface_if_all,
     const struct ovsrec_interface *ifrow = NULL;
     char subif_prefix[MAX_IFNAME_LENGTH] = {0}, *subif_ptr = NULL;
     struct shash sorted_interfaces;
-    const struct shash_node **nodes;
-    int idx, count;
     bool brief = false;
 
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
@@ -1032,14 +1024,14 @@ create_sub_interface(char* subifname)
         }
     }
 
-    sprintf(sub_intf, "%s.%d", phy_intf, sub_intf_number);
+    sprintf(sub_intf, "%s.%lu", phy_intf, sub_intf_number);
     if (strcmp(sub_intf, subifname) != 0)
     {
         vty_out (vty, "Invalid input.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
-    sprintf(sub_intf, "%d", sub_intf_number);
+    sprintf(sub_intf, "%lu", sub_intf_number);
 
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
@@ -1128,7 +1120,7 @@ create_sub_interface(char* subifname)
            if (val_subintf_parent != NULL)
            {
               key_subintf_parent[0] = 0;
-              val_subintf_parent[0] = parent_intf_row;
+              val_subintf_parent[0] = (struct ovsrec_interface *)parent_intf_row;
 
               ovsrec_interface_set_subintf_parent(intf_row, key_subintf_parent,
                       val_subintf_parent, new_size);

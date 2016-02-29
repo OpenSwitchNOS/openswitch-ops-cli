@@ -28,6 +28,7 @@
 #include <setjmp.h>
 #include <sys/wait.h>
 #include <pwd.h>
+#include <termios.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -38,6 +39,7 @@
 #include "getopt.h"
 #include "command.h"
 #include "memory.h"
+#include "timeval.h"
 
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"

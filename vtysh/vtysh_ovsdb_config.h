@@ -232,6 +232,8 @@ void vtysh_ovsdb_read_config(FILE *fp);
 void vtysh_context_table_list_clients(struct vty *vty);
 void vtysh_ovsdb_init_clients(void);
 
+vtysh_ret_val vtysh_sh_run_iteratecontextlist(FILE *fp);
+
 vtysh_ret_val vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, ...);
 
 /* All log/debug/err logging functions */

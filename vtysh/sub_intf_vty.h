@@ -45,6 +45,7 @@
 
 #define INTF_HELP_STR                 "Interface to create"
 void sub_if_vty_init(void);
+void sub_intf_vty_init (void);
 void encapsulation_vty_init(void);
 
 const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
