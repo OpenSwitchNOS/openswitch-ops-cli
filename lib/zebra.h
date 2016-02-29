@@ -426,7 +426,7 @@ struct in_pktinfo
 #define ZEBRA_HEADER_MARKER              255
 
 /* Zebra route's types are defined in route_types.h */
-#include "route_types.h"
+#include "lib/route_types.h"
 
 /* Note: whenever a new route-type or zserv-command is added the
  * corresponding {command,route}_types[] table in lib/log.c MUST be

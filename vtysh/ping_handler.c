@@ -1,6 +1,6 @@
 /* PING Handler file
  *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -99,13 +99,13 @@ bool ping_main (pingEntry *p, void (*fPtr)(char *buff))
 
         /* Append value of tos */
         if (p->pingTos)
-            len += sprintf(target+len, " -T %d", p->pingTos);
+            len += sprintf(target+len, " -Q %d", p->pingTos);
 
         /* Ping4 ip-options */
         if (p->includeTimestamp)
-            len += sprintf(target+len, " --ip-timestamp=tsonly ");
+            len += sprintf(target+len, " -T tsonly ");
         else if (p->includeTimestampAddress)
-            len += sprintf(target+len, " --ip-timestamp=tsaddr ");
+            len += sprintf(target+len, " -T tsandaddr ");
         else if (p->recordRoute)
             len += sprintf(target+len, " -R ");
     }

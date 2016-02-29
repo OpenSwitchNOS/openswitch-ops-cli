@@ -145,6 +145,8 @@ enum node_type
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
+  SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
+  LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
 #endif
   VTY_NODE,			/* Vty node. */
 };
@@ -217,6 +219,15 @@ struct cmd_token
                       char * const dyn_helpstr_ptr, int max_strlen);
                                  /* Command's dynamic callback func pointer. */
 };
+
+/* Structure for dynamic help string */
+struct dyn_cb_func
+{
+    char * funcname;
+    void (*funcptr)(struct cmd_token *token, struct vty *vty, \
+                    char * const dyn_helpstr_ptr, int max_strlen);
+    struct dyn_cb_func *next;
+ };
 
 /* Return value of the commands. */
 #ifdef ENABLE_OVSDB
@@ -296,6 +307,7 @@ struct cmd_token
  *                    | range
  *                    | ipv4
  *                    | ipv4_prefix
+ *                    | ipv4_netmask
  *                    | ipv6
  *                    | ipv6_prefix ;
  *
@@ -319,6 +331,7 @@ struct cmd_token
  * range = "<" , number , "-" , number , ">" ;
  * ipv4 = "A.B.C.D" ;
  * ipv4_prefix = "A.B.C.D/M" ;
+ * ipv4_netmask = "A.B.C.D/W.X.Y.Z" ;
  * ipv6 = "X:X::X:X" ;
  * ipv6_prefix = "X:X::X:X/M" ;
  * option = "[" , variable , "]" ;
@@ -520,11 +533,12 @@ struct cmd_token
 
 #define CMD_IPV4(S)	   ((strcmp ((S), "A.B.C.D") == 0))
 #define CMD_IPV4_PREFIX(S) ((strcmp ((S), "A.B.C.D/M") == 0))
+#define CMD_IPV4_NETMASK(S) ((strcmp ((S), "A.B.C.D/W.X.Y.Z") == 0))
 #define CMD_IPV6(S)        ((strcmp ((S), "X:X::X:X") == 0))
 #define CMD_IPV6_PREFIX(S) ((strcmp ((S), "X:X::X:X/M") == 0))
 
 #ifdef ENABLE_OVSDB
-#define CMD_IFNAME(S)   ((strcmp ((S), "IFNAME") == 0))
+#define CMD_IFNAME(S)   ((strncmp ((S), "IFNAME_R", strlen(S)) == 0))
 #define CMD_PORT(S)     ((strcmp ((S), "PORT") == 0))
 #define CMD_VLAN(S)     ((strcmp ((S), "VLAN") == 0))
 #define CMD_MAC(S)     ((strcmp ((S), "MAC") == 0))
@@ -534,8 +548,12 @@ struct cmd_token
 #define HOSTNAME_SET_STR "Configure hostname\n"
 #define HOSTNAME_GET_STR "Display hostname\n"
 #define HOSTNAME_NO_STR "Reset hostname\n"
+#define DOMAINNAME_SET_STR "Configure domain name\n"
+#define DOMAINNAME_GET_STR "Display domain name\n"
+#define DOMAINNAME_NO_STR "Reset domain name\n"
 #define SHOW_STR    "Show running system information\n"
 #define COPY_STR    "Copy from one config to another\n"
+#define ERASE_STR   "Erase configuration\n"
 #define AAA_STR     "Authentication, Authorization and Accounting\n"
 #define IP_STR      "IP information\n"
 #define IPV6_STR    "IPv6 information\n"
@@ -590,7 +608,6 @@ struct cmd_token
 
 /* Help strings for show commands */
 #define SHOW_ARP_STR    "Show IPv4 addresses from neighbor table\n"
-#define SHOW_IPV6_STR   "Show IPv6 info\n"
 #define SHOW_IPV6_NEIGHBOR_STR "Show IPv6 addresses from neighbor table\n"
 
 #define CONF_BACKUP_EXT ".sav"
@@ -613,11 +630,6 @@ struct cmd_token
 #define NEIGHBOR_ADDR_STR2 "Neighbor address\nNeighbor tag\n"
 
 #endif /* HAVE_IPV6 */
-
-/* ECMP CLI help strings */
-#define ECMP_CONFIG_DISABLE_STR      "Completely disable ECMP\n"
-#define ECMP_STR                     "Configure ECMP\n"
-#define LOAD_BAL_STR                 "Configure hashing parameters\n"
 
 
 /* Prototypes. */
@@ -665,4 +677,33 @@ extern struct host host;
 
 /* "<cr>" global */
 extern char *command_cr;
+void install_dyn_helpstr_funcptr(char *funcname,
+                   void (*funcptr)(struct cmd_token *token, struct vty *vty, \
+                            char * const dyn_helpstr_ptr, int max_strlen));
+
+#define MAX_IFNAME_LENGTH 50
+#define DECIMAL_STRLEN_MAX 10
+#define COMMA_ERR  1
+#define COMMA_STR_VALID 0
+
+struct range_list
+{
+    char value[DECIMAL_STRLEN_MAX + 1];
+    struct range_list *link;
+};
+
+struct range_list *cmd_free_memory_range_list(struct range_list *);
+char *cmd_allocate_memory_str(const char *);
+
+enum cli_int_type
+{
+    COMMA_OPERATOR = 0,
+    RANGE_OPERATOR,
+    BOTH_OPERATOR
+};
+
+struct range_list* cmd_get_range_value(const char *, int);
+int cmd_input_comma_str_is_valid(const char *, enum cli_int_type);
+int cmd_input_range_match(const char *, const char *, enum cli_int_type);
+
 #endif /* _ZEBRA_COMMAND_H */
