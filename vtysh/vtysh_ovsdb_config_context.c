@@ -346,7 +346,7 @@ vtysh_display_radiusservertable_commands(void *p_private)
        */
       char buff[60]= {0};
 
-      sprintf(buff, "%s:%ld %s %d %d ", row->ip_address, *(row->udp_port), \
+      sprintf(buff, "%s:%ld %s %lu %lu ", row->ip_address, *(row->udp_port), \
                             row->passkey, *(row->retries), *(row->timeout));
       temp[row->priority - 1] = (char *)malloc(strlen(buff));
       strncpy(temp[row->priority - 1],buff,strlen(buff));
@@ -841,7 +841,7 @@ vtysh_config_context_ntp_clientcallback_old(void *p_private)
         strcpy(str_temp, "");
 
         if (NULL != ntp_assoc_row->key_id) {
-            snprintf(str_temp, sizeof(str_temp), " key-id %d", ((struct ovsrec_ntp_key *)ntp_assoc_row->key_id)->key_id);
+            snprintf(str_temp, sizeof(str_temp), " key-id %lu", ((struct ovsrec_ntp_key *)ntp_assoc_row->key_id)->key_id);
         }
 
         buf = smap_get(&ntp_assoc_row->association_attributes, NTP_ASSOC_ATTRIB_VERSION);
