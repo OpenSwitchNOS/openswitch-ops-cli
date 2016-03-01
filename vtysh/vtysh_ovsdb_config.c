@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,16 +33,14 @@
 #include "vtysh_ovsdb_if.h"
 #include "lib/vty.h"
 #include "vtysh_ovsdb_config_context.h"
-#include "vtysh_ovsdb_intf_context.h"
-#include "vtysh_ovsdb_vlan_context.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh_ovsdb_router_context.h"
-#include "vtysh_ovsdb_intf_lag_context.h"
-#include "vtysh_ovsdb_mgmt_intf_context.h"
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
 #define MAX_WAIT_LOOPCNT 1000
 extern struct ovsdb_idl *idl;
+static vtysh_contextlist * show_run_contextlist = NULL;
 
 /* vtysh context client list defintions */
 vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {{NULL}};
@@ -324,6 +322,102 @@ vtysh_context_removeclient(vtysh_contextid contextid,
 }
 
 /*-----------------------------------------------------------------------------
+| Function: vtysh_sh_run_iteratecontextlist
+| Responsibility : Iterates over the show running context callback list.
+| Parameters:
+|     ip: File pointer to write data to.
+| Return:
+|     vtysh_ret_val: e_vtysh_ok if context callback invoked successfully
+|                    else e_vtysh_error.
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_sh_run_iteratecontextlist(FILE *fp)
+{
+    vtysh_contextlist *current = show_run_contextlist;
+    vtysh_contextlist *subcontext_list;
+    vtysh_ovsdb_cbmsg msg;
+    const struct ovsrec_interface *ifrow;
+    struct feature_sorted_list *list = NULL;
+    const struct shash_node **nodes;
+    int idx, count;
+
+    VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl,
+             ovsdb_idl_get_seqno(idl));
+
+    msg.fp = fp;
+    msg.idl = idl;
+    msg.contextid = 0;
+    msg.clientid = 0;
+
+    VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl,
+             ovsdb_idl_get_seqno(idl));
+    fprintf(fp, "!\n");
+
+    while (current != NULL)
+    {
+        list = NULL;
+        idx = count = 0;
+        if (current->context_callback_init != NULL) {
+            list = current->context_callback_init(&msg);
+            nodes = list->nodes;
+            count = list->count;
+        }
+
+        do {
+            if (list != NULL) {
+                msg.feature_row = nodes[idx]->data;
+            }
+
+            msg.disp_header_cfg = false;
+            msg.skip_subcontext_list= false;
+
+            if (current->vtysh_context_callback != NULL &&
+                e_vtysh_ok != current->vtysh_context_callback(&msg)) {
+                VLOG_ERR("Error in callback function with context id: %d\n",
+                         current->index);
+                return e_vtysh_ok;
+            }
+
+            /* Skip iteration over sub-context list. */
+            if (msg.skip_subcontext_list) {
+                msg.feature_row = NULL;
+                if (list != NULL)
+                    idx++;
+                continue;
+            }
+
+            /* Iterate over sub-context list. */
+            subcontext_list = current->subcontext_list;
+            while (subcontext_list != NULL)
+            {
+                if (subcontext_list->vtysh_context_callback != NULL &&
+                    e_vtysh_ok != subcontext_list->vtysh_context_callback(&msg))
+                {
+                    VLOG_ERR("Error in subcontext callback function with"
+                             "subcontext id: %d\n", subcontext_list->index);
+                    return e_vtysh_ok;
+                }
+                subcontext_list = subcontext_list->next;
+            }
+
+            msg.feature_row = NULL;
+            if (list != NULL) {
+                idx++;
+            }
+
+        } while (idx < count);
+
+        if (current->context_callback_exit != NULL) {
+            current->context_callback_exit(list);
+        }
+
+        current = current->next;
+    }
+    return e_vtysh_ok;
+}
+
+
+/*-----------------------------------------------------------------------------
 | Function: vtysh_context_iterateoverclients
 | Responsibility : iterates over the client callback for given contextid
 | Parameters:
@@ -391,58 +485,6 @@ vtysh_ovsdb_read_config(FILE *fp)
     msg.contextid = contextid;
     msg.clientid = 0;
     vtysh_context_iterateoverclients(contextid, &msg);
-  }
-}
-
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_context_table_list_clients
-| Responsibility : list the registered client callback for all config contexts
-| Parameters:
-|           vty - pointer to object type struct vty
-| Return: void
------------------------------------------------------------------------------*/
-void
-vtysh_context_table_list_clients(struct vty *vty)
-{
-  vtysh_contextid contextid=0;
-  int maxclientid = 0, i =0, minclientid = 0;
-  vtysh_context_client *povs_client = NULL;
-
-  if(NULL == vty)
-  {
-    return;
-  }
-
-  for (contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
-  {
-    vty_out(vty, "%s:%s", vtysh_context_table[contextid].name, VTY_NEWLINE);
-
-    maxclientid = vtysh_context_get_maxclientid(contextid);
-    if (e_vtysh_error == maxclientid )
-    {
-      return;
-    }
-
-    minclientid = vtysh_context_get_minclientid(contextid);
-    if (minclientid == (maxclientid -1))
-    {
-      vty_out(vty, "%8s%s%s", "", "No clients registered", VTY_NEWLINE);
-      continue;
-    }
-    else
-    {
-      vty_out(vty, "%8s%s: %d %s", "", "clients registered", maxclientid -1, VTY_NEWLINE);
-    }
-
-    for (i = 0; i < maxclientid-1; i++)
-    {
-      povs_client = &(*vtysh_context_table[contextid].clientlist)[i];
-      if (NULL != povs_client->p_callback)
-      {
-        vty_out(vty, "%8s%s%s", "", povs_client->p_client_name, VTY_NEWLINE);
-      }
-    }
   }
 }
 
@@ -522,11 +564,156 @@ vtysh_ovsdb_init_clients(void)
   /* register vtysh context table client callbacks */
   vtysh_init_config_context_clients();
   vtysh_init_router_context_clients();
-  vtysh_init_vlan_context_clients();
-  vtysh_init_intf_context_clients();
-  vtysh_init_mgmt_intf_context_clients();
-  vtysh_init_intf_lag_context_clients();
   vtysh_init_source_interface_context_clients();
-  vtysh_init_dhcp_tftp_context_clients();
   vtysh_init_sftp_context_clients();
+}
+
+
+/*---------------------------------------------------------------------------
+| Function: install_show_run_config_context.
+| Responsibility: Registers running-config context with cli.
+|                 Context is added to running-config context list.
+| Parameters:
+|     index: running-config context id to be registered.
+|     funcptr: running-config context callback function pointer.
+|     init_funcptr: To initialize anything required before
+|                   calling context callback function.
+|     exit_funcptr: To cleanup initialization done in init_funcptr.
+| Return:
+|     vtysh_ret_val: e_vtysh_ok if context callback is added to cli
+|                    successfully else e_vtysh_error.
+---------------------------------------------------------------------------*/
+vtysh_ret_val
+install_show_run_config_context(vtysh_contextid index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          struct feature_sorted_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (struct feature_sorted_list * head))
+{
+    vtysh_contextlist *current;
+    vtysh_contextlist *new_context = (vtysh_contextlist *)
+                                malloc (sizeof(vtysh_contextlist));
+    if (new_context == NULL) {
+        VLOG_ERR("Error while allocating memory in malloc\n");
+        return e_vtysh_error;
+    }
+
+    new_context->index = index;
+    new_context->vtysh_context_callback = funcptr;
+    new_context->context_callback_init = init_funcptr;
+    new_context->context_callback_exit = exit_funcptr;
+    new_context->subcontext_list = NULL;
+
+    if (show_run_contextlist == NULL ||
+        show_run_contextlist->index > new_context->index)
+    {
+        new_context->next = show_run_contextlist;
+        show_run_contextlist = new_context;
+    }
+    else
+    {
+        current = show_run_contextlist;
+        while (current->next != NULL &&
+               current->next->index <= new_context->index) {
+            current = current->next;
+        }
+
+        if (current->index != new_context->index)
+        {
+            new_context->next = current->next;
+            current->next = new_context;
+        }
+        else
+        {
+            VLOG_DBG("Context %d already exists.\n", index);
+            free(new_context);
+        }
+    }
+    return e_vtysh_ok;
+}
+
+
+/*---------------------------------------------------------------------------
+| Function: install_show_run_config_subcontext.
+| Responsibility: Registers sub-context with running-config context.
+|                 Sub-context is added to sub-context list.
+| Parameters:
+|     index: running-config context id to be registered.
+|     subcontext_index: subcontext id to be registered.
+|     funcptr: running-config context callback function pointer
+|     init_funcptr: To initialize anything required before
+|                   calling context callback function.
+|     exit_funcptr: To cleanup initialization done in init_funcptr.
+| Return:
+|     vtysh_ret_val: e_vtysh_ok if sub-context callback is added to cli
+|                    successfully else e_vtysh_error.
+---------------------------------------------------------------------------*/
+vtysh_ret_val
+install_show_run_config_subcontext(vtysh_contextid index,
+                          vtysh_contextid subcontext_index,
+                          vtysh_ret_val (*funcptr) (void* p_private),
+                          struct feature_sorted_list * (*init_funcptr) (void* p_private),
+                          void (*exit_funcptr) (struct feature_sorted_list * head))
+{
+    vtysh_contextlist *current, *new_subcontext, *temp;
+
+    if (show_run_contextlist == NULL)
+    {
+        VLOG_ERR("No parent context to add sub-context\n");
+        return e_vtysh_error;
+    }
+    else
+    {
+        current = show_run_contextlist;
+        while (current->next != NULL &&
+               current->index != index) {
+            current = current->next;
+        }
+
+        if (current->next == NULL && current->index != index)
+        {
+            VLOG_ERR("No parent context to add sub-context\n");
+            return e_vtysh_error;
+        }
+
+        new_subcontext =
+                      (vtysh_contextlist *) malloc (sizeof(vtysh_contextlist));
+        if (new_subcontext == NULL) {
+            VLOG_ERR("Error while allocating memory in malloc\n");
+            return e_vtysh_error;
+        }
+
+        new_subcontext->index = subcontext_index;
+        new_subcontext->vtysh_context_callback = funcptr;
+        new_subcontext->context_callback_init = init_funcptr;
+        new_subcontext->context_callback_exit = exit_funcptr;
+        new_subcontext->subcontext_list = NULL;
+
+        if (current->subcontext_list == NULL ||
+            current->subcontext_list->index > new_subcontext->index)
+        {
+            new_subcontext->next = current->subcontext_list;
+            current->subcontext_list = new_subcontext;
+        }
+        else
+        {
+            temp = current->subcontext_list;
+            while (temp->next != NULL &&
+                   temp->next->index <= new_subcontext->index) {
+                temp = temp->next;
+            }
+
+            if (temp->index != new_subcontext->index)
+            {
+                new_subcontext->next = temp->next;
+                temp->next = new_subcontext;
+            }
+            else
+            {
+                VLOG_DBG("Sub-context %d for context %d already exists.\n",
+                         index, new_subcontext->index);
+                free(new_subcontext);
+            }
+        }
+    }
+    return e_vtysh_ok;
 }

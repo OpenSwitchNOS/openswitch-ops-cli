@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,10 +28,11 @@
 
 int vtysh_init_config_context_clients();
 vtysh_ret_val vtysh_config_context_global_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_vrf_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_sflow_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_fan_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_led_clientcallback(void *p_private);
+vtysh_ret_val vtysh_config_context_vrf_clientcallback_old(void *p_private);
+vtysh_ret_val vtysh_config_context_fan_clientcallback_old(void *p_private);
+vtysh_ret_val vtysh_config_context_led_clientcallback_old(void *p_private);
 vtysh_ret_val vtysh_config_context_staticroute_clientcallback(void *p_private);
+vtysh_ret_val vtysh_config_context_ntp_clientcallback_old(void *p_private);
 
 #endif /* VTYSH_OVSDB_CONFIG_CONTEXT_H */

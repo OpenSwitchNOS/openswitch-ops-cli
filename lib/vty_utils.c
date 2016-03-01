@@ -60,7 +60,7 @@ void utils_format_parser_read_word(struct format_parser_state *state)
       {
         int len;
 
-        if (token->cmd[0] == '\0')
+        if (token->cmd == NULL || token->cmd[0] == '\0')
         {
           continue;
         }

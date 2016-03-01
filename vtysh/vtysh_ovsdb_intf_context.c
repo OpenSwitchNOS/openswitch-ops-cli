@@ -34,8 +34,10 @@
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_intf_context.h"
 #include "intf_vty.h"
-#include "lacp_vty.h"
 #include "vrf_vty.h"
+#include "vtysh/utils/lacp_vtysh_utils.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
+#include "vtysh/utils/intf_vtysh_utils.h"
 
 #define PRINT_INTERFACE_NAME(name_written, p_msg, if_name)\
   if (!(name_written))\
@@ -85,27 +87,6 @@ const struct ovsrec_vrf* port_vrf_match(const struct ovsdb_idl *idl,
         if (vrf_row->ports[i] == port_row) {
           return vrf_row;
         }
-      }
-    }
-    return NULL;
-}
-
-/*-----------------------------------------------------------------------------
-| Function : port_lookup
-| Responsibility : Lookup port table entry for interface name
-| Parameters :
-|   const char *if_name : Interface name
-|   const struct ovsdb_idl *idl : IDL for vtysh
-| Return : bool : returns true/false
------------------------------------------------------------------------------*/
-const struct ovsrec_port* port_lookup(const char *if_name,
-                                const struct ovsdb_idl *idl)
-{
-    const struct ovsrec_port *port_row = NULL;
-    OVSREC_PORT_FOR_EACH(port_row, idl)
-    {
-      if (strcmp(port_row->name, if_name) == 0) {
-        return port_row;
       }
     }
     return NULL;
@@ -249,26 +230,6 @@ intfd_get_user_cfg_adminstate(const struct smap *ifrow_config,
 }
 #endif
 /*-----------------------------------------------------------------------------
-| Function : display_l3_info
-| Responsibility : Decide if L3 info needs to be printed
-| Parameters :
-|   const struct ovsrec_interface *if_row : Interface row data
-|   const struct ovsrec_vrf *vrf_row : VRF row data
-| Return : bool : returns true/false
------------------------------------------------------------------------------*/
-bool
-display_l3_info(const struct ovsrec_port *port_row,
-                const struct ovsrec_vrf *vrf_row)
-{
-   if (port_row->ip4_address || (port_row->n_ip4_address_secondary > 0)
-        || port_row->ip6_address || (port_row->n_ip6_address_secondary > 0)
-        || (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0)) {
-     return true;
-   }
-   return false;
-}
-
-/*-----------------------------------------------------------------------------
 | Function : is_parent_interface_split
 | Responsibility : Check if parent interface has been split
 | Parameters :
@@ -350,6 +311,20 @@ vtysh_intf_context_clientcallback(void *p_private)
           continue;
       }
 
+      if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_LOOPBACK) == 0)
+      {
+          vtysh_ovsdb_cli_print(p_msg, "interface loopback %s",
+                  ifrow->name + 2);
+          intfcfg.disp_intf_cfg = true;
+          vtysh_ovsdb_intftable_parse_l3config(ifrow->name, p_msg,
+                  intfcfg.disp_intf_cfg);
+          continue;
+      }
+      if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) == 0)
+      {
+          PRINT_INT_HEADER_IN_SHOW_RUN;
+      }
+
      cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_ADMIN);
      if ((NULL != cur_state)
            && (strcmp(cur_state, OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0))
@@ -360,6 +335,20 @@ vtysh_intf_context_clientcallback(void *p_private)
 
      /* sFlow config */
      show_sflow_config(ifrow->name, "    ");
+
+     if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) == 0)
+     {
+         int64_t vlan_number;
+         if (0 < ifrow->n_subintf_parent)
+         {
+             vlan_number = ifrow->key_subintf_parent[0];
+         }
+         if (0 != vlan_number)
+         {
+             vtysh_ovsdb_cli_print(p_msg, "%4s%s%d", "",
+                     "encapsulation dot1Q ", vlan_number);
+         }
+     }
 
      cur_state = smap_get(&ifrow->user_config, INTERFACE_USER_CONFIG_MAP_LANE_SPLIT);
 

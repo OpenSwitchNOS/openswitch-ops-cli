@@ -1,6 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -45,12 +45,9 @@
 #include "memory.h"
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "powersupply_vty.h"
 #include "log.h"
 #include "bgp_vty.h"
 #include "logrotate_vty.h"
-#include "fan_vty.h"
-#include "temperature_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
 #include "openswitch-idl.h"
@@ -58,33 +55,28 @@
 #include "vswitch-idl.h"
 
 #ifdef ENABLE_OVSDB
-#include "intf_vty.h"
 #include "vswitch-idl.h"
 #include "smap.h"
 #include "lldp_vty.h"
 #include "vrf_vty.h"
 #include "sflow_vty.h"
-#include "neighbor_vty.h"
-#include "intf_vty.h"
 #include "l3routes_vty.h"
-#include "vlan_vty.h"
-#include "led_vty.h"
-#include "mgmt_intf_vty.h"
 #include "system_vty.h"
-#include "lacp_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
-#include "dhcp_tftp_vty.h"
 #include "ping.h"
 #include "traceroute.h"
 
+void ospf_vty_init(void);
 #endif
 
+#include "sub_intf_vty.h"
 #include "aaa_vty.h"
 #include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
-
+#include "vtysh/utils/lacp_vtysh_utils.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -92,7 +84,6 @@ VLOG_DEFINE_THIS_MODULE(vtysh);
 int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 int vtysh_show_startup = 0;
-
 #endif
 
 
@@ -365,6 +356,23 @@ vtysh_execute_func (const char *line, int pager)
    /* If command doesn't succeeded in current node, try to walk up in node tree.
     * Changing vty->node is enough to try it just out without actual walkup in
     * the vtysh. */
+
+   struct range_list *temp_list = NULL;
+   char *temp_index = NULL;
+
+   if (ret != CMD_SUCCESS && ret != CMD_SUCCESS_DAEMON && ret != CMD_WARNING
+#ifdef ENABLE_OVSDB
+         && ret != CMD_OVSDB_FAILURE
+#endif
+         && vty->node > CONFIG_NODE)
+   {
+       temp_list = vty->index_list;
+       temp_index = vty->index;
+
+       vty->index_list = NULL;
+       vty->index = NULL;
+   }
+
    while (ret != CMD_SUCCESS && ret != CMD_SUCCESS_DAEMON && ret != CMD_WARNING
 #ifdef ENABLE_OVSDB
          && ret != CMD_OVSDB_FAILURE
@@ -407,14 +415,18 @@ vtysh_execute_func (const char *line, int pager)
     * first try. */
    else if (tried)
    {
-      ret = saved_ret;
+       vty->index_list = temp_list;
+       vty->index = temp_index;
+       ret = saved_ret;
    }
 #else
 
    if (ret != CMD_SUCCESS && tried)
    {
-      vty->node = saved_node;
-      ret = saved_ret;
+       vty->index_list = temp_list;
+       vty->index = temp_index;
+       vty->node = saved_node;
+       ret = saved_ret;
    }
 
 #endif
@@ -733,7 +745,7 @@ int complete_status;
 /* This function creates a port for an interface. If the interface is
   not configured , a default port will be created for the interface and
   it will be attached to the default VRF.*/
-static int
+int
 default_port_add (const char *if_name)
 {
     const struct ovsrec_port *port_row = NULL;
@@ -871,29 +883,17 @@ static struct cmd_node isis_node =
    };
 #endif
 
-static struct cmd_node interface_node =
-   {
-      INTERFACE_NODE,
-      "%s(config-if)# ",
-   };
-
 #ifdef ENABLE_OVSDB
-static struct cmd_node mgmt_interface_node =
+static struct cmd_node sub_interface_node =
 {
-  MGMT_INTERFACE_NODE,
-  "%s(config-if-mgmt)# ",
+  SUB_INTERFACE_NODE,
+  "%s(config-subif)# ",
 };
 
-static struct cmd_node link_aggregation_node =
+static struct cmd_node loopback_interface_node =
 {
-  LINK_AGGREGATION_NODE,
-  "%s(config-lag-if)# ",
-};
-
-static struct cmd_node vlan_node =
-{
-  VLAN_NODE,
-  "%s(config-vlan)# ",
+  LOOPBACK_INTERFACE_NODE,
+  "%s(config-loopback-if)# ",
 };
 
 #endif
@@ -940,13 +940,14 @@ static struct cmd_node bgp_ipv6m_node =
       "%s(config-router-af)# "
    };
 
-#ifndef ENABLE_OVSDB
+
 static struct cmd_node ospf_node =
    {
       OSPF_NODE,
       "%s(config-router)# "
    };
 
+#ifndef ENABLE_OVSDB
 static struct cmd_node ripng_node =
    {
       RIPNG_NODE,
@@ -978,26 +979,6 @@ static struct cmd_node keychain_key_node =
       "%s(config-keychain-key)# "
    };
 
-#ifdef ENABLE_OVSDB
-static struct cmd_node vlan_interface_node =
-{
-  VLAN_INTERFACE_NODE,
-  "%s(config-if-vlan)# ",
-};
-
-static struct cmd_node dhcp_server_node =
-{
-  DHCP_SERVER_NODE,
-  "%s(config-dhcp-server)# ",
-};
-
-static struct cmd_node tftp_server_node =
-{
-  TFTP_SERVER_NODE,
-  "%s(config-tftp-server)# ",
-};
-
-#endif
 /* Defined in lib/vty.c */
 extern struct cmd_node vty_node;
 
@@ -1148,7 +1129,7 @@ DEFUNSH (VTYSH_RIPD,
       key,
       key_cmd,
       "key <0-2147483647>",
-      "Configure a key\n"
+      "Authentication key management\n"
       "Key identifier number\n")
 {
    vty->node = KEYCHAIN_KEY_NODE;
@@ -1276,15 +1257,15 @@ DEFUNSH (VTYSH_ALL,
 DEFUNSH (VTYSH_ALL,
       vtysh_config_terminal,
       vtysh_config_terminal_cmd,
-      "configure terminal",
+      "configure { terminal }",
       "Configuration from vty interface\n"
-      "Configuration terminal\n")
+      "Configuration terminal (default)\n")
 {
    vty->node = CONFIG_NODE;
    return CMD_SUCCESS;
 }
 
-static int
+int
 vtysh_exit (struct vty *vty)
 {
   switch (vty->node)
@@ -1297,6 +1278,8 @@ vtysh_exit (struct vty *vty)
       vty->node = ENABLE_NODE;
       break;
     case INTERFACE_NODE:
+    case SUB_INTERFACE_NODE:
+    case LOOPBACK_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
@@ -1334,6 +1317,7 @@ vtysh_exit (struct vty *vty)
     default:
       break;
     }
+  vty->index_list = cmd_free_memory_range_list (vty->index_list);
   return CMD_SUCCESS;
 }
 
@@ -1455,12 +1439,10 @@ DEFUNSH (VTYSH_OSPFD,
    return vtysh_exit (vty);
 }
 
-#ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_ospfd,
       vtysh_quit_ospfd_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
-#endif
 
 DEFUNSH (VTYSH_OSPF6D,
       vtysh_exit_ospf6d,
@@ -1511,544 +1493,6 @@ ALIAS (vtysh_exit_line_vty,
 #endif
 
 
-#ifdef ENABLE_OVSDB
-DEFUN (vtysh_dhcp_server,
-      vtysh_dhcp_server_cmd,
-      "dhcp-server",
-      "DHCP Server Configuration\n")
-{
-
-   vty->node = DHCP_SERVER_NODE;
-
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_exit_dhcp_server,
-      vtysh_exit_dhcp_server_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
-{
-   return vtysh_exit (vty);
-}
-
-#ifndef ENABLE_OVSDB
-ALIAS (vtysh_exit_dhcp_server,
-      vtysh_quit_dhcp_server_cmd,
-      "quit",
-      "Exit current mode and down to previous mode\n")
-#endif
-
-DEFUN (vtysh_tftp_server,
-      vtysh_tftp_server_cmd,
-      "tftp-server",
-      "TFTP Server Configuration\n")
-{
-
-   vty->node = TFTP_SERVER_NODE;
-
-   return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_exit_tftp_server,
-      vtysh_exit_tftp_server_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
-{
-   return vtysh_exit (vty);
-}
-
-#ifndef ENABLE_OVSDB
-ALIAS (vtysh_exit_tftp_server,
-      vtysh_quit_tftp_server_cmd,
-      "quit",
-      "Exit current mode and down to previous mode\n")
-#endif
-DEFUN (vtysh_interface,
-      vtysh_interface_cmd,
-      "interface IFNAME",
-      "Select an interface to configure\n"
-      "Interface's name\n")
-{
-  vty->node = INTERFACE_NODE;
-  static char ifnumber[MAX_IFNAME_LENGTH];
-
-  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
-  vty->node = VLAN_INTERFACE_NODE;
-      GET_VLANIF(ifnumber, argv[0]);
-      if (create_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
-          return CMD_OVSDB_FAILURE;
-      }
-  }
-  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
-  {
-    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
-    default_port_add(ifnumber);
-  }
-  else
-  {
-    return CMD_ERR_NO_MATCH;
-  }
-  VLOG_DBG("%s ifnumber = %s\n", __func__, ifnumber);
-  vty->index = ifnumber;
-  return CMD_SUCCESS;
-}
-
-DEFUN (vtysh_interface_vlan,
-       vtysh_interface_vlan_cmd,
-       "interface vlan VLANID",
-       "Select an interface to configure\n"
-        VLAN_STR
-       "Vlan id within <1-4094> and should not be an internal vlan\n")
-{
-   vty->node = VLAN_INTERFACE_NODE;
-   static char vlan_if[MAX_IFNAME_LENGTH];
-
-   VLANIF_NAME(vlan_if, argv[0]);
-
-   if ((verify_ifname(vlan_if) == 0)) {
-       vty->node = CONFIG_NODE;
-       return CMD_ERR_NO_MATCH;
-   }
-
-   VLOG_DBG("%s vlan interface = %s\n", __func__, vlan_if);
-
-   if (create_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
-       vty->node = CONFIG_NODE;
-       return CMD_ERR_NO_MATCH;
-   }
-   vty->index = vlan_if;
-
-   return CMD_SUCCESS;
-}
-
-DEFUN (no_vtysh_interface,
-      no_vtysh_interface_cmd,
-      "no interface IFNAME",
-      NO_STR
-      "Delete a pseudo interface's configuration\n"
-      "Interface's name\n")
-{
-  vty->node = CONFIG_NODE;
-  static char ifnumber[MAX_IFNAME_LENGTH];
-
-  if (VERIFY_VLAN_IFNAME(argv[0]) == 0) {
-      GET_VLANIF(ifnumber, argv[0]);
-      if (delete_vlan_interface(ifnumber) == CMD_OVSDB_FAILURE) {
-          return CMD_OVSDB_FAILURE;
-      }
-  }
-  else if (strlen(argv[0]) < MAX_IFNAME_LENGTH)
-  {
-    strncpy(ifnumber, argv[0], MAX_IFNAME_LENGTH);
-  }
-  else
-  {
-    return CMD_ERR_NO_MATCH;
-  }
-  vty->index = ifnumber;
-  return CMD_SUCCESS;
-}
-
-DEFUN (no_vtysh_interface_vlan,
-       no_vtysh_interface_vlan_cmd,
-       "no interface vlan VLANID",
-       NO_STR
-       "Delete a pseudo interface's configuration\n"
-       "VLAN interface\n"
-       "Vlan id within <1-4094> and should not be an internal vlan\n")
-{
-   vty->node = CONFIG_NODE;
-   static char vlan_if[MAX_IFNAME_LENGTH];
-
-   VLANIF_NAME(vlan_if, argv[0]);
-
-   if ((verify_ifname(vlan_if) == 0)) {
-       return CMD_OVSDB_FAILURE;
-   }
-
-   VLOG_DBG("%s: vlan interface = %s\n", __func__, vlan_if);
-
-   if (delete_vlan_interface(vlan_if) == CMD_OVSDB_FAILURE) {
-       return CMD_OVSDB_FAILURE;
-   }
-   vty->index = vlan_if;
-
-   return CMD_SUCCESS;
-}
-
-DEFUN(vtysh_vlan,
-    vtysh_vlan_cmd,
-    "vlan <1-4094>",
-    VLAN_STR
-    "VLAN identifier\n")
-{
-    const struct ovsrec_vlan *vlan_row = NULL;
-    const struct ovsrec_bridge *bridge_row = NULL;
-    const struct ovsrec_bridge *default_bridge_row = NULL;
-    bool vlan_found = false;
-    struct ovsdb_idl_txn *status_txn = NULL;
-    enum ovsdb_idl_txn_status status;
-    struct ovsrec_vlan **vlans = NULL;
-    int i = 0;
-    int vlan_id = atoi(argv[0]);
-    static char vlan[5] = { 0 };
-    static char vlan_name[9] = { 0 };
-    snprintf(vlan, 5, "%s", argv[0]);
-    snprintf(vlan_name, 9, "%s%s", "VLAN", argv[0]);
-
-    vlan_row = ovsrec_vlan_first(idl);
-    if (vlan_row != NULL)
-    {
-        OVSREC_VLAN_FOR_EACH(vlan_row, idl)
-        {
-            if (vlan_row->id == vlan_id)
-            {
-                vlan_found = true;
-                break;
-            }
-        }
-    }
-
-    if (vlan_found && check_if_internal_vlan(vlan_row))
-    {
-        /* Check for internal VLAN.
-         * No configuration is allowed on internal VLANs. */
-        vty_out(vty, "VLAN%d is used as an internal VLAN. "
-                "No further configuration allowed.%s", vlan_row->id, VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-
-    if (!vlan_found)
-    {
-        status_txn = cli_do_config_start();
-
-        if (status_txn == NULL)
-        {
-            VLOG_DBG("Transaction creation failed by cli_do_config_start().Function=%s, Line=%d", __func__, __LINE__);
-            cli_do_config_abort(status_txn);
-            vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
-
-        vlan_row = ovsrec_vlan_insert(status_txn);
-        ovsrec_vlan_set_id(vlan_row, vlan_id);
-        ovsrec_vlan_set_name(vlan_row, vlan_name);
-        ovsrec_vlan_set_admin(vlan_row, OVSREC_VLAN_ADMIN_DOWN);
-        ovsrec_vlan_set_oper_state(vlan_row, OVSREC_VLAN_OPER_STATE_DOWN);
-        ovsrec_vlan_set_oper_state_reason(vlan_row, OVSREC_VLAN_OPER_STATE_REASON_ADMIN_DOWN);
-
-        default_bridge_row = ovsrec_bridge_first(idl);
-        if (default_bridge_row != NULL)
-        {
-            OVSREC_BRIDGE_FOR_EACH(bridge_row, idl)
-            {
-                if (strcmp(bridge_row->name, DEFAULT_BRIDGE_NAME) == 0)
-                {
-                    default_bridge_row = (struct ovsrec_bridge*)bridge_row;
-                    break;
-                }
-            }
-
-            if (default_bridge_row == NULL)
-            {
-                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%d", __func__, __LINE__);
-                cli_do_config_abort(status_txn);
-                vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
-                return CMD_SUCCESS;
-            }
-        }
-
-        vlans = xmalloc(sizeof(*default_bridge_row->vlans) *
-            (default_bridge_row->n_vlans + 1));
-        for (i = 0; i < default_bridge_row->n_vlans; i++)
-        {
-            vlans[i] = default_bridge_row->vlans[i];
-        }
-        vlans[default_bridge_row->n_vlans] = CONST_CAST(struct ovsrec_vlan*,vlan_row);
-        ovsrec_bridge_set_vlans(default_bridge_row, vlans,
-            default_bridge_row->n_vlans + 1);
-
-        status = cli_do_config_finish(status_txn);
-        free(vlans);
-        if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
-        {
-            vty->node = VLAN_NODE;
-            vty->index = (char *) vlan;
-        }
-        else
-        {
-            VLOG_DBG("Transaction failed to create vlan. Function:%s, LINE:%d", __func__, __LINE__);
-            vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
-    }
-    else
-    {
-        vty->node = VLAN_NODE;
-        vty->index = (char *) vlan;
-        return CMD_SUCCESS;
-    }
-    return CMD_SUCCESS;
-}
-
-DEFUN(vtysh_no_vlan,
-    vtysh_no_vlan_cmd,
-    "no vlan <1-4094>",
-    NO_STR
-    VLAN_STR
-    "VLAN Identifier\n")
-{
-    const struct ovsrec_vlan *vlan_row = NULL;
-    const struct ovsrec_port *port_row = NULL;
-    const struct ovsrec_bridge *bridge_row = NULL;
-    const struct ovsrec_bridge *default_bridge_row = NULL;
-    bool vlan_found = false;
-    struct ovsdb_idl_txn *status_txn = NULL;
-    enum ovsdb_idl_txn_status status;
-    struct ovsrec_vlan **vlans = NULL;
-    int i = 0, n = 0;
-    int vlan_id = atoi(argv[0]);
-
-    vlan_row = ovsrec_vlan_first(idl);
-    if (vlan_row != NULL)
-    {
-        OVSREC_VLAN_FOR_EACH(vlan_row, idl)
-        {
-            if (vlan_row->id == vlan_id)
-            {
-                vlan_found = true;
-                break;
-            }
-        }
-    }
-
-    if (vlan_found)
-    {
-        if (check_if_internal_vlan(vlan_row))
-        {
-            /* Check for internal VLAN.
-             * No deletion is allowed on internal VLANs. */
-            vty_out(vty, "VLAN%d is used as an internal VLAN. "
-                    "Deletion not allowed.%s", vlan_row->id, VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
-
-        status_txn = cli_do_config_start();
-
-        if (status_txn == NULL)
-        {
-            VLOG_DBG("Trasaction creation failed by cli_do_config_start().Function=%s, Line=%d", __func__, __LINE__);
-            cli_do_config_abort(status_txn);
-            vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
-
-        default_bridge_row = ovsrec_bridge_first(idl);
-        if (default_bridge_row != NULL)
-        {
-            OVSREC_BRIDGE_FOR_EACH(bridge_row, idl)
-            {
-                if (strcmp(bridge_row->name, DEFAULT_BRIDGE_NAME) == 0)
-                {
-                    default_bridge_row = (struct ovsrec_bridge*)bridge_row;
-                    break;
-                }
-            }
-
-            if (default_bridge_row == NULL)
-            {
-                VLOG_DBG("Couldn't find default bridge. Function=%s, Line=%d", __func__, __LINE__);
-                cli_do_config_abort(status_txn);
-                vty_out(vty, "Failed to create the vlan%s", VTY_NEWLINE);
-                return CMD_SUCCESS;
-            }
-        }
-
-        vlans = xmalloc(sizeof(*default_bridge_row->vlans) *
-            (default_bridge_row->n_vlans - 1));
-        for (i = n = 0; i < default_bridge_row->n_vlans; i++)
-        {
-            if (vlan_row != default_bridge_row->vlans[i])
-            {
-                vlans[n++] = default_bridge_row->vlans[i];
-            }
-        }
-        ovsrec_bridge_set_vlans(default_bridge_row, vlans,
-            default_bridge_row->n_vlans - 1);
-
-        OVSREC_PORT_FOR_EACH(port_row, idl)
-        {
-            int64_t* trunks = NULL;
-            int trunk_count = port_row->n_trunks;
-            for (i = 0; i < port_row->n_trunks; i++)
-            {
-                if (vlan_id == port_row->trunks[i])
-                {
-                    trunks = xmalloc(sizeof *port_row->trunks * (port_row->n_trunks - 1));
-                    for (i = n = 0; i < port_row->n_trunks; i++)
-                    {
-                        if (vlan_id != port_row->trunks[i])
-                        {
-                            trunks[n++] = port_row->trunks[i];
-                        }
-                    }
-                    trunk_count = port_row->n_trunks - 1;
-                    ovsrec_port_set_trunks(port_row, trunks, trunk_count);
-                    break;
-                }
-            }
-            if (port_row->n_tag == 1 && *port_row->tag == vlan_row->id)
-            {
-                int64_t* tag = NULL;
-                int tag_count = 0;
-                ovsrec_port_set_tag(port_row, tag, tag_count);
-            }
-        }
-
-        ovsrec_vlan_delete(vlan_row);
-
-        status = cli_do_config_finish(status_txn);
-        free(vlans);
-        if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
-        {
-            return CMD_SUCCESS;
-        }
-        else
-        {
-            VLOG_DBG("Transaction failed to delete vlan. Function:%s, LINE:%d", __func__, __LINE__);
-            vty_out(vty, "Failed to delete the vlan%s", VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
-    }
-    else
-    {
-        vty_out(vty, "Couldn't find the VLAN %d. Make sure it's configured%s", vlan_id, VTY_NEWLINE);
-        return CMD_SUCCESS;
-    }
-}
-
-DEFUN (vtysh_intf_link_aggregation,
-       vtysh_intf_link_aggregation_cmd,
-       "interface lag <1-2000>",
-       "Select an interface to configure\n"
-       "Configure link-aggregation parameters\n"
-       "LAG number ranges from 1 to 2000\n")
-{
-  const struct ovsrec_port *port_row = NULL;
-  bool port_found = false;
-  struct ovsdb_idl_txn *txn = NULL;
-  enum ovsdb_idl_txn_status status_txn;
-  static char lag_number[LAG_NAME_LENGTH]={0};
-  const struct ovsrec_vrf *default_vrf_row = NULL;
-  const struct ovsrec_vrf *vrf_row = NULL;
-  int i=0;
-  struct ovsrec_port **ports = NULL;
-
-  snprintf(lag_number, LAG_NAME_LENGTH, "%s%s","lag", argv[0]);
-
-  OVSREC_PORT_FOR_EACH(port_row, idl)
-  {
-    if (strcmp(port_row->name, lag_number) == 0)
-    {
-      port_found = true;
-      break;
-    }
-  }
-
-  if(!port_found)
-  {
-    if(maximum_lag_interfaces == MAX_LAG_INTERFACES)
-    {
-      vty_out(vty, "Cannot create LAG interface. Maximum LAG interface count is already reached.%s",VTY_NEWLINE);
-      return CMD_SUCCESS;
-    }
-    txn = cli_do_config_start();
-    if (txn == NULL)
-    {
-      VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d",
-               " cli_do_config_start()", __func__, __LINE__);
-          cli_do_config_abort(txn);
-          return CMD_OVSDB_FAILURE;
-    }
-
-    port_row = ovsrec_port_insert(txn);
-    ovsrec_port_set_name(port_row, lag_number);
-
-    OVSREC_VRF_FOR_EACH (vrf_row, idl)
-    {
-        if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
-            default_vrf_row = vrf_row;
-            break;
-        }
-    }
-
-    if(default_vrf_row == NULL)
-    {
-      assert(0);
-      VLOG_DBG("Couldn't fetch default VRF row. Function=%s, Line=%d",
-                __func__, __LINE__);
-      cli_do_config_abort(txn);
-      return CMD_OVSDB_FAILURE;
-    }
-
-    ports = xmalloc(sizeof *default_vrf_row->ports *
-                   (default_vrf_row->n_ports + 1));
-    for (i = 0; i < default_vrf_row->n_ports; i++)
-    {
-      ports[i] = default_vrf_row->ports[i];
-    }
-    ports[default_vrf_row->n_ports] = CONST_CAST(struct ovsrec_port*,port_row);
-    ovsrec_vrf_set_ports(default_vrf_row, ports,
-                         default_vrf_row->n_ports + 1);
-    free(ports);
-
-    status_txn = cli_do_config_finish(txn);
-    if(status_txn == TXN_SUCCESS || status_txn == TXN_UNCHANGED)
-    {
-      maximum_lag_interfaces++;
-      vty->node = LINK_AGGREGATION_NODE;
-      vty->index = lag_number;
-      return CMD_SUCCESS;
-    }
-    else
-    {
-      VLOG_ERR("Transaction commit failed in function=%s, line=%d",__func__,__LINE__);
-      return CMD_OVSDB_FAILURE;
-    }
-  }
-  else
-  {
-    vty->node = LINK_AGGREGATION_NODE;
-    vty->index = lag_number;
-    return CMD_SUCCESS;
-  }
-}
-
-DEFUN (vtysh_interface_mgmt,
-       vtysh_interface_mgmt_cmd,
-       "interface mgmt",
-       "Select an interface to configure\n"
-       "Configure management interface\n")
-{
-  vty->node = MGMT_INTERFACE_NODE;
-  return CMD_SUCCESS;
-}
-#else
-DEFUNSH (VTYSH_INTERFACE,
-      vtysh_interface,
-      vtysh_interface_cmd,
-      "interface IFNAME",
-      "Select an interface to configure\n"
-      "Interface's name\n")
-{
-  vty->node = INTERFACE_NODE;
-  static char ifnumber[5];
-  if (strlen(argv[0]) < 5)
-    memcpy(ifnumber, argv[0], strlen(argv));
-  vty->index = ifnumber;
-  return CMD_SUCCESS;
-}
-#endif
 #ifndef ENABLE_OVSDB
 /* TODO Implement "no interface command in isisd. */
 DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_RIPNGD|VTYSH_OSPFD|VTYSH_OSPF6D,
@@ -2073,6 +1517,34 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
 #endif
 
 DEFUNSH (VTYSH_INTERFACE,
+      vtysh_exit_loopback_interface,
+      vtysh_exit_loopback_interface_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_loopback_interface,
+      vtysh_quit_loopback_interface_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
+DEFUNSH (VTYSH_INTERFACE,
+      vtysh_exit_sub_interface,
+      vtysh_exit_sub_interface_cmd,
+      "exit",
+      "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+ALIAS (vtysh_exit_sub_interface,
+      vtysh_quit_sub_interface_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+
+DEFUNSH (VTYSH_INTERFACE,
       vtysh_exit_interface,
       vtysh_exit_interface_cmd,
       "exit",
@@ -2088,22 +1560,6 @@ ALIAS (vtysh_exit_interface,
       "Exit current mode and down to previous mode\n")
 #endif
 
-#ifdef ENABLE_OVSDB
-DEFUNSH (VTYSH_MGMT_INTF,
-             vtysh_exit_mgmt_interface,
-             vtysh_exit_mgmt_interface_cmd,
-             "exit",
-             "Exit current mode and down to previous mode\n")
-{
-  return vtysh_exit (vty);
-}
-#ifndef ENABLE_OVSDB
-ALIAS (vtysh_exit_mgmt_interface,
-       vtysh_quit_mgmt_interface_cmd,
-       "quit",
-       "Exit current mode and down to previous mode\n")
-#endif /* ifndef ENABLE_OVSDB */
-#endif
 /* Memory */
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_show_memory,
@@ -2659,17 +2115,31 @@ DEFUN (vtysh_show_running_config,
 }
 
 
-DEFUN_HIDDEN (vtysh_show_context_client_list,
-              vtysh_show_context_client_list_cmd,
-              "show context-client-list",
-              SHOW_STR
-              "Vtysh Context Table Client List\n")
+/*
+ * This defun is added for show running config testing.
+ * As all the features are being modularized, untill
+ * completed, existing running-config infra will be used.
+ * Existing infra will be removed once all modules are modularized
+ * and this DEFUN will be changed to show running-config.
+ */
+DEFUN_HIDDEN (vtysh_show_running_config_new,
+       vtysh_show_running_config_new_cmd,
+       "show test-running-config",
+       SHOW_STR
+       "Current running configuration\n")
 {
-   vty_out (vty, "%sCurrent Context Table client list %s", VTY_NEWLINE, VTY_NEWLINE);
+   FILE *fp = NULL;
 
-   vtysh_context_table_list_clients (vty);
+   fp = stdout;
+   if (!vtysh_show_startup)
+   {
+       fprintf(fp, "Current configuration:\n");
+   }
+
+   vtysh_sh_run_iteratecontextlist(fp);
    return CMD_SUCCESS;
 }
+
 #else
 ALIAS (vtysh_write_terminal,
       vtysh_show_running_config_cmd,
@@ -2985,6 +2455,17 @@ DEFUN (vtysh_copy_startupconfig,
   execute_command ("cfgdbutil", 3, (const char **)arguments);
   return CMD_SUCCESS;
 }
+
+DEFUN (vtysh_erase_startupconfig,
+       vtysh_erase_startupconfig_cmd,
+       "erase startup-config",
+       ERASE_STR
+       "Contents of startup configuration\n")
+{
+    char *arguments[] = {"delete", "startup-config"};
+    execute_command ("cfgdbutil", 2, (const char **)arguments);
+    return CMD_SUCCESS;
+}
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_ping,
       vtysh_ping_cmd,
@@ -3171,7 +2652,7 @@ check_user_group( const char *user, const char *group_name)
            return false;
        }
 
-       /* check user exist in ovsdb_users group*/
+       /* check user exist in ovsdb-client group */
        for (j = 0; j < ngroups; j++) {
            gr = getgrgid(groups[j]);
            if (gr != NULL) {
@@ -3249,7 +2730,7 @@ set_user_passwd(const char *user)
     }
     ret = check_user_group(user, OVSDB_GROUP);
 
-    /* Change the passwd if user is in ovsdb_user list */
+    /* Change the passwd if user is in ovsdb-client group list */
     if (ret==1)
     {
         vty_out(vty,"Changing password for user %s %s", user, VTY_NEWLINE);
@@ -3318,7 +2799,7 @@ DEFUN (vtysh_start_zsh,
 }
 #endif
 
-static void
+void
 vtysh_install_default (enum node_type node)
 {
    install_element (node, &config_list_cmd);
@@ -3516,7 +2997,7 @@ validate_user(const char *user)
     return true;
 }
 
-/* Function to create new user with password and add it to the ovsdb_users group*/
+/* Function to create new user with password and add it to the ovsdb-cliet group*/
 static int
 create_new_vtysh_user(const char *user)
 {
@@ -3564,17 +3045,19 @@ create_new_vtysh_user(const char *user)
     /* Encrypt the password. String 'ab' is used to perturb the */
     /* algorithm in  one of 4096 different ways. */
     password = crypt_r(passwd,"ab",&data);
-    const char *arg[8];
+    const char *arg[10];
     arg[0] = USERADD;
     arg[1] = "-p";
     arg[2]= password;
     arg[3] = "-g";
-    arg[4] = OVSDB_GROUP;
-    arg[5] = "-s";
-    arg[6] = VTYSH_PROMPT;
-    arg[7] = CONST_CAST(char*, user);
+    arg[4] = NETOP_GROUP;
+    arg[5] = "-G";
+    arg[6] = OVSDB_GROUP;
+    arg[7] = "-s";
+    arg[8] = VTYSH_PROMPT;
+    arg[9] = CONST_CAST(char*, user);
     vty_out(vty, "%s", VTY_NEWLINE);
-    cmd_ret = execute_command("sudo", 8,(const char **)arg);
+    cmd_ret = execute_command("sudo", 10,(const char **)arg);
     if(cmd_ret == 0)
     {
         vty_out(vty, "User added successfully.%s", VTY_NEWLINE);
@@ -4264,8 +3747,13 @@ DEFUN (vtysh_show_session_timeout_cli,
 {
     int64_t timeout_period = vtysh_ovsdb_session_timeout_get();
 
+    vty_out(vty, "session-timeout: %d minute", timeout_period);
+    if (timeout_period > 1)
+        vty_out(vty, "s");
     if (timeout_period != DEFAULT_SESSION_TIMEOUT_PERIOD)
-        vty_out(vty, "session-timeout %d%s", timeout_period, VTY_NEWLINE);
+        vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+    else
+        vty_out(vty, " (Default)%s%s", VTY_NEWLINE, VTY_NEWLINE);
 
     return CMD_SUCCESS;
 }
@@ -4339,25 +3827,15 @@ int is_valid_ip_address(const char *ip_value)
 void
 vtysh_init_vty (void)
 {
-   /* Make vty structure. */
-   vty = vty_new ();
-   vty->type = VTY_SHELL;
-   vty->node = VIEW_NODE;
-
-   /* Initialize commands. */
-   cmd_init (0);
-
    /* Install nodes. */
    install_node (&bgp_node, NULL);
 #ifndef ENABLE_OVSDB
    install_node (&rip_node, NULL);
 #endif
-   install_node (&interface_node, NULL);
 #ifdef ENABLE_OVSDB
-   install_node (&vlan_node, NULL);
-   install_node (&mgmt_interface_node, NULL);
-   install_node (&link_aggregation_node, NULL);
-   install_node (&vlan_interface_node, NULL);
+   /* Sub-interafce and Loopback nodes. */
+   install_node (&sub_interface_node, NULL);
+   install_node (&loopback_interface_node, NULL);
 #endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
@@ -4368,8 +3846,9 @@ vtysh_init_vty (void)
    install_node (&bgp_ipv6_node, NULL);
    install_node (&bgp_ipv6m_node, NULL);
 /* #endif */
-#ifndef ENABLE_OVSDB
+
    install_node (&ospf_node, NULL);
+#ifndef ENABLE_OVSDB
 /* #ifdef HAVE_IPV6 */
    install_node (&ripng_node, NULL);
    install_node (&ospf6_node, NULL);
@@ -4382,8 +3861,6 @@ vtysh_init_vty (void)
    install_node (&isis_node, NULL);
 #endif
    install_node (&vty_node, NULL);
-   install_node (&dhcp_server_node, NULL);
-   install_node (&tftp_server_node, NULL);
 
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
@@ -4394,12 +3871,9 @@ vtysh_init_vty (void)
 #endif
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
-   vtysh_install_default (VLAN_NODE);
-   vtysh_install_default (MGMT_INTERFACE_NODE);
-   vtysh_install_default (LINK_AGGREGATION_NODE);
-   vtysh_install_default (VLAN_INTERFACE_NODE);
-   vtysh_install_default (DHCP_SERVER_NODE);
-   vtysh_install_default (TFTP_SERVER_NODE);
+   /* Sub-interafce and Loopback nodes. */
+   vtysh_install_default (SUB_INTERFACE_NODE);
+   vtysh_install_default (LOOPBACK_INTERFACE_NODE);
 #endif
    vtysh_install_default (RMAP_NODE);
    vtysh_install_default (ZEBRA_NODE);
@@ -4409,38 +3883,31 @@ vtysh_init_vty (void)
    vtysh_install_default (BGP_IPV6_NODE);
    vtysh_install_default (BGP_IPV6M_NODE);
 #ifndef ENABLE_OVSDB
-   vtysh_install_default (OSPF_NODE);
    vtysh_install_default (RIPNG_NODE);
    vtysh_install_default (OSPF6_NODE);
    vtysh_install_default (BABEL_NODE);
    vtysh_install_default (ISIS_NODE);
 #endif
+   vtysh_install_default (OSPF_NODE);
    vtysh_install_default (KEYCHAIN_NODE);
    vtysh_install_default (KEYCHAIN_KEY_NODE);
    vtysh_install_default (VTY_NODE);
-
 #ifdef ENABLE_OVSDB
-  install_element (VIEW_NODE, &vtysh_show_context_client_list_cmd);
-  install_element (ENABLE_NODE, &vtysh_show_context_client_list_cmd);
   install_element(CONFIG_NODE, &vtysh_demo_mac_tok_cmd);
 
-   install_element (CONFIG_NODE, &vtysh_dhcp_server_cmd);
-   install_element (DHCP_SERVER_NODE, &config_exit_cmd);
-   install_element (DHCP_SERVER_NODE, &config_end_cmd);
 
-   install_element (CONFIG_NODE, &vtysh_tftp_server_cmd);
-   install_element (TFTP_SERVER_NODE, &config_exit_cmd);
-   install_element (TFTP_SERVER_NODE, &config_end_cmd);
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
    install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
+   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
+   install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
+   install_element (OSPF_NODE, &vtysh_end_all_cmd);
+
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
-   install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
@@ -4448,7 +3915,6 @@ vtysh_init_vty (void)
    install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (ENABLE_NODE, &vtysh_quit_all_cmd);
    install_element (BGP_IPV6_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (BGP_VPNV4_NODE, &vtysh_quit_bgpd_cmd);
    install_element (BGP_IPV6M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (KEYCHAIN_NODE, &vtysh_quit_ripd_cmd);
@@ -4464,10 +3930,10 @@ vtysh_init_vty (void)
    install_element (CONFIG_NODE, &vtysh_exit_all_cmd);
    /* install_element (CONFIG_NODE, &vtysh_quit_all_cmd); */
    install_element (ENABLE_NODE, &vtysh_exit_all_cmd);
+
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_exit_ripd_cmd);
    install_element (RIPNG_NODE, &vtysh_exit_ripngd_cmd);
-   install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
    install_element (OSPF6_NODE, &vtysh_exit_ospf6d_cmd);
 #endif
    install_element (BGP_NODE, &vtysh_exit_bgpd_cmd);
@@ -4490,10 +3956,10 @@ vtysh_init_vty (void)
    /* "end" command. */
    install_element (CONFIG_NODE, &vtysh_end_all_cmd);
    install_element (ENABLE_NODE, &vtysh_end_all_cmd);
+
 #ifndef ENABLE_OVSDB
    install_element (RIP_NODE, &vtysh_end_all_cmd);
    install_element (RIPNG_NODE, &vtysh_end_all_cmd);
-   install_element (OSPF_NODE, &vtysh_end_all_cmd);
    install_element (OSPF6_NODE, &vtysh_end_all_cmd);
    install_element (BABEL_NODE, &vtysh_end_all_cmd);
 #endif
@@ -4515,13 +3981,20 @@ vtysh_init_vty (void)
    install_element (INTERFACE_NODE, &no_interface_desc_cmd);
 #endif
    install_element (INTERFACE_NODE, &vtysh_end_all_cmd);
-   install_element (INTERFACE_NODE, &vtysh_exit_interface_cmd);
+   /* Sub-interafce and Loopback elements. */
+   install_element (SUB_INTERFACE_NODE, &vtysh_exit_sub_interface_cmd);
+   install_element (SUB_INTERFACE_NODE, &vtysh_quit_sub_interface_cmd);
+   install_element (SUB_INTERFACE_NODE, &vtysh_end_all_cmd);
+   install_element (LOOPBACK_INTERFACE_NODE, &vtysh_exit_loopback_interface_cmd);
+   install_element (LOOPBACK_INTERFACE_NODE, &vtysh_quit_loopback_interface_cmd);
+   install_element (LOOPBACK_INTERFACE_NODE, &vtysh_end_all_cmd);
 #ifndef ENABLE_OVSDB
    install_element (CONFIG_NODE, &router_rip_cmd);
+   install_element (CONFIG_NODE, &router_ospf_cmd);
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ripng_cmd);
 #endif
-   install_element (CONFIG_NODE, &router_ospf_cmd);
+
 #ifdef HAVE_IPV6
    install_element (CONFIG_NODE, &router_ospf6_cmd);
 #endif
@@ -4557,28 +4030,15 @@ vtysh_init_vty (void)
 #endif
 
 #ifdef ENABLE_OVSDB
-   install_element (CONFIG_NODE, &vtysh_interface_cmd);
-   install_element (CONFIG_NODE, &vtysh_interface_vlan_cmd);
-   install_element (CONFIG_NODE, &no_vtysh_interface_cmd);
-   install_element (CONFIG_NODE, &no_vtysh_interface_vlan_cmd);
-   install_element (VLAN_INTERFACE_NODE, &vtysh_exit_interface_cmd);
-   install_element (VLAN_INTERFACE_NODE, &vtysh_end_all_cmd);
    install_element (CONFIG_NODE, &vtysh_session_timeout_cli_cmd);
    install_element (CONFIG_NODE, &vtysh_no_session_timeout_cli_cmd);
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-#ifdef ENABLE_OVSDB
-   install_element (CONFIG_NODE, &vtysh_vlan_cmd);
-   install_element (CONFIG_NODE, &vtysh_interface_mgmt_cmd);
-   install_element(CONFIG_NODE, &vtysh_no_vlan_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_exit_mgmt_interface_cmd);
-   install_element (MGMT_INTERFACE_NODE, &vtysh_end_all_cmd);
-   install_element (CONFIG_NODE, &vtysh_intf_link_aggregation_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_exit_mgmt_interface_cmd);
-   install_element (LINK_AGGREGATION_NODE, &vtysh_end_all_cmd);
-#endif /* ENABLE_OVSDB */
+   install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
+
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
+  install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
 #endif /* ENABLE_OVSDB */
@@ -4682,22 +4142,21 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_reboot_cmd);
 
 #ifdef ENABLE_OVSDB
+  /* vtysh_cli_post_init will install all the features
+   * CLI node and elements by using Libltdl-interface.
+   */
+  vtysh_cli_post_init();
   lldp_vty_init();
   vrf_vty_init();
-  neighbor_vty_init();
   sflow_vty_init();
-  intf_vty_init();
   l3routes_vty_init();
-  vlan_vty_init();
   aaa_vty_init();
-   dhcp_tftp_vty_init();
-  /* Initialise System LED cli */
-  led_vty_init();
-  mgmt_intf_vty_init();
+  /* Sub-interafce and Loopback init. */
+  sub_intf_vty_init();
+  loopback_intf_vty_init();
+
   /* Initialise System cli */
   system_vty_init();
-  fan_vty_init();
-  temperature_vty_init();
   alias_vty_init();
   logrotate_vty_init();
 
@@ -4709,10 +4168,8 @@ vtysh_init_vty (void)
   /* Initialise SFTP CLI */
   sftp_vty_init();
 
-  /* Initialise power supply cli */
-  powersupply_vty_init();
-  lacp_vty_init();
-
+  /* Initialize ospf commands*/
+  ospf_vty_init();
   /* Initialize ECMP CLI */
   ecmp_vty_init();
 
