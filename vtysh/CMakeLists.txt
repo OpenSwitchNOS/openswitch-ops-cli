@@ -45,7 +45,7 @@ include_directories(
 
 add_executable(vtysh
   vtysh_main.c vtysh.c vtysh_user.c vtysh_config.c
-  vtysh_ovsdb_if.c lldp_vty.c bgp_vty.c vrf_vty.c
+  vtysh_ovsdb_if.c bgp_vty.c vrf_vty.c
   vtysh_ovsdb_config.c vtysh_ovsdb_config_context.c
   l3routes_vty.c system_vty.c
   vtysh_ovsdb_vrf_context.c

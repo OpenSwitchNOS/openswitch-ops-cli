@@ -608,14 +608,6 @@ ovsdb_init(const char *db_path)
     /* Add Auto Provision Column. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_auto_provisioning_status);
 
-    /* Add tables and columns for LLDP configuration. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_cur_cfg);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_system_mac);
-
     /* Add columns for ECMP configuration. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
 

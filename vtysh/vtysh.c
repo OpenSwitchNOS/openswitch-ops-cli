@@ -58,7 +58,6 @@
 #ifdef ENABLE_OVSDB
 #include "vswitch-idl.h"
 #include "smap.h"
-#include "lldp_vty.h"
 #include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "l3routes_vty.h"
@@ -4146,7 +4145,6 @@ vtysh_init_vty (void)
    * CLI node and elements by using Libltdl-interface.
    */
   vtysh_cli_post_init();
-  lldp_vty_init();
   vrf_vty_init();
   l3routes_vty_init();
   aaa_vty_init();
