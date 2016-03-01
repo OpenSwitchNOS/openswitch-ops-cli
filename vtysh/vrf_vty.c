@@ -44,10 +44,10 @@
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "vlan_vty.h"
 #include "smap.h"
 #include "openswitch-dflt.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
+#include "vtysh/vtysh_ovsdb_vrf_context.h"
 #include "vtysh/utils/vrf_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
@@ -66,8 +66,8 @@ bool
 check_split_iface_conditions (const char *ifname)
 {
   const struct ovsrec_interface *if_row, *next, *parent_iface;
-  char *lanes_split_value = NULL;
-  char *split_value = NULL;
+  const char *lanes_split_value = NULL;
+  const char *split_value = NULL;
   bool allowed = true;
 
   OVSREC_INTERFACE_FOR_EACH_SAFE(if_row, next, idl)
@@ -772,7 +772,7 @@ vrf_no_routing (const char *if_name)
   int trunk_count = 0;
   int64_t* tag = NULL;
   int tag_count = 0;
-  size_t i, n;
+  size_t i;
 
   status_txn = cli_do_config_start ();
 
@@ -801,7 +801,6 @@ vrf_no_routing (const char *if_name)
     {
         /* Delete subinterfaces configured, if any. */
         const struct ovsrec_port *tmp_port_row = NULL;
-        const struct ovsrec_port *sub_intf_port_row =  NULL;
         const struct ovsrec_vrf *tmp_vrf_row = NULL;
         const struct ovsrec_interface *tmp_intf_row = NULL;
         const struct ovsrec_interface *tmp_parent_intf_row = NULL;
@@ -1575,6 +1574,8 @@ DEFUN (cli_vrf_show,
 void
 vrf_vty_init (void)
 {
+  vtysh_ret_val retval = e_vtysh_error;
+
   install_element (CONFIG_NODE, &cli_vrf_add_cmd);
   install_element (CONFIG_NODE, &cli_vrf_delete_cmd);
   install_element (INTERFACE_NODE, &cli_vrf_add_port_cmd);
@@ -1593,4 +1594,31 @@ vrf_vty_init (void)
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_config_ipv6_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_ip_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_ipv6_cmd);
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_interface_context,
+                                     e_vtysh_interface_context_vrf,
+                                     &vtysh_intf_context_vrf_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "Interface context unable to add vrf client callback");
+    assert(0);
+    return;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_vrf,
+                                     &vtysh_config_context_vrf_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "Config context unable to add vrf client callback");
+    assert(0);
+    return;
+  }
+
 }

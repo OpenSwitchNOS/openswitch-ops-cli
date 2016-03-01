@@ -160,12 +160,7 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
   struct in_addr nexthop;
   struct in6_addr nexthop_ipv6;
   int ret = 0;
-  int index;
   int64_t distance;
-  char ip4_addrcopy[MAX_ADDRESS_LEN];
-  char *ipv4_address = NULL;
-  char ip6_addrcopy[MAX_ADDRESS_LEN];
-  char *ipv6_address = NULL;
   bool ip_found;
 
   row_nh = ovsrec_nexthop_insert (status_txn);
@@ -600,7 +595,7 @@ show_routes (struct vty *vty, char * ip_addr_family)
                   row_route->nexthops[i]->selected[0] == true)
                 active_route_next_hops++;
             }
-          vty_out (vty, ",  %zd %s next-hops %s", active_route_next_hops,
+          vty_out (vty, ",  %d %s next-hops %s", active_route_next_hops,
                    row_route->sub_address_family, VTY_NEWLINE);
         }
 

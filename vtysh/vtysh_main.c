@@ -28,6 +28,7 @@
 #include <setjmp.h>
 #include <sys/wait.h>
 #include <pwd.h>
+#include <termios.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -38,6 +39,7 @@
 #include "getopt.h"
 #include "command.h"
 #include "memory.h"
+#include "timeval.h"
 
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
@@ -164,8 +166,7 @@ usage (int status)
 	    "-h, --help               Display this help and exit\n\n" \
 	    "Note that multiple commands may be executed from the command\n" \
 	    "line by passing multiple -c args, or by embedding linefeed\n" \
-	    "characters in one or more of the commands.\n\n" \
-	    "Report bugs to %s\n", progname, ZEBRA_BUG_ADDRESS);
+	    "characters in one or more of the commands.\n\n", progname);
 
   exit (status);
 }
@@ -349,7 +350,6 @@ main (int argc, char **argv, char **env)
   vty->node = VIEW_NODE;
   cmd_init(0);
   plugins_cli_init(FEATURES_CLI_PATH);
-
   ret = pthread_create(&vtysh_ovsdb_if_thread,
                        (pthread_attr_t *)NULL,
                        vtysh_ovsdb_main_thread,
@@ -371,7 +371,6 @@ main (int argc, char **argv, char **env)
 
   /* Make vty structure and register commands. */
   vtysh_init_vty ();
-  vtysh_init_cmd ();
   vtysh_user_init ();
   vtysh_config_init ();
 

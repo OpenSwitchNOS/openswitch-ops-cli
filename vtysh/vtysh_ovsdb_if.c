@@ -43,6 +43,7 @@
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
+#include "vtysh/vtysh.h"
 #include "assert.h"
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
@@ -471,67 +472,6 @@ radius_server_ovsdb_init()
     return;
 }
 
-static void
-dhcp_tftp_ovsdb_init()
-{
-    /* Add dhcp-server config tables */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
-    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_server);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_range);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_static_host);
-
-    /* Add columns in  System table */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
-
-    /* Add columns in VRF table */
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_dhcp_server);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_other_config);
-
-    /* Add columns in DHCP Server table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_ranges);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_static_hosts);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_dhcp_options);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_matches);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_bootp);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_other_config);
-
-    /* Add columns in DHCP server ranges table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_start_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_end_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_netmask);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_prefix_len);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_broadcast);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_set_tag);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_match_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_is_static);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_lease_duration);
-
-    /* Add columns in DHCP server static hosts table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_mac_addresses);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_set_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_hostname);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_id);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_lease_duration);
-
-    /* Add columns in DHCP server options table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_match_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_number);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_value);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_ipv6);
-
-    /* Add columns in DHCP server matches table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_set_tag);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_number);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_value);
-
-}
-
 /***********************************************************
  * @func        : system_ovsdb_init
  * @detail      : Initialise System Related OVSDB tables
@@ -586,35 +526,10 @@ logrotate_ovsdb_init()
 }
 
 static void
-vlan_ovsdb_init()
-{
-    ovsdb_idl_add_table(idl, &ovsrec_table_vlan);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_id);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_admin);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_description);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_hw_vlan_config);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state_reason);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_internal_usage);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_external_ids);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_other_config);
-}
-
-static void
 mgmt_intf_ovsdb_init()
 {
     ovsdb_idl_add_column(idl, &ovsrec_system_col_mgmt_intf);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_mgmt_intf_status);
-}
-
-static void
-lacp_ovsdb_init()
-{
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_lacp_config);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_lacp);
 }
 
 static void
@@ -732,21 +647,8 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
 
-    /* vlan table. */
-    vlan_ovsdb_init();
-    dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init();
-    /* Add tables/columns needed for LACP config commands. */
-    lacp_ovsdb_init();
-
-    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 
     /* Add tables/columns needed for NTP config commands. */
     ntp_ovsdb_init();
@@ -842,7 +744,7 @@ vtysh_ovsdb_domainname_reset(char *domainname_arg)
         data = ovsrec_system_get_domain_name(row, OVSDB_TYPE_STRING);
         ovsdb_domainname = data->keys->string;
 
-        if ((ovsdb_domainname != "") &&
+        if ((ovsdb_domainname != NULL) &&
             (strcmp(ovsdb_domainname, domainname_arg) == 0))
         {
             vtysh_ovsdb_domainname_set("");
@@ -890,7 +792,7 @@ const char *
 vtysh_ovsdb_os_name_get(void)
 {
     const struct ovsrec_system *ovs;
-    char *os_name = NULL;
+    const char *os_name = NULL;
 
     ovs = ovsrec_system_first(idl);
     if (ovs) {
@@ -965,7 +867,7 @@ vtysh_ovsdb_hostname_reset(char *hostname_arg)
         data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
         ovsdb_hostname = data->keys->string;
 
-        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        if ((ovsdb_hostname != NULL) && (strcmp(ovsdb_hostname, hostname_arg) == 0))
         {
             vtysh_ovsdb_hostname_set("");
         }
@@ -1545,7 +1447,7 @@ check_port_in_vrf(const char *port_name)
 bool
 check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
 {
-    char *l3port = NULL;
+    const char *l3port = NULL;
     l3port = smap_get(&vlan_row->internal_usage,
                                  VLAN_INTERNAL_USAGE_L3PORT);
     return (l3port != NULL) ? true : false;
@@ -1567,18 +1469,50 @@ utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
 {
     struct cmd_token *token;
     int i;
-    for (i = 0; i < vector_active (describe); i++) {
-        if ((token = vector_slot (describe, i)) != NULL) {
+    char *p;
+    char *str;
+    for (i = 0; i < vector_active (describe); i++)
+    {
+        if ((token = vector_slot (describe, i)) != NULL)
+        {
             if (token->cmd == NULL || token->cmd[0] == '\0')
                 continue;
 
-            if (! token->desc)
+            if (!token->desc)
                 fprintf (stdout,"  %-s\n",
                          token->cmd[0] == '.' ? token->cmd + 1 : token->cmd);
             else
-                fprintf (stdout,"  %-*s  %s\n", width,
-                         token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
-                         token->desc);
+            {
+                str = p = NULL;
+                str = token->cmd[0] == '.' ? token->cmd + 1 : token->cmd;
+                if ((str != NULL) && (str[0] == '<'))
+                {
+                    p = strchr (str, ':');
+                    if (p != NULL)
+                    {
+                        char *val_p = (char*)malloc(strlen(str));
+                        if (val_p != NULL)
+                        {
+                            *val_p = '<';
+                            strcpy ((val_p + 1), (p + 1));
+                            fprintf (stdout,"  %-*s  %s\n", width,val_p, token->desc);
+                            free(val_p);
+                        }
+                    }
+                    else
+                    {
+                        fprintf (stdout,"  %-*s  %s\n", width,
+                           token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                           token->desc);
+                    }
+                }
+                else
+                {
+                    fprintf (stdout,"  %-*s  %s\n", width,
+                        token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                        token->desc);
+                }
+            }
         }
     }
 }
