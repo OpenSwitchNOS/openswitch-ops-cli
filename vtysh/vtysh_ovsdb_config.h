@@ -52,6 +52,7 @@ typedef enum vtysh_context_idenum
   e_vtysh_source_interface_context,
   e_vtysh_dhcp_tftp_context,
   e_vtysh_sftp_server_context,
+  e_vtysh_udp_forwarder_context,
   e_vtysh_context_id_max
 } vtysh_contextid;
 
@@ -150,6 +151,15 @@ typedef enum vtysh_sftp_context_client_idenum
   e_vtysh_sftp_server_context_config,
   e_vtysh_sftp_context_client_id_max
 } vtysh_sftp_context_clientid;
+
+/* UDP Broadcast Forwarder Context client-id type */
+typedef enum vtysh_udp_forwarder_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_udp_forwarder_context_client_id_first = 0,
+  e_vtysh_udp_forwarder_context_config,
+  e_vtysh_udp_forwarder_context_client_id_max
+} vtysh_udp_forwarder_context_clientid;
 
 /* Dependent Config Client ID type */
 typedef enum vtysh_dhcp_tftp_config_client_idenum

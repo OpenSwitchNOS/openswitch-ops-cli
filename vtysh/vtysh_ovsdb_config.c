@@ -57,6 +57,7 @@ vtysh_context_client vtysh_source_interface_context_client_list \
 [e_vtysh_source_interface_context_client_id_max] = {{NULL}};
 vtysh_context_client vtysh_dhcp_tftp_context_client_list[e_vtysh_dhcp_tftp_context_client_id_max] = {{NULL}};
 vtysh_context_client vtysh_sftp_server_context_client_list[e_vtysh_sftp_context_client_id_max] = {{NULL}};
+vtysh_context_client vtysh_udp_forwarder_context_client_list[e_vtysh_udp_forwarder_context_client_id_max] = {{NULL}};
 
 /* static array of vtysh context lists
    context traversal order as shown below.
@@ -75,6 +76,7 @@ vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
   { "Sftp Server Config", e_vtysh_sftp_server_context, &vtysh_sftp_server_context_client_list},
   { "Source Interface Config",  e_vtysh_source_interface_context, \
     &vtysh_source_interface_context_client_list},
+  { "UDP Forwarder Config", e_vtysh_udp_forwarder_context, &vtysh_udp_forwarder_context_client_list},
 };
 
 /*-----------------------------------------------------------------------------
@@ -125,6 +127,9 @@ vtysh_context_get_maxclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_sftp_server_context:
          ret_val = e_vtysh_sftp_context_client_id_max;
+         break;
+    case e_vtysh_udp_forwarder_context:
+         ret_val = e_vtysh_udp_forwarder_context_client_id_max;
          break;
     default:
          ret_val = e_vtysh_error;
@@ -183,6 +188,9 @@ vtysh_context_get_minclientid(vtysh_contextid contextid)
          break;
     case e_vtysh_sftp_server_context:
          ret_val = e_vtysh_sftp_context_client_id_first;
+         break;
+    case e_vtysh_udp_forwarder_context:
+         ret_val = e_vtysh_udp_forwarder_context_client_id_first;
          break;
     default:
          ret_val = e_vtysh_error;
