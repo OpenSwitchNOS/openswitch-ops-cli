@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -117,5 +117,20 @@ typedef unsigned char boolean;
          (*(const u_int32_t *)(const void *)(&(a)->s6_addr[8]) == ntohl(0x0000ffff)))
 #endif /* IN6_IS_ADDR_V4MAPPED */
 
+/*TODO: As part of show running modular work for aaa,below macro will be moved
+ * from here.
+ */
+#define RADIUS_SERVER_DEFAULT_PASSKEY         "testing123-1"
+#define RADIUS_SERVER_DEFAULT_PORT            1812
+#define RADIUS_SERVER_DEFAULT_RETRIES         1
+#define RADIUS_SERVER_DEFAULT_TIMEOUT         5
+#define SYSTEM_AAA_RADIUS               "radius"
+#define OPS_FALSE_STR                       "false"
+#define SYSTEM_AAA_FALLBACK             "fallback"
+#define SSH_PASSWORD_AUTHENTICATION_ENABLE  "ssh_passkeyauthentication_enable"
+#define SSH_AUTH_ENABLE                       "true"
+#define SSH_AUTH_DISABLE                      "false"
+#define SSH_PUBLICKEY_AUTHENTICATION_ENABLE "ssh_publickeyauthentication_enable"
+#define OPS_TRUE_STR                        "true"
 
 #endif /* _VTYSH_UTILS_H  */

@@ -455,22 +455,6 @@ alias_ovsdb_init()
     return;
 }
 
-static void
-radius_server_ovsdb_init()
-{
-
-    /* Add radius-server columns. */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_radius_servers);
-    ovsdb_idl_add_table(idl, &ovsrec_table_radius_server);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_retries);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_udp_port);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_timeout);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_passkey);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_priority);
-
-    return;
-}
 
 /***********************************************************
  * @func        : system_ovsdb_init
@@ -602,12 +586,6 @@ ovsdb_init(const char *db_path)
     /* Add domain name column */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_domain_name);
 
-    /* Add AAA columns. */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_aaa);
-
-    /* Add Auto Provision Column. */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_auto_provisioning_status);
-
     /* Add columns for ECMP configuration. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
 
@@ -627,8 +605,6 @@ ovsdb_init(const char *db_path)
     /* VRF tables. */
     vrf_ovsdb_init();
 
-    /* Radius server table. */
-    radius_server_ovsdb_init();
 
     /* Policy tables. */
     policy_ovsdb_init();
