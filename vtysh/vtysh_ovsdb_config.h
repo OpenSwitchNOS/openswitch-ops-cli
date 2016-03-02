@@ -52,6 +52,7 @@ typedef enum vtysh_context_idenum
   e_vtysh_source_interface_context,
   e_vtysh_dhcp_tftp_context,
   e_vtysh_sftp_server_context,
+  e_vtysh_udp_forwarder_context,
   e_vtysh_context_id_max
 } vtysh_contextid;
 
