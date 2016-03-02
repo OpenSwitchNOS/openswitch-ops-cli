@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,10 +44,11 @@
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
-#include "intf_vty.h"
-#include "vlan_vty.h"
 #include "smap.h"
 #include "openswitch-dflt.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
+#include "vtysh/vtysh_ovsdb_vrf_context.h"
+#include "vtysh/utils/vrf_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -65,8 +66,8 @@ bool
 check_split_iface_conditions (const char *ifname)
 {
   const struct ovsrec_interface *if_row, *next, *parent_iface;
-  char *lanes_split_value = NULL;
-  char *split_value = NULL;
+  const char *lanes_split_value = NULL;
+  const char *split_value = NULL;
   bool allowed = true;
 
   OVSREC_INTERFACE_FOR_EACH_SAFE(if_row, next, idl)
@@ -123,26 +124,6 @@ check_split_iface_conditions (const char *ifname)
     }
 
   return allowed;
-}
-
-
-/*
- * Check if port is part of any VRF and return the VRF row.
- */
-const struct ovsrec_vrf*
-port_vrf_lookup (const struct ovsrec_port *port_row)
-{
-  const struct ovsrec_vrf *vrf_row = NULL;
-  size_t i;
-  OVSREC_VRF_FOR_EACH (vrf_row, idl)
-    {
-      for (i = 0; i < vrf_row->n_ports; i++)
-        {
-          if (vrf_row->ports[i] == port_row)
-            return vrf_row;
-        }
-    }
-  return NULL;
 }
 
 /*
@@ -224,7 +205,7 @@ vrf_add (const char *vrf_name)
     }
 
   /* OPS_TODO: In case multiple vrfs. */
-#if 0
+#ifdef VRF_ENABLE
   vrf_row = vrf_lookup(vrf_name);
   if (vrf_row)
     {
@@ -345,7 +326,7 @@ vrf_delete (const char *vrf_name)
   /*
    * OPS_TODO: In case of multiple VRFs.
    */
-#if 0
+#ifdef VRF_ENABLE
   vrf_row = vrf_lookup(vrf_name);
   if (!vrf_row)
     {
@@ -389,8 +370,9 @@ vrf_delete (const char *vrf_name)
     }
 
   /* OPS_TODO: In case multiple vrfs. */
-#if 0
+#ifdef VRF_ENABLE
   struct ovsrec_vrf **vrfs;
+  int n;
   vrfs = xmalloc(sizeof *ovs_row->vrfs * (ovs_row->n_vrfs - 1));
   for (i = n = 0; i < ovs_row->n_vrfs; i++)
     {
@@ -483,7 +465,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
   /*
    * OPS_TODO: In case of multiple VRFs.
    */
-#if 0
+#ifdef VRF_ENABLE
   vrf_row = vrf_lookup(vrf_name);
   if (!vrf_row)
     {
@@ -594,7 +576,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
   /*
    * OPS_TODO: In case of multiple VRFs.
    */
-#if 0
+#ifdef VRF_ENABLE
   vrf_row = vrf_lookup(vrf_name);
   if (!vrf_row)
     {
@@ -635,7 +617,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
-
+  port_row = NULL;
   for (i = 0; i < vrf_row->n_ports; i++)
     {
       if (strcmp (vrf_row->ports[i]->name, if_name) == 0)
@@ -790,7 +772,7 @@ vrf_no_routing (const char *if_name)
   int trunk_count = 0;
   int64_t* tag = NULL;
   int tag_count = 0;
-  size_t i, n;
+  size_t i;
 
   status_txn = cli_do_config_start ();
 
@@ -817,6 +799,62 @@ vrf_no_routing (const char *if_name)
     }
   else if ((vrf_row = port_vrf_lookup (port_row)) != NULL)
     {
+        /* Delete subinterfaces configured, if any. */
+        const struct ovsrec_port *tmp_port_row = NULL;
+        const struct ovsrec_vrf *tmp_vrf_row = NULL;
+        const struct ovsrec_interface *tmp_intf_row = NULL;
+        const struct ovsrec_interface *tmp_parent_intf_row = NULL;
+        struct ovsrec_port **ports;
+        int k=0, n=0, i=0;
+
+        tmp_parent_intf_row = port_row->interfaces[0];
+
+        OVSREC_PORT_FOR_EACH(tmp_port_row, idl)
+        {
+            if (tmp_port_row->interfaces == NULL) continue;
+
+            tmp_intf_row = tmp_port_row->interfaces[0];
+            if (tmp_intf_row->n_subintf_parent > 0)
+            {
+                if (tmp_intf_row->value_subintf_parent[0] == tmp_parent_intf_row)
+                {
+                    /* This is a subinterface created for the parent
+                       being configured as L2 interface, need to remove. */
+                    ovsrec_interface_delete(tmp_intf_row);
+
+                    OVSREC_VRF_FOR_EACH (tmp_vrf_row, idl)
+                    {
+                        for (k = 0; k < tmp_vrf_row->n_ports; k++)
+                        {
+                            if (tmp_port_row == tmp_vrf_row->ports[k])
+                            {
+                                ports = xmalloc(sizeof *tmp_vrf_row->ports
+                                        * (tmp_vrf_row->n_ports-1));
+                                if (ports != NULL)
+                                {
+                                   for (i = n = 0; i < tmp_vrf_row->n_ports; i++)
+                                   {
+                                       if (tmp_vrf_row->ports[i] != tmp_port_row)
+                                       {
+                                           ports[n++] = tmp_vrf_row->ports[i];
+                                       }
+                                   }
+                                   ovsrec_vrf_set_ports(tmp_vrf_row, ports, n);
+                                   free(ports);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    ovsrec_port_delete(tmp_port_row);
+                }
+            }
+        }
+
+      /* Disable proxy-arp on the port */
+      smap_remove(&port_row->other_config,
+              PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED);
+
       vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
       for (i = n = 0; i < vrf_row->n_ports; i++)
         {
@@ -1405,9 +1443,91 @@ show_vrf_info ()
                      VTY_NEWLINE);
           }
         }
+    }
   return CMD_SUCCESS;
+
+}
+
+/*-----------------------------------------------------------------------------
+ | Function :vrf_proxy_arp_toggle_state
+ | Responsibility : To enable/disable proxy-arp on an interface
+ | Parameters:
+ |              if_name : Interface name.
+ |              value   : The new status of proxy-arp.
+ |
+ | Return : CMD_SUCCESS for success , CMD_OVSDB_FAILURE for failure
+ -----------------------------------------------------------------------------*/
+static int vrf_proxy_arp_toggle_state(const char *if_name, const char* value)
+{
+    const struct ovsrec_port *port_row;
+    enum ovsdb_idl_txn_status txn_status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    struct smap smap_other_config;
+
+    if (status_txn == NULL) {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
     }
 
+    /* Verify the port is not part of a bridge */
+    if (check_iface_in_bridge(if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0)) {
+        vty_out(vty, "Interface %s is not L3.%s", if_name, VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    /* Check for spit interface conditions */
+    if (!check_split_iface_conditions(if_name)) {
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    /* Fetch the port record for the given interface name. */
+    OVSREC_PORT_FOR_EACH(port_row, idl) {
+        if (strcmp(port_row->name, if_name) == 0) {
+            break;
+        }
+    }
+
+    /* Return error if we didn't find a port-record with the
+     * given interface name. */
+    if (!port_row) {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /* Cache the current state of 'other-config' column for this port record */
+    smap_clone(&smap_other_config, &port_row->other_config);
+
+    /* Based on the new value passed, add or remove the key to the column */
+    if (value == NULL) {
+        /* Remove proxy-arp {key,value} pair for this port */
+        smap_remove(&smap_other_config,
+                PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED);
+    } else if (!strcmp(value, PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED_TRUE)
+            && !smap_get(&smap_other_config,
+            PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED)) {
+        /* Add proxy-arp {key,value} pair for this port */
+        smap_add(&smap_other_config, PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED,
+                value);
+    }
+
+    /* Put back the new value of 'other config' column into the port record */
+    ovsrec_port_set_other_config(port_row, &smap_other_config);
+    smap_destroy(&smap_other_config);
+    txn_status = cli_do_config_finish(status_txn);
+
+    if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
+        return CMD_SUCCESS;
+    } else {
+        vty_out(vty, "Status failure Proxy-Arp%s", VTY_NEWLINE);
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
 }
 
 DEFUN (cli_vrf_add,
@@ -1416,6 +1536,16 @@ DEFUN (cli_vrf_add,
     VRF_STR
     "VRF name\n")
 {
+  if (!strcmp(argv[0], "swns")) {
+      vty_out(vty, "Cannot create vrf %s, as %s namespace already present.%s",
+                     argv[0], argv[0], VTY_NEWLINE);
+      return CMD_SUCCESS;
+  }
+  else if (!strcmp(argv[0], "nonet")) {
+      vty_out(vty, "Cannot create vrf %s, as %s namespace already present.%s",
+                     argv[0], argv[0], VTY_NEWLINE);
+      return CMD_SUCCESS;
+  }
   return vrf_add(argv[0]);
 }
 
@@ -1526,10 +1656,32 @@ DEFUN (cli_vrf_show,
   return show_vrf_info();
 }
 
+DEFUN (cli_vrf_proxy_arp_enable,
+       cli_vrf_proxy_arp_enable_cmd,
+       "ip proxy-arp",
+       IP_STR
+       "Enable proxy ARP\n")
+{
+    return vrf_proxy_arp_toggle_state((char *) vty->index,
+            PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED_TRUE);
+}
+
+DEFUN (cli_vrf_proxy_arp_disable,
+       cli_vrf_proxy_arp_disable_cmd,
+       "no ip proxy-arp",
+       NO_STR
+       IP_STR
+       "Disable proxy ARP\n")
+{
+    return vrf_proxy_arp_toggle_state((char *) vty->index, NULL);
+}
+
 /* Install VRF related vty commands. */
 void
 vrf_vty_init (void)
 {
+  vtysh_ret_val retval = e_vtysh_error;
+
   install_element (CONFIG_NODE, &cli_vrf_add_cmd);
   install_element (CONFIG_NODE, &cli_vrf_delete_cmd);
   install_element (INTERFACE_NODE, &cli_vrf_add_port_cmd);
@@ -1540,6 +1692,8 @@ vrf_vty_init (void)
   install_element (INTERFACE_NODE, &cli_vrf_del_ipv6_cmd);
   install_element (INTERFACE_NODE, &cli_vrf_routing_cmd);
   install_element (INTERFACE_NODE, &cli_vrf_no_routing_cmd);
+  install_element (INTERFACE_NODE, &cli_vrf_proxy_arp_enable_cmd);
+  install_element (INTERFACE_NODE, &cli_vrf_proxy_arp_disable_cmd);
   install_element (ENABLE_NODE, &cli_vrf_show_cmd);
 
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_add_port_cmd);
@@ -1548,4 +1702,33 @@ vrf_vty_init (void)
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_config_ipv6_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_ip_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_ipv6_cmd);
+  install_element (VLAN_INTERFACE_NODE, &cli_vrf_proxy_arp_enable_cmd);
+  install_element (VLAN_INTERFACE_NODE, &cli_vrf_proxy_arp_disable_cmd);
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_interface_context,
+                                     e_vtysh_interface_context_vrf,
+                                     &vtysh_intf_context_vrf_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "Interface context unable to add vrf client callback");
+    assert(0);
+    return;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_vrf,
+                                     &vtysh_config_context_vrf_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                           "Config context unable to add vrf client callback");
+    assert(0);
+    return;
+  }
+
 }

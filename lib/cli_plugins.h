@@ -33,10 +33,14 @@ extern "C" {
 
 #ifdef __linux__
 void plugins_cli_init(const char *path);
+void vtysh_cli_post_init(void);
 #endif
 
 #ifdef  __cplusplus
 }
 #endif
+
+#define CLI_PLUGINS_ERR      -1
+#define CLI_PLUGINS_SUCCESS   0
 
 #endif /* cli_plugins.h */

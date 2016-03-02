@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015 - 2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -47,6 +47,8 @@ char routercontextbgproutemapclientname[] =
                           "vtysh_router_context_bgp_routemap_clientcallback";
 char routercontextbgpipcommunityfilterclientname[] =
                           "vtysh_router_context_bgp_ip_community_filter_clientcallback";
+char routercontextbgpipfilterlistclientname[] =
+                          "vtysh_router_context_bgp_ip_filter_list_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
@@ -60,6 +62,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 {
     const struct ovsrec_bgp_router *bgp_router_context=NULL;
     int i = 0, n_neighbors = 0, k = 0;
+    const struct ovsrec_bgp_neighbor *nbr_table=NULL;
   /* To consider all router entries. */
     OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_context, p_msg->idl)
     {
@@ -76,6 +79,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 
         for (n_neighbors = 0; n_neighbors<bgp_router_context->n_bgp_neighbors;
              n_neighbors++) {
+            nbr_table =  bgp_router_context->value_bgp_neighbors[n_neighbors];
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_remote_as)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
@@ -136,6 +140,27 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       key_route_maps[i]);
                 i++;
             }
+
+            i=0;
+            while (i < nbr_table->n_prefix_lists) {
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
+                                      "neighbor", bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "prefix-list", nbr_table->value_prefix_lists[i]->name,
+                                      nbr_table->key_prefix_lists[i]);
+                i++;
+            }
+
+            i=0;
+            while (i < nbr_table->n_aspath_filters) {
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
+                                      "neighbor", bgp_router_context->
+                                      key_bgp_neighbors[n_neighbors],
+                                      "filter-list", nbr_table->value_aspath_filters[i]->name,
+                                      nbr_table->key_aspath_filters[i]);
+                i++;
+            }
+
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_allow_as_in)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
@@ -207,6 +232,41 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
     }
 }
 
+
+ /*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_bgp_ip_filter_list_clientcallback
+| Responsibility : ip as-path access-list command
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_router_context_bgp_ip_filter_list_clientcallback(void *p_private)
+{
+    const struct ovsrec_bgp_aspath_filter *ovs_filter_list = NULL;
+    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+    int itr;
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(ovs_filter_list, p_msg->idl)
+    {
+        if (ovs_filter_list->name) {
+            for(itr = 0; itr < ovs_filter_list->n_permit; itr++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip as-path access-list %s %s %s",
+                                      ovs_filter_list->name,
+                                      "permit", ovs_filter_list->permit[itr]);
+            }
+            for(itr = 0; itr < ovs_filter_list->n_deny; itr++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip as-path access-list %s %s %s",
+                                      ovs_filter_list->name,
+                                      "deny", ovs_filter_list->deny[itr]);
+            }
+        }
+    }
+    vtysh_ovsdb_cli_print(p_msg,"!");
+    return e_vtysh_ok;
+}
+
+
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_ip_community_filter_clientcallback
 | Responsibility : ip community-filter lists commands
@@ -217,21 +277,27 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
 vtysh_ret_val
 vtysh_router_context_bgp_ip_community_filter_clientcallback(void *p_private)
 {
-    const struct ovsrec_community_filter *ovs_community_list = NULL;
+    const struct ovsrec_bgp_community_filter *ovs_community_list = NULL;
+    int i;
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
-    OVSREC_COMMUNITY_FILTER_FOR_EACH(ovs_community_list, p_msg->idl)
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(ovs_community_list, p_msg->idl)
     {
 
         if ( ovs_community_list->name
-             && ovs_community_list->type
-             && ovs_community_list->action
-             && ovs_community_list->match ) {
-            vtysh_ovsdb_cli_print(p_msg,"ip %s %s %s %s",
+             && ovs_community_list->type) {
+            for (i =0 ; i<ovs_community_list->n_permit; i++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip %s %s permit %s",
                                   ovs_community_list->type,
                                   ovs_community_list->name,
-                                  ovs_community_list->action,
-                                  ovs_community_list->match);
+                                  ovs_community_list->permit[i]);
+            }
+            for (i =0 ; i<ovs_community_list->n_deny; i++) {
+                vtysh_ovsdb_cli_print(p_msg,"ip %s %s deny %s",
+                                  ovs_community_list->type,
+                                  ovs_community_list->name,
+                                  ovs_community_list->deny[i]);
+            }
         }
 
     }
@@ -459,6 +525,30 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                                  value_route_map_entries[j]->
                                                  match), "prefix_list"));
 
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "ipv6_prefix_list"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match ipv6 address prefix-list",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "ipv6_prefix_list"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "community"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match community",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "community"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "extcommunity"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match extcommunity",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "extcommunity"));
+
             if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
                 "community"))
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "set community",
@@ -472,6 +562,94 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                                       smap_get(&ovs_route_map->
                                                value_route_map_entries[j]->set,
                                                "metric"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "as_path"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match as-path",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "as_path"));
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "as_path_exclude"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set as-path exclude",
+                        smap_get(&ovs_route_map->
+                                 value_route_map_entries[j]->set,
+                                 "as_path_exclude"));
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "as_path_prepend"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set as-path prepend",
+                        smap_get(&ovs_route_map->
+                                 value_route_map_entries[j]->set,
+                                 "as_path_prepend"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "origin"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match origin",
+                                      smap_get(&(ovs_route_map->
+                                               value_route_map_entries[j]->
+                                               match), "origin"));
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "origin"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                                      "set origin",
+                                      smap_get(&ovs_route_map->
+                                               value_route_map_entries[j]->set,
+                                               "origin"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "metric"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match metric",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "metric"));
+
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "ipv6_next_hop"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match ipv6 next-hop",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "ipv6_next_hop"));
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "ipv6_next_hop_global"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set ipv6 next-hop global",
+                        smap_get(&ovs_route_map->
+                                 value_route_map_entries[j]->set,
+                                 "ipv6_next_hop_global"));
+
+            if (smap_get(&(ovs_route_map->value_route_map_entries[j]->match),
+                "probability"))
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
+                                      "match probability",
+                                      smap_get(&(ovs_route_map->
+                                                 value_route_map_entries[j]->
+                                                 match), "probability"));
+
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "extcommunity rt"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set extcommunity rt",
+                        smap_get(&ovs_route_map->
+                            value_route_map_entries[j]->set,
+                                "extcommunity rt"));
+
+            if (smap_get(&ovs_route_map->value_route_map_entries[j]->set,
+                "extcommunity soo"))
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                    "set extcommunity soo",
+                        smap_get(&ovs_route_map->
+                            value_route_map_entries[j]->set,
+                                "extcommunity soo"));
         }
     }
 
@@ -501,7 +679,7 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
     OVSREC_VRF_FOR_EACH(ovs_vrf, p_msg->idl)
     {
         for (j = 0; j < ovs_vrf->n_bgp_routers; j++) {
-            vtysh_ovsdb_cli_print(p_msg, "%s %d", "router bgp",
+            vtysh_ovsdb_cli_print(p_msg, "%s %lu", "router bgp",
                                   ovs_vrf->key_bgp_routers[j]);
 
             if (ovs_vrf->value_bgp_routers[j]->router_id)
@@ -527,28 +705,6 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
                                       ovs_vrf->value_bgp_routers[j]->
                                       value_timers[1], ovs_vrf->
                                       value_bgp_routers[j]->value_timers[0]);
-
-            /*OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_row, p_msg->idl)
-            {
-                for (k = 0; k < bgp_router_row->n_redistribute; k++) {
-                    if (bgp_router_row->key_redistribute[k]) {
-                        if (strlen(bgp_router_row->
-                            value_redistribute[k]->name) == 0)
-                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s","",
-                                                  "redistribute",
-                                                  bgp_router_row->
-                                                  key_redistribute[k]);
-                        else
-                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s","",
-                                                  "redistribute",
-                                                  bgp_router_row->
-                                                  key_redistribute[k],
-                                                  "route-map",
-                                                  bgp_router_row->
-                                                  value_redistribute[k]->name);
-                    }
-                }
-            }*/
 
             if (ovs_vrf->value_bgp_routers[j]->n_redistribute > 0) {
                 for (k = 0; k < ovs_vrf->value_bgp_routers[j]->n_redistribute;
@@ -627,6 +783,25 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
                                       area_str);
                 i++;
             }
+
+            /* max-metric  admin */
+            val = smap_get(&ospf_router_row->stub_router_adv,
+                            OSPF_KEY_ROUTER_STUB_ADMIN);
+            if(val && (strcmp(val, "true") == 0))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s", "",
+                        "max-metric router-lsa");
+            }
+
+            /* max-metric  startup */
+            val = smap_get(&ospf_router_row->stub_router_adv,
+                            OSPF_KEY_ROUTER_STUB_STARTUP);
+            if(val)
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
+                        "max-metric router-lsa on-startup", val);
+            }
+
         }
     }
 
@@ -644,8 +819,94 @@ int
 vtysh_init_router_context_clients()
 {
     vtysh_context_client client;
-
     vtysh_ret_val retval = e_vtysh_error;
+
+    retval = install_show_run_config_context(e_vtysh_router_context,
+                  NULL, NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                "router context unable to add router context");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+    retval = install_show_run_config_subcontext(e_vtysh_router_context,
+                  e_vtysh_router_context_bgp,
+                  &vtysh_router_context_bgp_clientcallback,
+                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add bgp callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+    retval = install_show_run_config_subcontext(e_vtysh_router_context,
+                  e_vtysh_router_context_bgp_ip_prefix,
+                  &vtysh_router_context_bgp_ip_prefix_clientcallback,
+                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add "
+                                  "bgp ip prefix callback");
+        assert(0);
+        return retval;
+    }
+
+
+    retval = e_vtysh_error;
+    retval = install_show_run_config_subcontext(e_vtysh_router_context,
+                  e_vtysh_router_context_bgp_ip_community_filter,
+                  &vtysh_router_context_bgp_ip_community_filter_clientcallback,
+                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add "
+                                  "bgp ip community filter callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+    retval = install_show_run_config_subcontext(e_vtysh_router_context,
+                  e_vtysh_router_context_bgp_ip_filter_list,
+                  &vtysh_router_context_bgp_ip_filter_list_clientcallback,
+                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add "
+                                  "bgp ip filter list callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+    retval = install_show_run_config_subcontext(e_vtysh_router_context,
+                  e_vtysh_router_context_bgp_routemap,
+                  &vtysh_router_context_bgp_routemap_clientcallback,
+                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add bgp "
+                                  "routemap callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+    retval = install_show_run_config_subcontext(e_vtysh_router_context,
+                  e_vtysh_router_context_ospf,
+                  &vtysh_router_context_ospf_clientcallback,
+                  NULL, NULL);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                 "router context unable to add ospf callback");
+        assert(0);
+        return retval;
+    }
+
     client.p_client_name = routercontextbgpclientname;
     client.client_id = e_vtysh_router_context_bgp;
     client.p_callback = &vtysh_router_context_bgp_clientcallback;
@@ -689,6 +950,22 @@ vtysh_init_router_context_clients()
     }
 
     retval = e_vtysh_error;
+    client.p_client_name = routercontextbgpipfilterlistclientname;
+    client.client_id = e_vtysh_router_context_bgp_ip_filter_list;
+    client.p_callback = &vtysh_router_context_bgp_ip_filter_list_clientcallback;
+    retval = vtysh_context_addclient(e_vtysh_router_context,
+                                     e_vtysh_router_context_bgp_ip_filter_list,
+                                     &client);
+    if (e_vtysh_ok != retval) {
+        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                                  "router context unable to add "
+                                  "bgp ip filter list callback");
+        assert(0);
+        return retval;
+    }
+
+    retval = e_vtysh_error;
+
     client.p_client_name = routercontextbgproutemapclientname;
     client.client_id = e_vtysh_router_context_bgp_routemap;
     client.p_callback = &vtysh_router_context_bgp_routemap_clientcallback;

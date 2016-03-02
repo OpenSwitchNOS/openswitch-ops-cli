@@ -2,7 +2,7 @@
 /* BGP CLI implementation with OPS vtysh.
  *
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -143,6 +143,31 @@ typedef struct route_psd_bgp_s {
     const char *uptime;           /* Specifies uptime of route. */
 } route_psd_bgp_t;
 
+/* Prefix List. */
+static const struct lookup_entry match_table[] = {
+    {"ip address prefix-list", "prefix_list"},
+    {"ipv6 address prefix-list", "ipv6_prefix_list"},
+    {"community", "community"},
+    {"extcommunity", "extcommunity"},
+    {"as-path","as_path"},
+    {"origin", "origin"},
+    {"metric", "metric"},
+    {"ipv6 next-hop","ipv6_next_hop"},
+    {"probability","probability"},
+    {NULL, NULL},
+};
+
+static const struct lookup_entry set_table[] = {
+    {"community", "community"},
+    {"metric", "metric"},
+    {"as-path exclude", "as_path_exclude"},
+    {"as-path prepend", "as_path_prepend"},
+    {"origin", "origin"},
+    {"ipv6 next-hop global", "ipv6_next_hop_global"},
+    {"extcommunity rt", "extcommunity rt"},
+    {"extcommunity soo", "extcommunity soo"},
+    {NULL, NULL},
+};
 
 /********************** Simple error handling ***********************/
 
@@ -295,7 +320,7 @@ get_ovsrec_vrf_with_name(char *name)
  * Find the bgp router with matching asn.
  */
 static const struct ovsrec_bgp_router *
-get_ovsrec_bgp_router_with_asn(const struct ovsrec_vrf *vrf_row, int asn)
+get_ovsrec_bgp_router_with_asn(const struct ovsrec_vrf *vrf_row, int64_t asn)
 {
     int i = 0;
     for (i = 0; i < vrf_row->n_bgp_routers; i++) {
@@ -555,7 +580,7 @@ bgp_rib_cmp(void *a, void *b)
     res = strcmp(rt1->prefix, rt2->prefix);
     if (res == 0) {
         /* compare nexthops. */
-        if (rt1->bgp_nexthops[0] && rt2->bgp_nexthops[0]) {
+        if (rt1->bgp_nexthops && rt2->bgp_nexthops) {
             return (strcmp(rt1->bgp_nexthops[0]->ip_address,
                            rt2->bgp_nexthops[0]->ip_address));
         } else {
@@ -732,6 +757,76 @@ static void show_ipv6_routes(struct vty *vty,
     vty_out(vty, "Total number of entries %d\n", ipv6_count);
     bgp_rib_sort_fin(&rib_sorted);
 }
+
+
+DEFUN(vtysh_show_ip_bgp_route_map,
+      vtysh_show_ip_bgp_route_map_cmd,
+      "show ip bgp route-map WORD",
+      SHOW_STR
+      IP_STR
+      BGP_STR
+      "Route Map reference"
+      "Pointer to route-map entries")
+{
+    const struct ovsrec_route_map *rt_map_row;
+    struct ovsrec_route_map_entry *rt_map_entry_row;
+    int i = 0, idx;
+    const char *name = argv[0];
+    const char *value;
+
+    OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
+        if (strcmp(name, rt_map_row->name) == 0) {
+            vty_out (vty, "BGP route map table entry for %s%s",
+                 name, VTY_NEWLINE);
+            for ( i = 0 ; i < rt_map_row->n_route_map_entries; i++) {
+                 rt_map_entry_row = rt_map_row->value_route_map_entries[i];
+
+                 vty_out (vty, "Entry %d:%s",i+1, VTY_NEWLINE);
+
+                 if (rt_map_entry_row->description) {
+                     vty_out (vty, "%4s %s : %s %s",
+                             "","description", rt_map_entry_row->description,
+                             VTY_NEWLINE);
+                 }
+                 if (rt_map_entry_row->action) {
+                     vty_out (vty, "%4s %s : %s %s",
+                             "","action", rt_map_entry_row->action,
+                             VTY_NEWLINE);
+                 }
+
+                 vty_out (vty, "%4s %s :%s","","Set parameters",VTY_NEWLINE);
+
+                 for (idx = 0; set_table[idx].table_key; idx++) {
+                     VLOG_DBG("Checking value for set : %s",
+                         set_table[idx].table_key);
+                     value = smap_get(&rt_map_entry_row->set,
+                         set_table[idx].table_key);
+                     if (value) {
+                         vty_out(vty, "%4s %s : %s %s",
+		                 "", set_table[idx].table_key, value,
+                                 VTY_NEWLINE);
+                     }
+                 }
+
+                 vty_out (vty, "%4s %s :%s","","Match parameters",VTY_NEWLINE);
+
+                 for (idx = 0; match_table[idx].table_key; idx++) {
+                     VLOG_DBG("Checking value for match: %s",
+                         match_table[idx].table_key);
+                     value = smap_get(&rt_map_entry_row->match,
+                         match_table[idx].table_key);
+                     if (value) {
+                         vty_out(vty, "%4s %s : %s %s",
+                             "", match_table[idx].table_key, value,
+                                 VTY_NEWLINE);
+                     }
+                 }
+            }
+        }
+    }
+    return 0;
+}
+
 
 DEFUN(vtysh_show_ip_bgp,
       vtysh_show_ip_bgp_cmd,
@@ -1066,11 +1161,13 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
-    ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+        ERRONEOUS_DB_TXN(bgp_router_txn, "VRF not found");
     }
     if (vrf_row->n_bgp_routers && (vrf_row->key_bgp_routers[0] != asn)) {
-      VLOG_DBG("BGP is already running; AS is %ld", vrf_row->key_bgp_routers[0]);
-      ERRONEOUS_DB_TXN(bgp_router_txn, "bgp router already running");
+        vty_out(vty,"BGP is already running; AS is %ld%s",
+                vrf_row->key_bgp_routers[0],VTY_NEWLINE);
+        END_DB_TXN(bgp_router_txn);
+        return CMD_SUCCESS;
     }
     /* See if it already exists. */
     bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row, asn);
@@ -1079,11 +1176,6 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     if (bgp_router_row == NULL) {
         bgp_router_row = ovsrec_bgp_router_insert(bgp_router_txn);
         bgp_router_insert_to_vrf(vrf_row, bgp_router_row, asn);
-#ifdef EXTRA_DEBUG
-        vty_out(vty, "new bgp router created with asn : %d\n", asn);
-#endif
-    } else {
-        VLOG_DBG("bgp router already exists!");
     }
     /* Get the context from previous command for sub-commands. */
     vty->node = BGP_NODE;
@@ -1101,7 +1193,11 @@ DEFUN(router_bgp,
       BGP_STR
       AS_STR)
 {
-    return cli_router_bgp_cmd_execute(NULL, atoi(argv[0]));
+    int64_t asn;
+
+    asn = strtoll(argv[0], NULL, 10);
+
+    return cli_router_bgp_cmd_execute(NULL, asn);
 }
 
 ALIAS(router_bgp,
@@ -1179,7 +1275,11 @@ DEFUN(no_router_bgp,
       BGP_STR
       AS_STR)
 {
-    return cli_no_router_bgp_cmd_execute(NULL, atoi(argv[0]));
+    int64_t asn;
+
+    asn = strtoll(argv[0], NULL, 10);
+
+    return cli_no_router_bgp_cmd_execute(NULL, asn);
 }
 
 ALIAS(no_router_bgp,
@@ -2243,7 +2343,7 @@ cli_bgp_network_cmd_execute(char *vrf_name, char *network)
         for (i = 0; i < bgp_router_row->n_networks; i++) {
             network_list[i] = bgp_router_row->networks[i];
         }
-        network_list[bgp_router_row->n_networks] = &prefix_str;
+        network_list[bgp_router_row->n_networks] = (char *)&prefix_str;
         ovsrec_bgp_router_set_networks(bgp_router_row, network_list,
                                        (bgp_router_row->n_networks + 1));
         free(network_list);
@@ -2263,6 +2363,20 @@ DEFUN(bgp_network,
     return cli_bgp_network_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
 }
 
+static bool
+verify_network_in_bgp_router_table(const struct ovsrec_bgp_router * bgp_router,
+                                   const char *prefix_str)
+{
+    int i;
+    OVSREC_BGP_ROUTER_FOR_EACH(bgp_router, idl) {
+        for (i = 0; i < bgp_router->n_networks; i++) {
+            if(!strcmp(bgp_router->networks[i], prefix_str)) {
+                 return true;
+            }
+        }
+    }
+    return false;
+}
 /* Unconfigure static BGP network. */
 static int
 cli_no_bgp_network_cmd_execute(char *vrf_name, const char *network)
@@ -2306,15 +2420,14 @@ cli_no_bgp_network_cmd_execute(char *vrf_name, const char *network)
                                                     (int64_t)vty->index);
     if (bgp_router_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
-    }
-    else {
+    } else if(verify_network_in_bgp_router_table(bgp_router_row, prefix_str)) {
         VLOG_DBG("vty_index for no network : %ld\n network : %s",
                   (int64_t)vty->index, network);
         /* Delete networks in BGP_Router table. */
         network_list = xmalloc((NETWORK_MAX_LEN*sizeof(char)) *
                                (bgp_router_row->n_networks - 1));
         for (i = 0,j = 0; i < bgp_router_row->n_networks; i++) {
-            if(0 != strcmp(bgp_router_row->networks[i], prefix_str)) {
+            if(strcmp(bgp_router_row->networks[i], prefix_str)) {
                 network_list[j] = bgp_router_row->networks[i];
                 j++;
             }
@@ -2338,7 +2451,7 @@ DEFUN(no_bgp_network,
     return cli_no_bgp_network_cmd_execute(NULL, argv[0]);
 }
 
-DEFUN (ipv6_bgp_network,
+DEFUN(ipv6_bgp_network,
        ipv6_bgp_network_cmd,
        "network X:X::X:X/M",
        "Specify a network to announce via BGP\n"
@@ -4133,7 +4246,7 @@ DEFUN(no_neighbor_ebgp_multihop,
     const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
-    char* ip_addr = argv[0];
+    const char* ip_addr = argv[0];
 
     START_DB_TXN(txn);
 
@@ -4383,7 +4496,7 @@ DEFUN(no_neighbor_update_source,
     const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
-    char* ip_addr = argv[0];
+    const char* ip_addr = argv[0];
 
     START_DB_TXN(txn);
 
@@ -4886,6 +4999,108 @@ DEFUN(no_neighbor_distribute_list,
     return CMD_SUCCESS;
 }
 
+static struct ovsrec_prefix_list *
+get_neighbor_prefix_list(const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
+                         char *name, char *direction)
+{
+    struct ovsrec_prefix_list *plist = NULL;
+    char *direct, *pl_name;
+
+    int i;
+    for (i = 0; i < ovs_bgp_neighbor->n_prefix_lists; i++)
+    {
+        direct = ovs_bgp_neighbor->key_prefix_lists[i];
+        pl_name = ovs_bgp_neighbor->value_prefix_lists[i]->name;
+
+        if (!strcmp(name, pl_name) && !strcmp(direction, direct))
+        {
+            plist = ovs_bgp_neighbor->value_prefix_lists[i];
+            break;
+        }
+    }
+
+    return plist;
+}
+
+
+static int
+cli_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr, char *name, char *dir)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    const struct ovsrec_prefix_list *pl_row;
+    bool pl_found = false;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "VRF not found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ERRONEOUS_DB_TXN(txn, "Neighbor not found");
+    }
+
+    /* Since neighbor exists, we need to check the prefix-list name and
+     *        direction to identify if it's a duplicate. */
+    if (get_neighbor_prefix_list(ovs_bgp_neighbor, name, dir)) {
+        ABORT_DB_TXN(txn, "Configuration exists");
+    }
+
+    /* Check if the specified prefix-list exists. */
+    OVSREC_PREFIX_LIST_FOR_EACH(pl_row, idl) {
+        if (!strcmp(pl_row->name, name)) {
+            pl_found = true;
+            break;
+        }
+    }
+
+    if (!pl_found) {
+        ERRONEOUS_DB_TXN(txn, "Prefix filter does not exist");
+    }
+
+    int num_entries = ovs_bgp_neighbor->n_prefix_lists;
+    char **direction = xmalloc(sizeof(*direction) * (num_entries+1));
+    struct ovsrec_prefix_list **pl_table_entry = xmalloc(sizeof(*pl_table_entry) *
+                                                         (num_entries+1));
+
+    int i;
+    bool dir_found = false;
+    for (i = 0; i < num_entries; i++) {
+        direction[i] = ovs_bgp_neighbor->key_prefix_lists[i];
+        pl_table_entry[i] = ovs_bgp_neighbor->value_prefix_lists[i];
+        if (!strcmp(dir, direction[i])) {
+            pl_table_entry[i] = CONST_CAST(struct ovsrec_prefix_list*, pl_row);
+            dir_found = true;
+        }
+    }
+
+    if (!dir_found) {
+        direction[num_entries] = dir;
+        pl_table_entry[num_entries] = CONST_CAST(struct ovsrec_prefix_list*, pl_row);
+        num_entries++;
+    }
+
+    ovsrec_bgp_neighbor_set_prefix_lists(ovs_bgp_neighbor, direction,
+            pl_table_entry, num_entries);
+
+    free(direction);
+    free(pl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
+}
+
 DEFUN(neighbor_prefix_list,
       neighbor_prefix_list_cmd,
       NEIGHBOR_CMD2 "prefix-list WORD (in|out)",
@@ -4896,8 +5111,80 @@ DEFUN(neighbor_prefix_list,
       "Filter incoming updates\n"
       "Filter outgoing updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_neighbor_prefix_list_cmd_execute(NULL,
+                                              CONST_CAST(char*, argv[0]),
+                                              CONST_CAST(char*, argv[1]),
+                                              CONST_CAST(char*, argv[2]));
+}
+
+static int
+cli_no_neighbor_prefix_list_cmd_execute(char *vrf_name, char *ip_addr,
+                                        char *dir)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "VRF not found");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ERRONEOUS_DB_TXN(txn, "Neighbor not found");
+    }
+
+    if (!ovs_bgp_neighbor->n_prefix_lists) {
+        ABORT_DB_TXN(txn, "Failed to unconfigure, prefix filter does not exist");
+    }
+
+    /* Check to see if a prefix-list is configured for the direction. */
+    int num_entries = ovs_bgp_neighbor->n_prefix_lists;
+    char **direction = xmalloc(sizeof(*direction) * num_entries);
+    struct ovsrec_prefix_list **pl_table_entry = xmalloc(sizeof(*pl_table_entry) * num_entries);
+    char *direct;
+
+    int i, j;
+    bool dir_found = false;
+    for (i = 0, j = 0; i < num_entries; i++) {
+        direct = ovs_bgp_neighbor->key_prefix_lists[i];
+
+        if (!strcmp(dir, direct)) {
+            /* If found, then we skip adding this prefix-list configuration. */
+            dir_found = true;
+        } else {
+            /* This is not the entry we are deleting, so make sure it remains
+             * in the ovsdb. */
+            direction[j] = direct;
+            pl_table_entry[j++] = ovs_bgp_neighbor->value_prefix_lists[i];
+        }
+    }
+
+    if (!dir_found) {
+        free(direction);
+        free(pl_table_entry);
+        ABORT_DB_TXN(txn, "Neighbor prefix-list for the direction does not exist");
+    }
+
+    num_entries = j;
+    ovsrec_bgp_neighbor_set_prefix_lists (ovs_bgp_neighbor, direction, pl_table_entry,
+                                          num_entries);
+
+    free(direction);
+    free(pl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
 }
 
 DEFUN(no_neighbor_prefix_list,
@@ -4911,8 +5198,125 @@ DEFUN(no_neighbor_prefix_list,
       "Filter incoming updates\n"
       "Filter outgoing updates\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_neighbor_prefix_list_cmd_execute(NULL,
+                                                 CONST_CAST(char*, argv[0]),
+                                                 CONST_CAST(char*, argv[2]));
+}
+
+/* AS-Path Filter */
+static struct ovsrec_bgp_aspath_filter *
+get_neighbor_aspath_filter(const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
+                           char *name, char *direction)
+{
+    struct ovsrec_bgp_aspath_filter *flist = NULL;
+    char *direct, *fl_name;
+    int i;
+
+    for (i = 0; i < ovs_bgp_neighbor->n_aspath_filters; i++)
+    {
+        direct = ovs_bgp_neighbor->key_aspath_filters[i];
+        fl_name = ovs_bgp_neighbor->value_aspath_filters[i]->name;
+
+        if (!strcmp(name, fl_name) && !strcmp(direction, direct))
+        {
+            flist = ovs_bgp_neighbor->value_aspath_filters[i];
+            break;
+        }
+    }
+
+    return flist;
+}
+
+static struct ovsrec_bgp_neighbor *
+get_bgp_neighbor(const struct ovsdb_idl_txn *txn_a, char *vrf_name, char *ip_addr)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn = (struct ovsdb_idl_txn *)txn_a;
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "VRF does not exist");
+    }
+
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
+    }
+
+    ovs_bgp_neighbor =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
+    if (!ovs_bgp_neighbor) {
+        ERRONEOUS_DB_TXN(txn, "Neighbor does not exist");
+    }
+
+    return (struct ovsrec_bgp_neighbor *)ovs_bgp_neighbor;
+}
+
+static int
+cli_neighbor_aspath_filter_cmd_execute(char *vrf_name, char *ip_addr, char *name, char *dir)
+{
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+    struct ovsdb_idl_txn *txn;
+    struct ovsrec_bgp_aspath_filter **fl_table_entry;
+    bool fl_found = false;
+    bool dir_found = false;
+    char **direction;
+    int num_entries;
+    int i;
+
+    START_DB_TXN(txn);
+
+    ovs_bgp_neighbor = get_bgp_neighbor(txn, vrf_name, ip_addr);
+
+    /* Since neighbor exists, we need to check the aspath filter name and
+     *        direction to identify if it's a duplicate. */
+    if (get_neighbor_aspath_filter(ovs_bgp_neighbor, name, dir)) {
+        ABORT_DB_TXN(txn, "Configuration exists");
+    }
+
+    /* Check if the specified aspath-filter exists. */
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_row, idl) {
+        if (!strcmp(fl_row->name, name)) {
+            fl_found = true;
+            break;
+        }
+    }
+
+    if (!fl_found) {
+        ERRONEOUS_DB_TXN(txn, "AS-Path filter does not exist");
+    }
+
+    num_entries = ovs_bgp_neighbor->n_aspath_filters;
+    direction = xmalloc(sizeof(*direction) * (num_entries+1));
+    fl_table_entry = xmalloc(sizeof(*fl_table_entry) * (num_entries+1));
+
+    for (i = 0; i < num_entries; i++) {
+        direction[i] = ovs_bgp_neighbor->key_aspath_filters[i];
+        fl_table_entry[i] = ovs_bgp_neighbor->value_aspath_filters[i];
+        if (!strcmp(dir, direction[i])) {
+            fl_table_entry[i] = CONST_CAST(struct ovsrec_bgp_aspath_filter*, fl_row);
+            dir_found = true;
+        }
+    }
+
+    /* If the direction in not found in the column then add an entry with direction and filter */
+    if (dir_found == false) {
+        direction[num_entries] = dir;
+        fl_table_entry[num_entries] = CONST_CAST(struct ovsrec_bgp_aspath_filter*, fl_row);
+        num_entries++;
+    }
+
+    ovsrec_bgp_neighbor_set_aspath_filters(ovs_bgp_neighbor, direction,
+                                           fl_table_entry, num_entries);
+
+    free(direction);
+    free(fl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
 }
 
 DEFUN(neighbor_filter_list,
@@ -4925,9 +5329,67 @@ DEFUN(neighbor_filter_list,
       "Filter incoming routes\n"
       "Filter outgoing routes\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_neighbor_aspath_filter_cmd_execute(NULL,
+                                                  CONST_CAST(char*, argv[0]),
+                                                  CONST_CAST(char*, argv[1]),
+                                                  CONST_CAST(char*, argv[2]));
 }
+
+static int
+cli_no_neighbor_aspath_filter_cmd_execute(char *vrf_name, char *ip_addr,
+                                          char *dir)
+{
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    struct ovsrec_bgp_aspath_filter **fl_table_entry;
+    char **direction;
+    char *direct;
+    int num_entries;
+    int i, j;
+    bool dir_found = false;
+
+    START_DB_TXN(txn);
+
+    ovs_bgp_neighbor = get_bgp_neighbor(txn, vrf_name, ip_addr);
+
+    if (!ovs_bgp_neighbor->n_aspath_filters) {
+        ABORT_DB_TXN(txn, "Failed to unconfigure, AS-Path filter does not exist");
+    }
+
+    /* Check to see if a filter-list is configured for the direction. */
+    num_entries = ovs_bgp_neighbor->n_aspath_filters;
+    direction = xmalloc(sizeof(*direction) * num_entries);
+    fl_table_entry = xmalloc(sizeof(*fl_table_entry) * num_entries);
+
+    for (i = 0, j = 0; i < num_entries; i++) {
+        direct = ovs_bgp_neighbor->key_aspath_filters[i];
+
+        if (!strcmp(dir, direct)) {
+            /* If found, then we skip adding this filter-list configuration. */
+            dir_found = true;
+        } else {
+            /* This is not the entry we are deleting, so make sure it remains
+             *                in the ovsdb. */
+            direction[j] = direct;
+            fl_table_entry[j++] = ovs_bgp_neighbor->value_aspath_filters[i];
+        }
+    }
+
+    if (!dir_found) {
+        free(direction);
+        free(fl_table_entry);
+        ABORT_DB_TXN(txn, "Neighbor filter-list for the direction does not exist");
+    }
+
+    num_entries = j;
+    ovsrec_bgp_neighbor_set_aspath_filters(ovs_bgp_neighbor, direction, fl_table_entry,
+                                           num_entries);
+    free(direction);
+    free(fl_table_entry);
+
+    /* Done. */
+    END_DB_TXN(txn);
+ }
 
 DEFUN(no_neighbor_filter_list,
       no_neighbor_filter_list_cmd,
@@ -4940,8 +5402,229 @@ DEFUN(no_neighbor_filter_list,
       "Filter incoming routes\n"
       "Filter outgoing routes\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_no_neighbor_aspath_filter_cmd_execute(NULL,
+                                                     CONST_CAST(char*, argv[0]),
+                                                     CONST_CAST(char*, argv[2]));
+}
+
+/* ip as-path access-list */
+static bool get_aspath_filter_match(const struct ovsrec_bgp_aspath_filter *fl_row,
+                                    const char *des, const char* action)
+{
+    int itr;
+    if(strcmp(action,"permit") == 0) {
+        for(itr=0; itr < fl_row->n_permit; itr++) {
+            if(!strcmp(fl_row->permit[itr], des))
+                return true;
+        }
+    }
+    if(strcmp(action,"deny") == 0) {
+        for(itr=0; itr < fl_row->n_deny; itr++) {
+            if(!strcmp(fl_row->deny[itr], des))
+                return true;
+        }
+    }
+    return false;
+}
+
+static const struct ovsrec_bgp_aspath_filter *
+policy_get_aspath_filter_in_ovsdb(const char *name,
+                                  const char *action, const char *description)
+{
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_row, idl) {
+        if (strcmp(fl_row->name, name) == 0) {
+            if (get_aspath_filter_match(fl_row, description, action) == true) {
+                return fl_row;
+            }
+        }
+    }
+    return NULL;
+}
+
+static int
+policy_set_aspath_filter_in_ovsdb(struct vty *vty, afi_t afi,
+                                  const char *name, const char *action, const char *description)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+    char **permit_entries;
+    char **deny_entries;
+    char **new_permit_entry;
+    char **new_deny_entry;
+    int num_entries;
+    int i;
+    bool entry_set = false;
+
+    START_DB_TXN(policy_txn);
+
+    fl_row = policy_get_aspath_filter_in_ovsdb(name, action, description);
+    /*
+     * If row not found, create an empty row and set the fields.
+     *
+     */
+    if (!fl_row) {
+        OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_row, idl) {
+            if (strcmp(fl_row->name, name) == 0) {
+                if (!strcmp(action, "permit")) {
+                    num_entries = fl_row->n_permit;
+                    permit_entries = xmalloc(sizeof(*permit_entries) * (num_entries+1));
+
+                    for (i = 0; i < num_entries; i++) {
+                        permit_entries[i] = fl_row->permit[i];
+                    }
+
+                    permit_entries[num_entries] = CONST_CAST(char *, description);
+                    num_entries++;
+                    ovsrec_bgp_aspath_filter_set_permit(fl_row, permit_entries, num_entries);
+
+                    entry_set = true;
+                    free(permit_entries);
+                }
+                if (!strcmp(action, "deny")) {
+                    num_entries = fl_row->n_deny;
+                    deny_entries = xmalloc(sizeof(*deny_entries) * (num_entries+1));
+
+                    for (i = 0; i < num_entries; i++){
+                        deny_entries[i] = fl_row->deny[i];
+                    }
+
+                    deny_entries[num_entries] = CONST_CAST(char *, description);
+                    num_entries++;
+
+                    ovsrec_bgp_aspath_filter_set_deny(fl_row, deny_entries, num_entries);
+
+                    entry_set = true;
+                    free(deny_entries);
+                }
+            }
+        }
+
+        if(entry_set != true) {
+            fl_row = ovsrec_bgp_aspath_filter_insert(policy_txn);
+            ovsrec_bgp_aspath_filter_set_name(fl_row, name);
+
+            if (!strcmp(action, "permit")) {
+                num_entries = 0;
+                new_permit_entry = xmalloc(sizeof(*new_permit_entry) * (num_entries+1));
+
+                new_permit_entry[num_entries] = CONST_CAST(char *, description);
+                num_entries++;
+
+                ovsrec_bgp_aspath_filter_set_permit(fl_row, new_permit_entry, num_entries);
+
+                free(new_permit_entry);
+            }
+            if (!strcmp(action, "deny")) {
+                num_entries = 0;
+                new_deny_entry = xmalloc(sizeof(*new_deny_entry) * (num_entries+1));
+
+                new_deny_entry[num_entries] = CONST_CAST(char *, description);
+                num_entries++;
+
+                ovsrec_bgp_aspath_filter_set_deny(fl_row, new_deny_entry, num_entries);
+
+                free(new_deny_entry);
+            }
+        }
+    }
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN(ip_as_path, ip_as_path_cmd,
+       "ip as-path access-list WORD (deny|permit) .LINE",
+       IP_STR
+       "BGP autonomous system path filter\n"
+       "Specify an access list name\n"
+       "Regular expression access list name\n"
+       "Specify packets to reject\n"
+       "Specify packets to forward\n"
+       "A regular-expression to match the BGP AS paths\n")
+{
+    regex_t *regex = NULL;
+
+    regex = bgp_regcomp(argv_concat(argv, argc, 2));
+
+    if (!regex) {
+        vty_out (vty, "%%  Malformed filter-list value%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    return policy_set_aspath_filter_in_ovsdb(vty, AFI_IP,
+                                             argv[0], argv[1],
+                                             argv_concat(argv, argc, 2));
+}
+
+static int
+policy_no_aspath_filter_in_ovsdb(afi_t afi, const char *name, const char *action,
+                                 const char *description)
+
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_aspath_filter *fl_row;
+
+    START_DB_TXN(policy_txn);
+    fl_row = policy_get_aspath_filter_in_ovsdb(name, action, description);
+
+    if (!fl_row) {
+        ERRONEOUS_DB_TXN(policy_txn,"filter-list not found");
+    }
+
+    ovsrec_bgp_aspath_filter_delete(fl_row);
+
+    END_DB_TXN(policy_txn);
+}
+
+static int
+policy_no_aspath_filter_name_in_ovsdb(const char *name)
+{
+    const struct ovsrec_bgp_aspath_filter *fl_entry;
+    struct ovsdb_idl_txn *policy_txn;
+    bool match_found = false;
+
+    /* Start of transaction. */
+    START_DB_TXN(policy_txn);
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(fl_entry, idl) {
+        if (!strcmp(fl_entry->name,name)) {
+            match_found = true;
+            ovsrec_bgp_aspath_filter_delete(fl_entry);
+        }
+    }
+    if (!match_found) {
+        ERRONEOUS_DB_TXN(policy_txn,"filter-list list not found");
+    }
+
+    /* End of transaction. */
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN(no_ip_as_path,
+       no_ip_as_path_cmd,
+       "no ip as-path access-list WORD (deny|permit) .LINE",
+       NO_STR
+       IP_STR
+       "BGP autonomous system path filter\n"
+       "Specify an access list name\n"
+       "Regular expression access list name\n"
+       "Specify packets to reject\n"
+       "Specify packets to forward\n"
+       "A regular-expression to match the BGP AS paths\n")
+{
+    return policy_no_aspath_filter_in_ovsdb(AFI_IP, argv[0], argv[1], argv_concat(argv, argc, 2));
+}
+
+DEFUN(no_ip_as_path_all,
+       no_ip_as_path_all_cmd,
+       "no ip as-path access-list WORD",
+       NO_STR
+       IP_STR
+       "BGP autonomous system path filter\n"
+       "Specify an access list name\n"
+       "Regular expression access list name\n")
+{
+    return policy_no_aspath_filter_name_in_ovsdb(argv[0]);
 }
 
 struct ovsrec_route_map *
@@ -4966,6 +5649,7 @@ get_neighbor_route_map(const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
 
     return rt_map;
 }
+
 
 static int
 cli_neighbor_route_map_cmd_execute(char *vrf_name, char *ipAddr, char *name,
@@ -4994,13 +5678,7 @@ cli_neighbor_route_map_cmd_execute(char *vrf_name, char *ipAddr, char *name,
     ovs_bgp_neighbor =
     get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ipAddr);
     if (!ovs_bgp_neighbor) {
-        ERRONEOUS_DB_TXN(txn, "no existing neighbor found");
-    }
-
-    /* Since neighbor exists, we need to check the route-map name and
-       direction to identify if it's a duplicate. */
-    if (get_neighbor_route_map(ovs_bgp_neighbor, name, direction)) {
-        ABORT_DB_TXN(txn, "configuration exists");
+        ERRONEOUS_DB_TXN(txn, "Existing neighbor not found.");
     }
 
     /* Check if the specified route-map exists. */
@@ -5514,7 +6192,7 @@ DEFUN(no_neighbor_ttl_security,
     const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
-    char* ip_addr = argv[0];
+    const char* ip_addr = argv[0];
 
     START_DB_TXN(txn);
 
@@ -8427,9 +9105,10 @@ ALIAS(show_ip_bgp_neighbors_peer,
       IP_STR
       BGP_STR
       "Display VPNv4 NLRI specific information\n"
-      "Display information about all VPNv4 NLRIs\n"
+      "Display information for a route distinguisher\n"
+      "VPN Route Distinguisher\n"
       "Detailed information on TCP and BGP neighbor connections\n"
-      "Neighbor to display information about\n")
+      "Network in the BGP routing table to display\n")
 
 ALIAS(show_ip_bgp_neighbors_peer,
       show_bgp_neighbors_peer_cmd,
@@ -8772,12 +9451,12 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
     /* See if it already exists. */
-    bgp_router_row = get_ovsrec_bgp_router_with_asn(vrf_row,
+    bgp_router_row = get_ovsrec_bgp_router_with_asn((struct ovsrec_vrf *)vrf_row,
                                                     (int64_t)vty->index);
     /* If does not exist, nothing to modify. */
     if (bgp_router_row == NULL) {
@@ -8799,7 +9478,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
                 redist[i] = bgp_router_row->key_redistribute[i];
                 rt_maps[i] = bgp_router_row->value_redistribute[i];
             }
-            redist[bgp_router_row->n_redistribute] = type;
+            redist[bgp_router_row->n_redistribute] = (char *)type;
             rt_maps[bgp_router_row->n_redistribute] =
                    CONST_CAST(struct ovsrec_route_map *, rt_map_row);
             ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
@@ -8823,7 +9502,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
             }
             rt_maps[bgp_router_row->n_redistribute] =
                          CONST_CAST(struct ovsrec_route_map *, rt_map_row);
-            redist[bgp_router_row->n_redistribute] = type;
+            redist[bgp_router_row->n_redistribute] = (char *)type;
             ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
                              rt_maps, new_size);
             free(redist);
@@ -8916,7 +9595,7 @@ get_redistribute_confg_in_ovsdb(const char *type, const char *name)
                 rt_map_row = bgp_router_row->value_redistribute[i];
                 if(rt_map_row->name &&
                     !strcmp(rt_map_row->name,name)) {
-                    return bgp_router_row;
+                    return (struct ovsrec_bgp_router *)bgp_router_row;
                 }
             }
         }
@@ -8924,14 +9603,12 @@ get_redistribute_confg_in_ovsdb(const char *type, const char *name)
     return  NULL;
 }
 
-static void
+static int
 cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
                                   const char *name)
 {
     const struct ovsrec_vrf *vrf_row;
     const struct ovsrec_bgp_router *bgp_router_row;
-    struct smap smap_match;
-    const struct ovsrec_route_map *rt_map_row;
     struct ovsrec_route_map **rt_maps;
     struct ovsdb_idl_txn *bgp_router_txn = NULL;
     char  **redist ;
@@ -8939,7 +9616,7 @@ cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
     if (vrf_row == NULL) {
         ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
     }
@@ -9227,6 +9904,7 @@ bgp_vty_init(void)
     install_element(ENABLE_NODE, &vtysh_show_ip_bgp_cmd);
     install_element(ENABLE_NODE, &vtysh_show_ip_bgp_route_cmd);
     install_element(ENABLE_NODE, &vtysh_show_ip_bgp_prefix_cmd);
+    install_element(ENABLE_NODE, &vtysh_show_ip_bgp_route_map_cmd);
 
     /* Install bgp top node. */
     install_node(&bgp_ipv4_unicast_node, NULL);
@@ -10394,18 +11072,6 @@ bgp_vty_init(void)
     install_element(ENABLE_NODE, &show_bgp_views_cmd);
 }
 
-/* Prefix List. */
-const struct lookup_entry match_table[] = {
-    {"ip address prefix-list", "prefix_list"},
-    {NULL, NULL},
-};
-
-const struct lookup_entry set_table[] = {
-    {"community", "community"},
-    {"metric", "metric"},
-    {NULL, NULL},
-};
-
 /*
  * Map 'CLI command argument list' to 'smap key'
  * Input
@@ -11431,6 +12097,229 @@ DEFUN(match_ip_address_prefix_list,
                                                argv[0]);
 }
 
+DEFUN(match_aspath,
+       match_aspath_cmd,
+       "match as-path WORD",
+       MATCH_STR
+       "Match BGP AS path list\n"
+       "AS path access-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "as-path",
+                                               argv[0]);
+}
+
+DEFUN(no_match_aspath,
+       no_match_aspath_cmd,
+       "no match as-path",
+       NO_STR
+       MATCH_STR
+       "Match BGP AS path list\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "as-path",
+                                               NULL);
+}
+
+ALIAS(no_match_aspath,
+       no_match_aspath_val_cmd,
+       "no match as-path WORD",
+       NO_STR
+       MATCH_STR
+       "Match BGP AS path list\n"
+       "AS path access-list name\n")
+
+
+DEFUN(match_origin,
+       match_origin_cmd,
+       "match origin (egp|igp|incomplete)",
+       MATCH_STR
+       "BGP origin code\n"
+       "remote EGP\n"
+       "local IGP\n"
+       "unknown heritage\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (strncmp (argv[0], "igp", 2) == 0)
+      return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                                "origin",
+                                                "igp");
+    if (strncmp (argv[0], "egp", 1) == 0)
+      return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                                "origin",
+                                                "egp");
+    if (strncmp (argv[0], "incomplete", 2) == 0)
+      return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                                "origin",
+                                                "incomplete");
+    return CMD_SUCCESS;
+}
+
+DEFUN(no_match_origin,
+      no_match_origin_cmd,
+      "no match origin",
+      NO_STR
+      MATCH_STR
+      "BGP origin code\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "origin",
+                                               NULL);
+}
+
+ALIAS(no_match_origin,
+      no_match_origin_val_cmd,
+      "no match origin (egp|igp|incomplete)",
+      NO_STR
+      MATCH_STR
+      "BGP origin code\n"
+      "remote EGP\n"
+      "local IGP\n"
+      "unknown heritage\n")
+
+
+DEFUN(match_metric,
+      match_metric_cmd,
+      "match metric <0-4294967295>",
+      MATCH_STR
+      "Match metric of route\n"
+      "Metric value\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "metric",
+                                               argv[0]);
+}
+
+DEFUN(no_match_metric,
+      no_match_metric_cmd,
+      "no match metric",
+      NO_STR
+      MATCH_STR
+      "Match metric of route\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "metric",
+                                               NULL);
+}
+
+ALIAS(no_match_metric,
+      no_match_metric_val_cmd,
+      "no match metric <0-4294967295>",
+      NO_STR
+      MATCH_STR
+      "Match metric of route\n"
+      "Metric value\n")
+
+DEFUN(match_ipv6_next_hop,
+      match_ipv6_next_hop_cmd,
+      "match ipv6 next-hop X:X::X:X",
+      MATCH_STR
+      IPV6_STR
+      "Match IPv6 next-hop address of route\n"
+      "IPv6 address of next hop\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 next-hop",
+                                               argv[0]);
+}
+
+DEFUN(no_match_ipv6_next_hop,
+      no_match_ipv6_next_hop_cmd,
+      "no match ipv6 next-hop X:X::X:X",
+      NO_STR
+      MATCH_STR
+      IPV6_STR
+      "Match IPv6 next-hop address of route\n"
+      "IPv6 address of next hop\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 next-hop",
+                                               NULL);
+}
+
+
+DEFUN(match_probability,
+      match_probability_cmd,
+      "match probability <0-100>",
+      MATCH_STR
+      "Match portion of routes defined by percentage value\n"
+      "Percentage of routes\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "probability",
+                                               argv[0]);
+}
+
+DEFUN(no_match_probability,
+      no_match_probability_cmd,
+      "no match probability",
+      NO_STR
+      MATCH_STR
+      "Match portion of routes defined by percentage value\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "probability",
+                                               NULL);
+}
+
+ALIAS(no_match_probability,
+      no_match_probability_val_cmd,
+      "no match probability <1-99>",
+      NO_STR
+      MATCH_STR
+      "Match portion of routes defined by percentage value\n"
+      "Percentage of routes\n")
+
+
+
 static int
 policy_set_route_map_set_in_ovsdb(struct vty *vty,
                                   const struct ovsrec_route_map_entry *
@@ -11467,6 +12356,284 @@ policy_set_route_map_set_in_ovsdb(struct vty *vty,
     END_DB_TXN (policy_txn);
 }
 
+
+static int
+verify_as_path_string(int argc, const char **argv)
+{
+    int base = 10;
+    char *endptr, *str;
+    long val;
+    int index;
+
+    if ((argc < 0) || (argv == NULL)) {
+        return 1;
+    }
+
+    for (index = 0; index < argc; index++) {
+       str = (char *)argv[index];
+       errno = 0;    /* To distinguish success/failure after call */
+       val = strtol(str, &endptr, base);
+       /* Check for various possible errors */
+       if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN))
+               || (errno != 0 && val == 0)) {
+           return 1;
+       }
+       if ((endptr == str) || (*endptr != '\0')) {
+           return 1;
+       }
+       if ((val < 1) || (val > 4294967295)) {
+           return 1;
+       }
+    }
+    return 0;
+}
+
+
+static int
+policy_set_route_map_set_as_path_exclude_str_in_ovsdb(struct vty *vty,
+                                                const int argc,
+                                                const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (verify_as_path_string(argc, argv)) {
+        vty_out (vty, "Malformed argument%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    str = argv_concat (argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                      "as-path exclude", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+static int
+policy_set_route_map_set_as_path_prepend_str_in_ovsdb(struct vty *vty,
+                                                     const int argc,
+                                                     const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (verify_as_path_string(argc, argv)) {
+        vty_out (vty, "Malformed argument%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    str = argv_concat (argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb (vty, rt_map_entry_row,
+                                      "as-path prepend", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+
+
+DEFUN(set_aspath_exclude,
+      set_aspath_exclude_cmd,
+      "set as-path exclude .<1-4294967295>",
+      SET_STR
+      "Transform BGP AS_PATH attribute\n"
+      "Exclude from the as-path\n"
+      "AS number\n")
+{
+    policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                        rmp_context.name,
+                                        rmp_context.action);
+
+    return policy_set_route_map_set_as_path_exclude_str_in_ovsdb(vty, argc,
+                                                                      argv);
+}
+
+DEFUN(no_set_aspath_exclude,
+      no_set_aspath_exclude_cmd,
+      "no set as-path exclude",
+      NO_STR
+      SET_STR
+      "Transform BGP AS_PATH attribute\n"
+      "Exclude from the as-path\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+               policy_get_route_map_entry_in_ovsdb (rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "as-path exclude", NULL);
+}
+
+ALIAS(no_set_aspath_exclude,
+      no_set_aspath_exclude_val_cmd,
+      "no set as-path exclude .<1-4294967295>",
+      NO_STR
+      SET_STR
+      "Transform BGP AS_PATH attribute\n"
+      "Exclude from the as-path\n"
+      "AS number\n")
+
+DEFUN(set_aspath_prepend,
+      set_aspath_prepend_cmd,
+      "set as-path prepend ." CMD_AS_RANGE,
+      SET_STR
+      "Transform BGP AS_PATH attribute\n"
+      "Prepend to the as-path\n"
+      "AS number\n")
+{
+    policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                        rmp_context.name,
+                                        rmp_context.action);
+
+    return policy_set_route_map_set_as_path_prepend_str_in_ovsdb(vty, argc,
+                                                                 argv);
+}
+
+DEFUN(no_set_aspath_prepend,
+      no_set_aspath_prepend_cmd,
+      "no set as-path prepend",
+      NO_STR
+      SET_STR
+      "Transform BGP AS_PATH attribute\n"
+      "Prepend to the as-path\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+               policy_get_route_map_entry_in_ovsdb (rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "as-path prepend", NULL);
+}
+
+ALIAS(no_set_aspath_prepend,
+      no_set_aspath_prepend_val_cmd,
+      "no set as-path prepend ." CMD_AS_RANGE,
+      NO_STR
+      SET_STR
+      "Transform BGP AS_PATH attribute\n"
+      "Prepend to the as-path\n"
+      "AS number\n")
+
+DEFUN(set_origin,
+      set_origin_cmd,
+      "set origin (egp|igp|incomplete)",
+      SET_STR
+      "BGP origin code\n"
+      "remote EGP\n"
+      "local IGP\n"
+      "unknown heritage\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    if (strncmp (argv[0], "igp", 2) == 0) {
+        return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", "igp");
+    }
+    if (strncmp (argv[0], "egp", 1) == 0) {
+        return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", "egp");
+    }
+    if (strncmp (argv[0], "incomplete", 2) == 0) {
+        return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", "incomplete");
+    }
+    return 0;
+}
+
+DEFUN(no_set_origin,
+      no_set_origin_cmd,
+      "no set origin",
+      NO_STR
+      SET_STR
+      "BGP origin code\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "origin", NULL);
+}
+
+ALIAS(no_set_origin,
+      no_set_origin_val_cmd,
+      "no set origin (egp|igp|incomplete)",
+      NO_STR
+      SET_STR
+      "BGP origin code\n"
+      "remote EGP\n"
+      "local IGP\n"
+      "unknown heritage\n")
+
+DEFUN(set_ipv6_nexthop_global,
+      set_ipv6_nexthop_global_cmd,
+      "set ipv6 next-hop global X:X::X:X",
+      SET_STR
+      IPV6_STR
+      "IPv6 next-hop address\n"
+      "IPv6 global address\n"
+      "IPv6 address of next hop\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "ipv6 next-hop global", argv[0]);
+}
+
+DEFUN(no_set_ipv6_nexthop_global,
+      no_set_ipv6_nexthop_global_cmd,
+      "no set ipv6 next-hop global",
+      NO_STR
+      SET_STR
+      IPV6_STR
+      "IPv6 next-hop address\n"
+      "IPv6 global address\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "ipv6 next-hop global", NULL);
+}
+
+ALIAS(no_set_ipv6_nexthop_global,
+      no_set_ipv6_nexthop_global_val_cmd,
+      "no set ipv6 next-hop global X:X::X:X",
+      NO_STR
+      SET_STR
+      IPV6_STR
+      "IPv6 next-hop address\n"
+      "IPv6 global address\n"
+      "IPv6 address of next hop\n")
+
+
+
 DEFUN(no_match_ip_address_prefix_list,
       no_match_ip_address_prefix_list_cmd,
       "no match ip address prefix-list",
@@ -11495,6 +12662,178 @@ ALIAS(no_match_ip_address_prefix_list,
       "Match address of route\n"
       "Match entries of prefix-lists\n"
       "IP prefix-list name\n")
+
+DEFUN(match_ipv6_address_prefix_list,
+      match_ipv6_address_prefix_list_cmd,
+      "match ipv6 address prefix-list WORD",
+      MATCH_STR
+      IPV6_STR
+      "Match address of route\n"
+      "Match entries of prefix-lists\n"
+      "IP prefix-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 address prefix-list",
+                                               argv[0]);
+}
+
+DEFUN(no_match_ipv6_address_prefix_list,
+      no_match_ipv6_address_prefix_list_cmd,
+      "no match ipv6 address prefix-list WORD",
+      NO_STR
+      MATCH_STR
+      IPV6_STR
+      "Match address of route\n"
+      "Match entries of prefix-lists\n"
+      "IP prefix-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "ipv6 address prefix-list",
+                                               NULL);
+}
+
+DEFUN(match_community,
+      match_community_cmd,
+      "match community (<1-99>|<100-500>|WORD)",
+      MATCH_STR
+      "Match BGP community list\n"
+      "Community-list number (standard)\n"
+      "Community-list number (expanded)\n"
+      "Community-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "community",
+                                               argv[0]);
+}
+
+DEFUN(match_community_exact,
+      match_community_exact_cmd,
+      "match community (<1-99>|<100-500>|WORD) exact-match",
+      MATCH_STR
+      "Match BGP community list\n"
+      "Community-list number (standard)\n"
+      "Community-list number (expanded)\n"
+      "Community-list name\n"
+      "Do exact matching of communities\n")
+{
+    int ret;
+    char *argstr;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    argstr = XMALLOC (MTYPE_ROUTE_MAP_COMPILED,
+                      strlen (argv[0]) + strlen ("exact-match") + 2);
+
+    sprintf (argstr, "%s exact-match", argv[0]);
+
+    ret = policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "community",
+                                               argstr);
+
+    XFREE (MTYPE_ROUTE_MAP_COMPILED, argstr);
+    return ret;
+}
+
+DEFUN(no_match_community,
+      no_match_community_cmd,
+      "no match community",
+      NO_STR
+      MATCH_STR
+      "Match BGP community list\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "community",
+                                               NULL);
+}
+
+ALIAS(no_match_community,
+      no_match_community_val_cmd,
+      "no match community (<1-99>|<100-500>|WORD)",
+      NO_STR
+      MATCH_STR
+      "Match BGP community list\n"
+      "Community-list number (standard)\n"
+      "Community-list number (expanded)\n"
+      "Community-list name\n")
+
+ALIAS(no_match_community,
+      no_match_community_exact_cmd,
+      "no match community (<1-99>|<100-500>|WORD) exact-match",
+      NO_STR
+      MATCH_STR
+      "Match BGP community list\n"
+      "Community-list number (standard)\n"
+      "Community-list number (expanded)\n"
+      "Community-list name\n"
+      "Do exact matching of communities\n")
+
+DEFUN(match_ecommunity,
+      match_ecommunity_cmd,
+      "match extcommunity (<1-99>|<100-500>|WORD)",
+      MATCH_STR
+      "Match BGP/VPN extended community list\n"
+      "Extended community-list number (standard)\n"
+      "Extended community-list number (expanded)\n"
+      "Extended community-list name\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "extcommunity",
+                                               argv[0]);
+}
+
+DEFUN(no_match_ecommunity,
+      no_match_ecommunity_cmd,
+      "no match extcommunity",
+      NO_STR
+      MATCH_STR
+      "Match BGP/VPN extended community list\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_match_in_ovsdb(vty, rt_map_entry_row,
+                                               "extcommunity",
+                                               NULL);
+}
+
+ALIAS(no_match_ecommunity,
+      no_match_ecommunity_val_cmd,
+      "no match extcommunity (<1-99>|<100-500>|WORD)",
+      NO_STR
+      MATCH_STR
+      "Match BGP/VPN extended community list\n"
+      "Extended community-list number (standard)\n"
+      "Extended community-list number (expanded)\n"
+      "Extended community-list name\n")
 
 DEFUN(set_metric,
       set_metric_cmd,
@@ -11535,6 +12874,132 @@ ALIAS(no_set_metric,
       SET_STR
       "Metric value for destination routing protocol\n"
       "Metric value\n")
+
+static int
+policy_set_route_map_set_extcommunity_rt_str_in_ovsdb(struct vty *vty,
+                                                      const int argc,
+                                                      const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    str = argv_concat(argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                      "extcommunity rt", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+DEFUN(set_ecommunity_rt,
+      set_ecommunity_rt_cmd,
+      "set extcommunity rt .ASN:nn_or_IP-address:nn",
+      SET_STR
+      "BGP extended community attribute\n"
+      "Route Target extended community\n"
+      "VPN extended community\n")
+{
+    return policy_set_route_map_set_extcommunity_rt_str_in_ovsdb (vty, argc,
+                                                                      argv);
+}
+
+DEFUN(no_set_ecommunity_rt,
+      no_set_ecommunity_rt_cmd,
+      "no set extcommunity rt",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Route Target extended community\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "extcommunity rt", NULL);
+}
+
+ALIAS(no_set_ecommunity_rt,
+      no_set_ecommunity_rt_val_cmd,
+      "no set extcommunity rt .ASN:nn_or_IP-address:nn",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Route Target extended community\n"
+      "VPN extended community\n")
+
+
+static int
+policy_set_route_map_set_extcommunity_soo_str_in_ovsdb(struct vty *vty,
+                                                       const int argc,
+                                                       const char **argv)
+{
+    int ret = 0;
+    char *str;
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+    str = argv_concat(argv, argc, 0);
+
+    if (!str) {
+        return 0;
+    }
+
+    policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                      "extcommunity soo", str);
+    XFREE (MTYPE_TMP, str);
+    return ret;
+}
+
+DEFUN(set_ecommunity_soo,
+      set_ecommunity_soo_cmd,
+      "set extcommunity soo .ASN:nn_or_IP-address:nn",
+      SET_STR
+      "BGP extended community attribute\n"
+      "Site-of-Origin extended community\n"
+      "VPN extended community\n")
+{
+    return policy_set_route_map_set_extcommunity_soo_str_in_ovsdb (vty, argc,
+                                                                       argv);
+}
+
+DEFUN(no_set_ecommunity_soo,
+      no_set_ecommunity_soo_cmd,
+      "no set extcommunity soo",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Site-of-Origin extended community\n")
+{
+    const struct ovsrec_route_map_entry  *rt_map_entry_row =
+                policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
+                                                    rmp_context.name,
+                                                    rmp_context.action);
+
+    return policy_set_route_map_set_in_ovsdb(vty, rt_map_entry_row,
+                                             "extcommunity soo", NULL);
+}
+
+ALIAS(no_set_ecommunity_soo,
+      no_set_ecommunity_soo_val_cmd,
+      "no set extcommunity soo .ASN:nn_or_IP-address:nn",
+      NO_STR
+      SET_STR
+      "BGP extended community attribute\n"
+      "Site-of-Origin extended community\n"
+      "VPN extended community\n")
+
+
 
 static int
 policy_set_route_map_set_community_str_in_ovsdb(struct vty *vty,
@@ -11612,281 +13077,14 @@ ALIAS(no_set_community,
       "Community number in aa:nn format or "
       "local-AS|no-advertise|no-export|internet or additive\n")
 
-const struct ovsrec_prefix_list *
-policy_get_community_filter_list_in_ovsdb(const char *name, const char *type,
-                                       const char *action, const char *description)
-{
-    const struct ovsrec_community_filter *community_row;
-
-    OVSREC_COMMUNITY_FILTER_FOR_EACH(community_row, idl) {
-        if (strcmp(community_row->name, name) == 0) {
-                if ( (!strcmp(community_row->type, type))
-                   && (!strcmp(community_row->action, action))
-                   && (!strcmp(community_row->match, description))) {
-                    return community_row;
-                }
-        }
-    }
-    return NULL;
-}
-
-static int
-policy_set_community_filter_list_in_ovsdb(struct vty *vty, afi_t afi, const char *type,
-                                const char *name, const char *action, const char *description)
-{
-    struct ovsdb_idl_txn *policy_txn;
-    const struct ovsrec_community_filter *community_row;
-
-    START_DB_TXN(policy_txn);
-
-    community_row = policy_get_community_filter_list_in_ovsdb(name, type,
-                                                  action, description);
-    /*
-     * If row not found, create an empty row and set the fields.
-     *
-     */
-    if (!community_row) {
-        community_row = ovsrec_community_filter_insert(policy_txn);
-        ovsrec_community_filter_set_name(community_row, name);
-        ovsrec_community_filter_set_action(community_row, action);
-        ovsrec_community_filter_set_type(community_row, type);
-        ovsrec_community_filter_set_match(community_row, description);
-    }
-
-    END_DB_TXN(policy_txn);
-
-}
-
-DEFUN (ip_community_list,
-       ip_community_list_cmd,
-       "ip community-list"
-       " WORD (deny|permit) .LINE",
-       IP_STR
-       "Add a community list entry\n"
-       "Community list name\n"
-       "Specify community to reject\n"
-       "Specify community to accept\n"
-       "An ordered list as a regular-expression\n")
-{
-    regex_t *regex = NULL;
-
-    /* All digit name check.  */
-    if (all_digit (argv[0])) {
-        vty_out (vty, "%% Community name cannot have all digits%s", VTY_NEWLINE);
-        return CMD_WARNING;
-    }
-
-    regex = bgp_regcomp (argv_concat(argv, argc, 2));
-
-    if (!regex) {
-        vty_out (vty, "%%  Malformed community-list value%s", VTY_NEWLINE);
-        return CMD_WARNING;
-    }
-    return policy_set_community_filter_list_in_ovsdb(vty, AFI_IP,
-                            "community-list", argv[0], argv[1],
-                            argv_concat(argv, argc, 2));
-}
-
-DEFUN (ip_extcommunity_list,
-       ip_extcommunity_list_cmd,
-       "ip extcommunity-list"
-       " WORD (deny|permit) .LINE",
-       IP_STR
-       "Add an extended community list entry\n"
-       "Extended Community list name\n"
-       "Specify community to reject\n"
-       "Specify community to accept\n"
-       "An ordered list as a regular-expression\n")
-{
-
-    regex_t *regex = NULL;
-
-    /* All digit name check.  */
-    if (all_digit (argv[0])) {
-        vty_out (vty, "%% Community name cannot have all digits%s", VTY_NEWLINE);
-        return CMD_WARNING;
-    }
-
-    regex = bgp_regcomp (argv_concat(argv, argc, 2));
-
-    if (!regex) {
-        vty_out (vty, "%%  Malformed community-list value%s", VTY_NEWLINE);
-        return CMD_WARNING;
-    }
-
-    return policy_set_community_filter_list_in_ovsdb(vty, AFI_IP,
-                                 "extcommunity-list", argv[0], argv[1],
-                                 argv_concat(argv, argc, 2));
-}
-
-static int
-policy_no_community_filter_name_in_ovsdb (const char *type, const char *name)
-{
-    const struct ovsrec_community_filter *cfilter;
-    struct ovsdb_idl_txn *policy_txn;
-    bool match_found = false;
-
-    /* Start of transaction. */
-    START_DB_TXN(policy_txn);
-
-    OVSREC_COMMUNITY_FILTER_FOR_EACH(cfilter, idl) {
-        if (!strcmp(cfilter->name,name) &&
-           !strcmp(cfilter->type,type)) {
-            match_found = true;
-            ovsrec_community_filter_delete(cfilter);
-         }
-    }
-    if (!match_found) {
-        ERRONEOUS_DB_TXN(policy_txn,"community-filter list not found");
-    }
-
-    /* End of transaction. */
-    END_DB_TXN(policy_txn);
-}
-
-DEFUN (no_ip_community_list,
-       no_ip_community_list_cmd,
-       "no ip community-list WORD",
-       NO_STR
-       IP_STR
-       "Add a community list entry\n"
-       "Community list name\n")
-
-{
-
-    return policy_no_community_filter_name_in_ovsdb("community-list", argv[0]);
-}
-
-DEFUN (no_ip_extcommunity_list,
-       no_ip_extcommunity_list_cmd,
-       "no ip extcommunity-list WORD",
-       NO_STR
-       IP_STR
-       "Add an extended community list entry\n"
-       "Extended Community list name\n")
-
-{
-
-    return policy_no_community_filter_name_in_ovsdb("extcommunity-list", argv[0]);
-}
-
-static int
-policy_no_community_filter_list_in_ovsdb(afi_t afi, const char *type,
-                              const char *name, const char *action,
-                              const char *description)
-
-{
-    struct ovsdb_idl_txn *policy_txn;
-    const struct ovsrec_community_filter *community_row;
-
-    START_DB_TXN(policy_txn);
-
-    community_row = policy_get_community_filter_list_in_ovsdb(name, type,
-                                         action, description);
-
-    if (!community_row) {
-        ERRONEOUS_DB_TXN(policy_txn,"community-filter list not found");
-    }
-
-    ovsrec_community_filter_delete(community_row);
-
-    END_DB_TXN(policy_txn);
-}
-
-DEFUN (no_ip_community_list_line,
-       no_ip_community_list_line_cmd,
-       "no ip community-list"
-       " WORD (deny|permit) .LINE",
-       NO_STR
-       IP_STR
-       "Add a community list entry\n"
-       "Community list name\n"
-       "Specify community to reject\n"
-       "Specify community to accept\n"
-       "An ordered list as a regular-expression\n")
-
-{
-
-    return policy_no_community_filter_list_in_ovsdb(AFI_IP, "community-list"
-                            ,argv[0], argv[1], argv_concat(argv, argc, 2));
-}
-
-DEFUN (no_ip_extcommunity_list_line,
-       no_ip_extcommunity_list_line_cmd,
-       "no ip extcommunity-list"
-       " WORD (deny|permit) .LINE",
-       NO_STR
-       IP_STR
-       "Add an extended community list entry\n"
-       "Extended Community list name\n"
-       "Specify community to reject\n"
-       "Specify community to accept\n"
-       "An ordered list as a regular-expression\n")
-
-{
-
-    return policy_no_community_filter_list_in_ovsdb(AFI_IP, "extcommunity-list"
-                              ,argv[0], argv[1], argv_concat(argv, argc, 2));
-}
-
-
-static int
-show_community_filter(char *type)
-{
-    const struct ovsrec_community_filter *cfilter;
-    const struct ovsrec_community_filter *cfilter_entry;
-    int i = 0,j = 0, k = 0;
-    bool match_found = false;
-
-    OVSREC_COMMUNITY_FILTER_FOR_EACH(cfilter, idl) {
-        if (!strcmp("community-list",cfilter->type)
-                && !strcmp("community-list",type)) {
-            vty_out(vty,"Named Community expanded list %s%s",cfilter->name,
-                            VTY_NEWLINE);
-            vty_out(vty,"%4s %s %s%s","",cfilter->action,cfilter->match,
-                                        VTY_NEWLINE);
-        } else if (!strcmp("extcommunity-list",cfilter->type)
-                   && !strcmp("extcommunity-list",type)) {
-            vty_out(vty,"Named extended community expanded list %s%s",
-                        cfilter->name,VTY_NEWLINE);
-            vty_out(vty,"%4s %s %s%s","",cfilter->action,cfilter->match,
-                                         VTY_NEWLINE);
-        }
-    }
-    return CMD_SUCCESS;
-}
-
-DEFUN (show_ip_community_list,
-       show_ip_community_list_cmd,
-       "show ip community-list",
-       SHOW_STR
-       IP_STR
-       "List community-list\n")
-{
-    return show_community_filter("community-list");
-}
-
-
-DEFUN (show_ip_extcommunity_list,
-       show_ip_extcommunity_list_cmd,
-       "show ip extcommunity-list",
-       SHOW_STR
-       IP_STR
-       "List extended-community list\n")
-{
-    return show_community_filter("extcommunity-list");
-}
-
 int
 show_prefix_list(afi_t afi, const char *name,
             const char *seqnum, bool detail, bool summary,
             char *prefix, bool first_match, bool longer, int plen)
 {
     const struct ovsrec_prefix_list *ovs_prefix_list = NULL;
-    const struct ovsrec_prefix_list_entry *ovs_prefix_list_entry = NULL;
     struct in6_addr addrv6;
     int j = 0;
-    char *prefix_value;
     char *temp_prefix;
     bool first;
     int seq = 0;
@@ -11924,8 +13122,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -11936,7 +13134,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                      ovs_prefix_list->name,
                                      ovs_prefix_list->n_prefix_list_entries,
                                      VTY_NEWLINE);
@@ -11946,10 +13144,10 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -11974,8 +13172,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -11986,7 +13184,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                       && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -11998,10 +13196,10 @@ show_prefix_list(afi_t afi, const char *name,
                                 }
                             } if ((ovs_prefix_list->
                                 key_prefix_list_entries[j] == seq || seq == 0)
-                                && !summary && (!strcmp(ovs_prefix_list->
+                                && (!summary) && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer){
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                                || strlen(prefix) == 0) && (!longer)){
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12016,7 +13214,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12034,8 +13232,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12046,15 +13244,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
                                 first = true;
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12083,8 +13281,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12095,7 +13293,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                      && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -12105,12 +13303,12 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary && (!strcmp(ovs_prefix_list->
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary) && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer){
-                                vty_out(vty,"%3sseq %d %s %s ge %d%s","",
+                                || strlen(prefix) == 0) && (!longer)){
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12128,7 +13326,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d%s","",
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12148,8 +13346,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12160,15 +13358,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                      ovs_prefix_list->name,
                                      ovs_prefix_list->n_prefix_list_entries,
                                      VTY_NEWLINE);
                                 first = true;
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu%s","",
                                      ovs_prefix_list->
                                      key_prefix_list_entries[j],
                                      ovs_prefix_list->
@@ -12198,8 +13396,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12210,7 +13408,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                       && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -12220,12 +13418,12 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary && (!strcmp(ovs_prefix_list->
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary) && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer) {
-                                vty_out(vty,"%3sseq %d %s %s le %d%s","",
+                                || strlen(prefix) == 0) && (!longer)) {
+                                vty_out(vty,"%3sseq %lu %s %s le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12243,7 +13441,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s le %d%s","",
+                                vty_out(vty,"%3sseq %lu %s %s le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12263,8 +13461,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12275,15 +13473,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                 && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
                                 first = true;
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s le %d%s","",
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12310,8 +13508,8 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12322,7 +13520,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail && !summary
                                       && strlen(prefix) == 0) {
-                                vty_out(vty,"ipv6 prefix-list %s: %d entries%s",
+                                vty_out(vty,"ipv6 prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
@@ -12332,12 +13530,12 @@ show_prefix_list(afi_t afi, const char *name,
                                             ovs_prefix_list->description,
                                             VTY_NEWLINE);
                                 }
-                            } if (ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary  && (!strcmp(ovs_prefix_list->
+                            } if ((ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)  && (!strcmp(ovs_prefix_list->
                                 value_prefix_list_entries[j]->prefix,prefix)
-                                || strlen(prefix) == 0) && !longer) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d le %d%s","",
+                                || strlen(prefix) == 0) && (!longer)) {
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12356,7 +13554,7 @@ show_prefix_list(afi_t afi, const char *name,
                                 len = prefix_len(ovs_prefix_list->
                                      value_prefix_list_entries[j]->prefix);
                                 if (len >= plen) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d le %d%s","",
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12378,8 +13576,8 @@ show_prefix_list(afi_t afi, const char *name,
                             if (!first && seq == 0 && (detail || summary)) {
                                 vty_out(vty,"ip prefix-list %s:%s",
                                        ovs_prefix_list->name,VTY_NEWLINE);
-                                vty_out(vty,"%3scount: %d,"
-                                       " sequences: %d - %d%s","",
+                                vty_out(vty,"%3scount: %lu,"
+                                       " sequences: %lu - %lu%s","",
                                        ovs_prefix_list->n_prefix_list_entries,
                                        ovs_prefix_list->
                                        key_prefix_list_entries[0],
@@ -12390,15 +13588,15 @@ show_prefix_list(afi_t afi, const char *name,
                                 first = true;
                             } else if (!first && seq == 0 && !detail
                                        && !summary) {
-                                vty_out(vty,"ip prefix-list %s: %d entries%s",
+                                vty_out(vty,"ip prefix-list %s: %lu entries%s",
                                         ovs_prefix_list->name,
                                         ovs_prefix_list->n_prefix_list_entries,
                                         VTY_NEWLINE);
                                 first = true;
-                            } if ( ovs_prefix_list->
-                                key_prefix_list_entries[j] == seq || seq == 0
-                                && !summary) {
-                                vty_out(vty,"%3sseq %d %s %s ge %d le %d%s","",
+                            } if (( ovs_prefix_list->
+                                key_prefix_list_entries[j] == seq || seq == 0)
+                                && (!summary)) {
+                                vty_out(vty,"%3sseq %lu %s %s ge %lu le %lu%s","",
                                     ovs_prefix_list->
                                     key_prefix_list_entries[j],
                                     ovs_prefix_list->
@@ -12420,9 +13618,10 @@ show_prefix_list(afi_t afi, const char *name,
         }
 
     }
+    return 0;
 }
 
-DEFUN (show_ip_prefix_list,
+DEFUN(show_ip_prefix_list,
        show_ip_prefix_list_cmd,
        "show ip prefix-list",
        SHOW_STR
@@ -12439,7 +13638,7 @@ DEFUN (show_ip_prefix_list,
 }
 
 
-DEFUN (show_ipv6_prefix_list,
+DEFUN(show_ipv6_prefix_list,
        show_ipv6_prefix_list_cmd,
        "show ipv6 prefix-list",
        SHOW_STR
@@ -12455,7 +13654,7 @@ DEFUN (show_ipv6_prefix_list,
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ip_prefix_list_name,
+DEFUN(show_ip_prefix_list_name,
        show_ip_prefix_list_name_cmd,
        "show ip prefix-list WORD",
        SHOW_STR
@@ -12472,7 +13671,7 @@ DEFUN (show_ip_prefix_list_name,
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ipv6_prefix_list_name,
+DEFUN(show_ipv6_prefix_list_name,
        show_ipv6_prefix_list_name_cmd,
        "show ipv6 prefix-list WORD",
        SHOW_STR
@@ -12489,7 +13688,7 @@ DEFUN (show_ipv6_prefix_list_name,
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ip_prefix_list_name_seq,
+DEFUN(show_ip_prefix_list_name_seq,
        show_ip_prefix_list_name_seq_cmd,
        "show ip prefix-list WORD seq <1-4294967295>",
        SHOW_STR
@@ -12508,7 +13707,7 @@ DEFUN (show_ip_prefix_list_name_seq,
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ipv6_prefix_list_name_seq,
+DEFUN(show_ipv6_prefix_list_name_seq,
        show_ipv6_prefix_list_name_seq_cmd,
        "show ipv6 prefix-list WORD seq <1-4294967295>",
        SHOW_STR
@@ -12527,7 +13726,7 @@ DEFUN (show_ipv6_prefix_list_name_seq,
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ip_prefix_list_detail_name,
+DEFUN(show_ip_prefix_list_detail_name,
        show_ip_prefix_list_detail_name_cmd,
        "show ip prefix-list detail WORD",
        SHOW_STR
@@ -12546,7 +13745,7 @@ DEFUN (show_ip_prefix_list_detail_name,
 
 }
 
-DEFUN (show_ipv6_prefix_list_detail,
+DEFUN(show_ipv6_prefix_list_detail,
        show_ipv6_prefix_list_detail_cmd,
        "show ipv6 prefix-list detail",
        SHOW_STR
@@ -12562,7 +13761,7 @@ DEFUN (show_ipv6_prefix_list_detail,
                      first_match, longer, 0);
     return CMD_SUCCESS;
 }
-DEFUN (show_ipv6_prefix_list_detail_name,
+DEFUN(show_ipv6_prefix_list_detail_name,
        show_ipv6_prefix_list_detail_name_cmd,
        "show ipv6 prefix-list detail WORD",
        SHOW_STR
@@ -12582,7 +13781,7 @@ DEFUN (show_ipv6_prefix_list_detail_name,
 }
 
 
-DEFUN (show_ip_prefix_list_summary_name,
+DEFUN(show_ip_prefix_list_summary_name,
        show_ip_prefix_list_summary_name_cmd,
        "show ip prefix-list summary WORD",
        SHOW_STR
@@ -12600,7 +13799,7 @@ DEFUN (show_ip_prefix_list_summary_name,
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ipv6_prefix_list_summary,
+DEFUN(show_ipv6_prefix_list_summary,
        show_ipv6_prefix_list_summary_cmd,
        "show ipv6 prefix-list summary",
        SHOW_STR
@@ -12618,7 +13817,7 @@ DEFUN (show_ipv6_prefix_list_summary,
 
 
 }
-DEFUN (show_ipv6_prefix_list_summary_name,
+DEFUN(show_ipv6_prefix_list_summary_name,
        show_ipv6_prefix_list_summary_name_cmd,
        "show ipv6 prefix-list summary WORD",
        SHOW_STR
@@ -12636,7 +13835,7 @@ DEFUN (show_ipv6_prefix_list_summary_name,
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ipv6_prefix_list_prefix,
+DEFUN(show_ipv6_prefix_list_prefix,
        show_ipv6_prefix_list_prefix_cmd,
        "show ipv6 prefix-list WORD X:X::X:X/M",
        SHOW_STR
@@ -12649,13 +13848,13 @@ DEFUN (show_ipv6_prefix_list_prefix,
     bool summary = false;
     bool first_match = false;
     bool longer = false;
-    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, argv[1],
+    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, (char *)argv[1],
                      first_match, longer, 0);
     return CMD_SUCCESS;
 
 }
 
-DEFUN (show_ipv6_prefix_list_prefix_first_match,
+DEFUN(show_ipv6_prefix_list_prefix_first_match,
        show_ipv6_prefix_list_prefix_first_match_cmd,
        "show ipv6 prefix-list WORD X:X::X:X/M first-match",
        SHOW_STR
@@ -12669,12 +13868,12 @@ DEFUN (show_ipv6_prefix_list_prefix_first_match,
     bool summary = false;
     bool first_match = true;
     bool longer = false;
-    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, argv[1],
+    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, (char *)argv[1],
                      first_match, longer, 0);
     return CMD_SUCCESS;
 }
 
-DEFUN (show_ipv6_prefix_list_prefix_longer,
+DEFUN(show_ipv6_prefix_list_prefix_longer,
        show_ipv6_prefix_list_prefix_longer_cmd,
        "show ipv6 prefix-list WORD X:X::X:X/M longer",
        SHOW_STR
@@ -12688,13 +13887,468 @@ DEFUN (show_ipv6_prefix_list_prefix_longer,
     bool summary = false;
     bool first_match = true;
     bool longer = true;
-    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, argv[1],
-                      first_match, longer, prefix_len(argv[1]));
+    show_prefix_list(AFI_IP6, argv[0], NULL, detail, summary, (char *)argv[1],
+                      first_match, longer, prefix_len((char *)argv[1]));
+    return CMD_SUCCESS;
+}
+
+
+static const struct ovsrec_bgp_community_filter *
+policy_get_bgp_community_filter_name_in_ovsdb(const char *name)
+{
+    const struct ovsrec_bgp_community_filter *cfilter_row;
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter_row, idl) {
+        if (!strcmp(cfilter_row->name, name)) {
+            return cfilter_row;
+        }
+    }
+    return NULL;
+}
+static const struct ovsrec_bgp_community_filter *
+policy_get_bgp_community_filter_in_ovsdb(const char *name, const char *type)
+{
+    const struct ovsrec_bgp_community_filter *cfilter_row;
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter_row, idl) {
+        if (!strcmp(cfilter_row->name, name) &&
+            !strcmp(cfilter_row->type, type)) {
+            return cfilter_row;
+        }
+    }
+    return NULL;
+}
+
+static const struct ovsrec_bgp_community_filter *
+policy_get_bgp_community_filter_list_in_ovsdb(const char *name,
+                                              const char *type,
+                                              const char *action,
+                                              const char *description)
+{
+    const struct ovsrec_bgp_community_filter *cfilter_row;
+    int i;
+    bool match_found = false;
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter_row, idl) {
+        if (!strcmp(cfilter_row->name, name) &&
+            !strcmp(cfilter_row->type, type)) {
+            if (strcmp(action,"permit") == 0) {
+                for(i=0 ; i < cfilter_row->n_permit; i++) {
+                    if (strcmp(cfilter_row->permit[i],description) == 0) {
+                        match_found = true;
+                        break;
+                    }
+                 }
+                 if (match_found) {
+                        break;
+                 }
+            } else if (strcmp(action,"deny") == 0) {
+                for(i=0 ; i < cfilter_row->n_deny; i++) {
+                    if (strcmp(cfilter_row->deny[i],description) == 0) {
+                        match_found = true;
+                        break;
+                    }
+                }
+                if (match_found) {
+                        break;
+                }
+            }
+        }
+    }
+    if (match_found) {
+        return cfilter_row;
+    } else {
+        return NULL;
+    }
+}
+
+static bool
+set_community_permit_entry_in_ovsdb(const struct ovsrec_bgp_community_filter *
+                                    cfilter_row, const char *description)
+{
+   size_t size, i;
+   char **desc;
+   size = cfilter_row->n_permit + 1;
+   desc = xmalloc(sizeof(char *) * size);
+   for(i = 0; i< cfilter_row->n_permit; i++) {
+        desc[i] = cfilter_row->permit[i];
+   }
+   desc[cfilter_row->n_permit] = (char *)description;
+   ovsrec_bgp_community_filter_set_permit(cfilter_row,
+                                          desc, size);
+   free(desc);
+   return true;
+}
+
+static bool
+set_community_deny_entry_in_ovsdb(const struct ovsrec_bgp_community_filter *
+                                  cfilter_row, const char *description)
+{
+   size_t size, i;
+   char **desc;
+   size = cfilter_row->n_deny + 1;
+   desc = xmalloc(sizeof(char *) * size);
+   for(i = 0; i< cfilter_row->n_deny; i++) {
+        desc[i] = cfilter_row->deny[i];
+   }
+   desc[cfilter_row->n_deny] = (char *)description;
+   ovsrec_bgp_community_filter_set_deny(cfilter_row,
+                                          desc, size);
+   free(desc);
+   return true;
+}
+
+static int
+policy_set_community_filter_list_in_ovsdb(struct vty *vty,
+                                          afi_t afi, const char *type,
+                                          const char *name, const char *action,
+                                          const char *description)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_community_filter *cfilter_row;
+    bool entry_set = false;
+
+    START_DB_TXN(policy_txn);
+
+    cfilter_row = policy_get_bgp_community_filter_list_in_ovsdb(name,
+                                          type, action, description);
+    if (!cfilter_row) {
+        OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter_row, idl) {
+            if (!strcmp(cfilter_row->name, name)) {
+                if (!strcmp(action,"permit")) {
+                    entry_set = set_community_permit_entry_in_ovsdb
+                                          (cfilter_row,description);
+                } else if (!strcmp(action,"deny")) {
+                    entry_set = set_community_deny_entry_in_ovsdb
+                                          (cfilter_row,description);
+                }
+            }
+        }
+        if (!entry_set) {
+            if (!policy_get_bgp_community_filter_name_in_ovsdb(name)) {
+                cfilter_row = ovsrec_bgp_community_filter_insert(policy_txn);
+                ovsrec_bgp_community_filter_set_name(cfilter_row, name);
+                ovsrec_bgp_community_filter_set_type(cfilter_row, type);
+                if (!strcmp(action,"permit")) {
+                    set_community_permit_entry_in_ovsdb(cfilter_row,description);
+                } else if (!strcmp(action,"deny")) {
+                    set_community_deny_entry_in_ovsdb(cfilter_row,description);
+                }
+            }
+        }
+    }
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN(ip_community_list,
+       ip_community_list_cmd,
+       "ip community-list"
+       " WORD (deny|permit) .LINE",
+       IP_STR
+       "Add a community list entry\n"
+       "Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+{
+    regex_t *regex = NULL;
+
+    /* All digit name check.  */
+    if (all_digit (argv[0])) {
+        vty_out (vty, "Community name cannot have all digits%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    regex = bgp_regcomp (argv_concat(argv, argc, 2));
+
+    if (!regex) {
+        vty_out (vty, "Malformed community-list value%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    return policy_set_community_filter_list_in_ovsdb(vty, AFI_IP,
+                                                     "community-list",
+                                                      argv[0], argv[1],
+                                                      argv_concat(argv,
+                                                      argc, 2));
+}
+
+DEFUN(ip_extcommunity_list,
+       ip_extcommunity_list_cmd,
+       "ip extcommunity-list"
+       " WORD (deny|permit) .LINE",
+       IP_STR
+       "Add an extended community list entry\n"
+       "Extended Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+{
+
+    regex_t *regex = NULL;
+
+    /* All digit name check.  */
+    if (all_digit(argv[0])) {
+        vty_out (vty, "Community name cannot have all digits%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    regex = bgp_regcomp (argv_concat(argv, argc, 2));
+
+    if (!regex) {
+        vty_out (vty, "Malformed community-list value%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    return policy_set_community_filter_list_in_ovsdb(vty, AFI_IP,
+                                                     "extcommunity-list",
+                                                     argv[0], argv[1],
+                                                     argv_concat(argv,
+                                                     argc, 2));
+}
+
+static int
+policy_no_community_filter_name_in_ovsdb(const char *type, const char *name)
+{
+    struct ovsdb_idl_txn *policy_txn;
+    const struct ovsrec_bgp_community_filter *community_row;
+
+    START_DB_TXN(policy_txn);
+    community_row = policy_get_bgp_community_filter_in_ovsdb(name, type);
+    if (!community_row) {
+        ERRONEOUS_DB_TXN(policy_txn,"Community-filter list not found");
+    }
+    ovsrec_bgp_community_filter_delete(community_row);
+    END_DB_TXN(policy_txn);
+}
+
+
+DEFUN(no_ip_community_list,
+       no_ip_community_list_cmd,
+       "no ip community-list WORD",
+       NO_STR
+       IP_STR
+       "Add a community list entry\n"
+       "Community list name\n")
+
+{
+    return policy_no_community_filter_name_in_ovsdb
+                        ("community-list", argv[0]);
+}
+
+DEFUN(no_ip_extcommunity_list,
+       no_ip_extcommunity_list_cmd,
+       "no ip extcommunity-list WORD",
+       NO_STR
+       IP_STR
+       "Add an extended community list entry\n"
+       "Extended Community list name\n")
+
+{
+
+    return policy_no_community_filter_name_in_ovsdb
+                     ("extcommunity-list", argv[0]);
+}
+
+static int
+policy_no_community_filter_list_in_ovsdb(afi_t afi, const char *type,
+                                         const char *name, const char *action,
+                                         const char *description)
+{
+    const struct ovsrec_bgp_community_filter *cfilter;
+    struct ovsdb_idl_txn *policy_txn = NULL;
+    int i,j,new_size;
+    char **desc;
+
+    START_DB_TXN(policy_txn);
+
+    cfilter = policy_get_bgp_community_filter_list_in_ovsdb(name,
+                                          type, action, description);
+
+    if (cfilter == NULL) {
+        ERRONEOUS_DB_TXN(policy_txn, "Community filter list not found");
+    } else {
+        OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(cfilter, idl) {
+            if (!strcmp(cfilter->name,name) &&
+                !strcmp(cfilter->type,type)) {
+                if (!(strcmp(action,"permit"))) {
+                    new_size = cfilter->n_permit - 1;
+                    desc = xmalloc(sizeof(char *) * new_size);
+                    for (i = 0, j = 0; i < cfilter->n_permit; i++) {
+                        if (strcmp(cfilter->permit[i], description)) {
+                            desc[j] = cfilter->permit[i];
+                            j++;
+                        }
+                    }
+                    ovsrec_bgp_community_filter_set_permit(cfilter, desc, new_size);
+                    free(desc);
+                } else if (!(strcmp(action,"deny"))) {
+                    new_size = cfilter->n_deny - 1;
+                    desc = xmalloc(sizeof(char *) * new_size);
+                    for (i = 0, j = 0; i < cfilter->n_deny; i++) {
+                        if (strcmp(cfilter->deny[i], description)) {
+                            desc[j] = cfilter->deny[i];
+                            j++;
+                        }
+                    }
+                    ovsrec_bgp_community_filter_set_deny(cfilter, desc, new_size);
+                    free(desc);
+                }
+            }
+        }
+    }
+    END_DB_TXN(policy_txn);
+}
+
+DEFUN(no_ip_community_list_line,
+       no_ip_community_list_line_cmd,
+       "no ip community-list"
+       " WORD (deny|permit) .LINE",
+       NO_STR
+       IP_STR
+       "Add a community list entry\n"
+       "Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+
+{
+
+    return policy_no_community_filter_list_in_ovsdb(AFI_IP, "community-list",
+                                                    argv[0], argv[1],
+                                                    argv_concat(argv, argc, 2));
+}
+
+DEFUN(no_ip_extcommunity_list_line,
+       no_ip_extcommunity_list_line_cmd,
+       "no ip extcommunity-list"
+       " WORD (deny|permit) .LINE",
+       NO_STR
+       IP_STR
+       "Add an extended community list entry\n"
+       "Extended Community list name\n"
+       "Specify community to reject\n"
+       "Specify community to accept\n"
+       "An ordered list as a regular-expression\n")
+
+{
+    return policy_no_community_filter_list_in_ovsdb(AFI_IP, "extcommunity-list",
+                                                    argv[0], argv[1],
+                                                    argv_concat(argv, argc, 2));
+}
+
+void
+policy_show_community_filter_in_ovsdb(const char *type)
+{
+
+    const struct ovsrec_bgp_community_filter *ovs_community_list = NULL;
+    int i;
+
+    OVSREC_BGP_COMMUNITY_FILTER_FOR_EACH(ovs_community_list,idl)
+    {
+        if (ovs_community_list->name
+            && ovs_community_list->type) {
+            if (!strcmp(ovs_community_list->type,type)) {
+               vty_out(vty,"ip %s %s%s",
+                                  ovs_community_list->type,
+                                  ovs_community_list->name,VTY_NEWLINE);
+               for (i = 0 ; i<ovs_community_list->n_permit; i++) {
+                vty_out(vty,"%4spermit %s%s","",
+                                  ovs_community_list->permit[i],VTY_NEWLINE);
+               }
+                for (i = 0 ; i<ovs_community_list->n_deny; i++) {
+                vty_out(vty,"%4sdeny %s%s","",
+                                  ovs_community_list->deny[i],VTY_NEWLINE);
+               }
+           }
+        }
+    }
+}
+
+DEFUN(show_ip_community_list,
+       show_ip_community_list_cmd,
+       "show ip community-list",
+       SHOW_STR
+       IP_STR
+       "List community-list\n")
+{
+    policy_show_community_filter_in_ovsdb("community-list");
     return CMD_SUCCESS;
 
 }
+
+DEFUN(show_ip_extcommunity_list,
+       show_ip_extcommunity_list_cmd,
+       "show ip extcommunity-list",
+       SHOW_STR
+       IP_STR
+       "List extended-community list\n")
+{
+    policy_show_community_filter_in_ovsdb("extcommunity-list");
+    return CMD_SUCCESS;
+}
+
+static void
+show_bgp_aspath_filter_print(const struct ovsrec_bgp_aspath_filter
+                             *ovs_filter_list)
+{
+    int i;
+
+    vty_out(vty,"ip as-path access-list %s%s",
+            ovs_filter_list->name,VTY_NEWLINE);
+    for (i = 0 ; i<ovs_filter_list->n_permit; i++) {
+        vty_out(vty,"%4spermit %s%s","",
+                ovs_filter_list->permit[i],VTY_NEWLINE);
+    }
+    for (i = 0 ; i<ovs_filter_list->n_deny; i++) {
+        vty_out(vty,"%4sdeny %s%s","",
+                ovs_filter_list->deny[i],VTY_NEWLINE);
+    }
+}
+
+static void
+policy_show_bgp_aspath_filter_in_ovsdb(const char *name)
+{
+    const struct ovsrec_bgp_aspath_filter *ovs_filter_list = NULL;
+
+    OVSREC_BGP_ASPATH_FILTER_FOR_EACH(ovs_filter_list, idl) {
+        if (!name) {
+            show_bgp_aspath_filter_print(ovs_filter_list);
+        }
+        else if (!strcmp(ovs_filter_list->name, name)) {
+            show_bgp_aspath_filter_print(ovs_filter_list);
+            break;
+        }
+    }
+}
+
+DEFUN(show_ip_as_path_access_list,
+       show_ip_as_path_access_list_cmd,
+       "show ip as-path-access-list WORD",
+       SHOW_STR
+       IP_STR
+       "List AS path access lists\n"
+       "AS path access list name\n")
+{
+    policy_show_bgp_aspath_filter_in_ovsdb(argv[0]);
+    return CMD_SUCCESS;
+}
+
+
+DEFUN(show_ip_as_path_access_list_all,
+       show_ip_as_path_access_list_all_cmd,
+       "show ip as-path-access-list",
+       SHOW_STR
+       IP_STR
+       "List AS path access lists\n")
+{
+    policy_show_bgp_aspath_filter_in_ovsdb(NULL);
+    return CMD_SUCCESS;
+}
+
 void policy_vty_init(void)
 {
+    install_element(CONFIG_NODE, &ip_as_path_cmd);
+    install_element(CONFIG_NODE, &no_ip_as_path_cmd);
+    install_element(CONFIG_NODE, &no_ip_as_path_all_cmd);
+    install_element(ENABLE_NODE, &show_ip_as_path_access_list_cmd);
+    install_element(ENABLE_NODE, &show_ip_as_path_access_list_all_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_cmd);
     install_element(CONFIG_NODE, &ip_prefix_list_seq_any_cmd);
     install_element(CONFIG_NODE, &ipv6_prefix_list_seq_cmd);
@@ -12722,6 +14376,12 @@ void policy_vty_init(void)
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_prefix_cmd);
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_prefix_first_match_cmd);
     install_element(ENABLE_NODE, &show_ipv6_prefix_list_prefix_longer_cmd);
+    install_element(CONFIG_NODE, &ip_community_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_community_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_community_list_line_cmd);
+    install_element(CONFIG_NODE, &ip_extcommunity_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_extcommunity_list_cmd);
+    install_element(CONFIG_NODE, &no_ip_extcommunity_list_line_cmd);
     install_element(ENABLE_NODE, &show_ip_community_list_cmd);
     install_element(ENABLE_NODE, &show_ip_extcommunity_list_cmd);
     install_element(CONFIG_NODE, &rt_map_cmd);
@@ -12732,16 +14392,52 @@ void policy_vty_init(void)
     install_element(RMAP_NODE, &match_ip_address_prefix_list_cmd);
     install_element(RMAP_NODE, &no_match_ip_address_prefix_list_cmd);
     install_element(RMAP_NODE, &no_match_ip_address_prefix_list_val_cmd);
+    install_element(RMAP_NODE, &match_ipv6_address_prefix_list_cmd);
+    install_element(RMAP_NODE, &no_match_ipv6_address_prefix_list_cmd);
+    install_element(RMAP_NODE, &match_community_cmd);
+    install_element(RMAP_NODE, &match_community_exact_cmd);
+    install_element(RMAP_NODE, &no_match_community_cmd);
+    install_element(RMAP_NODE, &no_match_community_val_cmd);
+    install_element(RMAP_NODE, &no_match_community_exact_cmd);
+    install_element(RMAP_NODE, &match_ecommunity_cmd);
+    install_element(RMAP_NODE, &no_match_ecommunity_cmd);
+    install_element(RMAP_NODE, &no_match_ecommunity_val_cmd);
+    install_element(RMAP_NODE, &match_aspath_cmd);
+    install_element(RMAP_NODE, &no_match_aspath_cmd);
+    install_element(RMAP_NODE, &no_match_aspath_val_cmd);
+    install_element(RMAP_NODE, &set_aspath_exclude_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_exclude_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_exclude_val_cmd);
+    install_element(RMAP_NODE, &set_aspath_prepend_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_prepend_cmd);
+    install_element(RMAP_NODE, &no_set_aspath_prepend_val_cmd);
+    install_element(RMAP_NODE, &match_origin_cmd);
+    install_element(RMAP_NODE, &no_match_origin_cmd);
+    install_element(RMAP_NODE, &no_match_origin_val_cmd);
+    install_element(RMAP_NODE, &set_origin_cmd);
+    install_element(RMAP_NODE, &no_set_origin_cmd);
+    install_element(RMAP_NODE, &no_set_origin_val_cmd);
+    install_element(RMAP_NODE, &match_metric_cmd);
+    install_element(RMAP_NODE, &no_match_metric_cmd);
+    install_element(RMAP_NODE, &no_match_metric_val_cmd);
+    install_element(RMAP_NODE, &match_ipv6_next_hop_cmd);
+    install_element(RMAP_NODE, &no_match_ipv6_next_hop_cmd);
+    install_element(RMAP_NODE, &set_ipv6_nexthop_global_cmd);
+    install_element(RMAP_NODE, &no_set_ipv6_nexthop_global_cmd);
+    install_element(RMAP_NODE, &no_set_ipv6_nexthop_global_val_cmd);
+    install_element(RMAP_NODE, &match_probability_cmd);
+    install_element(RMAP_NODE, &no_match_probability_cmd);
+    install_element(RMAP_NODE, &no_match_probability_val_cmd);
     install_element(RMAP_NODE, &set_metric_cmd);
     install_element(RMAP_NODE, &no_set_metric_cmd);
     install_element(RMAP_NODE, &no_set_metric_val_cmd);
     install_element(RMAP_NODE, &set_community_cmd);
     install_element(RMAP_NODE, &no_set_community_cmd);
     install_element(RMAP_NODE, &no_set_community_val_cmd);
-    install_element(CONFIG_NODE, &ip_community_list_cmd);
-    install_element(CONFIG_NODE, &no_ip_community_list_cmd);
-    install_element(CONFIG_NODE, &no_ip_community_list_line_cmd);
-    install_element(CONFIG_NODE, &ip_extcommunity_list_cmd);
-    install_element(CONFIG_NODE, &no_ip_extcommunity_list_cmd);
-    install_element(CONFIG_NODE, &no_ip_extcommunity_list_line_cmd);
+    install_element(RMAP_NODE, &set_ecommunity_rt_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_rt_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_rt_val_cmd);
+    install_element(RMAP_NODE, &set_ecommunity_soo_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_soo_cmd);
+    install_element(RMAP_NODE, &no_set_ecommunity_soo_val_cmd);
 }

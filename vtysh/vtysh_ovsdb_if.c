@@ -1,7 +1,7 @@
 /* Vtysh daemon ovsdb integration.
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,6 +43,7 @@
 #include "openswitch-idl.h"
 #include "vtysh/vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_config.h"
+#include "vtysh/vtysh.h"
 #include "assert.h"
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
@@ -58,7 +59,6 @@
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
-#include "intf_vty.h"
 
 #define TMOUT_POLL_INTERVAL 20
 
@@ -165,6 +165,8 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_password);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_timers);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_route_maps);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_prefix_lists);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_aspath_filters);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_statistics);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_external_ids);
@@ -405,11 +407,15 @@ vrf_ovsdb_init()
 static void
 policy_ovsdb_init ()
 {
-    ovsdb_idl_add_table(idl, &ovsrec_table_community_filter);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_action);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_match);
-    ovsdb_idl_add_column(idl, &ovsrec_community_filter_col_type);
+    ovsdb_idl_add_table(idl, &ovsrec_table_bgp_community_filter);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_community_filter_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_community_filter_col_type);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_community_filter_col_permit);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_community_filter_col_deny);
+    ovsdb_idl_add_table(idl, &ovsrec_table_bgp_aspath_filter);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_aspath_filter_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_aspath_filter_col_permit);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_aspath_filter_col_deny);
     ovsdb_idl_add_table(idl, &ovsrec_table_prefix_list);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_prefix_list_col_prefix_list_entries);
@@ -432,40 +438,6 @@ policy_ovsdb_init ()
     ovsdb_idl_add_column(idl, &ovsrec_route_map_entry_col_set);
 }
 
-/***********************************************************
- * @func        : intf_ovsdb_init
- * @detail      : Initialise Interface table
- * @param[in]
- *      idl     : Pointer to idl structure
- ***********************************************************/
-static void
-intf_ovsdb_init()
-{
-    ovsdb_idl_add_table(idl, &ovsrec_table_interface);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lldp_neighbor_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_admin_state);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_duplex);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mtu);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_mac_in_use);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_link_speed);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pause);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_type);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_hw_intf_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_pm_info);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_error);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_lacp_status);
-    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
-    ovsdb_idl_add_table(idl, &ovsrec_table_port);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
-}
 
 /***********************************************************
  * @func        : alias_ovsdb_init
@@ -500,67 +472,6 @@ radius_server_ovsdb_init()
     return;
 }
 
-static void
-dhcp_tftp_ovsdb_init()
-{
-    /* Add dhcp-server config tables */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
-    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcp_server);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_range);
-    ovsdb_idl_add_table(idl, &ovsrec_table_dhcpsrv_static_host);
-
-    /* Add columns in  System table */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
-
-    /* Add columns in VRF table */
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_dhcp_server);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_other_config);
-
-    /* Add columns in DHCP Server table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_ranges);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_static_hosts);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_dhcp_options);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_matches);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_bootp);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcp_server_col_other_config);
-
-    /* Add columns in DHCP server ranges table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_start_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_end_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_netmask);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_prefix_len);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_broadcast);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_set_tag);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_match_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_is_static);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_range_col_lease_duration);
-
-    /* Add columns in DHCP server static hosts table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_mac_addresses);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_set_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_hostname);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_client_id);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_static_host_col_lease_duration);
-
-    /* Add columns in DHCP server options table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_match_tags);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_number);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_option_value);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_option_col_ipv6);
-
-    /* Add columns in DHCP server matches table */
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_set_tag);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_name);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_number);
-    ovsdb_idl_add_column(idl, &ovsrec_dhcpsrv_match_col_option_value);
-
-}
-
 /***********************************************************
  * @func        : system_ovsdb_init
  * @detail      : Initialise System Related OVSDB tables
@@ -572,18 +483,10 @@ system_ovsdb_init()
 {
     /* Add Platform Related Tables. */
     ovsdb_idl_add_table(idl, &ovsrec_table_fan);
-    ovsdb_idl_add_table(idl, &ovsrec_table_power_supply);
     ovsdb_idl_add_table(idl, &ovsrec_table_led);
     ovsdb_idl_add_table(idl, &ovsrec_table_subsystem);
-    ovsdb_idl_add_table(idl, &ovsrec_table_temp_sensor);
 
     /* Add Columns for System Related Tables. */
-
-    /* Power Supply. */
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_power_supply_col_external_ids);
 
     /* LED. */
     ovsdb_idl_add_column(idl, &ovsrec_led_col_id);
@@ -596,8 +499,6 @@ system_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_interfaces);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_leds);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_fans);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_temp_sensors);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_power_supplies);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_asset_tag_number);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_type);
@@ -616,18 +517,6 @@ system_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_fan_col_external_ids);
     ovsdb_idl_add_column(idl, &ovsrec_fan_col_speed);
 
-    /* Temp. */
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_external_ids);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_fan_state);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_hw_config);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_location);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_max);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_min);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_other_config);;
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_temp_sensor_col_temperature);
-
 }
 
 static void
@@ -637,35 +526,10 @@ logrotate_ovsdb_init()
 }
 
 static void
-vlan_ovsdb_init()
-{
-    ovsdb_idl_add_table(idl, &ovsrec_table_vlan);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_id);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_admin);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_description);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_hw_vlan_config);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_oper_state_reason);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_internal_usage);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_external_ids);
-    ovsdb_idl_add_column(idl, &ovsrec_vlan_col_other_config);
-}
-
-static void
 mgmt_intf_ovsdb_init()
 {
     ovsdb_idl_add_column(idl, &ovsrec_system_col_mgmt_intf);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_mgmt_intf_status);
-}
-
-static void
-lacp_ovsdb_init()
-{
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_lacp_config);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_interface_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_lacp);
 }
 
 static void
@@ -677,6 +541,7 @@ ntp_ovsdb_init()
     /* Add columns in System Table */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_config);
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_ntp_status);
 
     /* Add VRF Table */
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
@@ -734,25 +599,18 @@ ovsdb_init(const char *db_path)
     /* Add hostname columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
+    /* Add domain name column */
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_domain_name);
+
     /* Add AAA columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_aaa);
 
     /* Add Auto Provision Column. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_auto_provisioning_status);
 
-    /* Add tables and columns for LLDP configuration. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_cur_cfg);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_system_mac);
-
     /* Add columns for ECMP configuration. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
 
-    /* Interface tables. */
-    intf_ovsdb_init();
 
    /* Management interface columns. */
     mgmt_intf_ovsdb_init();
@@ -781,21 +639,8 @@ ovsdb_init(const char *db_path)
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
 
-    /* vlan table. */
-    vlan_ovsdb_init();
-    dhcp_tftp_ovsdb_init();
     /* Logrotate tables */
     logrotate_ovsdb_init();
-    /* Add tables/columns needed for LACP config commands. */
-    lacp_ovsdb_init();
-
-    /* Neighbor table for 'show arp' & 'show ipv6 neighbor' commands. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_neighbor);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_address_family);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_mac);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_state);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_neighbor_col_port);
 
     /* Add tables/columns needed for NTP config commands. */
     ntp_ovsdb_init();
@@ -846,6 +691,92 @@ vtysh_ovsdb_init(int argc, char *argv[], char *db_name)
 }
 
 /*
+ * The set command to set the domain_name column in the
+ * system table using the set-domainname command.
+ */
+void
+vtysh_ovsdb_domainname_set(const char* domainname)
+{
+    const struct ovsrec_system *ovs= NULL;
+    struct ovsdb_idl_txn* status_txn = NULL;
+    enum ovsdb_idl_txn_status status = TXN_ERROR;
+    ovs = ovsrec_system_first(idl);
+    if (ovs) {
+        status_txn = cli_do_config_start();
+        if (status_txn == NULL) {
+            cli_do_config_abort(status_txn);
+            VLOG_ERR("Couldn't create the OVSDB transaction.");
+        } else {
+            ovsrec_system_set_domain_name(ovs, domainname);
+            status = cli_do_config_finish(status_txn);
+        }
+        if (!(status == TXN_SUCCESS || status == TXN_UNCHANGED))
+            VLOG_ERR("Committing transaction to DB failed.");
+    } else {
+        VLOG_ERR("Unable to retrieve any system table rows.");
+    }
+}
+
+/*
+ * Name : vtysh_ovsdb_domainname_reset
+ * Responsibility : To unset domain name set by CLI.
+ * Parameters : char *domainname_arg : Stores user's input value.
+ * Return : CMD_SUCCESS for success, CMD_OVSDB_FAILURE for failure.
+ */
+int
+vtysh_ovsdb_domainname_reset(char *domainname_arg)
+{
+    const struct ovsrec_system *row = NULL;
+    const struct ovsdb_datum *data = NULL;
+    char *ovsdb_domainname = NULL;
+    row = ovsrec_system_first(idl);
+
+    if (row != NULL)
+    {
+        data = ovsrec_system_get_domain_name(row, OVSDB_TYPE_STRING);
+        ovsdb_domainname = data->keys->string;
+
+        if ((ovsdb_domainname != NULL) &&
+            (strcmp(ovsdb_domainname, domainname_arg) == 0))
+        {
+            vtysh_ovsdb_domainname_set("");
+        }
+        else
+        {
+            vty_out(vty, "Domainname %s not configured. %s", domainname_arg,
+                                                               VTY_NEWLINE);
+        }
+    }
+    else
+    {
+        vty_out(vty, "Error in retrieving domainname.%s", VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+    return CMD_SUCCESS;
+}
+
+/*
+ * The get command to read from the ovsdb system table
+ * domain_name column from the vtysh get-domain_name command.
+ */
+
+const char*
+vtysh_ovsdb_domainname_get()
+{
+    const struct ovsrec_system *ovs;
+    ovs = ovsrec_system_first(idl);
+
+    if (ovs) {
+      return smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_DOMAIN_NAME);
+    } else {
+      VLOG_ERR("unable to retrieve any system table rows");
+    }
+
+    return NULL;
+}
+
+
+/*
  * The get command to read from the ovsdb system table
  * software_info:os_name value.
  */
@@ -853,7 +784,7 @@ const char *
 vtysh_ovsdb_os_name_get(void)
 {
     const struct ovsrec_system *ovs;
-    char *os_name = NULL;
+    const char *os_name = NULL;
 
     ovs = ovsrec_system_first(idl);
     if (ovs) {
@@ -928,7 +859,7 @@ vtysh_ovsdb_hostname_reset(char *hostname_arg)
         data = ovsrec_system_get_hostname(row, OVSDB_TYPE_STRING);
         ovsdb_hostname = data->keys->string;
 
-        if ((ovsdb_hostname != "") && (strcmp(ovsdb_hostname, hostname_arg) == 0))
+        if ((ovsdb_hostname != NULL) && (strcmp(ovsdb_hostname, hostname_arg) == 0))
         {
             vtysh_ovsdb_hostname_set("");
         }
@@ -1508,7 +1439,7 @@ check_port_in_vrf(const char *port_name)
 bool
 check_if_internal_vlan(const struct ovsrec_vlan *vlan_row)
 {
-    char *l3port = NULL;
+    const char *l3port = NULL;
     l3port = smap_get(&vlan_row->internal_usage,
                                  VLAN_INTERNAL_USAGE_L3PORT);
     return (l3port != NULL) ? true : false;
@@ -1530,18 +1461,50 @@ utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
 {
     struct cmd_token *token;
     int i;
-    for (i = 0; i < vector_active (describe); i++) {
-        if ((token = vector_slot (describe, i)) != NULL) {
+    char *p;
+    char *str;
+    for (i = 0; i < vector_active (describe); i++)
+    {
+        if ((token = vector_slot (describe, i)) != NULL)
+        {
             if (token->cmd == NULL || token->cmd[0] == '\0')
                 continue;
 
-            if (! token->desc)
+            if (!token->desc)
                 fprintf (stdout,"  %-s\n",
                          token->cmd[0] == '.' ? token->cmd + 1 : token->cmd);
             else
-                fprintf (stdout,"  %-*s  %s\n", width,
-                         token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
-                         token->desc);
+            {
+                str = p = NULL;
+                str = token->cmd[0] == '.' ? token->cmd + 1 : token->cmd;
+                if ((str != NULL) && (str[0] == '<'))
+                {
+                    p = strchr (str, ':');
+                    if (p != NULL)
+                    {
+                        char *val_p = (char*)malloc(strlen(str));
+                        if (val_p != NULL)
+                        {
+                            *val_p = '<';
+                            strcpy ((val_p + 1), (p + 1));
+                            fprintf (stdout,"  %-*s  %s\n", width,val_p, token->desc);
+                            free(val_p);
+                        }
+                    }
+                    else
+                    {
+                        fprintf (stdout,"  %-*s  %s\n", width,
+                           token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                           token->desc);
+                    }
+                }
+                else
+                {
+                    fprintf (stdout,"  %-*s  %s\n", width,
+                        token->cmd[0] == '.' ? token->cmd + 1 : token->cmd,
+                        token->desc);
+                }
+            }
         }
     }
 }

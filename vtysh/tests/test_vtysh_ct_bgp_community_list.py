@@ -1,7 +1,7 @@
 
 #!/usr/bin/python
 
-# (c) Copyright 2015 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2016 Hewlett Packard Enterprise Development LP
 #
 # GNU Zebra is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -33,115 +33,151 @@ class bgp_communitylistCLItest(OpsVsiTest):
                            controller=None, build=True)
 
     def test_add_bgp_community_list(self):
-         info("\n##########  Test to add bgp "
+         info("\n##########  Test to add BGP "
               "community list configuration ##########\n")
          community_created = False
          s1 = self.net.switches[0]
          s1.cmdCLI("configure terminal")
-         s1.cmdCLI("ip community-list test_name permit regular expression")
+         s1.cmdCLI("ip community-list test_name permit _5000_")
          dump = s1.cmdCLI("do show running-config")
          lines = dump.split('\n')
          for line in lines :
-             if "ip community-list test_name permit regular expression"\
+             if "ip community-list test_name permit _5000_"\
                  in line :
                 community_created = True
          assert community_created == True, \
-            'Test to add bgp community '\
+            'Test to add BGP community '\
             'list configuration failed '
          return True
 
     def test_add_bgp_extcommunity_list(self):
-         info("\n##########  Test to add bgp "
+         info("\n##########  Test to add BGP "
               "extcommunity configurations ##########\n")
          community_created = False
          s1 = self.net.switches[0]
          s1.cmdCLI("configure terminal")
-         s1.cmdCLI("ip extcommunity-list testname permit regular expression")
+         s1.cmdCLI("ip extcommunity-list testname permit _1000_")
          dump = s1.cmdCLI("do show running-config")
          lines = dump.split('\n')
          for line in lines :
-             if "ip extcommunity-list testname permit regular expression"\
+             if "ip extcommunity-list testname permit _1000_"\
                 in line :
                 community_created = True
          assert community_created == True, \
-            'Test to add bgp '\
+            'Test to add BGP '\
             'extcommunity configuration failed '
          return True
 
+    def test_validate_show_ip_community_list(self):
+         info("\n##########  Test to validate show "
+              "ip community list configuration ##########\n")
+         community_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("do show ip community-list")
+         lines = dump.split('\n')
+         i = 0
+         for line in lines :
+             if "ip community-list test_name" in lines[i]\
+                 and "permit _5000_" in lines[i+1] :
+                community_created = True
+             i = i + 1
+         assert community_created == True, \
+            'Test to validate show ip community '\
+            'list configuration failed '
+         return True
+
+    def test_validate_show_ip_extcommunity_list(self):
+         info("\n##########  Test to validate show "
+              "ip extcommunity list configuration ##########\n")
+         community_created = False
+         s1 = self.net.switches[0]
+         dump = s1.cmdCLI("do show ip extcommunity-list")
+         lines = dump.split('\n')
+         i = 0
+         for line in lines :
+             if "ip extcommunity-list testname" in lines[i]\
+                 and "permit _1000_" in lines[i+1] :
+                community_created = True
+             i = i + 1
+         assert community_created == True, \
+            'Test to validate show ip extcommunity '\
+            'list configuration failed '
+         return True
+
     def test_delete_bgp_community_list(self):
-         info("\n##########  Test to delete bgp "
+         info("\n##########  Test to delete BGP "
               "community list configurations ##########\n")
          community_deleted = True
          s1 = self.net.switches[0]
          s1.cmdCLI("configure terminal")
-         s1.cmdCLI("no ip community-list test_name permit regular expression")
+         s1.cmdCLI("no ip community-list test_name permit _5000_")
          s1.cmdCLI("end")
          dump = s1.cmdCLI("do show running-config")
          lines = dump.split('\n')
          for line in lines :
-             if "ip community-list test_name permit regular expression"\
+             if "ip community-list test_name permit _5000_"\
                 in line :
                 community_deleted = False
          assert community_deleted == True, \
-            'Test to delete bgp '\
+            'Test to delete BGP '\
             'community configuration failed '
          return True
 
     def test_add_bgp_extcommunity_deny_list(self):
-         info("\n##########  Test to add bgp "
+         info("\n##########  Test to add BGP "
               "extcommunity list deny configurations ##########\n")
          community_created = False
          s1 = self.net.switches[0]
          s1.cmdCLI("configure terminal")
-         s1.cmdCLI("ip extcommunity-list testname1 deny regular expression")
+         s1.cmdCLI("ip extcommunity-list test_name1 deny 100")
          dump = s1.cmdCLI("do show running-config")
          lines = dump.split('\n')
          for line in lines :
-             if "ip extcommunity-list testname1 deny regular expression"\
+             if "ip extcommunity-list test_name1 deny 100"\
                 in line :
                 community_created = True
          assert community_created == True, \
-            'Test to add bgp '\
+            'Test to add BGP '\
             'extcommunity configuration failed '
          return True
 
     def test_delete_bgp_extcommunity_deny_list(self):
-         info("\n##########  Test to delete bgp "
+         info("\n##########  Test to delete BGP "
               "extcommunity deny list configurations ##########\n")
          community_deleted = True
          s1 = self.net.switches[0]
          s1.cmdCLI("configure terminal")
-         s1.cmdCLI("no ip extcommunity-list testname1 deny regular expression")
+         s1.cmdCLI("no ip extcommunity-list test_name1 deny 100")
          s1.cmdCLI("end")
          dump = s1.cmdCLI("do show running-config")
          lines = dump.split('\n')
          for line in lines :
-             if "ip extcommunity-list testname1 deny regular expression"\
+             if "ip extcommunity-list test_name1 deny 100"\
                 in line :
                 community_deleted = False
          assert community_deleted == True, \
-            'Test to delete bgp '\
+            'Test to delete BGP '\
             'community configuration failed '
          return True
 
 
     def test_delete_bgp_extcommunity_list(self):
-         info("\n##########  Test to delete bgp "
+         info("\n##########  Test to delete BGP "
               "extcommunity configurations ##########\n")
          community_deleted = True
          s1 = self.net.switches[0]
          s1.cmdCLI("configure terminal")
          s1.cmdCLI("no ip extcommunity-list test_name permit"\
-                   " regular expression")
+                   " 200")
          s1.cmdCLI("end")
          dump = s1.cmdCLI("do show running-config")
          lines = dump.split('\n')
          for line in lines :
-             if "ip extcommunity-list testname permit regular expression"\
+             if "ip extcommunity-list testname permit 200"\
                 in line :
                 community_deleted = False
          assert community_deleted == True, \
-            'Test to delete bgp '\
+            'Test to delete BGP '\
             'extcommunity configuration failed '
          return True
 
@@ -163,30 +199,40 @@ class Test_vtysh_bgp_community:
 
     def test_add_bgp_community_list_cli(self):
         if self.test.test_add_bgp_community_list() :
-           info("\n###  Test to add bgp "
+           info("\n###  Test to add BGP "
                 "community list configuration - SUCCESS! ###\n")
 
     def test_add_bgp_extcommunity_list_cli(self):
         if self.test.test_add_bgp_extcommunity_list() :
-           info("\n###  Test to add bgp "
+           info("\n###  Test to add BGP "
                 "extcommunity configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_community_list(self):
+        if self.test.test_validate_show_ip_community_list() :
+           info("\n###  Test to validate show "
+                "ip community list configuration - SUCCESS! ###\n")
+
+    def test_validate_show_ip_extcommunity_list(self):
+        if self.test.test_validate_show_ip_extcommunity_list() :
+           info("\n###  Test to validate show "
+                "ip extcommunity list configuration - SUCCESS! ###\n")
 
     def test_delete_bgp_community_list_cli(self):
         if self.test.test_delete_bgp_community_list() :
-           info("\n###  Test to delete bgp "
+           info("\n###  Test to delete BGP "
                 "community configuration - SUCCESS! ###\n")
 
     def test_add_bgp_extcommunity_list_deny_cli(self):
         if self.test.test_add_bgp_extcommunity_deny_list() :
-           info("\n###  Test to add bgp "
+           info("\n###  Test to add BGP "
                 "extcommunity deny configuration - SUCCESS! ###\n")
 
     def test_delete_bgp_extcommunity_list_deny_cli(self):
         if self.test.test_delete_bgp_extcommunity_deny_list():
-           info("\n###  Test to delete bgp "
+           info("\n###  Test to delete BGP "
                 "extcommunity deny configuration - SUCCESS! ###\n")
 
     def test_delete_bgp_extcommunity_list_cli(self):
         if self.test.test_delete_bgp_extcommunity_list() :
-           info("\n###  Test to delete bgp "
+           info("\n###  Test to delete BGP "
                 "extcommunity configuration - SUCCESS! ###\n")

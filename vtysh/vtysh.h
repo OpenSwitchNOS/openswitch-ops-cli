@@ -1,6 +1,6 @@
 /* Virtual terminal interface shell.
  * Copyright (C) 2000 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -92,7 +92,8 @@ struct vtysh_alias_data {
                                                                               IS_NETWORK_ADDRESS(i))
 #define USERADD "/usr/sbin/useradd"
 #define USERMOD "/usr/sbin/usermod"
-#define OVSDB_GROUP "ovsdb_users"
+#define OVSDB_GROUP "ovsdb-client"
+#define NETOP_GROUP "ops_netop"
 #define VTYSH_PROMPT "/usr/bin/vtysh"
 #define USERDEL "/usr/sbin/userdel"
 #define USER_NAME_MAX_LENGTH 32
@@ -118,7 +119,6 @@ extern int vtysh_show_startup;
 #endif
 
 void vtysh_init_vty (void);
-void vtysh_init_cmd (void);
 extern int vtysh_connect_all (const char *optional_daemon_name);
 void vtysh_readline_init (void);
 void vtysh_user_init (void);
@@ -142,9 +142,13 @@ void vtysh_config_init (void);
 
 void vtysh_pager_init (void);
 
+void vtysh_periodic_refresh(void);
+
 int execute_command (const char *, int, const char *arg[]);
 
 int remove_temp_db(int initialize);
+
+int vty_refresh_aliases(void);
 /* Child process execution flag. */
 extern int execute_flag;
 
@@ -154,7 +158,8 @@ int vtysh_exit (struct vty *vty);
 int vtysh_end (void);
 void vtysh_install_default (enum node_type node);
 extern struct cmd_element vtysh_end_all_cmd;
-
+extern struct cmd_element vtysh_exit_interface_cmd;
+int default_port_add (const char *if_name);
 #define MAX_IFNAME_LENGTH 50
 
 #endif /* VTYSH_H */

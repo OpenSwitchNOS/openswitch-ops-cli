@@ -1,6 +1,6 @@
 /* Vtysh daemon ovsdb integration.
  *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,6 +33,12 @@ void vtysh_ovsdb_init(int argc, char *argv[], char *db_name);
 const char *vtysh_ovsdb_os_name_get(void);
 
 const char *vtysh_ovsdb_switch_version_get(void);
+
+void vtysh_ovsdb_domainname_set(const char * in);
+
+int vtysh_ovsdb_domainname_reset(char *domainname_arg);
+
+const char* vtysh_ovsdb_domainname_get(void);
 
 void vtysh_ovsdb_hostname_set(const char * in);
 
@@ -69,4 +75,15 @@ bool check_port_in_vrf(const char *port_name);
 bool vtysh_ovsdb_is_loaded(void);
 
 void utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width);
+
+extern struct ovsdb_idl_txn *txn;
+const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
+                                             bool attach_to_default_vrf,
+                                             struct ovsdb_idl_txn *txn);
+
+const struct ovsrec_vrf* vrf_lookup(const char *vrf_name);
+
+extern struct ovsrec_vlan *vlan_row;
+bool check_if_internal_vlan(const struct ovsrec_vlan *vlan_row);
+
 #endif /* VTYSH_OVSDB_IF_H */
