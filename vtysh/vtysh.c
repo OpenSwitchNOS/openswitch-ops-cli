@@ -69,7 +69,6 @@
 #endif
 
 #include "sub_intf_vty.h"
-#include "aaa_vty.h"
 #include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
@@ -4145,7 +4144,6 @@ vtysh_init_vty (void)
   vtysh_cli_post_init();
   vrf_vty_init();
   l3routes_vty_init();
-  aaa_vty_init();
   /* Sub-interafce and Loopback init. */
   sub_intf_vty_init();
   loopback_intf_vty_init();
