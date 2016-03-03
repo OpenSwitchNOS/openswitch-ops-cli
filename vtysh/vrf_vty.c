@@ -928,6 +928,11 @@ vrf_config_ip (const char *if_name, const char *ip4, bool secondary)
   size_t i;
   bool is_secondary;
 
+  if (!is_valid_ip_address(ip4)) {
+      vty_out(vty, "  %s %s", OVSDB_INVALID_IPV4_IPV6_ERROR, VTY_NEWLINE);
+      return CMD_SUCCESS;
+  }
+
   status_txn = cli_do_config_start ();
   if (status_txn == NULL)
     {
@@ -1163,6 +1168,11 @@ vrf_config_ipv6 (const char *if_name, const char *ipv6, bool secondary)
   char **secondary_ipv6_addresses;
   size_t i;
   bool is_secondary;
+
+  if (!is_valid_ip_address(ipv6)) {
+      vty_out(vty, "  %s %s", OVSDB_INVALID_IPV4_IPV6_ERROR, VTY_NEWLINE);
+      return CMD_SUCCESS;
+  }
 
   status_txn = cli_do_config_start ();
 
