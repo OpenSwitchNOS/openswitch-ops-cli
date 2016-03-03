@@ -36,7 +36,7 @@ typedef unsigned char boolean;
 #define MAX_IPV4_OR_IPV6_SUBNET_CIDR_STR_LEN MAX_IPV6_STRING_LENGTH + 3
 
 #define  IS_BROADCAST_IPV4(i)      (((long)(i) & 0xffffffff) == 0xffffffff)
-#define  IS_LOOPBACK_IPV4(i)       (((long)(i)) == 0x7F000001)
+#define  IS_LOOPBACK_IPV4(i)       (((long)(i) & 0x7f000000) == 0x7f000000)
 #define  IS_MULTICAST_IPV4(i)      (((long)(i) & 0xf0000000) == 0xe0000000)
 #define  IS_EXPERIMENTAL_IPV4(i)   (((long)(i) & 0xf0000000) == 0xf0000000)
 #define  IS_INVALID_IPV4(i)         ((long)(i) == 0)
