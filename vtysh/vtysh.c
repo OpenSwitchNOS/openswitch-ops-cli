@@ -2093,9 +2093,9 @@ ALIAS (vtysh_write_memory,
 #endif
 
 #ifdef ENABLE_OVSDB
-DEFUN (vtysh_show_running_config,
-      vtysh_show_running_config_cmd,
-      "show running-config",
+DEFUN_HIDDEN (vtysh_show_running_config_new,
+      vtysh_show_running_config_new_cmd,
+      "show test-running-config",
       SHOW_STR
       "Current running configuration\n")
 {
@@ -2119,9 +2119,9 @@ DEFUN (vtysh_show_running_config,
  * Existing infra will be removed once all modules are modularized
  * and this DEFUN will be changed to show running-config.
  */
-DEFUN_HIDDEN (vtysh_show_running_config_new,
-       vtysh_show_running_config_new_cmd,
-       "show test-running-config",
+DEFUN (vtysh_show_running_config,
+       vtysh_show_running_config_cmd,
+       "show running-config",
        SHOW_STR
        "Current running configuration\n")
 {
