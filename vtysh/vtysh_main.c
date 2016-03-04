@@ -424,6 +424,9 @@ main (int argc, char **argv, char **env)
   vtysh_user_init ();
   vtysh_config_init ();
 
+  /* parse yaml file to be used by 'password' command */
+  passwd_srv_path_manager_init();
+
   vty_init_vtysh ();
 
   /* Read vtysh configuration file before connecting to daemons. */
