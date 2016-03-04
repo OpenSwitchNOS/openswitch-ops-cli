@@ -529,6 +529,9 @@ main (int argc, char **argv, char **env)
 
   vtysh_pager_init ();
 
+  /* parse yaml file to be used by 'password' command */
+  passwd_srv_path_manager_init();
+
   vtysh_readline_init ();
 /* Welcome Banner of vtysh */
 #ifndef ENABLE_OVSDB
