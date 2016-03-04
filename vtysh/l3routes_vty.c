@@ -149,6 +149,160 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
   return false;
 }
 
+
+/* Validate if nexthop as ip address if an unspecified/invalid address.
+ * Ipv4 invalid nexthop ip address is 0.0.0.0. */
+static bool
+ipv4address_is_unspecified (char * ipaddr)
+{
+  if (ipaddr && !strcmp ("0.0.0.0", ipaddr))
+    return  true;
+
+  return false;
+}
+
+/* Validate if ip address if a broadcast address.
+ * Ipv4 broadcast address is 255.255.255.255/32. */
+static bool
+ipv4address_is_broadcast (char * ipaddr)
+{
+  char ipaddr_copy[MAX_ADDRESS_LEN];
+  char * ip = NULL;
+
+  memset (ipaddr_copy, 0, sizeof(ipaddr_copy));
+  strncpy (ipaddr_copy, ipaddr, sizeof(ipaddr_copy));
+
+  /* Separting the prefix from the ip address */
+  ip = strtok (ipaddr_copy, "/");
+
+  /* If prefix length is found then enter the if condition else compare the
+   * ip adress directly. */
+  if (ip && !strcmp (ip, BROADCAST_ADDRESS))
+    return true;
+  else if (!strcmp (ipaddr, BROADCAST_ADDRESS))
+    return true;
+
+  return false;
+}
+
+/* Validate if ip address if a multicast address.
+ * Ipv4 multicast addresses range from 224.0.0.0 to 239.255.255.255. */
+static bool
+ipv4address_is_multicast (char * ipaddr)
+{
+  char ipaddr_copy[MAX_ADDRESS_LEN];
+  char * ip = NULL;
+
+  memset (ipaddr_copy, 0, sizeof(ipaddr_copy));
+  strncpy (ipaddr_copy, ipaddr, sizeof(ipaddr_copy));
+
+  /* Separting the first octet from the ip address */
+  ip = strtok (ipaddr_copy, ".");
+  if (ip && (223 < atoi(ip)) && (atoi(ip) < 240))
+    return true;
+
+  return false;
+}
+
+/* Validate if ip address if a loopback address.
+ * Ipv4 loopback addresses range from 127.0.0.0 to 127.255.255.255. */
+static bool
+ipv4address_is_loopback (char * ipaddr)
+{
+  char ipaddr_copy[MAX_ADDRESS_LEN];
+  char * ip = NULL;
+
+  memset (ipaddr_copy, 0, sizeof(ipaddr_copy));
+  strncpy (ipaddr_copy, ipaddr, sizeof(ipaddr_copy));
+
+  /* Separting the first octet from the ip address */
+  ip = strtok (ipaddr_copy, ".");
+  if (ip && (127 == atoi(ip)))
+    return true;
+
+  return false;
+}
+
+/* Validate if nexthop as ipv6 address if an unspecified/invalid address.
+ * Ipv6 unspecified nexthop ip addresses is '::'. */
+static bool
+ipv6address_is_unspecified (char * ipv6addr)
+{
+  int ret;
+  struct in6_addr ipv6_gate;
+
+  ret = inet_pton (AF_INET6, ipv6addr, &ipv6_gate);
+
+  if (ret)
+    {
+      if (IPV6_ADDR_SAME(&in6addr_any, &ipv6_gate))
+        return true;
+    }
+
+  return false;
+}
+
+
+/* Validate if ipv6 address if a multicast address.
+ * Ipv6 multicast addresses start from ff00::/8. */
+static bool
+ipv6address_is_multicast (char * ipv6addr)
+{
+  char ipv6addr_copy[MAX_ADDRESS_LEN];
+  char * ipv6 = NULL;
+  int ipv6char, i;
+  int charfound = 0;
+
+  memset (ipv6addr_copy, 0, sizeof(ipv6addr_copy));
+  strncpy (ipv6addr_copy, ipv6addr, sizeof(ipv6addr_copy));
+
+  /* Separting the first 16 bits from the ipv6 address */
+  ipv6 = strtok (ipv6addr_copy, ":");
+
+  /* Checking if the first 2 characters are "ff", comparing with its ASCII
+   * value*/
+  for (i = 0; i < 2; i++)
+    {
+      ipv6char = ipv6[i];
+      if (ipv6char == 102)
+        charfound += 1;
+    }
+
+  if (charfound == 2)
+    return true;
+
+  return false;
+}
+
+
+/* Validate if ipv6 address if a loopback address.
+ * Ipv6 loopback addresses is ::1/128. */
+static bool
+ipv6address_is_loopback (char * ipv6addr)
+{
+  char ipv6addr_copy[MAX_ADDRESS_LEN];
+  char * ipv6address = NULL;
+  int ret;
+  struct in6_addr ipv6_gate;
+
+  ipv6address = strtok (ipv6addr_copy, "/");
+  /* If condition takes care of the prefix with prefix length and else about
+   * the nexthop without prefix length*/
+  if (ipv6address)
+    ret = inet_pton (AF_INET6, ipv6address, &ipv6_gate);
+  else
+    ret = inet_pton (AF_INET6, ipv6addr, &ipv6_gate);
+
+  if (ret)
+    {
+      if (IPV6_ADDR_SAME(&in6addr_loopback, &ipv6_gate))
+        return true;
+    }
+
+  return false;
+}
+
+
 struct ovsrec_nexthop *
 set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
                    bool prefix_match, bool static_match, char * dist_entry,
@@ -206,6 +360,37 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
   /* Validating and assigning nexthop as an ip address */
   else
     {
+      /* Validate if the nexthop entered is an unspecified/any address */
+      if (ipv4address_is_unspecified (nh_entry) ||
+          ipv6address_is_unspecified (nh_entry))
+        {
+          vty_out (vty, "\nUnspecified address not allowed as nexthop\n");
+          return NULL;
+        }
+
+      /* Validate if the nexthop entered is a standard broadcast address */
+      if (ipv4address_is_broadcast (nh_entry))
+        {
+          vty_out (vty, "\nBroadcast address not allowed as nexthop\n");
+          return NULL;
+        }
+
+      /* Validate if the nexthop entered is a standard multicast address */
+      if (ipv4address_is_multicast (nh_entry) ||
+          ipv6address_is_multicast (nh_entry))
+        {
+          vty_out (vty, "\nMulticast address not allowed as nexthop\n");
+          return NULL;
+        }
+
+      /* Validate if the nexthop entered is not a standard loopback address */
+      if (ipv4address_is_loopback (nh_entry) ||
+          ipv6address_is_loopback (nh_entry))
+        {
+          vty_out (vty, "\nLoopback address not allowed as nexthop\n");
+          return NULL;
+        }
+
       ip_found = port_find_ipaddress (row_port, nh_entry);
       if (!ip_found)
         ovsrec_nexthop_set_ip_address (row_nh, nh_entry);
@@ -240,14 +425,12 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
                */
               if (*row->distance != DEFAULT_DISTANCE)
                 {
-                  vty_out (
-                          vty,
+                  vty_out (vty,
                           "\nCannot configure default distance for this nexthop%s",
                           VTY_NEWLINE);
                   vty_out (vty, "Distance for this route is set to %ld, ",
                            *row->distance);
-                  vty_out (
-                          vty,
+                  vty_out (vty,
                           "decided by the distance entered for the first nexthop\n%s",
                           VTY_NEWLINE);
                   vty_out (vty,
@@ -263,8 +446,7 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
                        VTY_NEWLINE);
               vty_out (vty, "Distance for this route is already set to %ld, ",
                        *row->distance);
-              vty_out (
-                      vty,
+              vty_out (vty,
                       "decided by the distance entered for the first nexthop\n%s",
                       VTY_NEWLINE);
               vty_out (vty, "Please enter the new route with distance %ld%s",
@@ -294,6 +476,8 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn *status_txn = NULL;
   char prefix_str[MAX_ADDRESS_LEN];
+  char prefix_str_copy[MAX_ADDRESS_LEN];
+  char *prefix = NULL;
   bool prefix_match = false;
   bool nh_match = false;
   bool static_match = false;
@@ -334,6 +518,30 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
   if (strcmp (prefix_str, argv[0]))
     {
       vty_out (vty, "\nInvalid prefix. Valid prefix: %s\n", prefix_str);
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  /* Validate if the prefix entered is a standard broadcast address */
+  if (ipv4address_is_broadcast (prefix_str))
+    {
+      vty_out (vty, "\nBroadcast address not allowed as prefix\n");
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  /* Validate if the prefix entered is a standard multicast address */
+  if (ipv4address_is_multicast (prefix_str))
+    {
+      vty_out (vty, "\nMulticast address not allowed as prefix\n");
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  /* Validate if the prefix entered is not a standard loopback address */
+  if (ipv4address_is_loopback (prefix_str))
+    {
+      vty_out (vty, "\nLoopback address not allowed as prefix\n");
       cli_do_config_abort (status_txn);
       return CMD_OVSDB_FAILURE;
     }
@@ -957,6 +1165,22 @@ ipv6_route_common (struct vty *vty, char **argv, char *distance)
   if (strcmp (prefix_str, argv[0]))
     {
       vty_out (vty, "\nInvalid prefix. Valid prefix: %s\n", prefix_str);
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  /* Validate if the prefix entered is a standard multicast address */
+  if (ipv6address_is_multicast (prefix_str))
+    {
+      vty_out (vty, "\nMulticast address not allowed as prefix\n");
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  /* Validate if the prefix entered is a standard loopback address */
+  if (ipv6address_is_loopback (prefix_str))
+    {
+      vty_out (vty, "\nLoopback address not allowed as prefix\n");
       cli_do_config_abort (status_txn);
       return CMD_OVSDB_FAILURE;
     }
