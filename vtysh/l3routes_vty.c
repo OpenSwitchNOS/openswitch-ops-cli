@@ -51,8 +51,6 @@
 
 VLOG_DEFINE_THIS_MODULE (vtysh_l3routes_cli);
 extern struct ovsdb_idl *idl;
-#define DEFAULT_DISTANCE 1
-#define MAX_ADDRESS_LEN 256
 
 /*
  * Check if port is part of any VRF and return the VRF row.
@@ -90,7 +88,7 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
       if (port_row->ip4_address)
         {
           memset(ip4_addrcopy, 0, sizeof(ip4_addrcopy));
-          strcpy(ip4_addrcopy, port_row->ip4_address);
+          strncpy(ip4_addrcopy, port_row->ip4_address, sizeof(ip4_addrcopy));
           ipv4_address = strtok(ip4_addrcopy, "/");
           if (!strcmp (ipv4_address, ip_entry))
             {
@@ -105,7 +103,8 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
           if (port_row->ip4_address_secondary[index])
             {
               memset(ip4_addrcopy, 0, sizeof(ip4_addrcopy));
-              strcpy(ip4_addrcopy, port_row->ip4_address_secondary[index]);
+              strncpy(ip4_addrcopy, port_row->ip4_address_secondary[index],
+                     sizeof(ip4_addrcopy));
               ipv4_address = strtok(ip4_addrcopy, "/");
               if (!strcmp (ipv4_address, ip_entry))
                 {
@@ -119,7 +118,7 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
       if (port_row->ip6_address)
         {
           memset(ip6_addrcopy, 0, sizeof(ip6_addrcopy));
-          strcpy(ip6_addrcopy, port_row->ip6_address);
+          strncpy(ip6_addrcopy, port_row->ip6_address, sizeof(ip6_addrcopy));
           ipv6_address = strtok(ip6_addrcopy, "/");
           if (!strcmp (ipv6_address, ip_entry))
             {
@@ -134,7 +133,8 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
           if (port_row->ip6_address_secondary[index])
             {
               memset(ip6_addrcopy, 0, sizeof(ip6_addrcopy));
-              strcpy(ip6_addrcopy, port_row->ip6_address_secondary[index]);
+              strncpy(ip6_addrcopy, port_row->ip6_address_secondary[index],
+                     sizeof(ip6_addrcopy));
               ipv6_address = strtok(ip6_addrcopy, "/");
               if (!strcmp (ipv6_address, ip_entry))
                 {
@@ -146,6 +146,128 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
             }
         }
     }
+  return false;
+}
+
+
+/* Validate if ipv4 address if a broadcast, multicast, loopback or unspecified
+ * address.
+ * Ipv4 broadcast address is 255.255.255.255.
+ * Ipv4 multicast addresses range from 224.0.0.0 to 239.255.255.255.
+ * Ipv4 loopback addresses range from 127.0.0.0 to 127.255.255.255.
+ * Ipv4 invalid address is 0.0.0.0.
+ * It handles both the form of addresses: A.B.C.D as well as
+ * A.B.C.D/M
+ * For prefixes, we validate for broadcast, multicast and loopback addresses.
+ * For nexthops, we validate for broadcast, multicast, loopback and invalid
+ * addresses. */
+static bool
+ip4_routing_address_is_invalid (char * ipaddr, bool is_nexthop)
+{
+  char ipaddr_copy[MAX_ADDRESS_LEN];
+  char * ip = NULL;
+  int ret;
+  struct in_addr ipv4_gate;
+
+  memset (ipaddr_copy, 0, sizeof(ipaddr_copy));
+  if (ipaddr)
+    strncpy (ipaddr_copy, ipaddr, sizeof(ipaddr_copy));
+  else
+    return false;
+
+  /* Separting the prefix from the ip address */
+  ip = strtok (ipaddr_copy, "/");
+  ret = inet_pton (AF_INET, ipaddr_copy, &ipv4_gate);
+
+  if (ret && ip)
+    {
+      if (IS_BROADCAST_IPV4 (htonl(ipv4_gate.s_addr)))
+        {
+          vty_out (vty, "\nBroadcast ipv4 address not allowed as %s\n",
+                   is_nexthop ? "nexthop" : "prefix");
+          return true;
+        }
+      else if (IS_MULTICAST_IPV4 (htonl(ipv4_gate.s_addr)))
+        {
+          vty_out (vty, "\nMulticast ipv4 address not allowed as %s\n",
+                   is_nexthop ? "nexthop" : "prefix");
+          return true;
+        }
+      else if (IS_LOOPBACK_IPV4_ADDRESS (htonl(ipv4_gate.s_addr)))
+        {
+          vty_out (vty, "\nLoopback ipv4 address not allowed as %s\n",
+                   is_nexthop ? "nexthop" : "prefix");
+          return true;
+        }
+      /* Only nexthops are validated for unspecified addresses */
+      else if (is_nexthop && IS_INVALID_IPV4 (htonl(ipv4_gate.s_addr)))
+        {
+          vty_out (vty, "\nUnspecified ipv4 address not allowed as nexthop\n");
+          return true;
+        }
+    }
+
+  return false;
+}
+
+
+/* Validate if ipv6 address if a multicast, linklocal, loopback or unspecified
+ * address.
+ * Ipv6 multicast addresses range from ff00::/8 - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128.
+ * Ipv6 linklocal addresses range from fe80::/10 - febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128.
+ * Ipv6 loopback address is ::1/128.
+ * Ipv6 unspecified address is ::/128.
+ * It handles both the form of addresses: X:X::X:X  as well as
+ * X:X::X:X/M *
+ * For prefixes, we validate for multicast, linklocal and loopback addresses.
+ * For nexthops, we validate for multicast, linklocal, loopback and invalid
+ * addresses. */
+static bool
+ip6_routing_address_is_invalid (char * ipv6addr, bool is_nexthop)
+{
+  char ipv6addr_copy[MAX_ADDRESS_LEN];
+  char * ip = NULL;
+  int ret;
+  struct in6_addr ipv6_gate;
+
+  memset (ipv6addr_copy, 0, sizeof(ipv6addr_copy));
+  if (ipv6addr)
+    strncpy (ipv6addr_copy, ipv6addr, sizeof(ipv6addr_copy));
+  else
+    return false;
+
+  /* Separting the prefix from the ip address */
+  ip = strtok (ipv6addr_copy, "/");
+  ret = inet_pton (AF_INET6, ipv6addr_copy, &ipv6_gate);
+
+  if (ret && ip)
+    {
+      if (IN6_IS_ADDR_MULTICAST (&ipv6_gate))
+        {
+          vty_out (vty, "\nMulticast ipv6 address not allowed as %s\n",
+                   is_nexthop ? "nexthop" : "prefix");
+          return true;
+        }
+      else if (IN6_IS_ADDR_LINKLOCAL (&ipv6_gate))
+        {
+          vty_out (vty, "\nLinklocal ipv6 address not allowed as %s\n",
+                   is_nexthop ? "nexthop" : "prefix");
+          return true;
+        }
+      else if (IN6_IS_ADDR_LOOPBACK (&ipv6_gate))
+        {
+          vty_out (vty, "\nLoopback ipv6 address not allowed as %s\n",
+                   is_nexthop ? "nexthop" : "prefix");
+          return true;
+        }
+      /* Only nexthops are validated for unspecified addresses */
+      else if (is_nexthop && IN6_IS_ADDR_UNSPECIFIED (&ipv6_gate))
+        {
+          vty_out (vty, "\nUnspecified ipv6 address not allowed as nexthop\n");
+          return true;
+        }
+    }
+
   return false;
 }
 
@@ -162,13 +284,21 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
   int ret = 0;
   int64_t distance;
   bool ip_found;
+  bool ip_addr_family_is_ipv4 = false;
+  bool ip_addr_family_is_ipv6 = false;
 
   row_nh = ovsrec_nexthop_insert (status_txn);
 
   if (!strcmp ("ipv4", ip_addr_family))
-    ret = inet_pton (AF_INET, nh_entry, &nexthop);
+    {
+      ret = inet_pton (AF_INET, nh_entry, &nexthop);
+      ip_addr_family_is_ipv4 = true;
+    }
   else if (!strcmp ("ipv6", ip_addr_family))
-    ret = inet_pton (AF_INET6, nh_entry, &nexthop_ipv6);
+    {
+      ret = inet_pton (AF_INET6, nh_entry, &nexthop_ipv6);
+      ip_addr_family_is_ipv6 = true;
+    }
 
   /* Validating and assigning nexthop as an interface */
   if (!ret)
@@ -201,6 +331,18 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
   /* Validating and assigning nexthop as an ip address */
   else
     {
+      /* Validate if the nexthop entered is an unspecified/any, broadcast,
+       * multicast or loopback address */
+
+      /* Validating ipv4 addresses as nexthop */
+      if (ip_addr_family_is_ipv4 && ip4_routing_address_is_invalid (nh_entry, true))
+        return NULL;
+
+      /* Validating ipv6 addresses as nexthop */
+      else if (ip_addr_family_is_ipv6 &&
+               ip6_routing_address_is_invalid (nh_entry, true))
+        return NULL;
+
       ip_found = port_find_ipaddress (row_port, nh_entry);
       if (!ip_found)
         ovsrec_nexthop_set_ip_address (row_nh, nh_entry);
@@ -235,14 +377,12 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
                */
               if (*row->distance != DEFAULT_DISTANCE)
                 {
-                  vty_out (
-                          vty,
+                  vty_out (vty,
                           "\nCannot configure default distance for this nexthop%s",
                           VTY_NEWLINE);
                   vty_out (vty, "Distance for this route is set to %ld, ",
                            *row->distance);
-                  vty_out (
-                          vty,
+                  vty_out (vty,
                           "decided by the distance entered for the first nexthop\n%s",
                           VTY_NEWLINE);
                   vty_out (vty,
@@ -258,8 +398,7 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
                        VTY_NEWLINE);
               vty_out (vty, "Distance for this route is already set to %ld, ",
                        *row->distance);
-              vty_out (
-                      vty,
+              vty_out (vty,
                       "decided by the distance entered for the first nexthop\n%s",
                       VTY_NEWLINE);
               vty_out (vty, "Please enter the new route with distance %ld%s",
@@ -289,6 +428,8 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn *status_txn = NULL;
   char prefix_str[MAX_ADDRESS_LEN];
+  char prefix_str_copy[MAX_ADDRESS_LEN];
+  char *prefix = NULL;
   bool prefix_match = false;
   bool nh_match = false;
   bool static_match = false;
@@ -329,6 +470,14 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
   if (strcmp (prefix_str, argv[0]))
     {
       vty_out (vty, "\nInvalid prefix. Valid prefix: %s\n", prefix_str);
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  /* Validate if the prefix entered is a standard broadcast,
+   * multicast or loopback address */
+  if (ip4_routing_address_is_invalid (prefix_str, false))
+    {
       cli_do_config_abort (status_txn);
       return CMD_OVSDB_FAILURE;
     }
@@ -952,6 +1101,14 @@ ipv6_route_common (struct vty *vty, char **argv, char *distance)
   if (strcmp (prefix_str, argv[0]))
     {
       vty_out (vty, "\nInvalid prefix. Valid prefix: %s\n", prefix_str);
+      cli_do_config_abort (status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+  /* Validate if the prefix entered is a standard multicast,
+   * linklocal or loopback address */
+  if (ip6_routing_address_is_invalid (prefix_str, false))
+    {
       cli_do_config_abort (status_txn);
       return CMD_OVSDB_FAILURE;
     }
