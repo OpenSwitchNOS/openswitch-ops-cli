@@ -119,6 +119,17 @@ struct vtysh_client
       { .fd = -1, .name = "pimd", .flag = VTYSH_PIMD, .path = PIM_VTYSH_PATH},
    };
 
+/*
+ * password server MSG structure
+ *
+ * TODO: have a way to include passwd_srv_pub.h from password server repo
+ */
+typedef struct passwd_srv_msg {
+    int  op_code;
+	char username[50];
+	char oldpasswd[50];
+	char newpasswd[50];
+} passwd_srv_msg_t;
 
 /* We need direct access to ripd to implement vtysh_exit_ripd_only. */
 static struct vtysh_client *ripd_client = NULL;
@@ -2703,6 +2714,96 @@ get_password(const char *prompt)
     return ret;
 }
 
+/**
+ * This API sends credential via socket to password server
+ *  password server updates password for user specified
+ *
+ *  TODO: encrypt MSG with public-key, this needs to be implemented ASAP
+ *
+ *  @param username user
+ *  @param oldpass  old password
+ *  @param newpass  new password
+ */
+static void
+send_credential_to_passwd_server(const char* username, const char* oldpass,
+		const char* newpass)
+{
+	int sockfd, sockaddr_len, msg_len, bufLen;
+	struct sockaddr_un un, unSrv;
+	passwd_srv_msg_t msg;
+	int error_code = 0;
+
+	memset(&msg, 0, sizeof(msg));
+
+	msg.op_code = 1; /* 1 == request for password update */
+	memcpy(msg.username, username, strlen(username));
+	memcpy(msg.oldpasswd, oldpass, strlen(oldpass));
+	memcpy(msg.newpasswd, newpass, strlen(newpass));
+
+	memset(&unSrv, 0, sizeof(unSrv));
+	sockaddr_len = sizeof(struct sockaddr_un);
+	msg_len      = sizeof(error_code);
+
+	unSrv.sun_family = AF_UNIX;
+	strncpy(unSrv.sun_path, "/tmp/passwd-srv.sock", strlen("/tmp/passwd-srv.sock"));
+
+	if ((0 > (sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) ||
+	    (0 != connect(sockfd, (struct sockaddr *)&unSrv, sockaddr_len))))
+	{
+		vty_out(vty, "Password update failed [conn failed].%s", VTY_NEWLINE);
+	}
+
+	/* send message to password server */
+	if (0 > send(sockfd, &msg, sizeof(msg), MSG_DONTROUTE))
+	{
+		vty_out(vty, "Password update failed [sent failed].%s", VTY_NEWLINE);
+	}
+
+	/* clear msg since MSG has sent */
+	memset(&msg, 0, sizeof(msg));
+
+	/* waiting to receive message */
+	if (0 > recv(sockfd, &error_code, &msg_len, MSG_PEEK))
+	{
+		vty_out(vty, "Password update failed [recv failed].%s", VTY_NEWLINE);
+	}
+
+	/* message received by server, decode opcode */
+	switch(error_code)
+	{
+	case 0:
+	{
+		vty_out(vty, "Password updated successfully.%s", VTY_NEWLINE);
+		break;
+	}
+	case 1:
+	{
+		vty_out(vty, "User %s is not found.%s", username, VTY_NEWLINE);
+		break;
+	}
+	case 2:
+	{
+		vty_out(vty, "Old password did not match.%s", VTY_NEWLINE);
+		break;
+	}
+	case 3:
+	case 4:
+	case 5:
+	{
+		vty_out(vty, "Password update failed [server error=%d].%s", error_code,
+				VTY_NEWLINE);
+		break;
+	}
+	default:
+		vty_out(vty, "Unknown MSG recv'd by server [error=%d].%s", error_code,
+				VTY_NEWLINE);
+		break;
+	}
+
+	/* close connection to server */
+	shutdown(sockfd, SHUT_RDWR);
+}
+
 /*Function to set the user passsword */
 static int
 set_user_passwd(const char *user)
@@ -2711,8 +2812,10 @@ set_user_passwd(const char *user)
     struct crypt_data data;
     data.initialized = 0;
 
+    char *username = NULL;
     char *password = NULL;
     char *passwd = NULL;
+    char *oldpassword = NULL;
     char *cp = NULL;
     const char *arg[4];
     arg[0] = USERMOD;
@@ -2730,8 +2833,14 @@ set_user_passwd(const char *user)
     /* Change the passwd if user is in ovsdb-client group list */
     if (ret==1)
     {
+        username = getlogin();
+
         vty_out(vty,"Changing password for user %s %s", user, VTY_NEWLINE);
+        oldpassword = get_password("Enter old password: ");
+
         passwd = get_password("Enter new password: ");
+        vty_out(vty, "%s", VTY_NEWLINE);
+
         if (!passwd)
         {
             vty_out(vty, "%s", VTY_NEWLINE);
@@ -2758,11 +2867,19 @@ set_user_passwd(const char *user)
             vty_out(vty, "%s", VTY_NEWLINE);
             vty_out(vty, "Password updated successfully.%s", VTY_NEWLINE);
         }
+
+#if 0
         /* Encrypt the password. String 'ab' is used to perturb the */
         /* algorithm in  one of 4096 different ways. */
         password = crypt_r(passwd,"ab",&data);
         arg[2]=password;
         execute_command("sudo", 4, (const char **)arg);
+#endif
+
+        send_credential_to_passwd_server((username) ? username : user,
+                oldpassword, passwd);
+
+        free(oldpassword);
         free(passwd);
         free(cp);
         return CMD_SUCCESS;
