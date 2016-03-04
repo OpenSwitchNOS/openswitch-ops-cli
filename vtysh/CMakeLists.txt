@@ -64,14 +64,15 @@ add_executable(vtysh
   utils/vlan_vtysh_utils.c
   utils/intf_vtysh_utils.c
   utils/vrf_vtysh_utils.c
-  utils/audit_log_utils.c)
+  utils/audit_log_utils.c
+  utils/passwd_srv_utils.c)
 
 target_link_libraries(vtysh PUBLIC
   ${OVSCOMMON_LIBRARIES}
   ${OVSDB_LIBRARIES}
   ${OPSCLI_LIBRARIES}
   ${OPSUTILS_LIBRARIES}
-  crypt pthread readline ops-cli audit opsutils)
+  crypt pthread readline ops-cli audit opsutils crypto)
 
 install(
   TARGETS vtysh
