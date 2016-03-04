@@ -29,4 +29,10 @@
 void
 l3routes_vty_init (void);
 
+#define DEFAULT_DISTANCE  1
+#define MAX_ADDRESS_LEN   256
+/* Loopback range lies from 127.0.0.0 - 127.255.255.255
+ * Thus, not using the macro 'IS_LOOPBACK_IPV4(i)' defined in vtysh.h */
+#define  IS_LOOPBACK_IPV4_ADDRESS(i)  (((long)(i) & 0xff000000) == 0x7f000000)
+
 #endif /* _L3ROUTES_VTY_H */
