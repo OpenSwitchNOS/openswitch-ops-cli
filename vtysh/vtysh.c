@@ -58,7 +58,6 @@
 #ifdef ENABLE_OVSDB
 #include "vswitch-idl.h"
 #include "smap.h"
-#include "lldp_vty.h"
 #include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "l3routes_vty.h"
@@ -67,12 +66,9 @@
 #include "source_interface_selection_vty.h"
 #include "ping.h"
 #include "traceroute.h"
-
-void ospf_vty_init(void);
 #endif
 
 #include "sub_intf_vty.h"
-#include "aaa_vty.h"
 #include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
@@ -2108,9 +2104,9 @@ ALIAS (vtysh_write_memory,
 #endif
 
 #ifdef ENABLE_OVSDB
-DEFUN (vtysh_show_running_config,
-      vtysh_show_running_config_cmd,
-      "show running-config",
+DEFUN_HIDDEN (vtysh_show_running_config_new,
+      vtysh_show_running_config_new_cmd,
+      "show test-running-config",
       SHOW_STR
       "Current running configuration\n")
 {
@@ -2134,9 +2130,9 @@ DEFUN (vtysh_show_running_config,
  * Existing infra will be removed once all modules are modularized
  * and this DEFUN will be changed to show running-config.
  */
-DEFUN_HIDDEN (vtysh_show_running_config_new,
-       vtysh_show_running_config_new_cmd,
-       "show test-running-config",
+DEFUN (vtysh_show_running_config,
+       vtysh_show_running_config_cmd,
+       "show running-config",
        SHOW_STR
        "Current running configuration\n")
 {
@@ -4168,10 +4164,8 @@ vtysh_init_vty (void)
    * CLI node and elements by using Libltdl-interface.
    */
   vtysh_cli_post_init();
-  lldp_vty_init();
   vrf_vty_init();
   l3routes_vty_init();
-  aaa_vty_init();
   /* Sub-interafce and Loopback init. */
   sub_intf_vty_init();
   loopback_intf_vty_init();
