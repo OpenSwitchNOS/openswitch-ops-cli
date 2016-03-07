@@ -64,8 +64,6 @@
 #include "system_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
-#include "ping.h"
-#include "traceroute.h"
 #endif
 
 #include "sub_intf_vty.h"
@@ -4156,8 +4154,6 @@ vtysh_init_vty (void)
   /* Initialize source interface selection CLI*/
   source_interface_selection_vty_init();
 
-  /* Initialise tracerouote CLI */
-  traceroute_vty_init();
   /* Initialise SFTP CLI */
   sftp_vty_init();
 
@@ -4166,7 +4162,5 @@ vtysh_init_vty (void)
   /* Initialize ECMP CLI */
   ecmp_vty_init();
 
-  /* Initialize ping CLI */
-  ping_vty_init();
 #endif
 }

@@ -51,12 +51,10 @@ add_executable(vtysh
   vtysh_ovsdb_vrf_context.c
   sub_intf_vty.c loopback_vty.c
   vtysh_ovsdb_router_context.c
-  logrotate_vty.c traceroute_vty.c
-  traceroute_handler.c
+  logrotate_vty.c
   source_interface_selection_vty.c
   vtysh_ovsdb_source_interface_context.c
-  ecmp_vty.c ping_vty.c
-  ping_handler.c sftp_vty.c
+  ecmp_vty.c sftp_vty.c
   ospf_vty.c
   vtysh_ovsdb_sftp_context.c
   utils/vlan_vtysh_utils.c
