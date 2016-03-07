@@ -2103,32 +2103,6 @@ ALIAS (vtysh_write_memory,
 #endif
 
 #ifdef ENABLE_OVSDB
-DEFUN_HIDDEN (vtysh_show_running_config_new,
-      vtysh_show_running_config_new_cmd,
-      "show test-running-config",
-      SHOW_STR
-      "Current running configuration\n")
-{
-   FILE *fp = NULL;
-
-   fp = stdout;
-   if (!vtysh_show_startup)
-   {
-       fprintf(fp, "Current configuration:\n");
-   }
-
-   vtysh_ovsdb_read_config(fp);
-   return CMD_SUCCESS;
-}
-
-
-/*
- * This defun is added for show running config testing.
- * As all the features are being modularized, untill
- * completed, existing running-config infra will be used.
- * Existing infra will be removed once all modules are modularized
- * and this DEFUN will be changed to show running-config.
- */
 DEFUN (vtysh_show_running_config,
        vtysh_show_running_config_cmd,
        "show running-config",
@@ -4125,8 +4099,6 @@ vtysh_init_vty (void)
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-   install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
-
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
   install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
