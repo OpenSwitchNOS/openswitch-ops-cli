@@ -92,6 +92,7 @@ struct vtysh_alias_data {
                                                                               IS_NETWORK_ADDRESS(i))
 #define USERADD "/usr/sbin/useradd"
 #define USERMOD "/usr/sbin/usermod"
+#define PASSWD "/usr/bin/passwd"
 #define OVSDB_GROUP "ovsdb-client"
 #define NETOP_GROUP "ops_netop"
 #define VTYSH_PROMPT "/usr/bin/vtysh"
