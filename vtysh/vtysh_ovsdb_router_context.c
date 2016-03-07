@@ -37,19 +37,6 @@
 #include "command.h"
 #include "ospf_vty.h"
 
-#define CLEANUP_SHOW_RUN
-
-char routercontextbgpclientname[] = "vtysh_router_context_bgp_clientcallback";
-char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
-char routercontextbgpipprefixclientname[] =
-                          "vtysh_router_context_bgp_ip_prefix_clientcallback";
-char routercontextbgproutemapclientname[] =
-                          "vtysh_router_context_bgp_routemap_clientcallback";
-char routercontextbgpipcommunityfilterclientname[] =
-                          "vtysh_router_context_bgp_ip_community_filter_clientcallback";
-char routercontextbgpipfilterlistclientname[] =
-                          "vtysh_router_context_bgp_ip_filter_list_clientcallback";
-
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
 | Responsibility : Neighbor commands
@@ -818,7 +805,6 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
 int
 vtysh_init_router_context_clients()
 {
-    vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
     retval = install_show_run_config_context(e_vtysh_router_context,
@@ -903,93 +889,6 @@ vtysh_init_router_context_clients()
     if (e_vtysh_ok != retval) {
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                                  "router context unable to add ospf callback");
-        assert(0);
-        return retval;
-    }
-
-    client.p_client_name = routercontextbgpclientname;
-    client.client_id = e_vtysh_router_context_bgp;
-    client.p_callback = &vtysh_router_context_bgp_clientcallback;
-    retval = vtysh_context_addclient(
-              e_vtysh_router_context, e_vtysh_router_context_bgp, &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add bgp callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    client.p_client_name = routercontextbgpipprefixclientname;
-    client.client_id = e_vtysh_router_context_bgp_ip_prefix;
-    client.p_callback = &vtysh_router_context_bgp_ip_prefix_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_ip_prefix,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add "
-                                  "bgp ip prefix callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    client.p_client_name = routercontextbgpipcommunityfilterclientname;
-    client.client_id = e_vtysh_router_context_bgp_ip_community_filter;
-    client.p_callback = &vtysh_router_context_bgp_ip_community_filter_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_ip_community_filter,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add "
-                                  "bgp ip community filter callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    client.p_client_name = routercontextbgpipfilterlistclientname;
-    client.client_id = e_vtysh_router_context_bgp_ip_filter_list;
-    client.p_callback = &vtysh_router_context_bgp_ip_filter_list_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_ip_filter_list,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add "
-                                  "bgp ip filter list callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-
-    client.p_client_name = routercontextbgproutemapclientname;
-    client.client_id = e_vtysh_router_context_bgp_routemap;
-    client.p_callback = &vtysh_router_context_bgp_routemap_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_routemap,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add bgp "
-                                  "routemap callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    memset(&client, 0, sizeof(vtysh_context_client));
-    client.p_client_name = routercontextospfclientname;
-    client.client_id = e_vtysh_router_context_ospf;
-    client.p_callback = &vtysh_router_context_ospf_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_ospf, &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add ospf callback");
         assert(0);
         return retval;
     }
