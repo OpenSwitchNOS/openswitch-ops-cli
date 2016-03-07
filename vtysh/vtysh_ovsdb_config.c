@@ -275,6 +275,7 @@ vtysh_context_addclient(vtysh_contextid contextid,
   return e_vtysh_ok;
 }
 
+#if 0
 /*-----------------------------------------------------------------------------
 | Function: vtysh_context_removeclient
 | Responsibility : Remove client callback to the given context
@@ -323,6 +324,7 @@ vtysh_context_removeclient(vtysh_contextid contextid,
 
   return e_vtysh_ok;
 }
+#endif
 
 /*-----------------------------------------------------------------------------
 | Function: vtysh_sh_run_iteratecontextlist
@@ -418,7 +420,7 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     return e_vtysh_ok;
 }
 
-
+#if 0
 /*-----------------------------------------------------------------------------
 | Function: vtysh_context_iterateoverclients
 | Responsibility : iterates over the client callback for given contextid
@@ -489,7 +491,7 @@ vtysh_ovsdb_read_config(FILE *fp)
     vtysh_context_iterateoverclients(contextid, &msg);
   }
 }
-
+#endif
 /*-----------------------------------------------------------------------------
 | Function: vtysh_ovsdb_cli_print
 | Responsibility : prints the command in given format

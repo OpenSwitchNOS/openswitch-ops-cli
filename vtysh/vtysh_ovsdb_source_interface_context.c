@@ -36,9 +36,10 @@
 #include "vtysh_ovsdb_source_interface_context.h"
 #include "openswitch-dflt.h"
 
+#if 0
 char source_interface_context_client_name[] = "vtysh_source_interface_context_\
                                                clientcallback";
-
+#endif
 /*-----------------------------------------------------------------------------
 | Function : vtysh_source_interface_context_clientcallback
 | Responsibility : Client callback routine
@@ -89,7 +90,7 @@ vtysh_source_interface_context_clientcallback (void *p_private)
 int
 vtysh_init_source_interface_context_clients(void)
 {
-    vtysh_context_client client;
+    //vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
     retval = install_show_run_config_context(
@@ -102,7 +103,7 @@ vtysh_init_source_interface_context_clients(void)
         assert(0);
         return retval;
     }
-
+#if 0
     memset(&client, 0, sizeof(vtysh_context_client));
     client.p_client_name = source_interface_context_client_name;
     client.client_id = e_vtysh_source_interface_context_config;
@@ -116,6 +117,6 @@ vtysh_init_source_interface_context_clients(void)
         assert(0);
         return retval;
     }
-
+#endif
     return e_vtysh_ok;
 }

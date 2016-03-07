@@ -38,9 +38,10 @@
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh_ovsdb_sftp_context.h"
-
+#if 0
 char sftp_server_context_client_name[] = "vtysh_sftp_server_context_\
                                                         clientcallback";
+#endif
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_sftp_server_context_clientcallback
@@ -78,7 +79,7 @@ vtysh_sftp_server_context_clientcallback (void *p_private)
 int
 vtysh_init_sftp_context_clients (void)
 {
-    vtysh_context_client client;
+//    vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
     retval = install_show_run_config_context(
@@ -94,6 +95,7 @@ vtysh_init_sftp_context_clients (void)
         return retval;
     }
 
+#if 0
     client.p_client_name = sftp_server_context_client_name;
     client.client_id = e_vtysh_sftp_server_context_config;
     client.p_callback = &vtysh_sftp_server_context_clientcallback;
@@ -108,5 +110,6 @@ vtysh_init_sftp_context_clients (void)
         assert(0);
         return retval;
     }
+#endif
     return e_vtysh_ok;
 }

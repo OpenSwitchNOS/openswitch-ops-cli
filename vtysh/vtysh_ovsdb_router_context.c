@@ -37,8 +37,7 @@
 #include "command.h"
 #include "ospf_vty.h"
 
-#define CLEANUP_SHOW_RUN
-
+#if 0
 char routercontextbgpclientname[] = "vtysh_router_context_bgp_clientcallback";
 char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
 char routercontextbgpipprefixclientname[] =
@@ -49,7 +48,7 @@ char routercontextbgpipcommunityfilterclientname[] =
                           "vtysh_router_context_bgp_ip_community_filter_clientcallback";
 char routercontextbgpipfilterlistclientname[] =
                           "vtysh_router_context_bgp_ip_filter_list_clientcallback";
-
+#endif
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
 | Responsibility : Neighbor commands
@@ -818,7 +817,7 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
 int
 vtysh_init_router_context_clients()
 {
-    vtysh_context_client client;
+//    vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
     retval = install_show_run_config_context(e_vtysh_router_context,
@@ -907,6 +906,7 @@ vtysh_init_router_context_clients()
         return retval;
     }
 
+#if 0
     client.p_client_name = routercontextbgpclientname;
     client.client_id = e_vtysh_router_context_bgp;
     client.p_callback = &vtysh_router_context_bgp_clientcallback;
@@ -993,6 +993,6 @@ vtysh_init_router_context_clients()
         assert(0);
         return retval;
     }
-
+#endif
     return e_vtysh_ok;
 }
