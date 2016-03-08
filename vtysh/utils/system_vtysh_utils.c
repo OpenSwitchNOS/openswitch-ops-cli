@@ -15,15 +15,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: system_vtysh_utils.h
+ * File: system_vtysh_utils.c
  *
- * Purpose: header file for common system vtysh utility macros and functions
+ * Purpose: Source file for common system vtysh utility macros and functions
  */
 
-#ifndef _SYSTEM_VTYSH_UTILS_H
-#define _SYSTEMVTYSH_UTILS_H
+#include "system_vtysh_utils.h"
 
-#define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
-const char *psu_state_string[];
-
-#endif /* _SYSTEM_VTYSH_UTILS_H  */
+const char *psu_state_string[] = {
+    "Absent",
+    "Input Fault",
+    "Output Fault",
+    "OK",
+    "Unknown"
+};
