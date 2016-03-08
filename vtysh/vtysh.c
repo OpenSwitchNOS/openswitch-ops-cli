@@ -61,7 +61,6 @@
 #include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "l3routes_vty.h"
-#include "system_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
 #endif
@@ -4118,8 +4117,6 @@ vtysh_init_vty (void)
   sub_intf_vty_init();
   loopback_intf_vty_init();
 
-  /* Initialise System cli */
-  system_vty_init();
   alias_vty_init();
   logrotate_vty_init();
 
