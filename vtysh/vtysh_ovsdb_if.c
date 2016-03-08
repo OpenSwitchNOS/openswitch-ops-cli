@@ -456,53 +456,6 @@ alias_ovsdb_init()
 }
 
 
-/***********************************************************
- * @func        : system_ovsdb_init
- * @detail      : Initialise System Related OVSDB tables
- * @param[in]
- *      idl     : Pointer to idl structure
- ***********************************************************/
-static void
-system_ovsdb_init()
-{
-    /* Add Platform Related Tables. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_fan);
-    ovsdb_idl_add_table(idl, &ovsrec_table_led);
-    ovsdb_idl_add_table(idl, &ovsrec_table_subsystem);
-
-    /* Add Columns for System Related Tables. */
-
-    /* LED. */
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_id);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_state);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_external_ids);
-
-    /* Subsystem .*/
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_interfaces);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_leds);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_fans);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_asset_tag_number);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_type);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_hw_desc_dir);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_other_info);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_external_ids);
-
-    /* Fan. */
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_direction);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_rpm);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_hw_config);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_external_ids);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_speed);
-
-}
-
 static void
 logrotate_ovsdb_init()
 {
@@ -618,8 +571,6 @@ ovsdb_init(const char *db_path)
     /* Policy tables. */
     policy_ovsdb_init();
 
-    /* System tables. */
-    system_ovsdb_init();
     /* VLAN internal commands. */
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
