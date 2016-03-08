@@ -1,6 +1,5 @@
-/* System CLI commands.
- *
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+/*
+ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,28 +15,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * File: system_vty.h
+ * File: system_vtysh_utils.c
  *
- * Purpose: To add system CLI configuration and display commands.
+ * Purpose: Source file for common system vtysh utility macros and functions
  */
 
-#ifndef _SYSTEM_VTY_H
-#define _SYSTEM_VTY_H
+#include "system_vtysh_utils.h"
 
-#ifndef SYS_STR
-#define SYS_STR		"System information\n"
-#endif
-
-typedef enum
-{
-	CLI_FAN,
-	CLI_PSU,
-	CLI_LED,
-	CLI_TEMP
-}cli_subsystem;
-
-int cli_system_get_all();
-
-void system_vty_init();
-
-#endif //_SYSTEM_VTY_H
+const char *psu_state_string[] = {
+    "Absent",
+    "Input Fault",
+    "Output Fault",
+    "OK",
+    "Unknown"
+};
