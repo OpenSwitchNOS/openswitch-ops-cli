@@ -26,6 +26,9 @@
 #ifndef VTYSH_OVSDB_CONFIG_CONTEXT_H
 #define VTYSH_OVSDB_CONFIG_CONTEXT_H
 
+#define SYSTEM_KEY_ROUTER_ID_STATIC   "router_id_static"
+#define SYSTEM_KEY_ROUTER_ID_VAL      "router_id_val"
+
 int vtysh_init_config_context_clients();
 vtysh_ret_val vtysh_config_context_global_clientcallback(void *p_private);
 vtysh_ret_val vtysh_config_context_staticroute_clientcallback(void *p_private);

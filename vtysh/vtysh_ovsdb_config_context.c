@@ -140,8 +140,6 @@ vtysh_ovsdb_ovstable_parse_othercfg(const struct smap *ifrow_config, vtysh_ovsdb
     }
   }
 
-
-
   data = NULL;
   data = smap_get(ifrow_config, SYSTEM_OTHER_CONFIG_MAP_LLDP_TLV_PORT_DESC_ENABLE);
   if (data)
@@ -227,6 +225,42 @@ vtysh_ovsdb_ovstable_parse_lacpcfg(const struct smap *lacp_config, vtysh_ovsdb_c
     {
       vtysh_ovsdb_cli_print(p_msg, "lacp system-priority %d", atoi(data));
     }
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_router_id
+| Responsibility : parse router_id column in system table
+| Parameters :
+|   router_id_config : idl row object pointer
+|   p_msg : callback arguments from show running config handler
+| Return : vtysh_ret_val, e_vtysh_ok
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_router_id (const struct smap *router_id_config, vtysh_ovsdb_cbmsg *p_msg)
+{
+  const char *rtr_id_str = NULL;
+  bool  rtr_id_static = false;
+  struct in_addr rtr_id = {0};
+
+  if(NULL == router_id_config) {
+    return e_vtysh_error;
+  }
+
+  if (!(rtr_id_static = smap_get_bool (router_id_config, SYSTEM_KEY_ROUTER_ID_STATIC, false))) {
+    return e_vtysh_ok;
+  }
+
+  if (rtr_id_str = smap_get (router_id_config, SYSTEM_KEY_ROUTER_ID_VAL)) {
+    if (!inet_aton (rtr_id_str, &rtr_id)) {
+      return e_vtysh_error;
+    }
+  }
+
+  if (rtr_id_str) {
+    vtysh_ovsdb_cli_print(p_msg, "router-id %s", rtr_id_str);
   }
 
   return e_vtysh_ok;
@@ -508,7 +542,10 @@ vtysh_config_context_global_clientcallback(void *p_private)
       vtysh_ovsdb_cli_print(p_msg, "session-timeout %d", atoi(data));
     }
 
-    /* parse the alias coumn */
+    /* parse the router_id column */
+    vtysh_ovsdb_ovstable_parse_router_id (&vswrow->router_id, p_msg);
+
+    /* parse the alias column */
     vtysh_ovsdb_ovstable_parse_alias(p_msg);
 
     /* parse other config param */

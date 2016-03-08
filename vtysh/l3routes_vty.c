@@ -1455,9 +1455,89 @@ DEFUN (vtysh_show_rib,
 }
 #endif
 
+int
+system_router_id_cmd_execute (const char * rtr_id_str)
+{
+  enum ovsdb_idl_txn_status status;
+  struct ovsdb_idl_txn *status_txn = NULL;
+  struct in_addr rtr_id;
+  const struct ovsrec_system *ovs_sys;
+  struct smap sys_rtr_id_smap;
+
+  status_txn = cli_do_config_start ();
+
+  if (status_txn == NULL) {
+    VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
+    cli_do_config_abort (status_txn);
+    return CMD_OVSDB_FAILURE;
+  }
+
+  ovs_sys = ovsrec_system_first(idl);
+
+  memset (&sys_rtr_id_smap, 0, sizeof (sys_rtr_id_smap));
+  smap_clone (&sys_rtr_id_smap, &(ovs_sys->router_id));
+
+  if (rtr_id_str) {
+    if (!inet_pton (AF_INET, rtr_id_str, &(rtr_id.s_addr))) {
+      vty_out (vty, "\n Malformed address format%s\n", VTY_NEWLINE);
+      smap_destroy (&sys_rtr_id_smap);
+      cli_do_config_abort (status_txn);
+      return CMD_WARNING;
+    }
+
+    if (!rtr_id.s_addr) {
+      vty_out (vty, "\n Invalid router-id 0.0.0.0 %s\n", VTY_NEWLINE);
+      smap_destroy (&sys_rtr_id_smap);
+      cli_do_config_abort (status_txn);
+      return CMD_WARNING;
+    }
+
+    smap_replace (&sys_rtr_id_smap, SYSTEM_KEY_ROUTER_ID_STATIC, "true");
+    smap_replace (&sys_rtr_id_smap, SYSTEM_KEY_ROUTER_ID_VAL, rtr_id_str);
+  }
+  else {
+    smap_replace (&sys_rtr_id_smap, SYSTEM_KEY_ROUTER_ID_STATIC, "false");
+    smap_replace (&sys_rtr_id_smap, SYSTEM_KEY_ROUTER_ID_VAL, ROUTER_ID_DEFAULT);
+  }
+
+  ovsrec_system_set_router_id (ovs_sys, &sys_rtr_id_smap);
+  smap_destroy (&sys_rtr_id_smap);
+
+  status = cli_do_config_finish (status_txn);
+
+  if (((status != TXN_SUCCESS) && (status != TXN_INCOMPLETE)
+      && (status != TXN_UNCHANGED))) {
+    VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
+    return CMD_OVSDB_FAILURE;
+  }
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_router_id,
+       cli_router_id_cmd,
+       "router-id A.B.C.D",
+       ROUTER_ID_STR
+       ROUTER_ID_VAL_STR)
+{
+  return system_router_id_cmd_execute (argv[0]);
+}
+
+DEFUN (cli_no_router_id,
+       cli_no_router_id_cmd,
+       "no router-id",
+       NO_STR
+       ROUTER_ID_STR)
+{
+  return system_router_id_cmd_execute (NULL);
+}
+
 void
 l3routes_vty_init (void)
 {
+  install_element (CONFIG_NODE, &cli_router_id_cmd);
+  install_element (CONFIG_NODE, &cli_no_router_id_cmd);
+
   install_element (CONFIG_NODE, &vtysh_ip_route_cmd);
   install_element (CONFIG_NODE, &vtysh_ip_route_distance_cmd);
 #ifdef VRF_ENABLE

@@ -26,6 +26,14 @@
 #ifndef _L3ROUTES_VTY_H
 #define _L3ROUTES_VTY_H
 
+#define ROUTER_ID_STR         "System router-id configuration\n"
+#define ROUTER_ID_VAL_STR     "Router-id in IPv4 address format\n"
+
+#define SYSTEM_KEY_ROUTER_ID_STATIC   "router_id_static"
+#define SYSTEM_KEY_ROUTER_ID_VAL      "router_id_val"
+
+#define ROUTER_ID_DEFAULT             "0.0.0.0"
+
 void
 l3routes_vty_init (void);
 
