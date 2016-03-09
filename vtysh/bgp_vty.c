@@ -56,6 +56,8 @@
 #include "lib/regex-gnu.h"
 
 extern struct ovsdb_idl *idl;
+
+#define BUF_LEN 10
 #define BGP_UPTIME_LEN (25)
 #define NET_BUFSZ    18
 #define BGP_ATTR_DEFAULT_WEIGHT 32768
@@ -317,6 +319,19 @@ get_ovsrec_vrf_with_name(char *name)
 }
 
 /*
+ * Find the bgp router row.
+ */
+static const struct ovsrec_bgp_router *
+get_ovsrec_bgp_router(const struct ovsrec_vrf *vrf_row)
+{
+    int i = 0;
+    for (i = 0; i < vrf_row->n_bgp_routers; i++) {
+        return vrf_row->value_bgp_routers[i];
+    }
+    return NULL;
+}
+
+/*
  * Find the bgp router with matching asn.
  */
 static const struct ovsrec_bgp_router *
@@ -419,6 +434,39 @@ get_bgp_peer_group_with_bgp_router_and_name(const struct ovsrec_bgp_router *
                                             const char *name)
 {
     return find_matching_neighbor_or_peer_group_object(true, ovs_bgpr, name);
+}
+
+/*
+ * Find the bgp peer group with matching bgp_router and asn
+ */
+static const struct ovsrec_bgp_neighbor *
+get_bgp_neighbor_with_bgp_router_and_asn(const struct ovsrec_bgp_router *
+                                         ovs_bgpr,
+                                         int asn)
+{
+    const struct ovsrec_bgp_neighbor *neighbor_row;
+    int i = 0;
+    if (!ovs_bgpr) {
+        VLOG_ERR("Router ctxt is NULL for get neighbor from asn\n");
+        return NULL;
+    }
+
+/* Correct type, now match its parent bgp router and name. */
+    for (i = 0; i < ovs_bgpr->n_bgp_neighbors; i++) {
+	if (ovs_bgpr->value_bgp_neighbors) {
+	    neighbor_row = ovs_bgpr->value_bgp_neighbors[i];
+	    if (neighbor_row) {
+		if ((neighbor_row->n_remote_as > 0) &&
+		    neighbor_row->remote_as) {
+		    if (*neighbor_row->remote_as == asn) {
+			return neighbor_row;
+		    }
+		}
+	    }
+	}
+    }
+    return NULL;
+
 }
 
 /*****************************************************************************/
@@ -6537,6 +6585,36 @@ ALIAS(clear_ip_bgp_all_vpnv4_soft_out,
       "Address Family Modifier\n"
       "Soft reconfig outbound update\n")
 
+static bool
+validate_bgp_clear_counters (int clear_bgp_neighbor_table_requested,
+                             int clear_bgp_neighbor_table_performed)
+{
+    if ((clear_bgp_neighbor_table_requested <
+         clear_bgp_neighbor_table_performed)) {
+        VLOG_DBG("Counter for requested clear bgp neighbor table %d"
+                 "lags counter for performed clear bgp neighbor"
+                 "table %d by %d\n", clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed,
+                 clear_bgp_neighbor_table_performed -
+                 clear_bgp_neighbor_table_requested);
+        return false;
+    }
+
+    if (clear_bgp_neighbor_table_requested
+        > clear_bgp_neighbor_table_performed) {
+        VLOG_DBG("Counter for requested clear bgp neighbor table %d"
+                 "exceeds counter for performed clear bgp neighbor"
+                 "table %d by %d\n", clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed,
+                 clear_bgp_neighbor_table_requested -
+                 clear_bgp_neighbor_table_performed);
+        return false;
+    }
+
+    return true;
+}
+
+
 DEFUN(clear_bgp_all_soft_out,
       clear_bgp_all_soft_out_cmd,
       "clear bgp * soft out",
@@ -6546,7 +6624,101 @@ DEFUN(clear_bgp_all_soft_out,
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
+    const struct ovsrec_bgp_router *row = NULL;
+    const struct ovsrec_bgp_neighbor *neighbor_row = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+    int j;
+
+    VLOG_DBG("clear_bgp_all_soft_out_cmd \n");
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row = ovsrec_bgp_router_first(idl);
+
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    for (j = 0; j < row->n_bgp_neighbors; j++) {
+        VLOG_DBG("Processing clear all soft out request"
+                 " for neighbor %s\n",
+                 row->key_bgp_neighbors[j]);
+
+        neighbor_row = row->value_bgp_neighbors[j];
+        if (neighbor_row->bgp_peer_group) {
+            VLOG_DBG("Skipping clear all soft out request"
+                     " for neighbor %s since it's part of"
+                     " peer group\n",
+		     row->key_bgp_neighbors[j]);
+	    continue;
+	}
+	clear_bgp_neighbor_table_requested =
+	    smap_get_int(&neighbor_row->status,
+	    OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+	    0);
+
+	clear_bgp_neighbor_table_performed =
+	    smap_get_int(&neighbor_row->status,
+	    OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_PERFORMED,
+	    0);
+
+	VLOG_DBG("Read request count %d, Performed count %d\n",
+		 clear_bgp_neighbor_table_requested,
+		 clear_bgp_neighbor_table_performed);
+
+        if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                        clear_bgp_neighbor_table_performed)
+                                        == false) {
+            cli_do_config_abort(status_txn);
+	    return CMD_OVSDB_FAILURE;
+	}
+
+	clear_bgp_neighbor_table_requested++;
+	snprintf(buffer, BUF_LEN-1, "%d",
+		 clear_bgp_neighbor_table_requested);
+	smap_clone(&smap_status, &neighbor_row->status);
+	smap_replace(&smap_status,
+		     OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+		     buffer);
+	ovsrec_bgp_neighbor_set_status(neighbor_row, &smap_status);
+	smap_destroy(&smap_status);
+	VLOG_DBG("Write request count %d, performed count %d\n",
+		 clear_bgp_neighbor_table_requested,
+		 clear_bgp_neighbor_table_performed);
+    }
+
+    status = cli_do_config_finish(status_txn);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp all"
+                 " soft out\n");
+        vty_out(vty, "Successful transaction for clear bgp all"
+                " soft out%s", VTY_NEWLINE);
+    }
+    else
+    {
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+        VLOG_DBG("Error in transaction for clear bgp all"
+                "soft out\n");
+        return CMD_OVSDB_FAILURE;
+    }
+
     return CMD_SUCCESS;
 }
 
@@ -6677,8 +6849,105 @@ DEFUN(clear_bgp_peer_soft_out,
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
+    const struct ovsrec_bgp_neighbor *row = NULL;
+    const char *ip_addr = argv[0];
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+
+    VLOG_DBG("clear_bgp_peer_soft_out_cmd for %s\n", argv[0]);
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    bgp_router_row = ovsrec_bgp_router_first(idl);
+
+    if(!bgp_router_row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row =
+        get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_row, ip_addr);
+
+    if(!row)
+    {
+      VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+      VLOG_DBG("BGP neighbor row does not exist\n");
+      vty_out(vty, "%%BGP neighbor row does not exist%s", VTY_NEWLINE);
+      cli_do_config_abort(status_txn);
+      return CMD_OVSDB_FAILURE;
+    }
+
+    if (row->bgp_peer_group) {
+        vty_out(vty, "%% Neighbor %s is part of peer-group. Operation"
+                " not permitted%s", argv[0], VTY_NEWLINE);
+        VLOG_DBG("Skipping clear peer soft out request for neighbor %s"
+                 "since it's part of peer group\n",
+                 argv[0]);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+        0);
+
+    clear_bgp_neighbor_table_performed =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_PERFORMED,
+        0);
+
+    if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                    clear_bgp_neighbor_table_performed)
+                                    == false) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested++;
+
+    snprintf(buffer, BUF_LEN-1, "%d", clear_bgp_neighbor_table_requested);
+    smap_clone(&smap_status, &row->status);
+    smap_replace(&smap_status, OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+                 buffer);
+    ovsrec_bgp_neighbor_set_status(row, &smap_status);
+
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_status);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp (A.B.C.D|X:X::X:X)"
+                 " soft out for peer %s. Set request count to %d."
+                 " Clear count is %d\n", argv[0],
+                 clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed);
+        vty_out(vty, "Successful transaction for clear bgp (A.B.C.D|X:X::X:X)"
+                " soft out for peer %s%s",
+                argv[0], VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+       VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+       VLOG_DBG("Error in transaction for clear bgp (A.B.C.D|X:X::X:X)"
+                "soft out for peer %s\n", argv[0]);
+       return CMD_OVSDB_FAILURE;
+    }
 }
 
 ALIAS(clear_bgp_peer_soft_out,
@@ -6777,8 +7046,96 @@ DEFUN(clear_bgp_peer_group_soft_out,
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
+    const struct ovsrec_bgp_neighbor *row = NULL;
+    const char *peer_group = argv[0];
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+
+    VLOG_DBG("clear_bgp_peer_group_soft_out_cmd for %s\n", argv[0]);
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    bgp_router_row = ovsrec_bgp_router_first(idl);
+
+    if(!bgp_router_row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row =
+        get_bgp_peer_group_with_bgp_router_and_name(bgp_router_row, peer_group);
+
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP neighbor peer group does not exist\n");
+        vty_out(vty, "%%BGP neighbor peer group does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+        0);
+
+    clear_bgp_neighbor_table_performed =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_PERFORMED,
+        0);
+
+    if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                    clear_bgp_neighbor_table_performed)
+                                    == false) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested++;
+
+    snprintf(buffer, BUF_LEN-1, "%d", clear_bgp_neighbor_table_requested);
+    smap_clone(&smap_status, &row->status);
+    smap_replace(&smap_status,
+                 OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+                 buffer);
+    ovsrec_bgp_neighbor_set_status(row, &smap_status);
+
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_status);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp peer group"
+                 " soft out for peer group %s. Set request count to %d."
+                 " Clear count is %d\n", argv[0],
+                 clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed);
+        vty_out(vty, "Successful transaction for clear bgp peer group"
+                 "i soft out for peer group %s%s",
+                 argv[0], VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+       VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+       VLOG_DBG("Error in transaction for clear bgp peer group"
+                "soft out for peer-group %s\n", argv[0]);
+       return CMD_OVSDB_FAILURE;
+    }
 }
 
 ALIAS(clear_bgp_peer_group_soft_out,
@@ -6991,8 +7348,106 @@ DEFUN(clear_bgp_as_soft_out,
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
+    const struct ovsrec_bgp_neighbor *row = NULL;
+    int64_t asn;
+    asn = strtoll(argv[0], NULL, 10);
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+
+    VLOG_DBG("clear_bgp_as_soft_out_cmd for asn %s\n", argv[0]);
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    bgp_router_row = ovsrec_bgp_router_first(idl);
+
+    if(!bgp_router_row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row =
+        get_bgp_neighbor_with_bgp_router_and_asn(bgp_router_row, asn);
+
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP neighbor row does not exist\n");
+        vty_out(vty, "%%BGP neighbor row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if (row->bgp_peer_group) {
+        vty_out(vty, "%% Neighbor with asn %d is part of peer-group. Operation"
+                " not permitted%s", asn, VTY_NEWLINE);
+        VLOG_DBG("Skipping clear as soft out request for neighbor with asn %d"
+                 "since it's part of peer group\n",
+                 asn);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+        0);
+
+    clear_bgp_neighbor_table_performed =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_PERFORMED,
+        0);
+
+    if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                    clear_bgp_neighbor_table_performed)
+                                    == false) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested++;
+
+    snprintf(buffer, BUF_LEN-1, "%d", clear_bgp_neighbor_table_requested);
+    smap_clone(&smap_status, &row->status);
+    smap_replace(&smap_status, OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_OUT_REQUESTED,
+                 buffer);
+    ovsrec_bgp_neighbor_set_status(row, &smap_status);
+
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_status);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp as"
+                 " soft out for peer with asn %s. Set request count to %d."
+                 " Clear count is %d\n", argv[0],
+                 clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed);
+        vty_out(vty, "Successful transaction for clear bgp as "
+                " soft out for peer with asn %s%s",
+                 argv[0], VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+       VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+       VLOG_DBG("Error in transaction for clear bgp as"
+                "soft out for peer with asn %s\n", argv[0]);
+       return CMD_OVSDB_FAILURE;
+    }
 }
 
 ALIAS(clear_bgp_as_soft_out,
@@ -7203,7 +7658,100 @@ DEFUN(clear_bgp_all_soft_in,
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
+    const struct ovsrec_bgp_router *row = NULL;
+    const struct ovsrec_bgp_neighbor *neighbor_row = NULL;
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+    int j;
+
+    VLOG_DBG("clear_bgp_all_soft_in_cmd \n");
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row = ovsrec_bgp_router_first(idl);
+
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    for (j = 0; j < row->n_bgp_neighbors; j++) {
+	VLOG_DBG("Processing clear all soft in request"
+		 " for neighbor %s\n",
+		 row->key_bgp_neighbors[j]);
+
+	neighbor_row = row->value_bgp_neighbors[j];
+	if (neighbor_row->bgp_peer_group) {
+	    VLOG_DBG("Skipping clear all soft in request"
+		     " for neighbor %s since it's part of"
+		     " peer group\n",
+		     row->key_bgp_neighbors[j]);
+	    continue;
+	}
+	clear_bgp_neighbor_table_requested =
+	    smap_get_int(&neighbor_row->status,
+	    OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+	    0);
+
+	clear_bgp_neighbor_table_performed =
+	    smap_get_int(&neighbor_row->status,
+	    OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_PERFORMED,
+	    0);
+
+	VLOG_DBG("Read request count %d, Performed count %d\n",
+		 clear_bgp_neighbor_table_requested,
+		 clear_bgp_neighbor_table_performed);
+
+        if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                        clear_bgp_neighbor_table_performed)
+                                        == false) {
+            cli_do_config_abort(status_txn);
+            return CMD_OVSDB_FAILURE;
+        }
+
+	clear_bgp_neighbor_table_requested++;
+	snprintf(buffer, BUF_LEN-1, "%d",
+		 clear_bgp_neighbor_table_requested);
+	smap_clone(&smap_status, &neighbor_row->status);
+	smap_replace(&smap_status,
+		     OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+		     buffer);
+	ovsrec_bgp_neighbor_set_status(neighbor_row, &smap_status);
+	smap_destroy(&smap_status);
+	VLOG_DBG("Write request count %d, performed count %d\n",
+		 clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed);
+    }
+
+    status = cli_do_config_finish(status_txn);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp all"
+                 " soft in\n");
+        vty_out(vty, "Successful transaction for clear bgp all"
+                 " soft in%s", VTY_NEWLINE);
+    }
+    else
+    {
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+        VLOG_DBG("Error in transaction for clear bgp all"
+                "soft in\n");
+        return CMD_OVSDB_FAILURE;
+    }
     return CMD_SUCCESS;
 }
 
@@ -7388,8 +7936,106 @@ DEFUN(clear_bgp_peer_soft_in,
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
+    const struct ovsrec_bgp_neighbor *row = NULL;
+    const char *ip_addr = argv[0];
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+
+    VLOG_DBG("clear_bgp_peer_soft_in_cmd for %s\n", argv[0]);
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    bgp_router_row  = ovsrec_bgp_router_first(idl);
+
+    if(!bgp_router_row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row =
+        get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_row, ip_addr);
+
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP neighbor row does not exist\n");
+        vty_out(vty, "%%BGP neighbor row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if (row->bgp_peer_group) {
+        vty_out(vty, "%% Neighbor %s is part of peer-group. Operation"
+                " not permitted%s", argv[0], VTY_NEWLINE);
+        VLOG_DBG("Skipping clear peer soft in request for neighbor %s"
+                 "since it's part of peer group\n",
+                 argv[0]);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+        0);
+
+    clear_bgp_neighbor_table_performed =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_PERFORMED,
+        0);
+
+    if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                    clear_bgp_neighbor_table_performed)
+                                    == false) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested++;
+
+    snprintf(buffer, BUF_LEN-1, "%d", clear_bgp_neighbor_table_requested);
+    smap_clone(&smap_status, &row->status);
+    smap_replace(&smap_status, OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+                 buffer);
+    ovsrec_bgp_neighbor_set_status(row, &smap_status);
+
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_status);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp (A.B.C.D|X:X::X:X)"
+                 " soft in for peer %s. Set request count to %d."
+                 " Clear count is %d\n",
+                 argv[0],
+                 clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed);
+        vty_out(vty, "Successful transaction for clear bgp (A.B.C.D|X:X::X:X)"
+                 " soft in for peer %s%s",
+                 argv[0], VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+       VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+       VLOG_DBG("Error in transaction for clear bgp (A.B.C.D|X:X::X:X)"
+                "soft in for peer %s\n", argv[0]);
+       return CMD_OVSDB_FAILURE;
+    }
 }
 
 ALIAS(clear_bgp_peer_soft_in,
@@ -7546,8 +8192,97 @@ DEFUN(clear_bgp_peer_group_soft_in,
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
+    const struct ovsrec_bgp_neighbor *row = NULL;
+    const char *peer_group = argv[0];
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+
+    VLOG_DBG("clear_bgp_peer_group_soft_in_cmd for %s\n", argv[0]);
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    bgp_router_row = ovsrec_bgp_router_first(idl);
+
+    if(!bgp_router_row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row =
+        get_bgp_peer_group_with_bgp_router_and_name(bgp_router_row, peer_group);
+
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP neighbor peer group does not exist\n");
+        vty_out(vty, "%%BGP neighbor peer group does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+        0);
+
+    clear_bgp_neighbor_table_performed =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_PERFORMED,
+        0);
+
+    if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                    clear_bgp_neighbor_table_performed)
+                                    == false) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested++;
+
+    snprintf(buffer, BUF_LEN-1, "%d", clear_bgp_neighbor_table_requested);
+    smap_clone(&smap_status, &row->status);
+    smap_replace(&smap_status,
+                 OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+                 buffer);
+    ovsrec_bgp_neighbor_set_status(row, &smap_status);
+
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_status);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp peer group"
+                 " soft in for peer group %s. Set request count to %d."
+                 " Clear count is %d\n", argv[0],
+                 clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed);
+        VLOG_DBG("Successful transaction for clear bgp peer group"
+                 " soft in for peer group %s%s",
+                  argv[0], VTY_NEWLINE);
+
+        return CMD_SUCCESS;
+    }
+    else
+    {
+       VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+       VLOG_DBG("Error in transaction for clear bgp peer group"
+                "soft in for peer group %s\n", argv[0]);
+       return CMD_OVSDB_FAILURE;
+    }
 }
 
 ALIAS(clear_bgp_peer_group_soft_in,
@@ -7870,8 +8605,105 @@ DEFUN(clear_bgp_as_soft_in,
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    const struct ovsrec_bgp_router *bgp_router_row = NULL;
+    const struct ovsrec_bgp_neighbor *row = NULL;
+    int64_t asn;
+    asn = strtoll(argv[0], NULL, 10);
+    enum ovsdb_idl_txn_status status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    int clear_bgp_neighbor_table_requested = 0;
+    int clear_bgp_neighbor_table_performed = 0;
+    char buffer[BUF_LEN] = {0};
+    struct smap smap_status;
+
+    VLOG_DBG("clear_bgp_as_soft_in_cmd for asn %s\n", argv[0]);
+
+    if(NULL == status_txn)
+    {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    bgp_router_row = ovsrec_bgp_router_first(idl);
+    if(!bgp_router_row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP router row does not exist\n");
+        vty_out(vty, "%%BGP router row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    row =
+        get_bgp_neighbor_with_bgp_router_and_asn(bgp_router_row, asn);
+
+    if(!row)
+    {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        VLOG_DBG("BGP neighbor row does not exist\n");
+        vty_out(vty, "%%BGP neighbor row does not exist%s", VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    if (row->bgp_peer_group) {
+        vty_out(vty, "%% Neighbor with asn %d is part of peer-group. Operation"
+                " not permitted%s", asn, VTY_NEWLINE);
+        VLOG_DBG("Skipping clear as soft in request for neighbor with asn %d"
+                 "since it's part of peer group\n",
+                 asn);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+        0);
+
+    clear_bgp_neighbor_table_performed =
+        smap_get_int(&row->status,
+        OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_PERFORMED,
+        0);
+
+    if (validate_bgp_clear_counters(clear_bgp_neighbor_table_requested,
+                                    clear_bgp_neighbor_table_performed)
+                                    == false) {
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    clear_bgp_neighbor_table_requested++;
+
+    snprintf(buffer, BUF_LEN-1, "%d", clear_bgp_neighbor_table_requested);
+    smap_clone(&smap_status, &row->status);
+    smap_replace(&smap_status, OVSDB_BGP_NEIGHBOR_CLEAR_COUNTERS_SOFT_IN_REQUESTED,
+                 buffer);
+    ovsrec_bgp_neighbor_set_status(row, &smap_status);
+
+    status = cli_do_config_finish(status_txn);
+    smap_destroy(&smap_status);
+
+    if(status == TXN_SUCCESS || status == TXN_UNCHANGED)
+    {
+        VLOG_DBG("Successful transaction for clear bgp as"
+                 " soft in for peer with asn %s. Set request count to %d."
+                 " Clear count is %d\n", argv[0],
+                 clear_bgp_neighbor_table_requested,
+                 clear_bgp_neighbor_table_performed);
+        vty_out(vty, "Successful transaction for clear bgp as "
+                " soft in for peer with asn %s%s",
+                 argv[0], VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+       VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+       VLOG_DBG("Error in transaction for clear bgp as"
+                "soft in for peer with asn %s\n", argv[0]);
+       return CMD_OVSDB_FAILURE;
+    }
 }
 
 ALIAS(clear_bgp_as_soft_in,
