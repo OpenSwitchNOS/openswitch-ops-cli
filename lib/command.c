@@ -3209,7 +3209,16 @@ cmd_execute_command_real (vector vline,
       if (incomplete_count)
 	return CMD_ERR_INCOMPLETE;
       else
+      {
+        if((strcmp(vector_slot(vline, 0), "vlan") == 0))
+        {
+            if(VLAN_NODE != vty->node)
+                fprintf(stdout, "Vlan id within <1-4094> and should not be"
+                                " an internal vlan\n");
+            return CMD_ERR_NOTHING_TODO;
+        }
 	return CMD_ERR_NO_MATCH;
+      }
     }
 
   if (matched_count > 1)
