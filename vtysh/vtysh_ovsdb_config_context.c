@@ -425,6 +425,16 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
     }
   }
 
+  data = smap_get(ifrow_aaa, SYSTEM_AAA_RADIUS_AUTH);
+  if (data)
+  {
+    if (!VTYSH_STR_EQ(data, RADIUS_PAP))
+    {
+      vtysh_ovsdb_cli_print(p_msg, "aaa authentication login radius"
+                            " radius-auth chap");
+    }
+  }
+
   data = smap_get(ifrow_aaa, SYSTEM_AAA_FALLBACK);
   if (data)
   {
