@@ -1344,25 +1344,31 @@ ospf_one_area_show(struct vty *vty,int64_t area_id,
     else
     {
         vty_out(vty, "  Area ID:  %s", area_str);
-        if (!strcmp(ospf_area_row->area_type, OSPF_AREA_TYPE_NSSA))
+
+        if (area_row->area_type)
         {
-            vty_out(vty, " (NSSA)");
+            if (!strcmp(ospf_area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_NSSA))
+            {
+                vty_out(vty, " (NSSA)");
+            }
+            else if (!strcmp(ospf_area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_NSSA_NO_SUMMARY))
+            {
+                vty_out(vty, " (NSSA, no summary)");
+            }
+            else if (!strcmp(ospf_area_row->area_type,
+                             OVSREC_OSPF_AREA_AREA_TYPE_STUB))
+            {
+                vty_out(vty, " (Stub)");
+            }
+            else if (!strcmp(ospf_area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_STUB_NO_SUMMARY))
+            {
+                vty_out(vty, " (Stub, no summary)");
+            }
+            vty_out(vty, " %s", VTY_NEWLINE);
         }
-        else if (!strcmp(ospf_area_row->area_type,
-                         OSPF_AREA_TYPE_NSSA_NO_SUMMARY))
-        {
-            vty_out(vty, " (NSSA, no summary)");
-        }
-        else if (!strcmp(ospf_area_row->area_type, OSPF_AREA_TYPE_STUB))
-        {
-            vty_out(vty, " (Stub)");
-        }
-        else if (!strcmp(ospf_area_row->area_type,
-                         OSPF_AREA_TYPE_STUB_NO_SUMMARY))
-        {
-            vty_out(vty, " (Stub, no summary)");
-        }
-        vty_out(vty, " %s", VTY_NEWLINE);
     }
 
     /* Number of interfaces */
@@ -4004,7 +4010,7 @@ ospf_interface_auth_key_cmd_execute(const char* ifname, bool no_flag,
         else
         {
             int result = ospf_md5_key_update_to_port(port_row, key_id, key);
-            if ( result != CMD_ERR_AMBIGUOUS)
+            if ( result == CMD_ERR_AMBIGUOUS)
             {
                 OSPF_ABORT_DB_TXN(ospf_router_txn, "MD5 key is already present.");
             }
