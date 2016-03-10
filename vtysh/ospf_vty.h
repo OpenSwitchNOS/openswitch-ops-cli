@@ -192,6 +192,9 @@ void ospf_vty_init (void);
 int64_t
 ospf_get_port_intervals(const struct ovsrec_port* port_row,
                             const char *key);
+int64_t
+ospf_get_distance(const struct ovsrec_ospf_router *router_row,
+                      const char *key);
 
 /* OSPF KEYS */
 

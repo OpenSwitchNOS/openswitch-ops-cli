@@ -883,6 +883,27 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
                 vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "distance",
                                       distance);
             }
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_EXTERNAL);
+            if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "",
+                                      "distance ospf external", distance);
+            }
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_INTER_AREA);
+            if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "",
+                                      "distance ospf inter-area", distance);
+            }
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_INTRA_AREA);
+            if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "",
+                                      "distance ospf intra-area", distance);
+            }
 
             vtysh_router_context_ospf_area_callback(p_msg, ospf_router_row);
 

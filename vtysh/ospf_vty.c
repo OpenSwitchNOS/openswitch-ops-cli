@@ -2970,8 +2970,11 @@ ospf_get_distance(const struct ovsrec_ospf_router *router_row,
 {
     int i = 0;
 
-    if (!strcmp(router_row->key_distance[i], key))
-        return router_row->value_distance[i];
+    for(i = 0; i < router_row->n_distance; i++)
+    {
+        if (!strcmp(router_row->key_distance[i], key))
+            return router_row->value_distance[i];
+    }
 
     return 0;
 }
@@ -3130,6 +3133,27 @@ ospf_running_config_show()
             if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
             {
                 vty_out(vty, "%4s%s %d%s", "", "distance", distance, VTY_NEWLINE);
+            }
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_EXTERNAL);
+            if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vty_out(vty, "%4s%s %d%s", "", "distance ospf external",
+                        distance, VTY_NEWLINE);
+            }
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_INTER_AREA);
+            if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vty_out(vty, "%4s%s %d%s", "", "distance ospf inter-area",
+                        distance, VTY_NEWLINE);
+            }
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_INTRA_AREA);
+            if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vty_out(vty, "%4s%s %d%s", "", "distance ospf intra-area",
+                        distance, VTY_NEWLINE);
             }
 
             ospf_area_show_running(ospf_router_row);
