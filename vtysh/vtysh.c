@@ -61,11 +61,8 @@
 #include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "l3routes_vty.h"
-#include "system_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
-#include "ping.h"
-#include "traceroute.h"
 #endif
 
 #include "sub_intf_vty.h"
@@ -2104,32 +2101,6 @@ ALIAS (vtysh_write_memory,
 #endif
 
 #ifdef ENABLE_OVSDB
-DEFUN_HIDDEN (vtysh_show_running_config_new,
-      vtysh_show_running_config_new_cmd,
-      "show test-running-config",
-      SHOW_STR
-      "Current running configuration\n")
-{
-   FILE *fp = NULL;
-
-   fp = stdout;
-   if (!vtysh_show_startup)
-   {
-       fprintf(fp, "Current configuration:\n");
-   }
-
-   vtysh_ovsdb_read_config(fp);
-   return CMD_SUCCESS;
-}
-
-
-/*
- * This defun is added for show running config testing.
- * As all the features are being modularized, untill
- * completed, existing running-config infra will be used.
- * Existing infra will be removed once all modules are modularized
- * and this DEFUN will be changed to show running-config.
- */
 DEFUN (vtysh_show_running_config,
        vtysh_show_running_config_cmd,
        "show running-config",
@@ -4049,8 +4020,6 @@ vtysh_init_vty (void)
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-   install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
-
    install_element (QOS_QUEUE_PROFILE_NODE, &vtysh_exit_interface_cmd);
    install_element (QOS_QUEUE_PROFILE_NODE, &vtysh_end_all_cmd);
    install_element (QOS_SCHEDULE_PROFILE_NODE, &vtysh_exit_interface_cmd);
@@ -4170,16 +4139,12 @@ vtysh_init_vty (void)
   sub_intf_vty_init();
   loopback_intf_vty_init();
 
-  /* Initialise System cli */
-  system_vty_init();
   alias_vty_init();
   logrotate_vty_init();
 
   /* Initialize source interface selection CLI*/
   source_interface_selection_vty_init();
 
-  /* Initialise tracerouote CLI */
-  traceroute_vty_init();
   /* Initialise SFTP CLI */
   sftp_vty_init();
 
@@ -4188,7 +4153,5 @@ vtysh_init_vty (void)
   /* Initialize ECMP CLI */
   ecmp_vty_init();
 
-  /* Initialize ping CLI */
-  ping_vty_init();
 #endif
 }
