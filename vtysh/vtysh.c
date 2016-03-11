@@ -58,22 +58,15 @@
 #ifdef ENABLE_OVSDB
 #include "vswitch-idl.h"
 #include "smap.h"
-#include "lldp_vty.h"
 #include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "l3routes_vty.h"
-#include "system_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
-#include "ping.h"
-#include "traceroute.h"
 #include "access_list_vty.h"
-
-void ospf_vty_init(void);
 #endif
 
 #include "sub_intf_vty.h"
-#include "aaa_vty.h"
 #include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
@@ -2099,34 +2092,8 @@ ALIAS (vtysh_write_memory,
 
 #ifdef ENABLE_OVSDB
 DEFUN (vtysh_show_running_config,
-      vtysh_show_running_config_cmd,
-      "show running-config",
-      SHOW_STR
-      "Current running configuration\n")
-{
-   FILE *fp = NULL;
-
-   fp = stdout;
-   if (!vtysh_show_startup)
-   {
-       fprintf(fp, "Current configuration:\n");
-   }
-
-   vtysh_ovsdb_read_config(fp);
-   return CMD_SUCCESS;
-}
-
-
-/*
- * This defun is added for show running config testing.
- * As all the features are being modularized, untill
- * completed, existing running-config infra will be used.
- * Existing infra will be removed once all modules are modularized
- * and this DEFUN will be changed to show running-config.
- */
-DEFUN_HIDDEN (vtysh_show_running_config_new,
-       vtysh_show_running_config_new_cmd,
-       "show test-running-config",
+       vtysh_show_running_config_cmd,
+       "show running-config",
        SHOW_STR
        "Current running configuration\n")
 {
@@ -4037,8 +4004,6 @@ vtysh_init_vty (void)
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-   install_element (ENABLE_NODE, &vtysh_show_running_config_new_cmd);
-
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
   install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
@@ -4148,16 +4113,12 @@ vtysh_init_vty (void)
    * CLI node and elements by using Libltdl-interface.
    */
   vtysh_cli_post_init();
-  lldp_vty_init();
   vrf_vty_init();
   l3routes_vty_init();
-  aaa_vty_init();
   /* Sub-interafce and Loopback init. */
   sub_intf_vty_init();
   loopback_intf_vty_init();
 
-  /* Initialise System cli */
-  system_vty_init();
   alias_vty_init();
   logrotate_vty_init();
   access_list_vty_init();
@@ -4165,8 +4126,6 @@ vtysh_init_vty (void)
   /* Initialize source interface selection CLI*/
   source_interface_selection_vty_init();
 
-  /* Initialise tracerouote CLI */
-  traceroute_vty_init();
   /* Initialise SFTP CLI */
   sftp_vty_init();
 
@@ -4175,7 +4134,5 @@ vtysh_init_vty (void)
   /* Initialize ECMP CLI */
   ecmp_vty_init();
 
-  /* Initialize ping CLI */
-  ping_vty_init();
 #endif
 }

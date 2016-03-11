@@ -455,69 +455,6 @@ alias_ovsdb_init()
     return;
 }
 
-static void
-radius_server_ovsdb_init()
-{
-
-    /* Add radius-server columns. */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_radius_servers);
-    ovsdb_idl_add_table(idl, &ovsrec_table_radius_server);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_retries);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_ip_address);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_udp_port);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_timeout);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_passkey);
-    ovsdb_idl_add_column(idl, &ovsrec_radius_server_col_priority);
-
-    return;
-}
-
-/***********************************************************
- * @func        : system_ovsdb_init
- * @detail      : Initialise System Related OVSDB tables
- * @param[in]
- *      idl     : Pointer to idl structure
- ***********************************************************/
-static void
-system_ovsdb_init()
-{
-    /* Add Platform Related Tables. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_fan);
-    ovsdb_idl_add_table(idl, &ovsrec_table_led);
-    ovsdb_idl_add_table(idl, &ovsrec_table_subsystem);
-
-    /* Add Columns for System Related Tables. */
-
-    /* LED. */
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_id);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_state);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_led_col_external_ids);
-
-    /* Subsystem .*/
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_interfaces);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_leds);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_fans);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_asset_tag_number);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_type);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_hw_desc_dir);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_other_info);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_subsystem_col_external_ids);
-
-    /* Fan. */
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_direction);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_rpm);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_hw_config);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_external_ids);
-    ovsdb_idl_add_column(idl, &ovsrec_fan_col_speed);
-
-}
 
 static void
 logrotate_ovsdb_init()
@@ -596,25 +533,20 @@ ovsdb_init(const char *db_path)
     /* Add switch version column */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_switch_version);
 
+    /* Add Package_Info table for show version detail. */
+    ovsdb_idl_add_table(idl, &ovsrec_table_package_info);
+
+    /* Add name, src_url, src_type version column for show version detail. */
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_version);
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_src_type);
+    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_src_url);
+
     /* Add hostname columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
     /* Add domain name column */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_domain_name);
-
-    /* Add AAA columns. */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_aaa);
-
-    /* Add Auto Provision Column. */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_auto_provisioning_status);
-
-    /* Add tables and columns for LLDP configuration. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_system);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_cur_cfg);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_other_config);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_lldp_statistics);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_status);
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_system_mac);
 
     /* Add columns for ECMP configuration. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_ecmp_config);
@@ -635,14 +567,10 @@ ovsdb_init(const char *db_path)
     /* VRF tables. */
     vrf_ovsdb_init();
 
-    /* Radius server table. */
-    radius_server_ovsdb_init();
 
     /* Policy tables. */
     policy_ovsdb_init();
 
-    /* System tables. */
-    system_ovsdb_init();
     /* VLAN internal commands. */
     ovsdb_idl_add_table(idl, &ovsrec_table_port);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_hw_config);
@@ -1516,6 +1444,25 @@ utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
                         token->desc);
                 }
             }
+        }
+    }
+}
+
+/* Show version detail */
+void
+vtysh_ovsdb_show_version_detail(void)
+{
+    const struct ovsrec_package_info *row = NULL;
+
+    OVSREC_PACKAGE_INFO_FOR_EACH(row, idl) {
+        if (row) {
+            vty_out(vty, "PACKAGE     : %-128s\n",  row->name);
+            vty_out(vty, "VERSION     : %-128s\n",
+                (row->version[0] == '\0') ? "Not Available" : row->version);
+            vty_out(vty, "SOURCE TYPE : %-128s\n",
+                (row->src_type[0] == '\0') ? "Not Available" : row->src_type);
+            vty_out(vty, "SOURCE URL  : %-128s\n\n",
+                (row->src_url[0] == '\0') ? "Not Available" : row->src_url);
         }
     }
 }

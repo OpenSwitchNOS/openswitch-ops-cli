@@ -668,8 +668,9 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
         vty_out (vty, "%-6s ",
                 ((strcmp(if_parent_row->link_state,
                         OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
-                (strcmp(ifrow->admin_state,
-                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN))) ?
+                ((ifrow->admin_state != NULL) &&
+                 (strcmp(ifrow->admin_state,
+                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN)))) ?
                 ifrow->link_state :
                 if_parent_row->link_state);
 
@@ -924,6 +925,9 @@ DEFUN (cli_intf_show_subintferface_if_all,
     struct shash sorted_interfaces;
     bool brief = false;
 
+    if ((argv[0] != NULL) && (strchr(argv[0], '.'))){
+         return CMD_ERR_NO_MATCH;
+    }
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;

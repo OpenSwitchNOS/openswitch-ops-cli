@@ -1,7 +1,7 @@
 /* configuration command interface routine
  *
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -629,6 +629,9 @@ struct dyn_cb_func
 
 #endif /* HAVE_IPV6 */
 
+/* Show version detail help strings */
+#define SHOW_VERSION_STR           "Displays switch version\n"
+#define SHOW_VERSION_DETAIL_STR    "Show package information\n"
 
 /* Prototypes. */
 extern void install_node (struct cmd_node *, int (*) (struct vty *));

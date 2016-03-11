@@ -34,21 +34,9 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_router_context.h"
+#include "openswitch-dflt.h"
 #include "command.h"
 #include "ospf_vty.h"
-
-#define CLEANUP_SHOW_RUN
-
-char routercontextbgpclientname[] = "vtysh_router_context_bgp_clientcallback";
-char routercontextospfclientname[] = "vtysh_router_context_ospf_clientcallback";
-char routercontextbgpipprefixclientname[] =
-                          "vtysh_router_context_bgp_ip_prefix_clientcallback";
-char routercontextbgproutemapclientname[] =
-                          "vtysh_router_context_bgp_routemap_clientcallback";
-char routercontextbgpipcommunityfilterclientname[] =
-                          "vtysh_router_context_bgp_ip_community_filter_clientcallback";
-char routercontextbgpipfilterlistclientname[] =
-                          "vtysh_router_context_bgp_ip_filter_list_clientcallback";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_router_context_bgp_neighbor_callback
@@ -744,6 +732,90 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
 |     void *p_private: void type object typecast to required
 | Return : void
 -----------------------------------------------------------------------------*/
+void vtysh_router_context_ospf_area_callback(vtysh_ovsdb_cbmsg_ptr p_msg,
+                                    const struct ovsrec_ospf_router *router_row)
+{
+    const struct ovsrec_ospf_area *area_row = NULL;
+    int i = 0;
+    const char *val = NULL;
+    char area_str[OSPF_SHOW_STR_LEN];
+    char disp_str[OSPF_SHOW_STR_LEN];
+
+    for (i = 0; i < router_row->n_areas; i++)
+    {
+        OSPF_IP_STRING_CONVERT(area_str, ntohl(router_row->key_areas[i]));
+        area_row = router_row->value_areas[i];
+
+        /* area authentication */
+        if(area_row->ospf_auth_type)
+        {
+            if (!strcmp(area_row->ospf_auth_type,
+                        OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_MD5 ))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s authentication "
+                                      "message-digest", "",
+                                      area_str);
+            }
+            else if (!strcmp(area_row->ospf_auth_type,
+                             OVSREC_OSPF_AREA_OSPF_AUTH_TYPE_TEXT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s authentication", "",
+                                      area_str);
+            }
+        }
+
+        /* area type */
+        strncpy(disp_str, "", OSPF_SHOW_STR_LEN);
+        if (area_row->nssa_translator_role)
+        {
+            if (!strcmp(area_row->nssa_translator_role,
+                OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_NEVER))
+            {
+                strncpy(disp_str, "translate-never", OSPF_SHOW_STR_LEN);
+            }
+            else if (!strcmp(area_row->nssa_translator_role,
+                OVSREC_OSPF_AREA_NSSA_TRANSLATOR_ROLE_ALWAYS))
+            {
+                strncpy(disp_str, "translate-always", OSPF_SHOW_STR_LEN);
+            }
+        }
+
+        if (area_row->area_type)
+        {
+            if (!strcmp(area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_NSSA))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s nssa %s", "", area_str,
+                                      disp_str);
+            }
+            else if (!strcmp(area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_NSSA_NO_SUMMARY))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s nssa %s no-summary", "",
+                                      area_str, disp_str);
+            }
+            else if (!strcmp(area_row->area_type,
+                        OVSREC_OSPF_AREA_AREA_TYPE_STUB))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s stub", "", area_str);
+            }
+            else if (!strcmp(area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_STUB_NO_SUMMARY))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s stub no-summary", "",
+                                      area_str);
+            }
+        }
+    }
+}
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_router_context_ospf_clientcallback
+| Responsibility : client callback routine
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
 vtysh_ret_val
 vtysh_router_context_ospf_clientcallback(void *p_private)
 {
@@ -753,6 +825,7 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
     const char *val = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
+    int64_t distance = 0;
 
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                              "vtysh_context_router_ospf_clientcallback entered");
@@ -802,10 +875,20 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
                         "max-metric router-lsa on-startup", val);
             }
 
+            /* Distance */
+            distance = ospf_get_distance(ospf_router_row,
+                                         OVSREC_OSPF_ROUTER_DISTANCE_ALL);
+            if ((distance > 0) && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "distance",
+                                      distance);
+            }
+
+            vtysh_router_context_ospf_area_callback(p_msg, ospf_router_row);
+
         }
     }
 
-    //vtysh_router_context_ospf_neighbor_callback(p_msg);
     return e_vtysh_ok;
 }
 
@@ -818,7 +901,6 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
 int
 vtysh_init_router_context_clients()
 {
-    vtysh_context_client client;
     vtysh_ret_val retval = e_vtysh_error;
 
     retval = install_show_run_config_context(e_vtysh_router_context,
@@ -903,93 +985,6 @@ vtysh_init_router_context_clients()
     if (e_vtysh_ok != retval) {
         vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                                  "router context unable to add ospf callback");
-        assert(0);
-        return retval;
-    }
-
-    client.p_client_name = routercontextbgpclientname;
-    client.client_id = e_vtysh_router_context_bgp;
-    client.p_callback = &vtysh_router_context_bgp_clientcallback;
-    retval = vtysh_context_addclient(
-              e_vtysh_router_context, e_vtysh_router_context_bgp, &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add bgp callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    client.p_client_name = routercontextbgpipprefixclientname;
-    client.client_id = e_vtysh_router_context_bgp_ip_prefix;
-    client.p_callback = &vtysh_router_context_bgp_ip_prefix_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_ip_prefix,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add "
-                                  "bgp ip prefix callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    client.p_client_name = routercontextbgpipcommunityfilterclientname;
-    client.client_id = e_vtysh_router_context_bgp_ip_community_filter;
-    client.p_callback = &vtysh_router_context_bgp_ip_community_filter_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_ip_community_filter,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add "
-                                  "bgp ip community filter callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    client.p_client_name = routercontextbgpipfilterlistclientname;
-    client.client_id = e_vtysh_router_context_bgp_ip_filter_list;
-    client.p_callback = &vtysh_router_context_bgp_ip_filter_list_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_ip_filter_list,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add "
-                                  "bgp ip filter list callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-
-    client.p_client_name = routercontextbgproutemapclientname;
-    client.client_id = e_vtysh_router_context_bgp_routemap;
-    client.p_callback = &vtysh_router_context_bgp_routemap_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_bgp_routemap,
-                                     &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add bgp "
-                                  "routemap callback");
-        assert(0);
-        return retval;
-    }
-
-    retval = e_vtysh_error;
-    memset(&client, 0, sizeof(vtysh_context_client));
-    client.p_client_name = routercontextospfclientname;
-    client.client_id = e_vtysh_router_context_ospf;
-    client.p_callback = &vtysh_router_context_ospf_clientcallback;
-    retval = vtysh_context_addclient(e_vtysh_router_context,
-                                     e_vtysh_router_context_ospf, &client);
-    if (e_vtysh_ok != retval) {
-        vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                                  "router context unable to add ospf callback");
         assert(0);
         return retval;
     }
