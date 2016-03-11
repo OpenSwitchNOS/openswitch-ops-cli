@@ -589,7 +589,17 @@ struct dyn_cb_func
 #define ISIS_STR    "IS-IS information\n"
 #define AREA_TAG_STR "[area tag]\n"
 #define RIB_STR    "Routing Information Base\n"
-
+#define SPAN_TREE       "Spanning-tree configuration\n"
+#define MST_INST        "Create, delete or configure an MST instance\n"
+#define BPDU_GUARD      "Disable the specific port or ports if the port(s) receives MSTP BPDUs\n"
+#define ROOT_GUARD      "Set port to ignore superior BPDUs to prevent it from becoming root port\n"
+#define LOOP_GUARD      "Set port to guard against the loop and consequently to prevent it from becoming forwarding port\n"
+#define BPDU_FILTER     "Stop a specific port or ports from transmitting BPDUs, receiving BPDUs, and assume a continuous fowarding state\n"
+#define BRIDGE_PRIORITY "Set the device priority multiplier. This value will be multiplied by 4096 such that the device priority range will be 0-61440. The default value is 8.\n"
+#define INST_PRIORITY   "Set the device priority multiplier for the MST instance. This value will be multiplied by 4096 such that the device priority range will be 0-61440. The default value is 8.\n"
+#define PORT_PRIORITY   "Set port priority multiplier. This value will be multiplied by 16 such that the range will be 0-240. The default value is 8\n"
+#define FORWARD_DELAY   "Set time the switch waits between transitioning from listening to learning & from learning to forwarding\n"
+#define MAX_HOPS        "Set the max number of hops in a region before the MST BPDU is discarded and the information held for a port is\n"
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
 
