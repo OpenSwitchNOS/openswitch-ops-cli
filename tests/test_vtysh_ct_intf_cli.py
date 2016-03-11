@@ -99,9 +99,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
         out = s1.cmdCLI('speed ?')
-        assert '1000   Mb/s supported' in out and \
-            '10000  Mb/s not supported' in out and \
-            '40000  Mb/s not supported' in out, \
+        assert '1000    Mb/s supported' in out and \
+            '10000   Mb/s not supported' in out and \
+            '40000   Mb/s not supported' in out, \
             'Test to verify dyn helpstr for int speeds=1000 - FAILED!'
         out = s1.cmdCLI('end')
 
@@ -109,9 +109,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
         out = s1.cmdCLI('speed ?')
-        assert '1000   Mb/s supported' in out and \
-            '10000  Mb/s supported' in out and \
-            '40000  Mb/s not supported' in out, \
+        assert '1000    Mb/s supported' in out and \
+            '10000   Mb/s supported' in out and \
+            '40000   Mb/s not supported' in out, \
             'Test to verify dyn helpstr for int speeds="1000,10000" - FAILED!'
         out = s1.cmdCLI('end')
 
@@ -119,9 +119,9 @@ class InterfaceCommandsTests(OpsVsiTest):
         s1.cmdCLI('configure terminal')
         s1.cmdCLI('interface 1')
         out = s1.cmdCLI('speed ?')
-        assert '1000   Mb/s not supported' in out and \
-            '10000  Mb/s not supported' in out and \
-            '40000  Mb/s supported' in out, \
+        assert '1000    Mb/s not supported' in out and \
+            '10000   Mb/s not supported' in out and \
+            '40000   Mb/s supported' in out, \
             'Test to verify dynamic helpstr for interface speed cli - FAILED!'
         out = s1.cmdCLI('end')
         return True
@@ -134,12 +134,11 @@ class InterfaceCommandsTests(OpsVsiTest):
         result_sortted = []
         result_orig = []
         for x in list_interface:
-            test = re.match('(\d+|.+\d+)\s+', x)
+            test = re.search('\s+\d+ | \s+\d+-\d+', x)
             if test:
                 test_number = test.group(0)
                 if '-' in test_number:
-                    test_number = test_number.strip(" ")
-                    number = re.match('\d+.\d+', test_number).group(0)
+                    number = test_number
                     number = number.replace('-', '.')
                     result_orig.append(float(number))
                     result_sortted.append(float(number))
@@ -241,7 +240,6 @@ class Test_interfaceCommands:
             print '''
 ########## Test to verify dyn helpstr for int speed cli - SUCCESS! ##########
 '''
-
     def test_display_interface_in_numerical_order(self):
         if self.test.display_interface_in_numerical_order():
             info('''

@@ -294,6 +294,8 @@ def ProxyArpOnParentInterfaceTest(dut01):
     return True
 
 
+@pytest.mark.skipif(True, reason="Disabling this testcase "
+                    "due to CIT blckers")
 class Test_proxy_arp_configuration:
 
     def setup_class(cls):
