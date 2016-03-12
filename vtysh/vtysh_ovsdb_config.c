@@ -34,7 +34,10 @@
 #include "lib/vty.h"
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
-#include "vtysh_ovsdb_router_context.h"
+#include "vtysh/vtysh_ovsdb_router_context.h"
+#include "vtysh/vtysh_ovsdb_sftp_context.h"
+#include "vtysh/vtysh_ovsdb_source_interface_context.h"
+
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
@@ -273,55 +276,6 @@ vtysh_context_addclient(vtysh_contextid contextid,
 }
 
 /*-----------------------------------------------------------------------------
-| Function: vtysh_context_removeclient
-| Responsibility : Remove client callback to the given context
-| Parameters:
-|           vtysh_contextid contextid : contextid value
-|           int clientid: clientid value
-|           vtysh_context_client *p_client: client param
-| Return: int : returns e_vtysh_ok if client callback removed successfully
-|               else e_vtysh_error
------------------------------------------------------------------------------*/
-vtysh_ret_val
-vtysh_context_removeclient(vtysh_contextid contextid,
-                           int clientid,
-                           vtysh_context_client *p_client)
-{
-  vtysh_context_client *povs_client = NULL;
-
-  if (NULL == p_client)
-  {
-    VLOG_ERR("remove_client: Inavlid client callback param");
-    return e_vtysh_error;
-  }
-
-  if (e_vtysh_ok != vtysh_isvalid_contextclientid(contextid, clientid))
-  {
-    VLOG_ERR("remove_client: Invalid client id %d for given contextid %d", clientid, contextid);
-    return e_vtysh_error;
-  }
-
-  povs_client = &(*vtysh_context_table[contextid].clientlist)[clientid-1];
-  if (povs_client->p_callback == p_client->p_callback)
-  {
-    /*client callback matches with registered callback,
-      proceed with unregistering client callback */
-    povs_client->p_client_name= NULL;
-    povs_client->client_id = 0;
-    povs_client->p_callback = NULL;
-    VLOG_DBG("remove_client: clientid %d callback successfully unregistered for contextid %d", clientid, contextid);
-  }
-  else
-  {
-    /* client registered details unmatched */
-    VLOG_DBG("remove_client: clientid %d callback param unmatched with registered callback param in contextid %d", clientid, contextid);
-    return e_vtysh_error;
-  }
-
-  return e_vtysh_ok;
-}
-
-/*-----------------------------------------------------------------------------
 | Function: vtysh_sh_run_iteratecontextlist
 | Responsibility : Iterates over the show running context callback list.
 | Parameters:
@@ -336,7 +290,6 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     vtysh_contextlist *current = show_run_contextlist;
     vtysh_contextlist *subcontext_list;
     vtysh_ovsdb_cbmsg msg;
-    const struct ovsrec_interface *ifrow;
     struct feature_sorted_list *list = NULL;
     const struct shash_node **nodes;
     int idx, count;
@@ -414,78 +367,6 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
         current = current->next;
     }
     return e_vtysh_ok;
-}
-
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_context_iterateoverclients
-| Responsibility : iterates over the client callback for given contextid
-| Parameters:
-|           vtysh_contextid contextid : contextid value
-|           vtysh_ovsdb_cbmsg *p_msg: client param
-| Return: int : returns e_vtysh_ok if client callback invoked successfully
-|               else e_vtysh_error
------------------------------------------------------------------------------*/
-vtysh_ret_val
-vtysh_context_iterateoverclients(vtysh_contextid contextid, vtysh_ovsdb_cbmsg *p_msg)
-{
-  int maxclientid = 0, i = 0;
-  vtysh_context_client *povs_client = NULL;
-
-  maxclientid = vtysh_context_get_maxclientid(contextid);
-  if (e_vtysh_error == maxclientid )
-  {
-    return e_vtysh_error;
-  }
-
-  for (i = 0; i < maxclientid-1; i++)
-  {
-    povs_client = &(*vtysh_context_table[contextid].clientlist)[i];
-    if (NULL != povs_client->p_callback)
-    {
-      p_msg->clientid = i+1;
-      if(e_vtysh_ok != (*(povs_client->p_callback))(p_msg))
-      {
-        /* log debug msg */
-        VLOG_ERR("iteration error for context-id %d, client-id %d", contextid,
-                 p_msg->clientid);
-        assert(0);
-        break;
-      }
-    }
-  }
-  return e_vtysh_ok;
-}
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_ovsdb_read_config
-| Responsibility : reads ovsdb config by traversing the vtysh_ovsdb_tables
-| Parameters:
-|           FILE *fp : file pointer to write data to
-| Return: void
------------------------------------------------------------------------------*/
-void
-vtysh_ovsdb_read_config(FILE *fp)
-{
-  vtysh_contextid contextid=0;
-  vtysh_ovsdb_cbmsg msg;
-
-  VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
-
-  msg.fp = fp;
-  msg.idl = idl;
-  msg.contextid = 0;
-  msg.clientid = 0;
-
-  VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl, ovsdb_idl_get_seqno(idl));
-  fprintf(fp, "!\n");
-
-  for(contextid = 0; contextid < e_vtysh_context_id_max; contextid++)
-  {
-    msg.contextid = contextid;
-    msg.clientid = 0;
-    vtysh_context_iterateoverclients(contextid, &msg);
-  }
 }
 
 /*-----------------------------------------------------------------------------

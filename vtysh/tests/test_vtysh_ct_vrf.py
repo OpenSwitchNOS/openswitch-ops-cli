@@ -632,7 +632,7 @@ class vrfCLITest(OpsVsiTest):
 
         intf1 = 'interface ' + first_interface
         intf2 = 'interface ' + second_interface
-        intf3 = 'interface ' + third_interface + ' '
+        intf3 = 'interface ' + third_interface
         intf1_output = output.index(intf1)
         intf2_output = output.index(intf2)
         intf3_output = output.index(intf3)

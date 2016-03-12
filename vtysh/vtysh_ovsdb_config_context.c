@@ -33,23 +33,11 @@
 #include "vtysh_ovsdb_if.h"
 #include "vtysh_ovsdb_config.h"
 #include "vtysh_ovsdb_config_context.h"
-#include "aaa_vty.h"
 #include "logrotate_vty.h"
 #include "openswitch-dflt.h"
 #include "ecmp_vty.h"
-#include <string.h>
+#include "vtysh/vtysh_utils.h"
 #include "utils/system_vtysh_utils.h"
-
-#define DEFAULT_LED_STATE OVSREC_LED_STATE_OFF
-
-char globalconfigclientname[] = "vtysh_config_context_global_clientcallback";
-char sflowconfigclientname[]= "vtysh_config_context_sflow_clientcallback";
-char vrfconfigclientname[]= "vtysh_config_context_vrf_clientcallback_old";
-char fanconfigclientname[]= "vtysh_config_context_fan_clientcallback_old";
-char ledconfigclientname[]= "vtysh_config_context_led_clientcallback_old";
-char staticrouteconfigclientname[]= "vtysh_config_context_staticroute_clientcallback";
-char ecmpconfigclientname[] = "vtysh_config_context_ecmp_clientcallback";
-char ntpconfigclientname[] = "vtysh_config_context_ntp_clientcallback_old";
 
 /*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_parse_othercfg
@@ -348,7 +336,7 @@ vtysh_display_radiusservertable_commands(void *p_private)
        */
       char buff[60]= {0};
 
-      sprintf(buff, "%s:%ld %s %d %d ", row->ip_address, *(row->udp_port), \
+      sprintf(buff, "%s:%ld %s %lu %lu ", row->ip_address, *(row->udp_port), \
                             row->passkey, *(row->retries), *(row->timeout));
       temp[row->priority - 1] = (char *)malloc(strlen(buff));
       strncpy(temp[row->priority - 1],buff,strlen(buff));
@@ -546,203 +534,6 @@ vtysh_config_context_global_clientcallback(void *p_private)
 }
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_config_context_vrf_clientcallback_old
-| Responsibility : vrf client callback routine
-| Parameters :
-|     void *p_private: void type object typecast to required
-| Return : void
------------------------------------------------------------------------------*/
-vtysh_ret_val
-vtysh_config_context_vrf_clientcallback_old(void *p_private)
-{
-  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-  const struct ovsrec_vrf *vrf_row = NULL;
-  OVSREC_VRF_FOR_EACH(vrf_row, p_msg->idl){
-    if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) == 0) {
-      continue;
-    }
-    vtysh_ovsdb_cli_print(p_msg, "vrf %s", vrf_row->name);
-  }
-  return e_vtysh_ok;
-}
-
-/*-----------------------------------------------------------------------------
-| Function : vtysh_config_context_sflow_clientcallback
-| Responsibility : sflow client callback routine
-| Parameters :
-|     void *p_private: void type object typecast to required
-| Return : void
------------------------------------------------------------------------------*/
-vtysh_ret_val
-vtysh_config_context_sflow_clientcallback(void *p_private)
-{
-  extern struct ovsdb_idl *idl;
-  int i=0;
-  char *ptr=NULL, *ip=NULL, *port=NULL, *vrf=NULL, *copy=NULL;
-  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-  const struct ovsrec_system *ovs_row = NULL;
-  ovs_row = ovsrec_system_first (idl);
-  const struct ovsrec_sflow *sflow_row = NULL;
-  const char delim[2] = "/";
-  OVSREC_SFLOW_FOR_EACH(sflow_row, p_msg->idl){
-    if (ovs_row->sflow != NULL)
-      {
-        vtysh_ovsdb_cli_print(p_msg, "sflow enable");
-      }
-      if (sflow_row->n_targets > 0)
-        {
-          for (i = 0; i < sflow_row->n_targets; i++)
-            {
-              copy = xstrdup(sflow_row->targets[i]);
-              ptr = strtok(copy, delim);
-              if (ptr != NULL)
-                {
-                  ip = xstrdup(ptr);
-                  ptr = strtok(NULL, delim);
-                }
-              if (ptr != NULL)
-                {
-                  port = xstrdup(ptr);
-                  ptr = strtok(NULL, delim);
-                }
-              if (ptr != NULL)
-                {
-                  vrf = xstrdup(ptr);
-                }
-              if (port == NULL)
-                {
-                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s",ip);
-                  free (ip);
-                  free (copy);
-                }
-              if (port != NULL && vrf == NULL)
-                {
-                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s", ip, port);
-                  free (ip);
-                  free (port);
-                  free (copy);
-                }
-              if (port != NULL && vrf != NULL)
-                {
-                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s vrf %s", ip, port, vrf);
-                  free (ip);
-                  free (port);
-                  free (vrf);
-                  free (copy);
-                }
-            }
-        }
-      if (sflow_row->agent != NULL && sflow_row->agent_addr_family == NULL)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s", sflow_row->agent);
-        }
-      else if (sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
-        {
-           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s %s", sflow_row->agent, sflow_row->agent_addr_family);
-        }
-      if (sflow_row->sampling != NULL)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "sflow sampling %lld", *(sflow_row->sampling));
-
-        }
-      if (sflow_row->header != NULL)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "sflow header-size %lld", *(sflow_row->header));
-        }
-      if (sflow_row->max_datagram != NULL)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "sflow max-datagram-size %lld", *(sflow_row->max_datagram));
-        }
-      if (sflow_row->polling != NULL)
-        {
-          vtysh_ovsdb_cli_print(p_msg, "sflow polling %lld", *(sflow_row->polling));
-        }
-  return e_vtysh_ok;
-  }
-
-}
-
-
-/*-----------------------------------------------------------------------------
-| Function : vtysh_ovsdb_subsystemtable_parse_othercfg
-| Responsibility : parse subsystem table
-| scope: Static
-| Parameters :
-|     void *p_private: void type object typecast to required
-| Return : void
------------------------------------------------------------------------------*/
-static vtysh_ret_val
-vtysh_ovsdb_subsystemtable_parse_othercfg(const struct smap *subsystemrow_config,
-                                          vtysh_ovsdb_cbmsg *p_msg)
-{
-    const char *data = NULL;
-    if(NULL == subsystemrow_config)
-    {
-        return e_vtysh_error;
-    }
-    data = smap_get(subsystemrow_config, FAN_SPEED_OVERRIDE_STR);
-    if(data)
-    {
-        if(!(VTYSH_STR_EQ(data, "normal")))
-            vtysh_ovsdb_cli_print(p_msg, "fan-speed %s",data);
-    }
-    return e_vtysh_ok;
-}
-
-
-/*-----------------------------------------------------------------------------
-| Function : vtysh_config_context_fan_clientcallback_old
-| Responsibility : fan config client callback routine
-| Parameters :
-|     void *p_private: void type object typecast to required
-| Return : void
------------------------------------------------------------------------------*/
-vtysh_ret_val
-vtysh_config_context_fan_clientcallback_old(void *p_private)
-{
-    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-    const struct ovsrec_subsystem *subsysrow;
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
-                           "vtysh_config_context_fan_clientcallback_old entered");
-    subsysrow = ovsrec_subsystem_first(p_msg->idl);
-    if(subsysrow)
-    {
-    /* parse other config param */
-        vtysh_ovsdb_subsystemtable_parse_othercfg(&subsysrow->other_config, p_msg);
-    }
-    return e_vtysh_ok;
-}
-
-/***************************************************************************
-* @function      : vtysh_config_context_led_clientcallback_old
-* @detail    : client callback routine for LED configuration
-* @parame[in]
-*   p_private: Void pointer for holding address of vtysh_ovsdb_cbmsg_ptr
-*          structure object
-* @return : e_vtysh_ok on success
-***************************************************************************/
-vtysh_ret_val
-vtysh_config_context_led_clientcallback_old(void *p_private)
-{
-    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-    const struct ovsrec_led *pLedRow = NULL;
-
-    OVSREC_LED_FOR_EACH(pLedRow,p_msg->idl)
-    {
-        if(pLedRow)
-        {
-            /* Assuming there is no misconfiguration, state can be on|off|flashing */
-            if(0 != strcasecmp(pLedRow->state,DEFAULT_LED_STATE))
-            {
-                vtysh_ovsdb_cli_print(p_msg,"%s %s %s", "led",pLedRow->id,pLedRow->state);
-            }
-        }
-    }
-
-    return e_vtysh_ok;
-}
-
-/*-----------------------------------------------------------------------------
 | Function : vtysh_config_context_staticroute_clientcallback
 | Responsibility : client callback routine
 | Parameters :
@@ -907,57 +698,107 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
 }
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_config_context_ntp_clientcallback_old
-| Responsibility : NTP config client callback routine
+| Function : vtysh_config_context_sflow_clientcallback
+| Responsibility : sflow client callback routine
 | Parameters :
 |     void *p_private: void type object typecast to required
-| Return : error/ok
+| Return : void
 -----------------------------------------------------------------------------*/
 vtysh_ret_val
-vtysh_config_context_ntp_clientcallback_old(void *p_private)
+vtysh_config_context_sflow_clientcallback(void *p_private)
 {
-    vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-    const char *buf = NULL;
-    struct ovsrec_ntp_key *ntp_auth_key_row = NULL;
-    struct ovsrec_ntp_association *ntp_assoc_row = NULL;
-    char str_temp[80] = "";
-    bool status = false;
+  extern struct ovsdb_idl *idl;
+  int i=0;
+  char *ptr=NULL, *ip=NULL, *port=NULL, *vrf=NULL, *copy=NULL;
+  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+  const struct ovsrec_system *ovs_row = NULL;
+  ovs_row = ovsrec_system_first (idl);
+  const struct ovsrec_sflow *sflow_row = NULL;
+  const char delim[2] = "/";
 
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
-                              "vtysh_config_context_ntp_clientcallback_old entered");
+  vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                           "vtysh_config_context_sflow_clientcallback entered");
 
-    /* Generate CLI for the NTP_Key Table */
-    OVSREC_NTP_KEY_FOR_EACH(ntp_auth_key_row, p_msg->idl) {
-        vtysh_ovsdb_cli_print(p_msg, "ntp authentication-key %d md5 %s", ntp_auth_key_row->key_id, ntp_auth_key_row->key_password);
-
-        if (ntp_auth_key_row->trust_enable) {
-            vtysh_ovsdb_cli_print(p_msg, "ntp trusted-key %d", ntp_auth_key_row->key_id);
+  OVSREC_SFLOW_FOR_EACH(sflow_row, p_msg->idl){
+    if (ovs_row->sflow != NULL)
+      {
+        vtysh_ovsdb_cli_print(p_msg, "sflow enable");
+      }
+      if (sflow_row->n_targets > 0)
+        {
+          for (i = 0; i < sflow_row->n_targets; i++)
+            {
+              copy = xstrdup(sflow_row->targets[i]);
+              ptr = strtok(copy, delim);
+              if (ptr != NULL)
+                {
+                  ip = xstrdup(ptr);
+                  ptr = strtok(NULL, delim);
+                }
+              if (ptr != NULL)
+                {
+                  port = xstrdup(ptr);
+                  ptr = strtok(NULL, delim);
+                }
+              if (ptr != NULL)
+                {
+                  vrf = xstrdup(ptr);
+                }
+              if (port == NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s",ip);
+                  free (ip);
+                  free (copy);
+                }
+              if (port != NULL && vrf == NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s",
+                                        ip, port);
+                  free (ip);
+                  free (port);
+                  free (copy);
+                }
+              if (port != NULL && vrf != NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s vrf %s",
+                                        ip, port, vrf);
+                  free (ip);
+                  free (port);
+                  free (vrf);
+                  free (copy);
+                }
+            }
         }
-    }
-
-    /* Generate CLI for the NTP_Association Table */
-    OVSREC_NTP_ASSOCIATION_FOR_EACH(ntp_assoc_row, p_msg->idl) {
-        strcpy(str_temp, "");
-
-        if (NULL != ntp_assoc_row->key_id) {
-            snprintf(str_temp, sizeof(str_temp), " key-id %d", ((struct ovsrec_ntp_key *)ntp_assoc_row->key_id)->key_id);
+      if (sflow_row->agent != NULL && sflow_row->agent_addr_family == NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s", sflow_row->agent);
         }
-
-        buf = smap_get(&ntp_assoc_row->association_attributes, NTP_ASSOC_ATTRIB_VERSION);
-        if (buf && (0 != strncmp(buf, NTP_ASSOC_ATTRIB_VERSION_DEFAULT, strlen(NTP_ASSOC_ATTRIB_VERSION_DEFAULT)))) {
-            strcat(str_temp, " version ");
-            strcat(str_temp, buf);
+      else if (sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
+        {
+           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s %s",
+                                 sflow_row->agent,
+                                 sflow_row->agent_addr_family);
         }
+      if (sflow_row->sampling != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow sampling %lld", *(sflow_row->sampling));
 
-        status = smap_get_bool(&ntp_assoc_row->association_attributes, NTP_ASSOC_ATTRIB_PREFER, false);
-        if (status != NTP_ASSOC_ATTRIB_PREFER_DEFAULT_VAL) {
-            strcat(str_temp, " prefer");
         }
+      if (sflow_row->header != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow header-size %lld", *(sflow_row->header));
+        }
+      if (sflow_row->max_datagram != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow max-datagram-size %lld", *(sflow_row->max_datagram));
+        }
+      if (sflow_row->polling != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow polling %lld", *(sflow_row->polling));
+        }
+  return e_vtysh_ok;
+  }
 
-        vtysh_ovsdb_cli_print(p_msg, "ntp server %s%s", ntp_assoc_row->address, str_temp);
-    }
-
-    return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------
@@ -969,7 +810,6 @@ vtysh_config_context_ntp_clientcallback_old(void *p_private)
 int
 vtysh_init_config_context_clients()
 {
-  vtysh_context_client client;
   vtysh_ret_val retval = e_vtysh_error;
 
   retval = install_show_run_config_context(e_vtysh_config_context,
@@ -1019,115 +859,15 @@ vtysh_init_config_context_clients()
     return retval;
   }
 
-  client.p_client_name = globalconfigclientname;
-  client.client_id = e_vtysh_config_context_global;
-  client.p_callback = &vtysh_config_context_global_clientcallback;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_global, &client);
-  if(e_vtysh_ok != retval)
-  {
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add global client callback");
-    assert(0);
-    return retval;
-  }
-
   retval = e_vtysh_error;
-  memset(&client, 0, sizeof(vtysh_context_client));
-  client.p_client_name = vrfconfigclientname;
-  client.client_id = e_vtysh_config_context_vrf;
-  client.p_callback = &vtysh_config_context_vrf_clientcallback_old;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_vrf, &client);
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_sflow,
+                                     &vtysh_config_context_sflow_clientcallback,
+                                     NULL, NULL);
   if(e_vtysh_ok != retval)
   {
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add vrf client callback");
-    assert(0);
-    return retval;
-  }
-
-  retval = e_vtysh_error;
-  memset(&client, 0, sizeof(vtysh_context_client));
-  client.p_client_name = sflowconfigclientname;
-  client.client_id = e_vtysh_config_context_sflow;
-  client.p_callback = &vtysh_config_context_sflow_clientcallback;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_sflow, &client);
-  if(e_vtysh_ok != retval)
-  {
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add sflow client callback");
-    assert(0);
-    return retval;
-  }
-
-
-  retval = e_vtysh_error;
-  memset(&client, 0, sizeof(vtysh_context_client));
-  client.p_client_name = fanconfigclientname;
-  client.client_id = e_vtysh_config_context_fan;
-  client.p_callback = &vtysh_config_context_fan_clientcallback_old;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_fan, &client);
-  if(e_vtysh_ok != retval)
-  {
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add fan client callback");
-    assert(0);
-    return retval;
-  }
-
-
-  retval = e_vtysh_error;
-  memset(&client, 0, sizeof(vtysh_context_client));
-  client.p_client_name = ledconfigclientname;
-  client.client_id = e_vtysh_config_context_led;
-  client.p_callback = &vtysh_config_context_led_clientcallback_old;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_led, &client);
-  if(e_vtysh_ok != retval)
-  {
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add led client callback");
-    assert(0);
-    return retval;
-  }
-
-
-  retval = e_vtysh_error;
-  memset(&client, 0, sizeof(vtysh_context_client));
-  client.p_client_name = staticrouteconfigclientname;
-  client.client_id = e_vtysh_dependent_config_staticroute;
-  client.p_callback = &vtysh_config_context_staticroute_clientcallback;
-  retval = vtysh_context_addclient(e_vtysh_dependent_config, e_vtysh_dependent_config_staticroute, &client);
-  if(e_vtysh_ok != retval)
-  {
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "dependent config unable to add static route client callback");
-    assert(0);
-    return retval;
-  }
-
-  retval = e_vtysh_error;
-  memset(&client, 0, sizeof(vtysh_context_client));
-  client.p_client_name = ecmpconfigclientname;
-  client.client_id = e_vtysh_config_context_ecmp;
-  client.p_callback = &vtysh_config_context_ecmp_clientcallback;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_ecmp, &client);
-  if(e_vtysh_ok != retval)
-  {
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add ecmp client callback");
-    assert(0);
-    return retval;
-  }
-
-  retval = e_vtysh_error;
-  memset(&client, 0, sizeof(vtysh_context_client));
-  client.p_client_name = ntpconfigclientname;
-  client.client_id = e_vtysh_config_context_ntp;
-  client.p_callback = &vtysh_config_context_ntp_clientcallback_old;
-  retval = vtysh_context_addclient(e_vtysh_config_context, e_vtysh_config_context_ntp, &client);
-  if(e_vtysh_ok != retval)
-  {
-    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
-                              "config context unable to add ntp client callback");
+                          "config context unable to add sflow client callback");
     assert(0);
     return retval;
   }

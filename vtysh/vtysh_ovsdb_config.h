@@ -52,6 +52,8 @@ typedef enum vtysh_context_idenum
   e_vtysh_source_interface_context,
   e_vtysh_dhcp_tftp_context,
   e_vtysh_sftp_server_context,
+  e_vtysh_dhcp_relay_context,
+  e_vtysh_udp_forwarder_context,
   e_vtysh_context_id_max
 } vtysh_contextid;
 
@@ -219,18 +221,14 @@ extern unsigned int vtysh_ovsdb_idl_seqno;
 vtysh_ret_val vtysh_context_addclient(vtysh_contextid contextid,
                                       int clientid,
                                       vtysh_context_client *p_client);
-vtysh_ret_val vtysh_context_removeclient(vtysh_contextid contextid,
-                                         int clientid,
-                                         vtysh_context_client *p_client);
-vtysh_ret_val vtysh_context_iterateoverclients(vtysh_contextid contextid,
-                                               vtysh_ovsdb_cbmsg *p_msg);
 
 int vtysh_context_get_maxclientid(vtysh_contextid contextid);
 int vtysh_context_get_minclientid(vtysh_contextid contextid);
 
 void vtysh_ovsdb_config_init(const char *db_path);
-void vtysh_ovsdb_read_config(FILE *fp);
 void vtysh_ovsdb_init_clients(void);
+
+vtysh_ret_val vtysh_sh_run_iteratecontextlist(FILE *fp);
 
 vtysh_ret_val vtysh_ovsdb_cli_print(vtysh_ovsdb_cbmsg *p_msg, const char *fmt, ...);
 
