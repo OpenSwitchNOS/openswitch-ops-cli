@@ -150,6 +150,7 @@ display_l3_info(const struct ovsrec_port *port_row,
    if (port_row->ip4_address || (port_row->n_ip4_address_secondary > 0)
         || port_row->ip6_address || (port_row->n_ip6_address_secondary > 0)
         || smap_get(&port_row->other_config, PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED)
+        || smap_get(&port_row->other_config, PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED)
         || (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0)) {
      return true;
    }
