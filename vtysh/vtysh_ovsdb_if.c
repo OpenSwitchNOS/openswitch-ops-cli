@@ -578,9 +578,6 @@ ovsdb_init(const char *db_path)
     /* Logrotate tables */
     logrotate_ovsdb_init();
 
-    /* Access Control List (ACL) tables */
-    access_list_ovsdb_init();
-
     /* Add tables/columns needed for NTP config commands. */
     ntp_ovsdb_init();
 }

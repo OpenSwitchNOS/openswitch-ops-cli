@@ -63,7 +63,6 @@
 #include "l3routes_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
-#include "access_list_vty.h"
 #endif
 
 #include "sub_intf_vty.h"
@@ -4121,7 +4120,6 @@ vtysh_init_vty (void)
 
   alias_vty_init();
   logrotate_vty_init();
-  access_list_vty_init();
 
   /* Initialize source interface selection CLI*/
   source_interface_selection_vty_init();
