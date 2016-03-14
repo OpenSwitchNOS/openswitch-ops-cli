@@ -872,7 +872,11 @@ vrf_no_routing (const char *if_name)
       smap_remove(&port_row->other_config,
               PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED);
 
-      vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
+     /* Disable local-proxy-arp on the port */
+     smap_remove(&port_row->other_config,
+                 PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED);
+
+     vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
       for (i = n = 0; i < vrf_row->n_ports; i++)
         {
           if (vrf_row->ports[i] != port_row)
@@ -1575,7 +1579,90 @@ static int vrf_proxy_arp_toggle_state(const char *if_name, const char* value)
     if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
         return CMD_SUCCESS;
     } else {
-        vty_out(vty, "Status failure Proxy-Arp%s", VTY_NEWLINE);
+        vty_out(vty, "Status failure Proxy-ARP%s", VTY_NEWLINE);
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
+        return CMD_OVSDB_FAILURE;
+    }
+}
+/*-----------------------------------------------------------------------------
+ | Function : vrf_local_proxy_arp_toggle_state
+ | Responsibility : To enable/disable local-proxy-arp on an interface
+ | Parameters:
+ |              if_name : Interface name.
+ |              value   : The new status of local-proxy-arp.
+ |
+ | Return : CMD_SUCCESS for success , CMD_OVSDB_FAILURE for failure
+ -----------------------------------------------------------------------------*/
+static int
+vrf_local_proxy_arp_toggle_state(const char *if_name, const char* value)
+{
+    const struct ovsrec_port *port_row;
+    enum ovsdb_idl_txn_status txn_status;
+    struct ovsdb_idl_txn *status_txn = cli_do_config_start();
+    struct smap smap_other_config;
+
+    if (status_txn == NULL) {
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /* Verify the port is not part of a bridge */
+    if (check_iface_in_bridge(if_name) && (VERIFY_VLAN_IFNAME (if_name) != 0))
+    {
+        vty_out(vty, "Interface %s is not L3.%s", if_name, VTY_NEWLINE);
+        VLOG_DBG("%s Interface \"%s\" is not attached to any VRF. "
+                "It is attached to default bridge", __func__, if_name);
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    /* Check for split interface conditions */
+    if (!check_split_iface_conditions(if_name)) {
+        cli_do_config_abort(status_txn);
+        return CMD_SUCCESS;
+    }
+
+    /* Fetch the port record for the given interface name. */
+    OVSREC_PORT_FOR_EACH(port_row, idl) {
+        if (strcmp(port_row->name, if_name) == 0) {
+            break;
+        }
+    }
+
+    /* Return error if we didn't find a port-record with the
+     * given interface name. */
+    if (!port_row) {
+        VLOG_ERR(OVSDB_ROW_FETCH_ERROR);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    /* Cache the current state of 'other-config' column for this port record */
+    smap_clone(&smap_other_config, &port_row->other_config);
+
+    /* Based on the new value passed, add or remove the key to the column */
+    if (value == NULL) {
+        /* Remove local-proxy-arp {key,value} pair for this port */
+        smap_remove(&smap_other_config,
+                PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED);
+    } else if (!strcmp(value, PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED_TRUE)
+            && !smap_get(&smap_other_config,
+            PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED)) {
+        /* Add local-proxy-arp {key,value} pair for this port */
+        smap_add(&smap_other_config, PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED,
+                value);
+    }
+
+    /* Put back the new value of 'other config' column into the port record */
+    ovsrec_port_set_other_config(port_row, &smap_other_config);
+    smap_destroy(&smap_other_config);
+    txn_status = cli_do_config_finish(status_txn);
+
+    if (txn_status == TXN_SUCCESS || txn_status == TXN_UNCHANGED) {
+        return CMD_SUCCESS;
+    } else {
+        vty_out(vty, "Status failure Local-Proxy-ARP%s", VTY_NEWLINE);
         VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
         return CMD_OVSDB_FAILURE;
     }
@@ -1706,26 +1793,49 @@ DEFUN (cli_vrf_show,
 {
   return show_vrf_info();
 }
+#ifdef FTR_PROXY_ARP
+  DEFUN (cli_vrf_proxy_arp_enable,
+         cli_vrf_proxy_arp_enable_cmd,
+         "ip proxy-arp",
+         IP_STR
+         "Enable proxy ARP\n")
+  {
+       return vrf_proxy_arp_toggle_state((char *) vty->index,
+               PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED_TRUE);
+  }
 
-DEFUN (cli_vrf_proxy_arp_enable,
-       cli_vrf_proxy_arp_enable_cmd,
-       "ip proxy-arp",
-       IP_STR
-       "Enable proxy ARP\n")
-{
-    return vrf_proxy_arp_toggle_state((char *) vty->index,
-            PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED_TRUE);
-}
+  DEFUN (cli_vrf_proxy_arp_disable,
+         cli_vrf_proxy_arp_disable_cmd,
+         "no ip proxy-arp",
+         NO_STR
+         IP_STR
+         "Disable proxy ARP\n")
+  {
+      return vrf_proxy_arp_toggle_state((char *) vty->index, NULL);
+  }
+#endif /* FTR_PROXY_ARP */
 
-DEFUN (cli_vrf_proxy_arp_disable,
-       cli_vrf_proxy_arp_disable_cmd,
-       "no ip proxy-arp",
-       NO_STR
-       IP_STR
-       "Disable proxy ARP\n")
-{
-    return vrf_proxy_arp_toggle_state((char *) vty->index, NULL);
-}
+#ifdef FTR_LOCAL_PROXY_ARP
+  DEFUN (cli_vrf_local_proxy_arp_enable,
+         cli_vrf_local_proxy_arp_enable_cmd,
+         "ip local-proxy-arp",
+         IP_STR
+         "Enable local proxy ARP\n")
+  {
+      return vrf_local_proxy_arp_toggle_state((char *) vty->index,
+              PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED_TRUE);
+  }
+
+  DEFUN (cli_vrf_local_proxy_arp_disable,
+         cli_vrf_local_proxy_arp_disable_cmd,
+         "no ip local-proxy-arp",
+         NO_STR
+         IP_STR
+         "Disable local proxy ARP\n")
+  {
+      return vrf_local_proxy_arp_toggle_state((char *) vty->index, NULL);
+  }
+#endif /* FTR_LOCAL_PROXY_ARP */
 
 /* Install VRF related vty commands. */
 void
@@ -1743,8 +1853,16 @@ vrf_vty_init (void)
   install_element (INTERFACE_NODE, &cli_vrf_del_ipv6_cmd);
   install_element (INTERFACE_NODE, &cli_vrf_routing_cmd);
   install_element (INTERFACE_NODE, &cli_vrf_no_routing_cmd);
+#ifdef FTR_PROXY_ARP
   install_element (INTERFACE_NODE, &cli_vrf_proxy_arp_enable_cmd);
   install_element (INTERFACE_NODE, &cli_vrf_proxy_arp_disable_cmd);
+#endif /* FTR_PROXY_ARP */
+
+#ifdef FTR_LOCAL_PROXY_ARP
+  install_element (INTERFACE_NODE, &cli_vrf_local_proxy_arp_enable_cmd);
+  install_element (INTERFACE_NODE, &cli_vrf_local_proxy_arp_disable_cmd);
+#endif /* FTR_LOCAL_PROXY_ARP */
+
   install_element (ENABLE_NODE, &cli_vrf_show_cmd);
 
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_add_port_cmd);
@@ -1753,8 +1871,15 @@ vrf_vty_init (void)
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_config_ipv6_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_ip_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_ipv6_cmd);
+#ifdef FTR_PROXY_ARP
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_proxy_arp_enable_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_proxy_arp_disable_cmd);
+#endif /* FTR_PROXY_ARP */
+
+#ifdef FTR_LOCAL_PROXY_ARP
+  install_element (VLAN_INTERFACE_NODE, &cli_vrf_local_proxy_arp_enable_cmd);
+  install_element (VLAN_INTERFACE_NODE, &cli_vrf_local_proxy_arp_disable_cmd);
+#endif /* FTR_LOCAL_PROXY_ARP */
 
   retval = e_vtysh_error;
   retval = install_show_run_config_subcontext(e_vtysh_interface_context,
