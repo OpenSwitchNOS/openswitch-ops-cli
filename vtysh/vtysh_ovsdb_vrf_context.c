@@ -194,6 +194,9 @@ vtysh_intf_context_vrf_clientcallback(void *p_private)
         if (smap_get(&port_row->other_config, PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED)) {
             vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "ip proxy-arp");
         }
+	if (smap_get(&port_row->other_config, PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED)) {
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "ip local-proxy-arp");
+        }
         display_dhcp_relay_interface_config(ifrow->name, p_msg);
         display_udpfwd_info(ifrow->name, p_msg);
       }
