@@ -74,6 +74,7 @@
 #define OSPF_MD5            "Use MD5 algorithm\n"
 #define OSPF_MD5_PASSWORD   "The OSPF password (key)"
 #define OSPF_NO_SUMMARY_STR "Do not inject inter-area routes into nssa\n"
+#define OSPF_INTERFACE_OSPF "OSPF interface commands\n"
 #define OSPF_AREA_ID_FORMAT_ADDRESS         1
 #define OSPF_AREA_ID_FORMAT_DECIMAL         2
 
