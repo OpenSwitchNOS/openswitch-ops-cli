@@ -1163,7 +1163,8 @@ ospf_network_insert_ospf_router(const struct ovsrec_ospf_router *
 int
 ospf_network_remove_from_ospf_router(
                         const struct ovsrec_ospf_router *ospf_router_row,
-                        const int64_t area_id)
+                        const int64_t area_id,
+                        const char *network_range)
 {
     int64_t *area_list;
     char **network_list;
@@ -1185,17 +1186,20 @@ ospf_network_remove_from_ospf_router(
         return CMD_OVSDB_FAILURE;
     }
 
-    for (i = 0, j = 0; i < ospf_router_row->n_networks; i++) {
-        if (ospf_router_row->value_networks[i] != area_id) {
+    for (i = 0, j = 0; i < ospf_router_row->n_networks; i++)
+    {
+        if ((!strcmp(ospf_router_row->key_networks[i], network_range)) &&
+            (ospf_router_row->value_networks[i] == area_id))
+        {
+            is_present = true;
+        }
+        else
+        {
             network_list[j] =
                 ospf_router_row->key_networks[i];
             area_list[j] =
                 ospf_router_row->value_networks[i];
             j++;
-        }
-        else
-        {
-            is_present = true;
         }
     }
 
@@ -1291,8 +1295,8 @@ ospf_router_area_id_cmd_execute(bool no_flag, int instance_id,
     }
     else
     {
-        if (ospf_network_remove_from_ospf_router(ospf_router_row, area_id)
-                                                != CMD_SUCCESS)
+        if (ospf_network_remove_from_ospf_router(ospf_router_row, area_id,
+                                                 network_range)!= CMD_SUCCESS)
         {
             OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Removing network failed.");
         }
@@ -2258,10 +2262,10 @@ ospf_interface_one_row_print(struct vty *vty,const char* ifname,
         bool bool_value = *port_row->ospf_mtu_ignore;
         if (bool_value)
         {
-            vty_out(vty, "  MTU mismatch detection: not enabled%s", VTY_NEWLINE);
+            vty_out(vty, "  MTU mismatch detection: enabled%s", VTY_NEWLINE);
         }
         else
-            vty_out(vty, "  MTU mismatch detection: enabled%s", VTY_NEWLINE);
+            vty_out(vty, "  MTU mismatch detection: not enabled%s", VTY_NEWLINE);
     }
     else
         vty_out(vty, "  MTU mismatch detection: not enabled%s", VTY_NEWLINE);
@@ -2300,12 +2304,12 @@ ospf_interface_one_row_print(struct vty *vty,const char* ifname,
     /* Interface type */
     if (port_row->ospf_if_type)
     {
-        vty_out(vty, " Network Type <%s>,",
+        vty_out(vty, " Network Type %s,",
                 ospf_interface_type_convert(port_row->ospf_if_type));
     }
     else
     {
-        vty_out(vty, " Network Type <NONE>,");
+        vty_out(vty, " Network Type BROADCAST,");
     }
 
     /* cost */
@@ -3600,7 +3604,7 @@ DEFUN(cli_ospf_router_hello_interval,
       cli_ospf_router_hello_interval_cmd,
       "ip ospf hello-interval <1-65535>",
       IP_STR
-      OSPF_CONF_STR
+      OSPF_INTERFACE_OSPF
       OSPF_HELLO_INTERVAL_STR
       OSPF_HELLO_INTERVAL_VAL_STR)
 {
@@ -3614,7 +3618,7 @@ DEFUN(cli_ospf_router_no_hello_interval,
       "no ip ospf hello-interval",
       NO_STR
       IP_STR
-      OSPF_CONF_STR
+      OSPF_INTERFACE_OSPF
       OSPF_HELLO_INTERVAL_STR)
 {
 
@@ -3627,7 +3631,7 @@ DEFUN(cli_ospf_router_dead_interval,
       cli_ospf_router_dead_interval_cmd,
       "ip ospf dead-interval <1-65535>",
       IP_STR
-      OSPF_CONF_STR
+      OSPF_INTERFACE_OSPF
       OSPF_DEAD_INTERVAL_STR
       OSPF_DEAD_INTERVAL_VAL_STR)
 {
@@ -3641,7 +3645,7 @@ DEFUN(cli_ospf_router_no_dead_interval,
       "no ip ospf dead-interval",
       NO_STR
       IP_STR
-      OSPF_CONF_STR
+      OSPF_INTERFACE_OSPF
       OSPF_DEAD_INTERVAL_STR)
 {
 
