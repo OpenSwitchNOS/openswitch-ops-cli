@@ -426,7 +426,8 @@ verify_ifname(char *str)
 
     /* The VLANID is internal vlan */
     if (check_internal_vlan(vlanid) == 0) {
-        vty_out(vty, "Error : Vlanid is an internal vlan\n");
+        vty_out(vty, "VLAN%d is used as an internal VLAN. "
+                     "No further configuration allowed.\n", vlanid);
         return 0;
     }
 
