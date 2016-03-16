@@ -583,7 +583,7 @@ delete_loopback_intf(const char *if_name)
     status_txn = cli_do_config_start();
     if (status_txn == NULL)
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
+        VLOG_ERR(LOOPBACK_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -624,7 +624,7 @@ delete_loopback_intf(const char *if_name)
     }
     else
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__, __LINE__);
+        VLOG_ERR(LOOPBACK_OVSDB_TXN_COMMIT_ERROR,__func__, __LINE__);
         return CMD_OVSDB_FAILURE;
     }
 }
