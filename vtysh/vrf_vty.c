@@ -1404,6 +1404,54 @@ vrf_del_ipv6 (const char *if_name, const char *ipv6, bool secondary)
     }
 }
 
+/* qsort comparator function.
+ */
+int
+compare_nodes_vrf_by_name(const void *a_, const void *b_)
+{
+    struct shash_node **a = a_;
+    struct shash_node **b = b_;
+    uint i1=0,i2=0;
+
+    sscanf(((*a)->name + 4), "%d", &i1);
+    sscanf(((*b)->name + 4), "%d", &i2);
+
+    if (i1 == i2)
+        return 0;
+    else if (i1 < i2)
+        return -1;
+    else
+        return 1;
+}
+
+/*
+ * Sorting function for vrf elemnts
+ * on success, returns sorted vrfs list.
+ */
+const struct shash_node **
+sort_vrf(const struct shash *sh)
+{
+    if (shash_is_empty(sh)) {
+        return NULL;
+    } else {
+        const struct shash_node **nodes;
+        struct shash_node *node;
+
+        size_t i, n;
+
+        n = shash_count(sh);
+        nodes = xmalloc(n * sizeof *nodes);
+        i = 0;
+        SHASH_FOR_EACH (node, sh) {
+            nodes[i++] = node;
+        }
+        ovs_assert(i == n);
+
+        qsort(nodes, n, sizeof *nodes, compare_nodes_vrf_by_name);
+        return nodes;
+    }
+}
+
 /*
  * This function is used to show the VRF information.
  * Currently, it shows the interfaces attached to each VRF.
@@ -1412,7 +1460,12 @@ static int
 show_vrf_info ()
 {
   const struct ovsrec_vrf *vrf_row = NULL;
+  const struct ovsrec_port *port_row = NULL;
   size_t i;
+  struct shash sorted_vrf;
+  const struct shash_node **nodes;
+  const char *vrf_str;
+  uint16_t count;
 
   vrf_row = ovsrec_vrf_first (idl);
   if (!vrf_row)
@@ -1432,6 +1485,7 @@ show_vrf_info ()
    *
    */
 
+
   vty_out (vty, "VRF Configuration:%s", VTY_NEWLINE);
   vty_out (vty, "------------------%s", VTY_NEWLINE);
   OVSREC_VRF_FOR_EACH (vrf_row, idl)
@@ -1439,20 +1493,33 @@ show_vrf_info ()
       vty_out (vty, "VRF Name : %s%s\n", vrf_row->name, VTY_NEWLINE);
       vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
       vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
+
+      shash_init(&sorted_vrf);
       for (i = 0; i < vrf_row->n_ports; i++)
         {
-        if (smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR) == NULL)
+          shash_add(&sorted_vrf, vrf_row->ports[i]->name,
+                    (void *)vrf_row->ports[i]);
+        }
+
+      count = shash_count(&sorted_vrf);
+      nodes = sort_vrf(&sorted_vrf);
+
+      for (i = 0; i < count; i++)
+      {
+        port_row = (const struct ovsrec_port *)nodes[i]->data;
+        if (smap_get(&port_row->status, PORT_STATUS_MAP_ERROR) == NULL)
           {
-            vty_out (vty, "\t%s                %s%s", vrf_row->ports[i]->name,
+            vty_out (vty, "\t%s            %s%s", port_row->name,
                      PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
           }
         else
           {
-            vty_out (vty, "\t%s                error: %s%s", vrf_row->ports[i]->name,
-                     smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR),
+            vty_out (vty, "\t%s            error : %s%s", port_row->name,
+                     smap_get(&port_row->status, PORT_STATUS_MAP_ERROR),
                      VTY_NEWLINE);
           }
-        }
+      }
+
     }
   return CMD_SUCCESS;
 
