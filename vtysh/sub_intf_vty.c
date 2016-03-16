@@ -622,18 +622,10 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
 {
     const char *cur_state =NULL;
     const struct ovsrec_interface *if_parent_row = NULL;
-
     const struct ovsdb_datum *datum;
-    static char *interface_statistics_keys [] = {
-        "rx_packets", "rx_bytes",  "tx_packets",
-        "tx_bytes",   "rx_dropped","rx_frame_err",
-        "rx_over_err","rx_crc_err","rx_errors",
-        "tx_dropped", "collisions","tx_errors"
-    };
 
     unsigned int index;
     int64_t intVal = 0;
-    bool parent_intf_down = false;
     union ovsdb_atom atom;
     int64_t key_subintf_parent = 0;
 
@@ -646,10 +638,6 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
     {
         if_parent_row = ifrow->value_subintf_parent[0];
     }
-    if ((NULL != if_parent_row->admin_state) &&
-            (strcmp(if_parent_row->admin_state,
-                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0))
-        parent_intf_down = true;
 
     if (brief)
     {
@@ -659,31 +647,8 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
             key_subintf_parent = ifrow->key_subintf_parent[0];
         }
 
-        /* Display brief information. */
-        vty_out (vty, " %-12s ", ifrow->name);
-        vty_out(vty, "%4lu    ", key_subintf_parent ); /*VLAN */
-        vty_out(vty, "eth  "); /*type */
-        vty_out(vty, "routed "); /* mode - routed or not */
+        show_subinterface_status(ifrow, brief, if_parent_row, key_subintf_parent);
 
-        vty_out (vty, "%-6s ",
-                ((strcmp(if_parent_row->link_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
-                ((ifrow->admin_state != NULL) &&
-                 (strcmp(ifrow->admin_state,
-                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN)))) ?
-                ifrow->link_state :
-                if_parent_row->link_state);
-
-        if ((NULL != ifrow->admin_state) &&
-                (strcmp(ifrow->admin_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0))
-        {
-            vty_out (vty, "Administratively down    ");
-        }
-        else
-        {
-            vty_out (vty, "                         ");
-        }
         intVal = 0;
         datum = ovsrec_interface_get_link_speed(if_parent_row,
                 OVSDB_TYPE_INTEGER);
@@ -707,44 +672,12 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
     {
         intVal = 0;
 
-        vty_out (vty, "Interface %s is %s.%s", ifrow->name,
-                ((strcmp(if_parent_row->link_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
-                (smap_get(&ifrow->user_config, "admin") != NULL)) ?
-                OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP :
-                OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN, VTY_NEWLINE);
-
-        if ((NULL != ifrow->admin_state)
-                && strcmp(ifrow->admin_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0)
-        {
-            vty_out (vty, "%s", VTY_NEWLINE);
-            vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
-        }
-        else
-        {
-            vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
-            vty_out (vty, " Admin state is down%s", VTY_NEWLINE);
-        }
-
-        vty_out (vty, " Parent interface is %s %s",
-                if_parent_row->name, VTY_NEWLINE);
-        if (parent_intf_down)
-        {
-            vty_out (vty, " Parent interface is administratively down%s",
-                    VTY_NEWLINE);
-        }
-
-        if (ifrow->error != NULL)
-        {
-            vty_out (vty, " State information: %s%s",
-                    ifrow->error, VTY_NEWLINE);
-        }
-
         if (ifrow->n_subintf_parent > 0)
         {
             key_subintf_parent = ifrow->key_subintf_parent[0];
         }
+
+        show_subinterface_status(ifrow, brief, if_parent_row, key_subintf_parent);
 
         if (0 != key_subintf_parent)
         {
@@ -803,72 +736,97 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
             vty_out(vty, " Input flow-control is off, "
                     "output flow-control is off%s",VTY_NEWLINE);
         }
-
-        datum = ovsrec_interface_get_statistics(ifrow,
-                OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
-
-        if (NULL==datum) return CMD_SUCCESS;
-
-        vty_out(vty, " RX%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[0];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld input packets  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[1];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld bytes  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[8];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld input error    ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[4];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld dropped  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[7];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld CRC/FCS  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        vty_out(vty, " TX%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[2];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld output packets ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[3];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld bytes  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[11];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld input error    ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        atom.string = interface_statistics_keys[9];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld dropped  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        atom.string = interface_statistics_keys[10];
-        index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
-        vty_out(vty, "   %10ld collision  ",
-                (index == UINT_MAX)? 0 : datum->values[index].integer);
-        vty_out(vty, "%s", VTY_NEWLINE);
-
-        vty_out(vty, "%s", VTY_NEWLINE);
+        show_l3_stats(vty, ifrow);
     }
 
     return CMD_SUCCESS;
+}
+
+/*
+ * This function is used to display status information of Subinterfaces
+ * This function accepts 4 arguments.
+ * Parameter 1 : interface row
+ * Parameter 2 : bool for brief description
+ * Parameter 3 : parent interface row for this subinterface
+ * Parameter 4 : subinterface vlan id
+ * Return      : void
+ */
+void
+show_subinterface_status(const struct ovsrec_interface *ifrow, bool brief,
+        const struct ovsrec_interface *if_parent_row, int64_t key_subintf_parent)
+{
+    bool parent_intf_down = false;
+
+    if ((NULL != if_parent_row->admin_state) &&
+            (strcmp(if_parent_row->admin_state,
+                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0))
+        parent_intf_down = true;
+
+    if (brief)
+    {
+        /* Display brief information. */
+        vty_out (vty, " %-12s ", ifrow->name);
+        vty_out(vty, "%4lu    ", key_subintf_parent); /*VLAN */
+        vty_out(vty, "eth  "); /*type */
+        vty_out(vty, "routed "); /* mode - routed or not */
+
+        vty_out (vty, "%-6s ",
+                ((strcmp(if_parent_row->link_state,
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
+                ((ifrow->admin_state != NULL) &&
+                 (strcmp(ifrow->admin_state,
+                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN)))) ?
+                ifrow->link_state :
+                if_parent_row->link_state);
+
+        if ((NULL != ifrow->admin_state) &&
+                (strcmp(ifrow->admin_state,
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0))
+        {
+            vty_out (vty, "Administratively down    ");
+        }
+        else
+        {
+            vty_out (vty, "                         ");
+        }
+    }
+
+    else
+    {
+        vty_out (vty, "Interface %s is %s.%s", ifrow->name,
+                ((strcmp(if_parent_row->link_state,
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
+                (smap_get(&ifrow->user_config, "admin") != NULL)) ?
+                OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP :
+                OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN, VTY_NEWLINE);
+
+        if ((NULL != ifrow->admin_state)
+                && strcmp(ifrow->admin_state,
+                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0)
+        {
+            vty_out (vty, "%s", VTY_NEWLINE);
+            vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
+        }
+        else
+        {
+            vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
+            vty_out (vty, " Admin state is down%s", VTY_NEWLINE);
+        }
+
+        vty_out (vty, " Parent interface is %s %s",
+                if_parent_row->name, VTY_NEWLINE);
+        if (parent_intf_down)
+        {
+            vty_out (vty, " Parent interface is administratively down%s",
+                    VTY_NEWLINE);
+        }
+
+        if (ifrow->error != NULL)
+        {
+            vty_out (vty, " State information: %s%s",
+                    ifrow->error, VTY_NEWLINE);
+        }
+    }
 }
 
 DEFUN (cli_intf_show_subintferface_ifname,
