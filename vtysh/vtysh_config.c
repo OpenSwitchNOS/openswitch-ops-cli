@@ -219,11 +219,6 @@ vtysh_config_parse_line (const char *line)
 	config = config_get (BGP_NODE, line);
       else if (strncmp (line, "route-map", strlen ("route-map")) == 0)
 	config = config_get (RMAP_NODE, line);
-      else if (strncmp (line, "access-list", strlen ("access-list")) == 0)
-	config = config_get (ACCESS_NODE, line);
-      else if (strncmp (line, "ipv6 access-list",
-	       strlen ("ipv6 access-list")) == 0)
-	config = config_get (ACCESS_IPV6_NODE, line);
       else if (strncmp (line, "ip prefix-list",
 	       strlen ("ip prefix-list")) == 0)
 	config = config_get (PREFIX_NODE, line);
@@ -299,9 +294,9 @@ vtysh_config_parse (char *line)
 /* Macro to check delimiter is needed between each configuration line
  * or not. */
 #define NO_DELIMITER(I)  \
-  ((I) == ACCESS_NODE || (I) == PREFIX_NODE || (I) == IP_NODE \
+  ((I) == PREFIX_NODE || (I) == IP_NODE \
    || (I) == AS_LIST_NODE || (I) == COMMUNITY_LIST_NODE || \
-   (I) == ACCESS_IPV6_NODE || (I) == PREFIX_IPV6_NODE \
+   (I) == PREFIX_IPV6_NODE \
    || (I) == SERVICE_NODE || (I) == FORWARDING_NODE || (I) == DEBUG_NODE \
    || (I) == AAA_NODE)
 
