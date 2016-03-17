@@ -499,6 +499,25 @@ main (int argc, char **argv, char **env)
 
   snprintf(history_file, sizeof(history_file), "%s/.history_quagga", getenv("HOME"));
   read_history(history_file);
+
+#ifdef ENABLE_OVSDB
+  /*
+   * Wait for  ovsdb to be loaded. If ovsdb is not ready and user tries to configure,
+   * commands will fail to execute. So, wait for idl sequence number to change which
+   * indicates OVSDB is ready for transactions.
+   */
+  counter = 0;
+  do
+  {
+    if (vtysh_ovsdb_is_loaded())
+    {
+        break;
+    }
+    usleep(500000); //sleep for 500 msec
+    counter++;
+  } while (counter < MAX_TIMEOUT_FOR_IDL_CHANGE);
+#endif
+
   /* Main command loop. */
   while (vtysh_rl_gets ())
     vtysh_execute (line_read);
