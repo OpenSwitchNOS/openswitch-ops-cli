@@ -499,6 +499,19 @@ main (int argc, char **argv, char **env)
 
   snprintf(history_file, sizeof(history_file), "%s/.history_quagga", getenv("HOME"));
   read_history(history_file);
+
+  /* Wait for idl sequence number */
+  counter = 0;
+  do
+  {
+    if (vtysh_ovsdb_is_loaded())
+    {
+        break;
+    }
+    usleep(500000); //sleep for 500 msec
+    counter++;
+  } while (counter < MAX_TIMEOUT_FOR_IDL_CHANGE);
+
   /* Main command loop. */
   while (vtysh_rl_gets ())
     vtysh_execute (line_read);
