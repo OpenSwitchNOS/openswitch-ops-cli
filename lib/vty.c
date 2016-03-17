@@ -33,7 +33,6 @@
 #include "str.h"
 #include "log.h"
 #include "prefix.h"
-#include "filter.h"
 #include "vty.h"
 #include "privs.h"
 #include "network.h"
@@ -64,12 +63,6 @@ static vector vtyvec;
 
 /* Vty timeout value. */
 static unsigned long vty_timeout_val = VTY_TIMEOUT_DEFAULT;
-
-/* Vty access-class command */
-static char *vty_accesslist_name = NULL;
-
-/* Vty access-calss for IPv6. */
-static char *vty_ipv6_accesslist_name = NULL;
 
 /* VTY server thread. */
 static vector Vvty_serv_thread;
@@ -1723,7 +1716,6 @@ vty_accept (struct thread *thread)
   unsigned int on;
   int accept_sock;
   struct prefix *p = NULL;
-  struct access_list *acl = NULL;
   char buf[SU_ADDRSTRLEN];
 
   accept_sock = THREAD_FD (thread);
@@ -1744,46 +1736,6 @@ vty_accept (struct thread *thread)
 
   p = sockunion2hostprefix (&su);
 
-  /* VTY's accesslist apply. */
-  if (p->family == AF_INET && vty_accesslist_name)
-    {
-      if ((acl = access_list_lookup (AFI_IP, vty_accesslist_name)) &&
-	  (access_list_apply (acl, p) == FILTER_DENY))
-	{
-	  zlog (NULL, LOG_INFO, "Vty connection refused from %s",
-		sockunion2str (&su, buf, SU_ADDRSTRLEN));
-	  close (vty_sock);
-	  
-	  /* continue accepting connections */
-	  vty_event (VTY_SERV, accept_sock, NULL);
-	  
-	  prefix_free (p);
-
-	  return 0;
-	}
-    }
-
-#ifdef HAVE_IPV6
-  /* VTY's ipv6 accesslist apply. */
-  if (p->family == AF_INET6 && vty_ipv6_accesslist_name)
-    {
-      if ((acl = access_list_lookup (AFI_IP6, vty_ipv6_accesslist_name)) &&
-	  (access_list_apply (acl, p) == FILTER_DENY))
-	{
-	  zlog (NULL, LOG_INFO, "Vty connection refused from %s",
-		sockunion2str (&su, buf, SU_ADDRSTRLEN));
-	  close (vty_sock);
-	  
-	  /* continue accepting connections */
-	  vty_event (VTY_SERV, accept_sock, NULL);
-	  
-	  prefix_free (p);
-
-	  return 0;
-	}
-    }
-#endif /* HAVE_IPV6 */
-  
   prefix_free (p);
 
   on = 1;
@@ -2663,85 +2615,6 @@ DEFUN (no_exec_timeout,
   return exec_timeout (vty, NULL, NULL);
 }
 
-/* Set vty access class. */
-DEFUN (vty_access_class,
-       vty_access_class_cmd,
-       "access-class WORD",
-       "Filter connections based on an IP access list\n"
-       "IP access list\n")
-{
-  if (vty_accesslist_name)
-    XFREE(MTYPE_VTY, vty_accesslist_name);
-
-  vty_accesslist_name = XSTRDUP(MTYPE_VTY, argv[0]);
-
-  return CMD_SUCCESS;
-}
-
-/* Clear vty access class. */
-DEFUN (no_vty_access_class,
-       no_vty_access_class_cmd,
-       "no access-class [WORD]",
-       NO_STR
-       "Filter connections based on an IP access list\n"
-       "IP access list\n")
-{
-  if (! vty_accesslist_name || (argc && strcmp(vty_accesslist_name, argv[0])))
-    {
-      vty_out (vty, "Access-class is not currently applied to vty%s",
-	       VTY_NEWLINE);
-      return CMD_WARNING;
-    }
-
-  XFREE(MTYPE_VTY, vty_accesslist_name);
-
-  vty_accesslist_name = NULL;
-
-  return CMD_SUCCESS;
-}
-
-#ifdef HAVE_IPV6
-/* Set vty access class. */
-DEFUN (vty_ipv6_access_class,
-       vty_ipv6_access_class_cmd,
-       "ipv6 access-class WORD",
-       IPV6_STR
-       "Filter connections based on an IP access list\n"
-       "IPv6 access list\n")
-{
-  if (vty_ipv6_accesslist_name)
-    XFREE(MTYPE_VTY, vty_ipv6_accesslist_name);
-
-  vty_ipv6_accesslist_name = XSTRDUP(MTYPE_VTY, argv[0]);
-
-  return CMD_SUCCESS;
-}
-
-/* Clear vty access class. */
-DEFUN (no_vty_ipv6_access_class,
-       no_vty_ipv6_access_class_cmd,
-       "no ipv6 access-class [WORD]",
-       NO_STR
-       IPV6_STR
-       "Filter connections based on an IP access list\n"
-       "IPv6 access list\n")
-{
-  if (! vty_ipv6_accesslist_name ||
-      (argc && strcmp(vty_ipv6_accesslist_name, argv[0])))
-    {
-      vty_out (vty, "IPv6 access-class is not currently applied to vty%s",
-	       VTY_NEWLINE);
-      return CMD_WARNING;
-    }
-
-  XFREE(MTYPE_VTY, vty_ipv6_accesslist_name);
-
-  vty_ipv6_accesslist_name = NULL;
-
-  return CMD_SUCCESS;
-}
-#endif /* HAVE_IPV6 */
-
 /* vty login. */
 DEFUN (vty_login,
        vty_login_cmd,
@@ -2862,14 +2735,6 @@ vty_config_write (struct vty *vty)
 {
   vty_out (vty, "line vty%s", VTY_NEWLINE);
 
-  if (vty_accesslist_name)
-    vty_out (vty, " access-class %s%s",
-	     vty_accesslist_name, VTY_NEWLINE);
-
-  if (vty_ipv6_accesslist_name)
-    vty_out (vty, " ipv6 access-class %s%s",
-	     vty_ipv6_accesslist_name, VTY_NEWLINE);
-
   /* exec-timeout */
   if (vty_timeout_val != VTY_TIMEOUT_DEFAULT)
     vty_out (vty, " exec-timeout %ld %ld%s", 
@@ -2925,18 +2790,6 @@ vty_reset ()
       }
 
   vty_timeout_val = VTY_TIMEOUT_DEFAULT;
-
-  if (vty_accesslist_name)
-    {
-      XFREE(MTYPE_VTY, vty_accesslist_name);
-      vty_accesslist_name = NULL;
-    }
-
-  if (vty_ipv6_accesslist_name)
-    {
-      XFREE(MTYPE_VTY, vty_ipv6_accesslist_name);
-      vty_ipv6_accesslist_name = NULL;
-    }
 }
 
 static void
@@ -3016,16 +2869,10 @@ vty_init (struct thread_master *master_thread)
   install_element (VTY_NODE, &exec_timeout_min_cmd);
   install_element (VTY_NODE, &exec_timeout_sec_cmd);
   install_element (VTY_NODE, &no_exec_timeout_cmd);
-  install_element (VTY_NODE, &vty_access_class_cmd);
-  install_element (VTY_NODE, &no_vty_access_class_cmd);
   install_element (VTY_NODE, &vty_login_cmd);
   install_element (VTY_NODE, &no_vty_login_cmd);
   install_element (VTY_NODE, &vty_restricted_mode_cmd);
   install_element (VTY_NODE, &vty_no_restricted_mode_cmd);
-#ifdef HAVE_IPV6
-  install_element (VTY_NODE, &vty_ipv6_access_class_cmd);
-  install_element (VTY_NODE, &no_vty_ipv6_access_class_cmd);
-#endif /* HAVE_IPV6 */
 }
 
 void

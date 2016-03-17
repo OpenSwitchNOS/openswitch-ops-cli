@@ -63,7 +63,7 @@ add_custom_command(
 add_library(ops-cli SHARED
   gitversion.h route_types.h memtypes.h network.c getopt.c getopt1.c daemon.c
   checksum.c vector.c linklist.c vty.c command.c sockunion.c prefix.c thread.c
-  if.c memory.c buffer.c table.c hash.c filter.c routemap.c distribute.c
+  if.c memory.c buffer.c table.c hash.c routemap.c distribute.c
   stream.c str.c log.c plist.c zclient.c sockopt.c smux.c agentx.c
   snmp.c md5.c if_rmap.c keychain.c privs.c sigevent.c pqueue.c jhash.c
   memtypes.c workqueue.c cli_plugins.c  lib_vtysh_ovsdb_if.c vty_utils.c)
@@ -90,7 +90,7 @@ install(
   LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}")
 install(
   FILES
-  buffer.h checksum.h command.h config.h distribute.h filter.h getopt.h
+  buffer.h checksum.h command.h config.h distribute.h getopt.h
   hash.h if.h if_rmap.h jhash.h keychain.h libospf.h lib_vtysh_ovsdb_if.h
   linklist.h log.h md5.h memory.h network.h plist.h pqueue.h prefix.h
   privs.h routemap.h sigevent.h smux.h sockopt.h sockunion.h stream.h
