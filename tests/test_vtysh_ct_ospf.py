@@ -443,10 +443,6 @@ def unsetAreaAuthType(dut01, area):
     if (exitContext(dut01) is False):
         return False
 
-    ospf_auth = SwitchVtyshUtils.vtysh_cmd(dut01, "show ip ospf")
-    assert auth_output in ospf_auth, "Test to unset auth with " \
-                                     "area %s failed" % (area)
-
     return True
 
 
