@@ -27,6 +27,7 @@
  ***************************************************************************/
 
 #include "vty.h"
+#include <stdlib.h>
 #include <vector.h>
 #include "vswitch-idl.h"
 #include "openswitch-idl.h"
@@ -49,7 +50,6 @@ vtysh_source_interface_context_clientcallback (void *p_private)
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
     const struct ovsrec_system *row = NULL;
     char *source_interface_buff = NULL;
-    uint8_t source_flag = false;
 
     row = ovsrec_system_first(p_msg->idl);
     if (!row) {
@@ -59,21 +59,41 @@ vtysh_source_interface_context_clientcallback (void *p_private)
     source_interface_buff = (char *)smap_get(&row->other_config,
                                              "protocols_source");
     if (source_interface_buff != NULL) {
-        if (!source_flag) {
-            vtysh_ovsdb_cli_print(p_msg, "%s", "source interface");
-            vtysh_ovsdb_cli_print(p_msg, "%4s%s", " ", source_interface_buff);
-            source_flag = true;
+        struct in_addr addr;
+        memset (&addr, 0, sizeof (struct in_addr));
+
+        /* Validate protocol server IP. */
+        if (inet_pton (AF_INET, source_interface_buff, &addr) > 0) {
+            vtysh_ovsdb_cli_print(p_msg, "%s %s",
+                                  "ip source-interface all address",
+                                  source_interface_buff);
         }
+        else {
+            vtysh_ovsdb_cli_print(p_msg, "%s %s",
+                                  "ip source-interface all interface",
+                                  source_interface_buff);
+        }
+
     }
 
     source_interface_buff = (char *)smap_get(&row->other_config,
                                              "tftp_source");
     if (source_interface_buff != NULL) {
-        if (!source_flag) {
-            vtysh_ovsdb_cli_print(p_msg, "%s", "source interface");
-            vtysh_ovsdb_cli_print(p_msg, "%4s%s", " ", source_interface_buff);
-            source_flag = true;
+        struct in_addr addr;
+        memset (&addr, 0, sizeof (struct in_addr));
+
+        /* Validate protocol server IP. */
+        if (inet_pton (AF_INET, source_interface_buff, &addr) > 0) {
+            vtysh_ovsdb_cli_print(p_msg, "%s %s",
+                                  "ip source-interface tftp address",
+                                  source_interface_buff);
         }
+        else {
+            vtysh_ovsdb_cli_print(p_msg, "%s %s",
+                                  "ip source-interface tftp interface",
+                                  source_interface_buff);
+        }
+
     }
     return e_vtysh_ok;
 }
