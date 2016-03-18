@@ -264,8 +264,7 @@ main (int argc, char **argv, char **env)
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
 
-  /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
-  vlog_set_verbosity("CONSOLE:OFF");
+  /* set SYSLOG as DBG for ops-cli VLOG modular list.*/
   vlog_set_verbosity("SYSLOG:DBG");
 
   /* Preserve name of myself. */
@@ -373,9 +372,9 @@ main (int argc, char **argv, char **env)
 
   /* Make vty structure and register commands. */
   vtysh_init_vty ();
-  /* set CONSOLE as OFF and SYSLOG as DBG for Dynamicaly Linked VLOG moduler list*/
+
+  /* set CONSOLE as OFF */
   vlog_set_verbosity("CONSOLE:OFF");
-  vlog_set_verbosity("SYSLOG:DBG");
 
   vtysh_user_init ();
   vtysh_config_init ();
