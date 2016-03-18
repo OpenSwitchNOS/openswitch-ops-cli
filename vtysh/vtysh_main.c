@@ -247,6 +247,7 @@ main (int argc, char **argv, char **env)
 {
   char *p;
   int opt;
+  char *verbosity_arg = NULL;
   int dryrun = 0;
   int boot_flag = 0;
 #ifndef ENABLE_OVSDB
@@ -266,7 +267,7 @@ main (int argc, char **argv, char **env)
 
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
-  vlog_set_verbosity("SYSLOG:DBG");
+  vlog_set_verbosity("SYSLOG:INFO");
 
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
@@ -330,7 +331,7 @@ main (int argc, char **argv, char **env)
           enable_mininet_test_prompt = 1;
           break;
         case 'v':
-          vlog_set_verbosity(optarg);
+          verbosity_arg = strdup(optarg);
           break;
         case 'D':
           temp_db = optarg;
@@ -373,9 +374,15 @@ main (int argc, char **argv, char **env)
 
   /* Make vty structure and register commands. */
   vtysh_init_vty ();
-  /* set CONSOLE as OFF and SYSLOG as DBG for Dynamicaly Linked VLOG moduler list*/
+
+  /* set CONSOLE as OFF */
   vlog_set_verbosity("CONSOLE:OFF");
-  vlog_set_verbosity("SYSLOG:DBG");
+  if (verbosity_arg) {
+      vlog_set_verbosity(verbosity_arg);
+      free(verbosity_arg);
+  }
+  else
+      vlog_set_verbosity("SYSLOG:INFO");
 
   vtysh_user_init ();
   vtysh_config_init ();
