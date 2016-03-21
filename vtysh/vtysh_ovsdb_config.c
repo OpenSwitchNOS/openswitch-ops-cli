@@ -45,236 +45,6 @@ VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 extern struct ovsdb_idl *idl;
 static vtysh_contextlist * show_run_contextlist = NULL;
 
-/* vtysh context client list defintions */
-vtysh_context_client vtysh_config_context_client_list[e_vtysh_config_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_router_context_client_list[e_vtysh_router_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_vlan_context_client_list[e_vtysh_vlan_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_interface_context_client_list[e_vtysh_interface_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_mgmt_interface_context_client_list[e_vtysh_mgmt_interface_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_interface_lag_context_client_list[e_vtysh_interface_lag_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_dependent_config_client_list[e_vtysh_dependent_config_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_source_interface_context_client_list \
-[e_vtysh_source_interface_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_dhcp_tftp_context_client_list[e_vtysh_dhcp_tftp_context_client_id_max] = {{NULL}};
-vtysh_context_client vtysh_sftp_server_context_client_list[e_vtysh_sftp_context_client_id_max] = {{NULL}};
-
-/* static array of vtysh context lists
-   context traversal order as shown below.
-   addition of new context should be done in correct order.
-*/
-vtysh_context_list vtysh_context_table[e_vtysh_context_id_max] =
-{
-  { "Config Context",     e_vtysh_config_context,    &vtysh_config_context_client_list},
-  { "Router Context",     e_vtysh_router_context,    &vtysh_router_context_client_list},
-  { "Vlan Context",       e_vtysh_vlan_context,      &vtysh_vlan_context_client_list},
-  { "Interface Context",  e_vtysh_interface_context, &vtysh_interface_context_client_list},
-  { "Mgmt Interface Context",  e_vtysh_mgmt_interface_context, &vtysh_mgmt_interface_context_client_list},
-  { "Interface LAG Context",  e_vtysh_interface_lag_context, &vtysh_interface_lag_context_client_list},
-  { "Dependent Config",   e_vtysh_dependent_config,  &vtysh_dependent_config_client_list},
-  { "dhcp tftp Config",   e_vtysh_dhcp_tftp_context,  &vtysh_dhcp_tftp_context_client_list},
-  { "Sftp Server Config", e_vtysh_sftp_server_context, &vtysh_sftp_server_context_client_list},
-  { "Source Interface Config",  e_vtysh_source_interface_context, \
-    &vtysh_source_interface_context_client_list},
-};
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_context_get_maxclientid
-| Responsibility : get the max client-id value for requested contextid
-| Parameters:
-|           vtysh_contextid contextid : contextid value
-| Return: int : returns max client id
-------------------------------------------------------------------------------*/
-int
-vtysh_context_get_maxclientid(vtysh_contextid contextid)
-{
-  int ret_val = 0;
-
-  if(!is_valid_vtysh_contextid(contextid))
-  {
-    return e_vtysh_error;
-  }
-
-  switch(contextid)
-  {
-    case e_vtysh_config_context:
-         ret_val = e_vtysh_config_context_client_id_max;
-         break;
-    case e_vtysh_router_context:
-         ret_val = e_vtysh_router_context_client_id_max;
-         break;
-    case e_vtysh_vlan_context:
-         ret_val = e_vtysh_vlan_context_client_id_max;
-         break;
-    case e_vtysh_interface_context:
-         ret_val = e_vtysh_interface_context_client_id_max;
-         break;
-    case e_vtysh_mgmt_interface_context:
-         ret_val = e_vtysh_mgmt_interface_context_client_id_max;
-         break;
-    case e_vtysh_interface_lag_context:
-         ret_val = e_vtysh_interface_lag_context_client_id_max;
-         break;
-    case e_vtysh_dependent_config:
-         ret_val = e_vtysh_dependent_config_client_id_max;
-         break;
-    case e_vtysh_source_interface_context:
-         ret_val = e_vtysh_source_interface_context_client_id_max;
-         break;
-    case e_vtysh_dhcp_tftp_context:
-         ret_val = e_vtysh_dhcp_tftp_context_client_id_max;
-         break;
-    case e_vtysh_sftp_server_context:
-         ret_val = e_vtysh_sftp_context_client_id_max;
-         break;
-    default:
-         ret_val = e_vtysh_error;
-         break;
-  }
-
-  return ret_val;
-
-}
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_context_get_minclientid
-| Responsibility : get the min client-id value for requested contextid
-| Parameters:
-|           vtysh_contextid contextid : contextid value
-| Return: int : returns min client id
-------------------------------------------------------------------------------*/
-int
-vtysh_context_get_minclientid(vtysh_contextid contextid)
-{
-  int ret_val = 0;
-
-  if(!is_valid_vtysh_contextid(contextid))
-  {
-    return e_vtysh_error;
-  }
-
-  switch(contextid)
-  {
-    case e_vtysh_config_context:
-         ret_val = e_vtysh_config_context_client_id_first;
-         break;
-    case e_vtysh_router_context:
-         ret_val = e_vtysh_router_context_client_id_first;
-         break;
-    case e_vtysh_vlan_context:
-         ret_val = e_vtysh_vlan_context_client_id_first;
-         break;
-    case e_vtysh_interface_context:
-         ret_val = e_vtysh_interface_context_client_id_first;
-         break;
-    case e_vtysh_mgmt_interface_context:
-         ret_val = e_vtysh_mgmt_interface_context_client_id_first;
-         break;
-    case e_vtysh_interface_lag_context:
-         ret_val = e_vtysh_interface_lag_context_client_id_first;
-         break;
-    case e_vtysh_dependent_config:
-         ret_val = e_vtysh_dependent_config_client_id_first;
-         break;
-    case e_vtysh_source_interface_context:
-         ret_val = e_vtysh_source_interface_context_client_id_first;
-         break;
-    case e_vtysh_dhcp_tftp_context:
-         ret_val = e_vtysh_dhcp_tftp_context_client_id_first;
-         break;
-    case e_vtysh_sftp_server_context:
-         ret_val = e_vtysh_sftp_context_client_id_first;
-         break;
-    default:
-         ret_val = e_vtysh_error;
-         break;
-  }
-
-  return ret_val;
-
-}
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_isvalid_contextclientid
-| Responsibility : calidates the client-id for the given contextid
-| Parameters:
-|           vtysh_contextid contextid : contextid value
-|           int clientid: clientid value
-| Return: int : returns e_vtysh_ok if clientid is valid else e_vtysh_error
-------------------------------------------------------------------------------*/
-vtysh_ret_val
-vtysh_isvalid_contextclientid(vtysh_contextid contextid, int clientid)
-{
-  int maxclientid=0, minclientid=0;
-
-  minclientid = vtysh_context_get_minclientid(contextid);
-  maxclientid = vtysh_context_get_maxclientid(contextid);
-
-  if ((e_vtysh_error == minclientid) || (e_vtysh_error == maxclientid))
-  {
-    return e_vtysh_error;
-  }
-
-  if ((clientid > minclientid) && (clientid < maxclientid))
-  {
-    return e_vtysh_ok;
-  }
-  else
-  {
-    return e_vtysh_error;
-  }
-
-}
-
-/*-----------------------------------------------------------------------------
-| Function: vtysh_context_addclient
-| Responsibility : Add client callback to the given context
-| Parameters:
-|           vtysh_contextid contextid : contextid value
-|           int clientid: clientid value
-|           vtysh_context_client *p_client: client param
-| Return: int : returns e_vtysh_ok if client callabck added successfully
-|               else e_vtysh_error
------------------------------------------------------------------------------*/
-vtysh_ret_val
-vtysh_context_addclient(vtysh_contextid contextid,
-                        int clientid,
-                        vtysh_context_client *p_client)
-{
-  vtysh_context_client *povs_client = NULL;
-
-  VLOG_DBG("vtysh_context_addclient called with context id %d clientid %d", contextid,clientid);
-
-  if(NULL == p_client)
-  {
-    VLOG_ERR("add_client: NULL Client callback for contextid %d, client id %d",contextid, clientid);
-    return e_vtysh_error;
-  }
-
-  if (e_vtysh_ok != vtysh_isvalid_contextclientid(contextid, clientid))
-  {
-    VLOG_ERR("add_client:Invalid client id %d for given context id %d", clientid, contextid);
-    return e_vtysh_error;
-  }
-
-  povs_client = &(*vtysh_context_table[contextid].clientlist)[clientid-1];
-  if (NULL == povs_client->p_callback)
-  {
-    /* add client call back */
-    povs_client->p_client_name = p_client->p_client_name;
-    povs_client->client_id = p_client->client_id;
-    povs_client->p_callback = p_client->p_callback;
-    VLOG_DBG("add_client: Client id %d callback successfully registered with context id %d",clientid, contextid);
-  }
-  else
-  {
-    /* client callback is already registered  */
-    VLOG_ERR("add_client: Client callback exists for client id %d in context id %d", clientid, contextid);
-    return e_vtysh_error;
-  }
-
-  return e_vtysh_ok;
-}
-
 /*-----------------------------------------------------------------------------
 | Function: vtysh_sh_run_iteratecontextlist
 | Responsibility : Iterates over the show running context callback list.
@@ -299,8 +69,6 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
 
     msg.fp = fp;
     msg.idl = idl;
-    msg.contextid = 0;
-    msg.clientid = 0;
 
     VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl,
              ovsdb_idl_get_seqno(idl));
@@ -502,6 +270,7 @@ install_show_run_config_context(vtysh_contextid index,
         {
             new_context->next = current->next;
             current->next = new_context;
+            VLOG_DBG("Installing context %d is successful.\n", new_context->index);
         }
         else
         {
@@ -539,7 +308,8 @@ install_show_run_config_subcontext(vtysh_contextid index,
 
     if (show_run_contextlist == NULL)
     {
-        VLOG_ERR("No parent context to add sub-context\n");
+        VLOG_ERR("No parent context %d to add sub-context %d.\n",
+                 index, subcontext_index);
         return e_vtysh_error;
     }
     else
@@ -552,7 +322,8 @@ install_show_run_config_subcontext(vtysh_contextid index,
 
         if (current->next == NULL && current->index != index)
         {
-            VLOG_ERR("No parent context to add sub-context\n");
+            VLOG_ERR("No parent context %d to add sub-context %d.\n",
+                     index, subcontext_index);
             return e_vtysh_error;
         }
 
@@ -587,6 +358,9 @@ install_show_run_config_subcontext(vtysh_contextid index,
             {
                 new_subcontext->next = temp->next;
                 temp->next = new_subcontext;
+                VLOG_DBG("Installing sub-context %d for context %d is"
+                         " successful.\n",
+                         index, new_subcontext->index);
             }
             else
             {
