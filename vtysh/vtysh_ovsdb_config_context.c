@@ -410,6 +410,7 @@ static vtysh_ret_val
 vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbmsg *p_msg)
 {
   const char *data = NULL;
+  char msg_str[80];
 
   if(NULL == ifrow_aaa)
   {
@@ -421,17 +422,19 @@ vtysh_ovsdb_ovstable_parse_aaa_cfg(const struct smap *ifrow_aaa, vtysh_ovsdb_cbm
   {
     if (!VTYSH_STR_EQ(data, OPS_FALSE_STR))
     {
-      vtysh_ovsdb_cli_print(p_msg, "aaa authentication login radius");
-    }
-  }
+        snprintf(msg_str, sizeof(msg_str),"%s", "aaa authentication"
+                 " login radius");
 
-  data = smap_get(ifrow_aaa, SYSTEM_AAA_RADIUS_AUTH);
-  if (data)
-  {
-    if (!VTYSH_STR_EQ(data, RADIUS_PAP))
-    {
-      vtysh_ovsdb_cli_print(p_msg, "aaa authentication login radius"
-                            " radius-auth chap");
+        data = smap_get(ifrow_aaa, SYSTEM_AAA_RADIUS_AUTH);
+        if (data)
+        {
+          if (!VTYSH_STR_EQ(data, RADIUS_PAP))
+          {
+            snprintf(msg_str, sizeof(msg_str), "%s", "aaa authentication"
+                     " login radius radius-auth chap");
+          }
+        }
+        vtysh_ovsdb_cli_print(p_msg, msg_str);
     }
   }
 
