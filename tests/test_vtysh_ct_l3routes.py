@@ -60,7 +60,7 @@ class staticRouteConfigTest(OpsVsiTest):
                            controller=None, build=True)
 
     def test_ipv4(self):
-        info('''
+        info('''\n\n
 ########## Test to verify IPv4 static routes ##########
 ''')
         s1 = self.net.switches[0]
@@ -183,7 +183,7 @@ class staticRouteConfigTest(OpsVsiTest):
         s1.cmdCLI('ip route 192.168.3.0/24 192.168.2.1')
         ret = s1.cmdCLI('do show running-config')
         assert not 'ip route 192.168.3.0/24 192.168.2.1' in ret, \
-                'Primary ip address check for nexthop failed'
+            'Primary ip address check for nexthop failed'
         info('### Nexthop ip address verification successful against local '
              'primary address  ###\n')
 
@@ -196,13 +196,102 @@ class staticRouteConfigTest(OpsVsiTest):
         s1.cmdCLI('ip route 192.168.3.0/24 192.168.2.2')
         ret = s1.cmdCLI('do show running-config')
         assert not 'ip route 192.168.3.0/24 192.168.2.2'in ret, \
-                'Secondary ip address check for nexthop failed'
+            'Secondary ip address check for nexthop failed'
         info('### Nexthop ip address verification successful against local '
-             'secondary address ###\n\n\n')
+             'secondary address ###\n')
         s1.cmdCLI('interface 1')
         s1.cmdCLI('no ip address 192.168.2.2/24 secondary')
         s1.cmdCLI('exit')
 
+        info('''
+### Verify if broadcast address cannot be assigned as a prefix'''
+             ''' ###\n''')
+        s1.cmdCLI('ip route 255.255.255.255/32 255.255.255.1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 255.255.255.255/32 255.255.255.1' in ret, \
+            'Broadcast address check for prefix failed'
+        info('### Prefix verification successful for broadcast '
+             'address  ###\n')
+
+        info('''
+### Verify if broadcast address cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ip route 255.255.255.0/24 255.255.255.255')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 255.255.255.0/24 255.255.255.255' in ret, \
+            'Broadcast address check for nexthop failed'
+        info('### Nexthop as ip address verification successful for broadcast '
+             'address  ###\n')
+
+        info('''
+### Verify if multicast starting address range cannot be assigned as a '''
+             '''prefix ###\n''')
+        s1.cmdCLI('ip route 224.10.1.0/24 223.10.1.1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 224.10.1.0/24 223.10.1.1' in ret, \
+            'Multicast address check for prefix failed'
+        info('### Prefix verification successful for multicast '
+             'starting address range) ###\n')
+
+        info('''
+### Verify if multicast starting address range cannot be assigned as a '''
+             '''nexthop ###\n''')
+        s1.cmdCLI('ip route 223.10.1.0/24 224.10.1.1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 223.10.1.0/24 224.10.1.1' in ret, \
+            'Multicast address check for nexthop failed'
+        info('### Nexthop as ip address verification successful for multicast '
+             'starting address range ###\n')
+
+        info('''
+### Verify if multicast ending address range cannot be assigned as a '''
+             '''prefix ###\n''')
+        s1.cmdCLI('ip route 239.10.1.0/24 223.10.1.1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 239.10.1.0/24 223.10.1.1' in ret, \
+            'Multicast address check for prefix failed'
+        info('### Prefix verification successful for multicast '
+             'ending address range) ###\n')
+
+        info('''
+### Verify if multicast ending address range cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ip route 223.10.1.0/24 239.10.1.1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 223.10.1.0/24 239.10.1.1' in ret, \
+            'Multicast address check for nexthop failed'
+        info('### Nexthop as ip address verification successful for multicast '
+             'ending address range ###\n')
+
+        info('''
+### Verify if loopback address cannot be assigned as a prefix'''
+             ''' ###\n''')
+        s1.cmdCLI('ip route 127.10.1.0/24 128.1.1.1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 127.10.1.0/24 128.1.1.1' in ret, \
+            'Loopback address check for prefix failed'
+        info('### Prefix verification successful for loopback '
+             'address  ###\n')
+
+        info('''
+### Verify if loopback address cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ip route 128.10.1.0/24 127.10.1.10')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 128.10.1.0/24 127.10.1.10' in ret, \
+            'Loopback address check for nexthop failed'
+        info('### Nexthop as ip address verification successful for loopback '
+             'address  ###\n')
+
+        info('''
+### Verify if unspecified address cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ip route 128.10.1.0/24 0.0.0.0')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ip route 128.10.1.0/24 0.0.0.0' in ret, \
+            'Unspecified address check for nexthop failed'
+        info('### Nexthop verification successful for '
+             'unspecified address  ###\n\n\n')
 
     def test_ipv6(self):
 
@@ -295,7 +384,7 @@ class staticRouteConfigTest(OpsVsiTest):
         s1.cmdCLI('ipv6 route 2002::/120 2001::1')
         ret = s1.cmdCLI('do show running-config')
         assert not 'ipv6 route 2002::/120 2001::1' in ret, \
-                'Primary ipv6 address check for nexthop failed'
+            'Primary ipv6 address check for nexthop failed'
         info('### Nexthop ip address verification successful against local '
              'primary address  ###\n')
 
@@ -308,13 +397,82 @@ class staticRouteConfigTest(OpsVsiTest):
         s1.cmdCLI('ipv6 route 2002::/120 2000::3')
         ret = s1.cmdCLI('do show running-config')
         assert not 'ipv6 route 2002::/120 2000::3' in ret, \
-                'Secondary ipv6 address check for nexthop failed'
+            'Secondary ipv6 address check for nexthop failed'
         info('### Nexthop ipv6 address verification successful against local '
-             'secondary address ###\n\n')
+             'secondary address ###\n')
         s1.cmdCLI('interface 1')
         s1.cmdCLI('no ipv6 address 2000::2/120 secondary')
         s1.cmdCLI('exit')
 
+        info('''
+### Verify if multicast address cannot be assigned as a prefix'''
+             ''' ###\n''')
+        s1.cmdCLI('ipv6 route ff00::/128 2001::1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route ff00::/128 2001::1' in ret, \
+            'Multicast address check for prefix failed'
+        info('### Prefix verification successful for multicast '
+             'ipv6 address ###\n')
+
+        info('''
+### Verify if multicast address cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ipv6 route 12ff::/128 ff00::1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route 12ff::/128 ff00::1' in ret, \
+            'Multicast address check for nexthop failed'
+        info('### Nexthop verification successful for multicast '
+             'ipv6 address ###\n')
+
+        info('''
+### Verify if linklocal address cannot be assigned as a prefix'''
+             ''' ###\n''')
+        s1.cmdCLI('ipv6 route fe80::/10 2001::1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route ::1/128 2001::1' in ret, \
+            'Linklocal address check for prefix failed'
+        info('### Prefix verification successful for linklocal '
+             'ipv6 address ###\n')
+
+        info('''
+### Verify if linklocal address cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ipv6 route 12ff::/128 fe80::')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route 12ff::/128 ::1' in ret, \
+            'Linklocal address check for nexthop failed'
+        info('### Nexthop verification successful for linklocal '
+             'ipv6 address ###\n')
+
+        info('''
+### Verify if loopback address cannot be assigned as a prefix'''
+             ''' ###\n''')
+        s1.cmdCLI('ipv6 route ::1/128 2001::1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route ::1/128 2001::1' in ret, \
+            'Loopback address check for prefix failed'
+        info('### Prefix verification successful for loopback '
+             'ipv6 address ###\n')
+
+        info('''
+### Verify if loopback address cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ipv6 route 12ff::/128 ::1')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route 12ff::/128 ::1' in ret, \
+            'Loopback address check for nexthop failed'
+        info('### Nexthop verification successful for loopback '
+             'ipv6 address ###\n')
+
+        info('''
+### Verify if unspecified address cannot be assigned as a nexthop'''
+             ''' ###\n''')
+        s1.cmdCLI('ipv6 route 2002::/120 ::')
+        ret = s1.cmdCLI('do show running-config')
+        assert not 'ipv6 route 2002::/120 ::' in ret, \
+            'Unspecified address check for nexthop failed'
+        info('### Nexthop verification successful for '
+             'unspecified ipv6 address  ###\n\n\n')
 
     def test_show_rib(self):
         info("""
@@ -331,7 +489,7 @@ class staticRouteConfigTest(OpsVsiTest):
             in ret and '*via' in ret and 'ipv4' in ret and 'ipv6' \
             in ret and '*2002::/120,' in ret and '[1/0],' in ret, \
             'show rib command failure'
-        info('### show rib verification successful ###\n')
+        info('### show rib verification successful ###\n\n\n')
 
         s1.cmdCLI('no ip route 192.168.3.0/24 192.168.1.2')
         s1.cmdCLI('no ip route 192.168.3.0/24 1')
@@ -339,7 +497,6 @@ class staticRouteConfigTest(OpsVsiTest):
         s1.cmdCLI('no ipv6 route 2002::/120 2000::2')
         s1.cmdCLI('no ipv6 route 2002::/120 1')
         s1.cmdCLI('no ipv6 route 2002::/120 2')
-
 
     def test_show_running_config(self):
         info("""
