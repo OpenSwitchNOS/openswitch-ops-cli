@@ -75,7 +75,8 @@ port_find_vrf (const struct ovsrec_port *port_row)
  * locally to an interface, both primary and secondary
  */
 static bool
-port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
+port_find_ipaddress (const struct ovsrec_port *port_row, char * ip_entry,
+                     bool is_ip_addr_family_ipv4)
 {
   int index;
   char ip4_addrcopy[MAX_ADDRESS_LEN];
@@ -85,63 +86,73 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
 
   OVSREC_PORT_FOR_EACH (port_row, idl)
     {
-      if (port_row->ip4_address)
+      if (is_ip_addr_family_ipv4)
         {
-          memset(ip4_addrcopy, 0, sizeof(ip4_addrcopy));
-          strncpy(ip4_addrcopy, port_row->ip4_address, sizeof(ip4_addrcopy));
-          ipv4_address = strtok(ip4_addrcopy, "/");
-          if (!strcmp (ipv4_address, ip_entry))
-            {
-              vty_out(vty, "\nIP address already assigned to interface %s"
-                      " as its primary address%s", port_row->name,
-                      VTY_NEWLINE);
-              return true;
-            }
-        }
-      for (index = 0; index < port_row->n_ip4_address_secondary; index++)
-        {
-          if (port_row->ip4_address_secondary[index])
+          if (port_row->ip4_address)
             {
               memset(ip4_addrcopy, 0, sizeof(ip4_addrcopy));
-              strncpy(ip4_addrcopy, port_row->ip4_address_secondary[index],
-                     sizeof(ip4_addrcopy));
+              strncpy(ip4_addrcopy, port_row->ip4_address,
+                      sizeof(ip4_addrcopy));
               ipv4_address = strtok(ip4_addrcopy, "/");
               if (!strcmp (ipv4_address, ip_entry))
                 {
-                  vty_out(vty, "\nIP address already assigned to interface"
-                          " %s as its secondary address%s", port_row->name,
-                          VTY_NEWLINE);
+                  vty_out(vty, "\nThe nexthop address %s is locally assigned "
+                          "to interface %s as its primary ip address%s",
+                          ip_entry, port_row->name, VTY_NEWLINE);
                   return true;
                 }
             }
-        }
-      if (port_row->ip6_address)
-        {
-          memset(ip6_addrcopy, 0, sizeof(ip6_addrcopy));
-          strncpy(ip6_addrcopy, port_row->ip6_address, sizeof(ip6_addrcopy));
-          ipv6_address = strtok(ip6_addrcopy, "/");
-          if (!strcmp (ipv6_address, ip_entry))
+          for (index = 0; index < port_row->n_ip4_address_secondary; index++)
             {
-              vty_out(vty, "\nIPv6 address already assigned to interface "
-                      "%s as its primary address%s", port_row->name,
-                      VTY_NEWLINE);
-              return true;
+              if (port_row->ip4_address_secondary[index])
+                {
+                  memset(ip4_addrcopy, 0, sizeof(ip4_addrcopy));
+                  strncpy(ip4_addrcopy, port_row->ip4_address_secondary[index],
+                         sizeof(ip4_addrcopy));
+                  ipv4_address = strtok(ip4_addrcopy, "/");
+                  if (!strcmp (ipv4_address, ip_entry))
+                    {
+                      vty_out(vty, "\nThe nexthop address %s is locally "
+                              "assigned to interface %s as its secondary ip "
+                              "address%s", ip_entry, port_row->name,
+                              VTY_NEWLINE);
+                      return true;
+                    }
+                }
             }
         }
-      for (index = 0; index < port_row->n_ip6_address_secondary; index++)
+      else
         {
-          if (port_row->ip6_address_secondary[index])
+          if (port_row->ip6_address)
             {
               memset(ip6_addrcopy, 0, sizeof(ip6_addrcopy));
-              strncpy(ip6_addrcopy, port_row->ip6_address_secondary[index],
-                     sizeof(ip6_addrcopy));
+              strncpy(ip6_addrcopy, port_row->ip6_address,
+                      sizeof(ip6_addrcopy));
               ipv6_address = strtok(ip6_addrcopy, "/");
               if (!strcmp (ipv6_address, ip_entry))
                 {
-                  vty_out(vty, "\nIPv6 address already assigned to "
-                          "interface %s as its secondary address%s",
-                          port_row->name, VTY_NEWLINE);
+                  vty_out(vty, "\nThe nexthop address %s is locally assigned "
+                          "to interface %s as its primary ipv6 address%s",
+                          ip_entry, port_row->name, VTY_NEWLINE);
                   return true;
+                }
+            }
+          for (index = 0; index < port_row->n_ip6_address_secondary; index++)
+            {
+              if (port_row->ip6_address_secondary[index])
+                {
+                  memset(ip6_addrcopy, 0, sizeof(ip6_addrcopy));
+                  strncpy(ip6_addrcopy, port_row->ip6_address_secondary[index],
+                         sizeof(ip6_addrcopy));
+                  ipv6_address = strtok(ip6_addrcopy, "/");
+                  if (!strcmp (ipv6_address, ip_entry))
+                    {
+                      vty_out(vty, "\nThe nexthop address %s is locally "
+                              "assigned to interface %s as its secondary ipv6 "
+                              "address%s", ip_entry, port_row->name,
+                              VTY_NEWLINE);
+                      return true;
+                    }
                 }
             }
         }
@@ -343,7 +354,11 @@ set_nexthop_entry (struct ovsdb_idl_txn *status_txn, char * nh_entry,
                ip6_routing_address_is_invalid (nh_entry, true))
         return NULL;
 
-      ip_found = port_find_ipaddress (row_port, nh_entry);
+      /* Validate if the nexthop ip address is assigned locally to an interface
+       * as ipv4/ipv6 primary/secondary address */
+      ip_found = port_find_ipaddress (row_port, nh_entry,
+                                        ip_addr_family_is_ipv4);
+
       if (!ip_found)
         ovsrec_nexthop_set_ip_address (row_nh, nh_entry);
       else
