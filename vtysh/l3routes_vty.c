@@ -92,9 +92,9 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
           ipv4_address = strtok(ip4_addrcopy, "/");
           if (!strcmp (ipv4_address, ip_entry))
             {
-              vty_out(vty, "\nIP address already assigned to interface %s"
-                      " as its primary address%s", port_row->name,
-                      VTY_NEWLINE);
+              vty_out(vty, "\nThe nexthop address %s is locally assigned to "
+                      "interface %s as its primary ip address%s", ip_entry,
+                      port_row->name, VTY_NEWLINE);
               return true;
             }
         }
@@ -108,9 +108,9 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
               ipv4_address = strtok(ip4_addrcopy, "/");
               if (!strcmp (ipv4_address, ip_entry))
                 {
-                  vty_out(vty, "\nIP address already assigned to interface"
-                          " %s as its secondary address%s", port_row->name,
-                          VTY_NEWLINE);
+                  vty_out(vty, "\nThe nexthop address %s is locally assigned "
+                          "to interface %s as its secondary ip address%s",
+                          ip_entry, port_row->name, VTY_NEWLINE);
                   return true;
                 }
             }
@@ -122,9 +122,9 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
           ipv6_address = strtok(ip6_addrcopy, "/");
           if (!strcmp (ipv6_address, ip_entry))
             {
-              vty_out(vty, "\nIPv6 address already assigned to interface "
-                      "%s as its primary address%s", port_row->name,
-                      VTY_NEWLINE);
+              vty_out(vty, "\nThe nexthop address %s is locally assigned to "
+                      "interface %s as its primary ipv6 address%s", ip_entry,
+                      port_row->name, VTY_NEWLINE);
               return true;
             }
         }
@@ -138,9 +138,9 @@ port_find_ipaddress (const struct ovsrec_port *port_row, char *ip_entry)
               ipv6_address = strtok(ip6_addrcopy, "/");
               if (!strcmp (ipv6_address, ip_entry))
                 {
-                  vty_out(vty, "\nIPv6 address already assigned to "
-                          "interface %s as its secondary address%s",
-                          port_row->name, VTY_NEWLINE);
+                  vty_out(vty, "\nThe nexthop address %s is locally assigned "
+                          "to interface %s as its secondary ipv6 address%s",
+                          ip_entry, port_row->name, VTY_NEWLINE);
                   return true;
                 }
             }
