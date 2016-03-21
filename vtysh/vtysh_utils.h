@@ -125,6 +125,8 @@ typedef unsigned char boolean;
 #define RADIUS_SERVER_DEFAULT_RETRIES         1
 #define RADIUS_SERVER_DEFAULT_TIMEOUT         5
 #define SYSTEM_AAA_RADIUS               "radius"
+#define SYSTEM_AAA_RADIUS_AUTH          "radius_auth"
+#define RADIUS_PAP                      "pap"
 #define OPS_FALSE_STR                       "false"
 #define SYSTEM_AAA_FALLBACK             "fallback"
 #define SSH_PASSWORD_AUTHENTICATION_ENABLE  "ssh_passkeyauthentication_enable"
