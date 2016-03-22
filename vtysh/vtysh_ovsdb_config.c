@@ -323,6 +323,7 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
 
             msg.disp_header_cfg = false;
             msg.skip_subcontext_list= false;
+            msg.contextid = current->index; /* vtysh_contextid */
 
             if (current->vtysh_context_callback != NULL &&
                 e_vtysh_ok != current->vtysh_context_callback(&msg)) {
@@ -343,6 +344,9 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
             subcontext_list = current->subcontext_list;
             while (subcontext_list != NULL)
             {
+                /* vtysh_*_context_clientid */
+                msg.clientid = subcontext_list->index;
+
                 if (subcontext_list->vtysh_context_callback != NULL &&
                     e_vtysh_ok != subcontext_list->vtysh_context_callback(&msg))
                 {
