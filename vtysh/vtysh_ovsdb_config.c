@@ -339,10 +339,16 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
                 continue;
             }
 
+            /* context enum (vtysh_contextid) */
+            msg.contextid = current->index;
+
             /* Iterate over sub-context list. */
             subcontext_list = current->subcontext_list;
             while (subcontext_list != NULL)
             {
+                /* subcontext enum (vtysh_*_context_clientid) */
+                msg.clientid = subcontext_list->index;
+
                 if (subcontext_list->vtysh_context_callback != NULL &&
                     e_vtysh_ok != subcontext_list->vtysh_context_callback(&msg))
                 {
