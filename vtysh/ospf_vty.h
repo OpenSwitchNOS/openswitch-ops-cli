@@ -208,6 +208,9 @@ void ospf_vty_init (void);
 int64_t
 ospf_get_port_intervals(const struct ovsrec_port* port_row,
                             const char *key);
+int
+vtysh_init_intf_ospf_context_clients();
+
 
 /* OSPF KEYS */
 
@@ -247,6 +250,7 @@ ospf_get_port_intervals(const struct ovsrec_port* port_row,
 #define OSPF_TRANSMIT_DELAY_DEFAULT         1
 #define OSPF_RETRANSMIT_INTERVAL_DEFAULT    5
 #define OSPF_ROUTE_TYPE2_COST_DEFAULT       16777215
+#define OSPF_ROUTER_PRIORITY_DEFAULT        1
 /* TBD - To be modified when auto reference bandwidth is supported. */
 #define OSPF_DEFAULT_COST                   10
 #endif /* _OSPF_VTY_H */
