@@ -91,7 +91,37 @@ typedef enum vtysh_interface_context_client_idenum
   e_vtysh_interface_context_vlan,
   e_vtysh_interface_context_vrf,
   e_vtysh_interface_context_mstp,
-} vtysh_interface_context_clientid;
+  e_vtysh_interface_context_ospf,
+  e_vtysh_intf_context_client_id_max
+} vtysh_intf_context_clientid;
+
+/* Mgmt Interface Context client-id type */
+typedef enum vtysh_mgmt_interface_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_mgmt_interface_context_client_id_first = 0,
+  e_vtysh_mgmt_interface_context_config,
+  e_vtysh_mgmt_interface_context_client_id_max
+} vtysh_mgmt_interface_context_clientid;
+
+/* Mgmt Interface Context client-id type */
+typedef enum vtysh_interface_lag_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_interface_lag_context_client_id_first = 0,
+  e_vtysh_interface_lag_context_config,
+  e_vtysh_interface_lag_context_client_id_max
+} vtysh_interface_lag_context_clientid;
+
+/* Vlan Context client-id type */
+typedef enum vtysh_vlan_context_client_idenum
+{
+  /* client callback based on client-id value */
+  e_vtysh_vlan_context_client_id_first = 0,
+  e_vtysh_vlan_context_config,
+  e_vtysh_vlan_context_client_id_max
+} vtysh_vlan_context_clientid;
+>>>>>>> c82ea06... new:dev:OSPFv2 Interface commands
 
 /* Dependent Config Client ID type */
 typedef enum vtysh_dependent_config_client_idenum
