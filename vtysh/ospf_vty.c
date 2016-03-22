@@ -3654,6 +3654,343 @@ DEFUN(cli_ospf_router_no_dead_interval,
                                      OSPF_DEAD_INTERVAL_DEFAULT);
 }
 
+DEFUN (cli_ip_ospf_retransmit_interval,
+       cli_ip_ospf_retransmit_interval_cmd,
+       "ip ospf retransmit-interval <3-65535>",
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Time between retransmitting lost link state advertisements\n"
+       "Seconds (Default: 5)\n")
+{
+    vty_out(vty, "Daemon functionality yet to be implemented.");
+    return ospf_interval_cmd_execute((char*)vty->index,
+                                     OSPF_KEY_RETRANSMIT_INTERVAL,
+                                     atoi(argv[0]));
+}
+
+DEFUN (cli_ip_ospf_no_retransmit_interval,
+       cli_ip_ospf_no_retransmit_interval_cmd,
+       "no ip ospf retransmit-interval",
+       NO_STR
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Time between retransmitting lost link state advertisements\n")
+{
+    vty_out(vty, "Daemon functionality yet to be implemented.");
+    return ospf_interval_cmd_execute((char*)vty->index,
+                                     OSPF_KEY_RETRANSMIT_INTERVAL,
+                                     OSPF_RETRANSMIT_INTERVAL_DEFAULT);
+}
+
+DEFUN (cli_ip_ospf_transmit_delay,
+       cli_ip_ospf_transmit_delay_cmd,
+       "ip ospf transmit-delay <1-65535>",
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Link state transmit delay\n"
+       "Seconds (Default: 1)\n")
+{
+    vty_out(vty, "Daemon functionality yet to be implemented.");
+    return ospf_interval_cmd_execute((char*)vty->index,
+                                     OSPF_KEY_TRANSMIT_DELAY,
+                                     atoi(argv[0]));
+}
+
+DEFUN (cli_ip_ospf_no_transmit_delay,
+       cli_ip_ospf_no_transmit_delay_cmd,
+       "no ip ospf transmit-delay",
+       NO_STR
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Link state transmit delay\n")
+{
+    vty_out(vty, "Daemon functionality yet to be implemented.");
+    return ospf_interval_cmd_execute((char*)vty->index,
+                                     OSPF_KEY_TRANSMIT_DELAY,
+                                     OSPF_TRANSMIT_DELAY_DEFAULT);
+}
+
+/* Function to handle "[no] ip ospf priority <value>" command. */
+static int
+ospf_interface_priority_cmd_execute(const char* ifname,
+                                    const int64_t priority)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    /* Get the interface row for the interface name passed. */
+    OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+    {
+        if (strcmp(ospf_interface_row->name, ifname) == 0)
+            break;
+    }
+
+    if (ospf_interface_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn, "Interface is not present.");
+    }
+    else
+    {
+        port_row = ospf_interface_row->port;
+    }
+
+    if (port_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interface is not attached to any port.");
+    }
+
+    ovsrec_port_set_ospf_priority(port_row, &priority, 1);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+DEFUN (cli_ip_ospf_priority,
+       cli_ip_ospf_priority_cmd,
+       "ip ospf priority <0-255>",
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Router priority\n"
+       "Priority (Default: 1)\n")
+{
+    int64_t priority = 0;
+
+    priority = atoi(argv[0]);
+
+    return ospf_interface_priority_cmd_execute((char*)vty->index, priority);
+}
+
+DEFUN (cli_ip_ospf_no_priority,
+       cli_ip_ospf_no_priority_cmd,
+       "no ip ospf priority",
+       NO_STR
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Router priority\n")
+{
+    return ospf_interface_priority_cmd_execute((char*)vty->index,
+                                               OSPF_ROUTER_PRIORITY_DEFAULT);
+}
+
+/* Function to handle "[no] ip ospf mtu-ignore " command. */
+static int
+ospf_interface_mtu_ignore_cmd_execute(const char* ifname,
+                                      bool mtu_ignore)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    /* Get the interface row for the interface name passed. */
+    OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+    {
+        if (strcmp(ospf_interface_row->name, ifname) == 0)
+            break;
+    }
+
+    if (ospf_interface_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn, "Interface is not present.");
+    }
+    else
+    {
+        port_row = ospf_interface_row->port;
+    }
+
+    if (port_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interface is not attached to any port.");
+    }
+
+    ovsrec_port_set_ospf_mtu_ignore(port_row, &mtu_ignore, 1);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+DEFUN (cli_ip_ospf_mtu_ignore,
+       cli_ip_ospf_mtu_ignore_cmd,
+       "ip ospf mtu-ignore",
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Disable mtu mismatch detection\n")
+{
+    return ospf_interface_mtu_ignore_cmd_execute((char*)vty->index, true);
+}
+
+DEFUN (cli_ip_ospf_no_mtu_ignore,
+       cli_ip_ospf_no_mtu_ignore_cmd,
+       "no ip ospf mtu-ignore",
+       NO_STR
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Disable mtu mismatch detection\n")
+{
+    return ospf_interface_mtu_ignore_cmd_execute((char*)vty->index, false);
+}
+
+/* Function to handle "[no] ip ospf cost <cost>" command. */
+static int
+ospf_interface_cost_cmd_execute(const char* ifname,
+                                      const int64_t cost)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    /* Get the interface row for the interface name passed. */
+    OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+    {
+        if (strcmp(ospf_interface_row->name, ifname) == 0)
+            break;
+    }
+
+    if (ospf_interface_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn, "Interface is not present.");
+    }
+    else
+    {
+        port_row = ospf_interface_row->port;
+    }
+
+    if (port_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interface is not attached to any port.");
+    }
+
+    ovsrec_port_set_ospf_if_out_cost(port_row, &cost, 1);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+DEFUN (cli_ip_ospf_cost,
+       cli_ip_ospf_cost_cmd,
+       "ip ospf cost <1-65535>",
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Interface cost\n"
+       "Cost\n")
+{
+    int64_t cost = strtol (argv[0], NULL, 10);
+
+    if (cost < 1 || cost > 65535)
+    {
+        vty_out (vty, "Interface output cost is invalid%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    return ospf_interface_cost_cmd_execute((char*)vty->index, cost);
+}
+
+DEFUN (cli_ip_ospf_no_cost,
+       cli_ip_ospf_no_cost_cmd,
+       "no ip ospf cost",
+       NO_STR
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Interface cost\n")
+{
+    return ospf_interface_cost_cmd_execute((char*)vty->index, OSPF_DEFAULT_COST);
+}
+
+/* Function to handle "[no] ip ospf network <type>" command. */
+static int
+ospf_interface_network_cmd_execute(const char* ifname,
+                                   const char* network_type)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    /* Get the interface row for the interface name passed. */
+    OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+    {
+        if (strcmp(ospf_interface_row->name, ifname) == 0)
+            break;
+    }
+
+    if (ospf_interface_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn, "Interface is not present.");
+    }
+    else
+    {
+        port_row = ospf_interface_row->port;
+    }
+
+    if (port_row == NULL)
+    {
+        OSPF_ABORT_DB_TXN(ospf_router_txn,
+                          "Interface is not attached to any port.");
+    }
+
+    ovsrec_port_set_ospf_if_type(port_row, network_type);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+DEFUN (cli_ip_ospf_network,
+       cli_ip_ospf_network_cmd,
+       "ip ospf network (broadcast|point-to-point)",
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Network type\n"
+       "Specify OSPF broadcast multi-access network\n"
+       "Specify OSPF point-to-point network\n")
+{
+    if (!strcmp(argv[0], "broadcast"))
+        return ospf_interface_network_cmd_execute((char*)vty->index,
+                               OVSREC_PORT_OSPF_IF_TYPE_OSPF_IFTYPE_BROADCAST);
+    else if (!strcmp(argv[0], "point-to-point"))
+        return ospf_interface_network_cmd_execute((char*)vty->index,
+                              OVSREC_PORT_OSPF_IF_TYPE_OSPF_IFTYPE_POINTOPOINT);
+    else
+        return CMD_OVSDB_FAILURE;
+}
+
+DEFUN (cli_ip_ospf_no_network,
+       cli_ip_ospf_no_network_cmd,
+       "no ip ospf network",
+       NO_STR
+       IP_STR
+       OSPF_INTERFACE_OSPF
+       "Network type\n")
+{
+    return ospf_interface_network_cmd_execute((char*)vty->index,
+                               OVSREC_PORT_OSPF_IF_TYPE_OSPF_IFTYPE_BROADCAST);
+}
+
 static int ospf_area_auth_cmd_execute(bool no_flag, int instance_id,
                                               int64_t area_id, bool md5_auth)
 {
@@ -3857,7 +4194,6 @@ DEFUN (cli_ospf_interface_auth_null,
     return ospf_interface_auth_cmd_execute(vty->index,
                                            OVSREC_PORT_OSPF_AUTH_TYPE_NULL);
 }
-
 
 /* `no ip ospf authentication`*/
 DEFUN (cli_no_ospf_interface_auth,
@@ -4977,6 +5313,20 @@ ospf_vty_init(void)
     install_element(INTERFACE_NODE, &cli_ospf_router_dead_interval_cmd);
     install_element(INTERFACE_NODE, &cli_ospf_router_no_dead_interval_cmd);
 
+    install_element(INTERFACE_NODE, &cli_ip_ospf_retransmit_interval_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_no_retransmit_interval_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_transmit_delay_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_no_transmit_delay_cmd);
+
+    install_element(INTERFACE_NODE, &cli_ip_ospf_priority_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_no_priority_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_mtu_ignore_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_no_mtu_ignore_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_cost_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_no_cost_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_network_cmd);
+    install_element(INTERFACE_NODE, &cli_ip_ospf_no_network_cmd);
+
     /* Interface authentication */
     install_element(INTERFACE_NODE, &cli_ospf_interface_auth_message_digest_cmd);
     install_element(INTERFACE_NODE, &cli_ospf_interface_auth_cmd);
@@ -5001,4 +5351,5 @@ ospf_vty_init(void)
     /* show running-config router ospf */
     install_element(ENABLE_NODE, &cli_ip_ospf_running_config_show_cmd);
 
+    vtysh_init_intf_ospf_context_clients();
 }
