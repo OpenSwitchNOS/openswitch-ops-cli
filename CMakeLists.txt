@@ -22,6 +22,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 # For more information, please refer to <http://unlicense.org>
+# This line is just for testing
 
 cmake_minimum_required (VERSION 2.8)
 
