@@ -19,6 +19,7 @@
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.  
  */
+#include <stdbool.h>
 
 #ifndef VTYSH_H
 #define VTYSH_H
@@ -92,6 +93,7 @@ struct vtysh_alias_data {
                                                                               IS_NETWORK_ADDRESS(i))
 #define USERADD "/usr/sbin/useradd"
 #define USERMOD "/usr/sbin/usermod"
+#define PASSWD "/usr/bin/passwd"
 #define OVSDB_GROUP "ovsdb-client"
 #define NETOP_GROUP "ops_netop"
 #define VTYSH_PROMPT "/usr/bin/vtysh"
@@ -105,6 +107,16 @@ struct vtysh_alias_data {
 #define STARTUP_CONFIG_ERR "Internal error occured. Please try again"
 #define TEMPORARY_STARTUP_DB_LOCK "/var/run/openvswitch/.temp_startup.db.~lock~"
 
+#define RBAC_MAX_ROLE_NAME_LEN                  20
+#define RBAC_ROLE_ROOT                          "root"
+#define RBAC_ROLE_ADMIN                         "ops_admin"
+#define RBAC_ROLE_NETOP                         "ops_netop"
+#define RBAC_ROLE_NONE                          "none"
+
+typedef struct {
+   char name[RBAC_MAX_ROLE_NAME_LEN];
+} rbac_role_t;
+
 enum ip_type {
     IPV4=0,
     IPV6
@@ -117,7 +129,8 @@ extern int vtysh_alias_callback(struct cmd_element *self, struct vty *vty, int v
 extern int enable_mininet_test_prompt;
 extern int vtysh_show_startup;
 #endif
-
+bool check_user_role(char *username, char *role);
+void rbac_deinit(void);
 void vtysh_init_vty (void);
 extern int vtysh_connect_all (const char *optional_daemon_name);
 void vtysh_readline_init (void);

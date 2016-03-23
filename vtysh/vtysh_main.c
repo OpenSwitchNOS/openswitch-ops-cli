@@ -263,6 +263,7 @@ main (int argc, char **argv, char **env)
   int counter=0;
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
+  struct passwd *pw = NULL;
 
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
@@ -342,7 +343,12 @@ main (int argc, char **argv, char **env)
 	  break;
 	}
     }
-
+  pw = getpwuid( getuid());
+  if(pw && check_user_role(pw->pw_name,RBAC_ROLE_ADMIN))
+  {
+    fprintf(stderr, "Admin user is barred from accessing the Vtysh shell.\n");
+    exit(1);
+  }
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_init_clients();
   vtysh_ovsdb_init(argc, argv, temp_db);
@@ -524,7 +530,7 @@ main (int argc, char **argv, char **env)
 
   history_truncate_file(history_file,1000);
   printf ("\n");
-
+  rbac_deinit();
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_exit();
 #endif
