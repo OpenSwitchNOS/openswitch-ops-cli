@@ -41,7 +41,6 @@ typedef enum vtysh_ret_val_enum
 /* vtysh ovsdb table_id type */
 typedef enum vtysh_context_idenum
 {
-  e_vtysh_context_id_first = 0,
   e_vtysh_config_context = 0,
   e_vtysh_router_context,
   e_vtysh_vlan_context,
@@ -55,15 +54,13 @@ typedef enum vtysh_context_idenum
   e_vtysh_dhcp_relay_context,
   e_vtysh_udp_forwarder_context,
   e_vtysh_access_list_context,
-  e_vtysh_context_id_max
 } vtysh_contextid;
 
 /* Config Context Client ID type */
 typedef enum vtysh_config_context_client_idenum
 {
   /* client callback based on client-id value */
-  e_vtysh_config_context_client_id_first = 0,
-  e_vtysh_config_context_global,
+  e_vtysh_config_context_global = 0,
   e_vtysh_config_context_vrf,
   e_vtysh_config_context_fan,
   e_vtysh_config_context_led,
@@ -71,37 +68,24 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_ecmp,
   e_vtysh_config_context_ntp,
   e_vtysh_config_context_mstp,
-  e_vtysh_config_context_client_id_max
 } vtysh_config_context_clientid;
 
 /* Router Context Client ID type */
 typedef enum vtysh_router_context_client_idenum
 {
-  e_vtysh_router_context_client_id_first = 0,
-  e_vtysh_router_context_bgp_ip_prefix,
+  e_vtysh_router_context_bgp_ip_prefix = 0,
   e_vtysh_router_context_bgp_ip_community_filter,
   e_vtysh_router_context_bgp_ip_filter_list,
   e_vtysh_router_context_bgp_routemap,
   e_vtysh_router_context_bgp,
   e_vtysh_router_context_ospf,
-  e_vtysh_router_context_client_id_max
 } vtysh_router_context_clientid;
 
 /* Interface Context client-id type */
 typedef enum vtysh_interface_context_client_idenum
 {
   /* client callback based on client-id value */
-  e_vtysh_interface_context_client_id_first = 0,
-  e_vtysh_interface_context_config,
-  e_vtysh_interface_context_client_id_max
-} vtysh_interface_context_clientid;
-
-/* Interface Context client-id type */
-typedef enum vtysh_intf_context_client_idenum
-{
-  /* client callback based on client-id value */
-  e_vtysh_intf_context_client_id_first = 0,
-  e_vtysh_intf_context_config,
+  e_vtysh_interface_context_config = 0,
   e_vtysh_interface_context_lldp,
   e_vtysh_interface_context_lacp,
   e_vtysh_interface_context_lag,
@@ -109,73 +93,30 @@ typedef enum vtysh_intf_context_client_idenum
   e_vtysh_interface_context_vrf,
   e_vtysh_interface_context_mstp,
   e_vtysh_interface_context_access_list,
-  e_vtysh_intf_context_client_id_max
 } vtysh_intf_context_clientid;
-
-/* Mgmt Interface Context client-id type */
-typedef enum vtysh_mgmt_interface_context_client_idenum
-{
-  /* client callback based on client-id value */
-  e_vtysh_mgmt_interface_context_client_id_first = 0,
-  e_vtysh_mgmt_interface_context_config,
-  e_vtysh_mgmt_interface_context_client_id_max
-} vtysh_mgmt_interface_context_clientid;
-
-/* Mgmt Interface Context client-id type */
-typedef enum vtysh_interface_lag_context_client_idenum
-{
-  /* client callback based on client-id value */
-  e_vtysh_interface_lag_context_client_id_first = 0,
-  e_vtysh_interface_lag_context_config,
-  e_vtysh_interface_lag_context_client_id_max
-} vtysh_interface_lag_context_clientid;
 
 /* Vlan Context client-id type */
 typedef enum vtysh_vlan_context_client_idenum
 {
   /* client callback based on client-id value */
-  e_vtysh_vlan_context_client_id_first = 0,
-  e_vtysh_vlan_context_config,
+  e_vtysh_vlan_context_config = 0,
   e_vtysh_vlan_context_access_list,
-  e_vtysh_vlan_context_client_id_max
 } vtysh_vlan_context_clientid;
 
 /* Dependent Config Client ID type */
 typedef enum vtysh_dependent_config_client_idenum
 {
   /* client callback based on client-id value */
-  e_vtysh_dependent_config_client_id_first = 0,
   e_vtysh_dependent_config_staticroute,
-  e_vtysh_dependent_config_client_id_max
 } vtysh_dependent_config_clientid;
-
-/* SFTP Context client-id type */
-typedef enum vtysh_sftp_context_client_idenum
-{
-  /* client callback based on client-id value */
-  e_vtysh_sftp_context_client_id_first = 0,
-  e_vtysh_sftp_server_context_config,
-  e_vtysh_sftp_context_client_id_max
-} vtysh_sftp_context_clientid;
 
 /* Dependent Config Client ID type */
 typedef enum vtysh_dhcp_tftp_config_client_idenum
 {
   /* client callback based on client-id value */
-  e_vtysh_dhcp_tftp_context_client_id_first = 0,
   e_vtysh_dhcp_tftp_context_dhcp,
   e_vtysh_dhcp_tftp_context_tftp,
-  e_vtysh_dhcp_tftp_context_client_id_max,
 } vtysh_dhcp_tftp_context_clientid;
-
-/* Source interface context client-id type */
-typedef enum vtysh_source_interface_context_client_idenum
-{
-  /* Client callback based on client-id value */
-  e_vtysh_source_interface_context_client_id_first = 0,
-  e_vtysh_source_interface_context_config,
-  e_vtysh_source_interface_context_client_id_max,
-} vtysh_source_interface_context_clientid;
 
 typedef struct vtysh_ovsdb_cbmsg_struct
 {
@@ -190,28 +131,6 @@ typedef struct vtysh_ovsdb_cbmsg_struct
 
 typedef struct vtysh_ovsdb_cbmsg_struct *vtysh_ovsdb_cbmsg_ptr;
 
-/* callback prototype for context client callback */
-typedef vtysh_ret_val (*vtysh_context_client_callback_ptr)(void* p_private);
-
-/* vtysh ovsdb client type */
-typedef struct vtysh_context_client_struct
-{
-  const char* p_client_name; /* client callback function name */
-  int client_id;            /* client id */
-  vtysh_context_client_callback_ptr p_callback; /* function call back */
-} vtysh_context_client;
-
-/* vtysh ovsdb table type */
-typedef struct vtysh_context_list_struct
-{
-  const char *name; /* context name */
-  vtysh_contextid contextid; /* context id */
-  vtysh_context_client (*clientlist)[]; /* client list */
-} vtysh_context_list;
-
-#define is_valid_vtysh_contextid(contextid) \
-        ((contextid >= e_vtysh_context_id_first) && (contextid < e_vtysh_context_id_max))
-
 #define VTYSH_STR_EQ(s1, s2)      ((strlen((s1)) == strlen((s2))) && (!strncmp((s1), (s2), strlen((s2)))))
 
 #define VTYSH_OVSDB_CONFIG_ERR 1
@@ -221,16 +140,6 @@ typedef struct vtysh_context_list_struct
 
 extern struct ovsdb_idl *vtysh_ovsdb_idl;
 extern unsigned int vtysh_ovsdb_idl_seqno;
-
-vtysh_ret_val vtysh_context_addclient(vtysh_contextid contextid,
-                                      int clientid,
-                                      vtysh_context_client *p_client);
-
-int vtysh_context_get_maxclientid(vtysh_contextid contextid);
-int vtysh_context_get_minclientid(vtysh_contextid contextid);
-
-void vtysh_ovsdb_config_init(const char *db_path);
-void vtysh_ovsdb_init_clients(void);
 
 vtysh_ret_val vtysh_sh_run_iteratecontextlist(FILE *fp);
 

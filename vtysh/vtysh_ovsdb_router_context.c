@@ -344,7 +344,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                         value_prefix_list_entries[j]->le[0] == 128) {
 
                         vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list"
-                                          " %s seq %d %s %s",
+                                          " %s seq %lu %s %s",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -355,7 +355,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                     } else if (inet_pton(AF_INET6,temp_prefix,
                                              &addrv6) == 1) {
                         vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s"
-                                          " seq %d %s %s",
+                                          " seq %lu %s %s",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -365,7 +365,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                                           value_prefix_list_entries[j]->prefix);
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s"
-                                          " seq %d %s %s",
+                                          " seq %lu %s %s",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -381,7 +381,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
 
                     if (inet_pton(AF_INET6,temp_prefix,&addrv6) == 1) {
                         vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s "
-                                          "seq %d %s %s ge %d ",
+                                          "seq %lu %s %s ge %d ",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -393,7 +393,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                                           value_prefix_list_entries[j]->ge[0]);
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s "
-                                          "seq %d %s %s ge %d ",
+                                          "seq %lu %s %s ge %d ",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -410,7 +410,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                                value_prefix_list_entries[j]->ge[0] == 0 ) {
                     if (inet_pton(AF_INET6,temp_prefix,&addrv6) == 1) {
                         vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s "
-                                          "seq %d %s %s le %d ",
+                                          "seq %lu %s %s le %d ",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -422,7 +422,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                                           value_prefix_list_entries[j]->le[0]);
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s seq "
-                                          "%d %s %s le %d ",
+                                          "%lu %s %s le %d ",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -437,7 +437,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                 } else {
                     if (inet_pton(AF_INET6,temp_prefix,&addrv6) == 1) {
                         vtysh_ovsdb_cli_print(p_msg,"ipv6 prefix-list %s "
-                                          "seq %d %s %s ge %d le %d ",
+                                          "seq %lu %s %s ge %d le %d ",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
@@ -451,7 +451,7 @@ vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
                                           value_prefix_list_entries[j]->le[0]);
                     } else {
                         vtysh_ovsdb_cli_print(p_msg,"ip prefix-list %s "
-                                          "seq %d %s %s ge %d le %d ",
+                                          "seq %lu %s %s ge %d le %d ",
                                           ovs_prefix_list->name,
                                           ovs_prefix_list->
                                           key_prefix_list_entries[j],
