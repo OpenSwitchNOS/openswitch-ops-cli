@@ -10446,6 +10446,9 @@ get_redistribute_confg_in_ovsdb(const char *type, const char *name)
     OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_row,idl) {
         for(i = 0; i <bgp_router_row->n_redistribute; i++) {
             if (!strcmp(bgp_router_row->key_redistribute[i], type)) {
+                if (name == NULL){
+                    return bgp_router_row;
+                }
                 rt_map_row = bgp_router_row->value_redistribute[i];
                 if(rt_map_row->name &&
                     !strcmp(rt_map_row->name,name)) {
@@ -10483,7 +10486,8 @@ cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
         bgp_router_row = get_redistribute_confg_in_ovsdb(type,"");
     }
     if (bgp_router_row == NULL) {
-        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+        ERRONEOUS_DB_TXN(bgp_router_txn,
+                         "redistribute configuration not found");
     } else {
 
         new_size = bgp_router_row->n_redistribute - 1;
@@ -12086,13 +12090,13 @@ policy_set_prefix_list_in_ovsdb(struct vty *vty, afi_t afi, const char *name,
     const struct ovsrec_prefix_list_entry  *policy_entry_row;
     int ret;
     struct prefix p;
-    int seqnum = -1;
+    int64_t seqnum = -1;
     int64_t genum = 0;
     int64_t lenum = 0;
 
     /* Sequential number. */
     if (seq)
-        seqnum = atoi (seq);
+        seqnum =  strtoll(seq, NULL, 10);
 
     /* ge and le number*/
     if (ge)
@@ -12431,7 +12435,7 @@ cli_no_ip_prefix_list_seq_cmd_execute(afi_t afi, const char *name, const char *s
     struct ovsdb_idl_txn *policy_txn;
     int ret;
     struct prefix p;
-    int seqnum = -1;
+    int64_t seqnum = -1;
     int64_t genum = 0;
     int64_t lenum = 0;
 
@@ -12441,7 +12445,7 @@ cli_no_ip_prefix_list_seq_cmd_execute(afi_t afi, const char *name, const char *s
 
     /* Sequential number. */
     if (seq)
-        seqnum = atoi(seq);
+        seqnum = strtoll(seq, NULL, 10);
     else
         ERRONEOUS_DB_TXN(policy_txn, "Invalid seq number");
 
@@ -13939,10 +13943,10 @@ show_prefix_list(afi_t afi, const char *name,
     int j = 0;
     char *temp_prefix;
     bool first;
-    int seq = 0;
+    int64_t seq = 0;
     int len = 0;
     if(seqnum) {
-        seq = atoi(seqnum);
+        seq = strtoll(seqnum, NULL, 10);
     }
     OVSREC_PREFIX_LIST_FOR_EACH(ovs_prefix_list, idl) {
         first = false;
