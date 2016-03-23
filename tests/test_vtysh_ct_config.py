@@ -317,7 +317,7 @@ timeout #########
         firstOut = s1.cmdCLI('do show running-config')
         firstLines = firstOut.split('\n')
 
-        #Erasing configuration
+        # Erasing configuration
         for element in restoreCommands:
             s1.cmdCLI(element)
 
@@ -347,6 +347,30 @@ timeout #########
         s1.cmdCLI('end')
         return True
 
+    def createAdminLoginTest(self):
+        info("\n########## "
+             "Test to verify admin login  "
+             "in Vtysh shell. "
+             "#########\n\n")
+        s1 = self.net.switches[0]
+        output = s1.cmd("su - admin -c 'vtysh'")
+        cstr = 'admin does not have the required permissions to access Vtysh.'
+        assert cstr in output,\
+            'Test to verify Vtysh shell access for admin - Failed!'
+        return True
+
+    def createNetopLoginTest(self):
+        info("\n########## "
+             "Test to verify netop login  "
+             "in Vtysh shell. "
+             "#########\n\n")
+        s1 = self.net.switches[0]
+        output = s1.cmd("su - netop -c 'show hostname'")
+        cstr = 'switch'
+        assert cstr in output,\
+            'Test to verify Vtysh shell access for admin - Failed!'
+        return True
+
 
 class Test_showrunningconfig:
 
@@ -359,7 +383,7 @@ class Test_showrunningconfig:
     def setup_class(cls):
         Test_showrunningconfig.test = ShowRunningConfigTests()
 
-  # show running config tests.
+    # show running config tests.
 
     def test_restore_config(self):
         if self.test.restoreConfigFromRunningConfig():
@@ -416,6 +440,16 @@ class Test_showrunningconfig:
         if self.test.createLacpTest():
             info('########## Test to verify show running-config '
                  'for lacp configuration - SUCCESS! ##########\n')
+
+    def test_set_admin_login(self):
+        if self.test.createAdminLoginTest():
+            info('########## Test to verify admin login'
+                 ' in Vtysh shell - SUCCESS! ##########\n')
+
+    def test_set_netop_login(self):
+        if self.test.createNetopLoginTest():
+            info('########## Test to verify netop login'
+                 ' in Vtysh shell - SUCCESS! ##########\n')
 
     def teardown_class(cls):
 
