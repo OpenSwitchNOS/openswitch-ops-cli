@@ -41,4 +41,7 @@ int check_internal_vlan(uint16_t vlanid);
 int create_vlan_interface(const char *vlan_if);
 int delete_vlan_interface(const char *vlan_if);
 bool verify_ifname(char *str);
+
+extern void show_sflow_config (const char *name, const char *align);
+
 #endif /* _VLAN_VTYSH_UTILS_H  */

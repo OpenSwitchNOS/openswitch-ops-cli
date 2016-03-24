@@ -60,6 +60,7 @@
 #include "smap.h"
 #include "loopback_vty.h"
 #include "vrf_vty.h"
+#include "sflow_vty.h"
 #include "l3routes_vty.h"
 #include "ecmp_vty.h"
 #include "source_interface_selection_vty.h"
@@ -4112,6 +4113,7 @@ vtysh_init_vty (void)
    */
   vtysh_cli_post_init();
   vrf_vty_init();
+  sflow_vty_init();
   l3routes_vty_init();
   /* Sub-interafce and Loopback init. */
   sub_intf_vty_init();
