@@ -644,7 +644,7 @@ DEFUN (cli_intf_show_interface_loopback_if,
     int idx, count;
     char loopbackintf[MAX_IFNAME_LENGTH] = {0};
     bool filter_intf = false;
-
+    bool brief = false;
     const struct ovsdb_datum *datum;
 
     unsigned int index;
@@ -654,6 +654,20 @@ DEFUN (cli_intf_show_interface_loopback_if,
     {
         sprintf(loopbackintf, "lo%s", argv[0]);
         filter_intf = true;
+    }
+    if ((NULL != argv[0]) && (strcmp(argv[0], "brief") == 0))
+    {
+        brief = true;
+        /* Display the brief information. */
+        vty_out(vty, "%s", VTY_NEWLINE);
+        vty_out(vty, "---------------------------------------------------"
+                     "-----------------------------%s", VTY_NEWLINE);
+        vty_out(vty, "Ethernet      VLAN       Type       Mode     Status  "
+                     "    Reason       Speed    Port%s", VTY_NEWLINE);
+        vty_out(vty, "Interface                                          "
+                     "                 (Mb/s)   Ch# %s", VTY_NEWLINE);
+        vty_out(vty, "----------------------------------------------------"
+                     "----------------------------%s", VTY_NEWLINE);
     }
 
     vty_out (vty, "%s", VTY_NEWLINE);
@@ -675,55 +689,69 @@ DEFUN (cli_intf_show_interface_loopback_if,
 
     nodes = shash_sort(&sorted_interfaces);
     count = shash_count(&sorted_interfaces);
+    if (brief) {
+       for (idx = 0; idx < count; idx++)
+       {
+           ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+           /* Display brief information. */
+           vty_out (vty, "%-12s", ifrow->name);
+           vty_out (vty, "--    "); /*VLAN */
+           vty_out (vty, "    loopback  "); /*type */
+           vty_out (vty, "   routed "); /*mode - routed or not*/
 
-    for (idx = 0; idx < count; idx++)
-    {
-        union ovsdb_atom atom;
+           vty_out (vty, "      up "); /*Admin status*/
+           vty_out (vty, "      auto");
+           vty_out (vty, "      -- ");  /*Port channel*/
+           vty_out (vty, "%s", VTY_NEWLINE);
+       }
+    } else {
+          for (idx = 0; idx < count; idx++)
+          {
+              union ovsdb_atom atom;
 
-        ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+              ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
 
-        vty_out (vty, "Interface %s is %s ", ifrow->name,
-                 OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
+              vty_out (vty, "Interface %s is %s ", ifrow->name,
+                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
 
-        if ((NULL != ifrow->admin_state)
-                && strcmp(ifrow->admin_state,
-                        OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
-        {
-            vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
-            vty_out (vty, " Admin state is down%s",
-                    VTY_NEWLINE);
-        }
-        else
-        {
-            vty_out (vty, "%s", VTY_NEWLINE);
-            vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
-        }
+              if ((NULL != ifrow->admin_state)
+                   && strcmp(ifrow->admin_state,
+                           OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN) == 0)
+              {
+                   vty_out (vty, "(Administratively down) %s", VTY_NEWLINE);
+                   vty_out (vty, " Admin state is down%s",VTY_NEWLINE);
+              }
+              else
+              {
+                   vty_out (vty, "%s", VTY_NEWLINE);
+                   vty_out (vty, " Admin state is up%s", VTY_NEWLINE);
+              }
 
-        vty_out (vty, " Hardware: Loopback %s", VTY_NEWLINE);
+              vty_out (vty, " Hardware: Loopback %s", VTY_NEWLINE);
 
-        /* Displaying IPv4 and IPv6 primary and secondary addresses.*/
-        show_ip_addresses(ifrow->name, vty);
+              /* Displaying IPv4 and IPv6 primary and secondary addresses.*/
+              show_ip_addresses(ifrow->name, vty);
 
-        datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
-        if ((NULL!=datum) && (datum->n >0))
-        {
-            intVal = datum->keys[0].integer;
-        }
+              datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
+              if ((NULL!=datum) && (datum->n >0))
+              {
+                   intVal = datum->keys[0].integer;
+              }
 
-        datum = ovsrec_interface_get_statistics(ifrow,
-                OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
-    }
+              datum = ovsrec_interface_get_statistics(ifrow,
+                   OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
+          }
+      }
+      shash_destroy(&sorted_interfaces);
+      free(nodes);
 
-    shash_destroy(&sorted_interfaces);
-    free(nodes);
-
-    return CMD_SUCCESS;
+      return CMD_SUCCESS;
 }
 
 
 DEFUN (cli_intf_show_interface_loopback,
         cli_intf_show_interface_loopback_cmd,
-        "show interface loopback",
+        "show interface loopback {brief}",
         SHOW_STR
         INTERFACE_STR
         "Show details of a loopback interface\n")
