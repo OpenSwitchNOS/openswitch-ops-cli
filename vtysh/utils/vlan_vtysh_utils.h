@@ -41,4 +41,5 @@ int check_internal_vlan(uint16_t vlanid);
 int create_vlan_interface(const char *vlan_if);
 int delete_vlan_interface(const char *vlan_if);
 bool verify_ifname(char *str);
+
 #endif /* _VLAN_VTYSH_UTILS_H  */
