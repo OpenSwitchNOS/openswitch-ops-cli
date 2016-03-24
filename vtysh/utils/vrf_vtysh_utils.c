@@ -21,6 +21,7 @@
 
 #include "ovsdb-idl.h"
 #include "vswitch-idl.h"
+#include "vrf_vtysh_utils.h"
 
 extern struct ovsdb_idl *idl;
 
@@ -41,4 +42,24 @@ port_vrf_lookup (const struct ovsrec_port *port_row)
         }
     }
     return NULL;
+}
+
+/* qsort comparator function.
+ */
+int
+compare_nodes_vrf(const void *a_, const void *b_)
+{
+    struct shash_node **a = a_;
+    struct shash_node **b = b_;
+    uint i1=0,i2=0;
+
+    sscanf(((*a)->name + VRF_VLAN_INTF_ID_OFFSET), "%d", &i1);
+    sscanf(((*b)->name + VRF_VLAN_INTF_ID_OFFSET), "%d", &i2);
+
+    if (i1 == i2)
+        return 0;
+    else if (i1 < i2)
+        return -1;
+    else
+        return 1;
 }
