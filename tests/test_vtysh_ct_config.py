@@ -88,7 +88,7 @@ class ShowRunningConfigTests(OpsVsiTest):
         s1.cmdCLI('exit')
         lines = out.split('\n')
         for line in lines:
-            if 'no lldp transmission' in line:
+            if 'no lldp transmit' in line:
                 lldp_txrx_disabled = True
         assert lldp_txrx_disabled is True, \
             'Test to verify show running-config for ' \
