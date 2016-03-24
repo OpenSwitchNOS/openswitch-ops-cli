@@ -109,7 +109,7 @@ static void
 display_helper_address_info (const char *if_name, vtysh_ovsdb_cbmsg_ptr p_msg)
 {
     const struct ovsrec_dhcp_relay *row_serv;
-    char *helper_ip = NULL;
+    char *buff = NULL;
     size_t i = 0;
 
     /* Displaying the dhcp-relay helper addresses  */
@@ -122,11 +122,19 @@ display_helper_address_info (const char *if_name, vtysh_ovsdb_cbmsg_ptr p_msg)
             {
                 for (i = 0; i < row_serv->n_ipv4_ucast_server; i++)
                 {
-                    helper_ip = row_serv->ipv4_ucast_server[i];
+                    buff = row_serv->ipv4_ucast_server[i];
                     vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
-                        "ip helper-address", helper_ip);
+                        "ip helper-address", buff);
+                }
+                buff = (char *)smap_get(&row->other_config,
+                                DHCP_RELAY_OTHER_CONFIG_MAP_BOOTP_GATEWAY);
+                if(buff)
+                {
+                    vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
+                        "ip bootp-gateway", buff);
                 }
             }
+
         }
     }
 
