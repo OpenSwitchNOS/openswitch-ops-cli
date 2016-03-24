@@ -57,6 +57,7 @@ add_executable(vtysh
   vtysh_ovsdb_source_interface_context.c
   ecmp_vty.c sftp_vty.c
   ospf_vty.c vtysh_ovsdb_ospf_context.c
+  sflow_vty.c
   vtysh_ovsdb_sftp_context.c
   utils/vlan_vtysh_utils.c
   utils/intf_vtysh_utils.c

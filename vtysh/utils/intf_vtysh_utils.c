@@ -265,3 +265,28 @@ show_l3_stats(struct vty *vty, const struct ovsrec_interface *ifrow)
     show_l3_interface_tx_stats(vty, datum);
     vty_out(vty, "%s", VTY_NEWLINE);
 }
+
+/*-----------------------------------------------------------------------------
+| Function : interface_find
+| Responsibility : Lookup interface table entry
+| Parameters :
+|   const chat *ifname : Interface name
+| Return : const struct ovsrec_interface*
+-----------------------------------------------------------------------------*/
+const struct ovsrec_interface*
+interface_find(const char *ifname)
+{
+    const struct ovsrec_interface *row;
+
+    if (!ifname) {
+        return NULL;
+    }
+    // Search for each interface
+    OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+        if ( strcmp(ifname,row->name) == 0) {
+            return row;
+        }
+    }
+    return NULL;
+}

@@ -593,6 +593,9 @@ struct dyn_cb_func
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
 
+/* Added for SFLOW */
+#define SFLOW_STR     "SFLOW Configuration\n"
+
 /* VLAN help strings */
 #define VLAN_STR            "VLAN configuration\n"
 #define VLAN_NAME_STR            "Name configuration\n"

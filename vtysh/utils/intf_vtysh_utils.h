@@ -52,4 +52,5 @@ int delete_sub_intf(const char *sub_intf_name);
 void show_l3_stats(struct vty *vty, const struct ovsrec_interface *ifrow);
 void show_l3_interface_rx_stats(struct vty *vty, const struct ovsdb_datum *datum);
 void show_l3_interface_tx_stats(struct vty *vty, const struct ovsdb_datum *datum);
+const struct ovsrec_interface* interface_find(const char *ifname);
 #endif /* _INTF_VTYSH_UTILS_H  */
