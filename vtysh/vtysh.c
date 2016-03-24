@@ -889,16 +889,6 @@ static struct cmd_node loopback_interface_node =
   "%s(config-loopback-if)# ",
 };
 
-static struct cmd_node qos_queue_profile_node = {
-    QOS_QUEUE_PROFILE_NODE,
-    "%s(config-queue)# ",
-};
-
-static struct cmd_node qos_schedule_profile_node = {
-    QOS_SCHEDULE_PROFILE_NODE,
-    "%s(config-schedule)# ",
-};
-
 #endif
 
 static struct cmd_node rmap_node =
@@ -3812,8 +3802,6 @@ vtysh_init_vty (void)
    install_node (&rip_node, NULL);
 #endif
 #ifdef ENABLE_OVSDB
-   install_node (&qos_queue_profile_node, NULL);
-   install_node (&qos_schedule_profile_node, NULL);
    /* Sub-interafce and Loopback nodes. */
    install_node (&sub_interface_node, NULL);
    install_node (&loopback_interface_node, NULL);
@@ -3852,8 +3840,6 @@ vtysh_init_vty (void)
 #endif
    vtysh_install_default (INTERFACE_NODE);
 #ifdef ENABLE_OVSDB
-   vtysh_install_default (QOS_QUEUE_PROFILE_NODE);
-   vtysh_install_default (QOS_SCHEDULE_PROFILE_NODE);
    /* Sub-interafce and Loopback nodes. */
    vtysh_install_default (SUB_INTERFACE_NODE);
    vtysh_install_default (LOOPBACK_INTERFACE_NODE);
@@ -3890,8 +3876,6 @@ vtysh_init_vty (void)
 
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
-   install_element (QOS_QUEUE_PROFILE_NODE, &vtysh_quit_mgmt_interface_cmd);
-   install_element (QOS_SCHEDULE_PROFILE_NODE, &vtysh_quit_mgmt_interface_cmd);
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
@@ -4020,10 +4004,6 @@ vtysh_init_vty (void)
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-   install_element (QOS_QUEUE_PROFILE_NODE, &vtysh_exit_interface_cmd);
-   install_element (QOS_QUEUE_PROFILE_NODE, &vtysh_end_all_cmd);
-   install_element (QOS_SCHEDULE_PROFILE_NODE, &vtysh_exit_interface_cmd);
-   install_element (QOS_SCHEDULE_PROFILE_NODE, &vtysh_end_all_cmd);
   install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
   install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
