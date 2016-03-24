@@ -712,6 +712,110 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_config_context_sflow_clientcallback
+| Responsibility : sflow client callback routine
+| Parameters :
+|     void *p_private: void type object typecast to required
+| Return : void
+-----------------------------------------------------------------------------*/
+vtysh_ret_val
+vtysh_config_context_sflow_clientcallback(void *p_private)
+{
+  extern struct ovsdb_idl *idl;
+  int i=0;
+  char *ptr=NULL, *ip=NULL, *port=NULL, *vrf=NULL, *copy=NULL;
+  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+  const struct ovsrec_system *ovs_row = NULL;
+  ovs_row = ovsrec_system_first (idl);
+  const struct ovsrec_sflow *sflow_row = NULL;
+  const char delim[2] = "/";
+
+  vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                           "vtysh_config_context_sflow_clientcallback entered");
+
+  OVSREC_SFLOW_FOR_EACH(sflow_row, p_msg->idl){
+    if (ovs_row->sflow != NULL)
+      {
+        vtysh_ovsdb_cli_print(p_msg, "sflow enable");
+      }
+      if (sflow_row->n_targets > 0)
+        {
+          for (i = 0; i < sflow_row->n_targets; i++)
+            {
+              copy = xstrdup(sflow_row->targets[i]);
+              ptr = strtok(copy, delim);
+              if (ptr != NULL)
+                {
+                  ip = xstrdup(ptr);
+                  ptr = strtok(NULL, delim);
+                }
+              if (ptr != NULL)
+                {
+                  port = xstrdup(ptr);
+                  ptr = strtok(NULL, delim);
+                }
+              if (ptr != NULL)
+                {
+                  vrf = xstrdup(ptr);
+                }
+              if (port == NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s",ip);
+                  free (ip);
+                  free (copy);
+                }
+              if (port != NULL && vrf == NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s",
+                                        ip, port);
+                  free (ip);
+                  free (port);
+                  free (copy);
+                }
+              if (port != NULL && vrf != NULL)
+                {
+                  vtysh_ovsdb_cli_print(p_msg, "sflow collector %s port %s vrf %s",
+                                        ip, port, vrf);
+                  free (ip);
+                  free (port);
+                  free (vrf);
+                  free (copy);
+                }
+            }
+        }
+      if (sflow_row->agent != NULL && sflow_row->agent_addr_family == NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s", sflow_row->agent);
+        }
+      else if (sflow_row->agent != NULL && sflow_row->agent_addr_family != NULL)
+        {
+           vtysh_ovsdb_cli_print(p_msg, "sflow agent-interface %s %s",
+                                 sflow_row->agent,
+                                 sflow_row->agent_addr_family);
+        }
+      if (sflow_row->sampling != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow sampling %lld", *(sflow_row->sampling));
+
+        }
+      if (sflow_row->header != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow header-size %lld", *(sflow_row->header));
+        }
+      if (sflow_row->max_datagram != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow max-datagram-size %lld", *(sflow_row->max_datagram));
+        }
+      if (sflow_row->polling != NULL)
+        {
+          vtysh_ovsdb_cli_print(p_msg, "sflow polling %lld", *(sflow_row->polling));
+        }
+  return e_vtysh_ok;
+  }
+
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_init_config_context_clients
 | Responsibility : registers the client callbacks for config context
 | Parameters :
@@ -765,6 +869,19 @@ vtysh_init_config_context_clients()
   {
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
                           "config context unable to add ecmp client callback");
+    assert(0);
+    return retval;
+  }
+
+  retval = e_vtysh_error;
+  retval = install_show_run_config_subcontext(e_vtysh_config_context,
+                                     e_vtysh_config_context_sflow,
+                                     &vtysh_config_context_sflow_clientcallback,
+                                     NULL, NULL);
+  if(e_vtysh_ok != retval)
+  {
+    vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_ERR,
+                          "config context unable to add sflow client callback");
     assert(0);
     return retval;
   }
