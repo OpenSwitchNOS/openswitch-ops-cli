@@ -400,6 +400,11 @@ verify_ifname(char *str)
         return 0;
     }
 
+    /* To handle incomplete commands */
+    if (!strcmp (str, "vlan")) {
+        return 0;
+    }
+
     while(*str) {
         if (isdigit(*str)) {
             vlanid = strtol(str, &endptr, 10);
@@ -407,26 +412,28 @@ verify_ifname(char *str)
             break;
         } else {
             str++;
-            if (*str == '\0')
+            if (*str == '\0') {
+                vty_out (vty, "Invalid vlan input\n");
                 return 0;
+            }
         }
     }
 
     /* For handling characters after/before <vlan id> */
-    if (*endptr != '\0') {
-        vty_out(vty, "Error : Invalid vlan input\n");
+    if (*endptr != '\0')  {
+        vty_out(vty, "Invalid vlan input\n");
         return 0;
     }
 
     /* The VLANID is outside valid vlan range */
     if (vlanid <= 0 || vlanid >= 4095) {
-        vty_out(vty, "Error : Vlanid outside valid vlan range <1-4094>\n");
+        vty_out(vty, "Vlanid outside valid vlan range <1-4094>\n");
         return 0;
     }
 
     /* The VLANID is internal vlan */
     if (check_internal_vlan(vlanid) == 0) {
-        vty_out(vty, "Error : Vlanid is an internal vlan\n");
+        vty_out(vty, "VLAN%d is used as an internal vlan\n", vlanid);
         return 0;
     }
 
