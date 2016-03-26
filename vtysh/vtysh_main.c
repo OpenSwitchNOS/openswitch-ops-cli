@@ -41,6 +41,7 @@
 #include "memory.h"
 #include "timeval.h"
 
+#include <libaudit.h>
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
 #ifdef ENABLE_OVSDB
@@ -56,6 +57,9 @@ VLOG_DEFINE_THIS_MODULE(vtysh_main);
 
 extern int64_t timeout_start;
 extern struct termios tp;
+
+/* Return vlaue of audit_open call. Use for subsequent audit call.*/
+int audit_fd = 0;
 
 /* VTY shell program name. */
 char *progname;
@@ -267,6 +271,9 @@ main (int argc, char **argv, char **env)
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
   vlog_set_verbosity("SYSLOG:DBG");
+
+  /* Initiate a connection to the audit framework for subsequent audit calls.*/
+  audit_fd = audit_open();
 
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
