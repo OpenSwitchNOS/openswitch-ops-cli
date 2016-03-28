@@ -1010,14 +1010,14 @@ vtysh_ovsdb_interface_match(const char *str)
     // Search for each interface
     OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
     {
-        if ( strncmp(str,row->name, strlen(str)) == 0) {
+        if ( strcmp(str,row->name) == 0) {
             return 0;
         }
     }
     // Search for each lag port
     OVSREC_PORT_FOR_EACH_SAFE(lag_port, lag_port_next, idl)
     {
-        if ( strncmp(str,lag_port->name,strlen(str)) == 0){
+        if ( strcmp(str,lag_port->name) == 0){
             return 0;
         }
     }
