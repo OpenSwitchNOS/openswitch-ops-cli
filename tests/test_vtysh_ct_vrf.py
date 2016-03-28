@@ -650,8 +650,8 @@ class vrfCLITest(OpsVsiTest):
             + intf2 + ' failed'
         info('### Show running config for ' + intf2 + ' passed ###\n')
 
-        assert 'no lldp reception' in output[intf3_output + 1] \
-            and 'no routing' in output[intf3_output + 2], \
+        assert 'no lldp receive' in output[intf3_output + 2] \
+                and 'no routing' in output[intf3_output + 3], \
             'Show running config for ' + intf3 + ' failed'
         info('### Show running config for ' + intf3 + ' passed ###\n')
 

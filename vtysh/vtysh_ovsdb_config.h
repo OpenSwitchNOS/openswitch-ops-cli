@@ -71,6 +71,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_ecmp,
   e_vtysh_config_context_ntp,
   e_vtysh_config_context_mstp,
+  e_vtysh_config_context_syslog,
 } vtysh_config_context_clientid;
 
 /* Router Context Client ID type */
