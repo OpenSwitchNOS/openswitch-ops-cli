@@ -23,6 +23,24 @@
 #ifndef _VRF_VTY_UTILS_H
 #define _VRF_VTY_UTILS_H
 
+#include "ops-utils.h"
+#define VRF_VLAN_INTF_ID_OFFSET 4
+
 const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 
+/**************************************************************************
+ * The function is used for comparing two VRF elements
+ *
+ * @param[in]  *a_ : Pointer to first VRF element
+ * @param[in]  *b_ : Pointer to second VRF element
+ *
+ * @return zer if two VRF elements are equal, 1 if the first elemnt is
+ * bigger than second, -1 if the first element is smaller than second
+ ***************************************************************************/
+int
+compare_nodes_vrf(const void *a_, const void *b_);
+
+extern int
+ops_sort(const struct shash *sh, void *ptr_func_sort,
+const struct shash_node ** sorted_list);
 #endif  /*_VRF_VTY_UTILS_H */
