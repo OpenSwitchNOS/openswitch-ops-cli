@@ -1231,6 +1231,34 @@ check_port_in_bridge(const char *port_name)
     return false;
 }
 
+/*
+ * This functions is used to check if interface is part of lag.
+ *
+ * Variables:
+ * intf_name name of interface to check
+ */
+bool
+check_iface_in_lag (const char *intf_name)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_interface *intf_row = NULL;
+    int i = 0;
+
+    OVSREC_PORT_FOR_EACH (port_row, idl)
+    {
+        if (strcmp (port_row->name, intf_name) == 0)
+            return false;
+        /* The interface can be associated with another port */
+        for (i = 0; i < port_row->n_interfaces; i++) {
+            intf_row = port_row->interfaces[i];
+            if (!strcmp(intf_row->name, intf_name)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 
 /*
  * This functions is used to check if port row exists.
