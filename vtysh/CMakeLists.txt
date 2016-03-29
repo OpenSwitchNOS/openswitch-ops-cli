@@ -67,7 +67,7 @@ target_link_libraries(vtysh PUBLIC
   ${OVSDB_LIBRARIES}
   ${OPSCLI_LIBRARIES}
   ${OPSUTILS_LIBRARIES}
-  crypt pthread readline ops-cli)
+  crypt pthread readline opsutils ops-cli)
 
 install(
   TARGETS vtysh

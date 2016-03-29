@@ -1413,6 +1413,10 @@ static int
 show_vrf_info ()
 {
   const struct ovsrec_vrf *vrf_row = NULL;
+  const struct ovsrec_port *port_row = NULL;
+  const struct shash_node **nodes;
+  struct shash sorted_vrf;
+  uint16_t count;
   size_t i;
 
   vrf_row = ovsrec_vrf_first (idl);
@@ -1440,23 +1444,40 @@ show_vrf_info ()
       vty_out (vty, "VRF Name : %s%s\n", vrf_row->name, VTY_NEWLINE);
       vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
       vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
+
+      shash_init(&sorted_vrf);
       for (i = 0; i < vrf_row->n_ports; i++)
         {
-        if (smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR) == NULL)
-          {
-            vty_out (vty, "\t%s                %s%s", vrf_row->ports[i]->name,
-                     PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
-          }
-        else
-          {
-            vty_out (vty, "\t%s                error: %s%s", vrf_row->ports[i]->name,
-                     smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR),
-                     VTY_NEWLINE);
-          }
+          shash_add(&sorted_vrf, vrf_row->ports[i]->name,
+                    (void *)vrf_row->ports[i]);
         }
+
+      count = shash_count(&sorted_vrf);
+      if (count)
+        {
+          nodes = xmalloc(count * sizeof *nodes);
+          ops_sort(&sorted_vrf, compare_nodes_vrf, nodes);
+
+          for (i = 0; i < count; i++)
+          {
+            port_row = (const struct ovsrec_port *)nodes[i]->data;
+            if (smap_get(&port_row->status, PORT_STATUS_MAP_ERROR) == NULL)
+              {
+                vty_out (vty, "\t%s            %s%s", port_row->name,
+                         PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
+              }
+            else
+              {
+                vty_out (vty, "\t%s            error : %s%s", port_row->name,
+                         smap_get(&port_row->status, PORT_STATUS_MAP_ERROR),
+                         VTY_NEWLINE);
+              }
+          }
+          free(nodes);
+        }
+      shash_destroy(&sorted_vrf);
     }
   return CMD_SUCCESS;
-
 }
 
 /*-----------------------------------------------------------------------------
