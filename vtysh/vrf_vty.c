@@ -710,13 +710,21 @@ vrf_routing (const char *if_name)
       return CMD_SUCCESS;
     }
 
-  if (check_iface_in_vrf (if_name))
-    {
-      VLOG_DBG ("%s Interface \"%s\" is already L3. No change required.",
+  if (check_iface_in_vrf(if_name)) {
+      vty_out(vty, "Interface %s is already L3.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is already L3. No change required.",
                 __func__, if_name);
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
+
+  if (check_iface_in_lag (if_name)) {
+      vty_out(vty, "Interface %s is associate to Lag.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is associate to Lag. ",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+  }
 
   default_bridge_row = ovsrec_bridge_first (idl);
   ports = xmalloc (
@@ -783,6 +791,14 @@ vrf_no_routing (const char *if_name)
       cli_do_config_abort (status_txn);
       return CMD_OVSDB_FAILURE;
     }
+
+  if (check_iface_in_lag(if_name)) {
+      vty_out(vty, "Interface %s is associate to Lag.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is associate to Lag. ",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+  }
 
   /* Check for spit interface conditions */
   if (!check_split_iface_conditions (if_name))
