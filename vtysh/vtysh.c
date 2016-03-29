@@ -21,6 +21,7 @@
  */
 
 #ifdef ENABLE_OVSDB
+#include <sys/ioctl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -56,6 +57,7 @@
 #include "vswitch-idl.h"
 
 #ifdef ENABLE_OVSDB
+#include "vty.h"
 #include "vswitch-idl.h"
 #include "smap.h"
 #include "loopback_vty.h"
@@ -540,11 +542,21 @@ vtysh_execute_no_pager (const char *line)
 {
    return vtysh_execute_func (line, 0);
 }
+extern void reset_page_height();
 
 int
 vtysh_execute (const char *line)
 {
+
+#ifdef ENABLE_OVSDB
+   int retVal = CMD_SUCCESS;
+   reset_page_height();
+   retVal = vtysh_execute_func (line, 1);
+   reset_page_height();
+   return retVal;
+#else
    return vtysh_execute_func (line, 1);
+#endif // ENABLE_OVSDB
 }
 
 /* Configration make from file. */
@@ -3727,6 +3739,43 @@ DEFUN (vtysh_show_session_timeout_cli,
     return CMD_SUCCESS;
 }
 
+#ifdef ENABLE_OVSDB
+extern void set_page_height(int);
+
+extern int vtysh_page_height;
+DEFUN (vtysh_page_cli,
+      vtysh_page_cli_cmd,
+      "page",
+      "Enable page break\n")
+{
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    vtysh_page_height = w.ws_row;
+}
+
+
+DEFUN (vtysh_page_val_cli,
+      vtysh_page_val_cli_cmd,
+      "page <2-1000>",
+      "Enable page break\n"
+      "Height of the page (If not specified, "
+      "current terminal height is set)\n")
+{
+    vtysh_page_height = atoi(argv[0]);
+}
+
+
+DEFUN (vtysh_no_page_cli,
+      vtysh_no_page_cli_cmd,
+      "no page",
+      NO_STR
+      "Enable page break\n")
+{
+    vtysh_page_height = 0;
+}
+#endif
+
 /*
  * Function : alias_vty_init
  * Responsibility : install the alias commands
@@ -4001,6 +4050,9 @@ vtysh_init_vty (void)
 #ifdef ENABLE_OVSDB
    install_element (CONFIG_NODE, &vtysh_session_timeout_cli_cmd);
    install_element (CONFIG_NODE, &vtysh_no_session_timeout_cli_cmd);
+   install_element (ENABLE_NODE, &vtysh_page_cli_cmd);
+   install_element (ENABLE_NODE, &vtysh_page_val_cli_cmd);
+   install_element (ENABLE_NODE, &vtysh_no_page_cli_cmd);
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);

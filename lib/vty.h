@@ -251,7 +251,7 @@ extern int vty_shell (struct vty *);
 extern int vty_shell_serv (struct vty *);
 extern void vty_hello (struct vty *);
 extern int vty_command (struct vty *vty, char *buf);
-
+extern void set_page_height(int lines);
 /* Send a fixed-size message to all vty terminal monitors; this should be
    an async-signal-safe function. */
 extern void vty_log_fixed (char *buf, size_t len);

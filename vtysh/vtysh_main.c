@@ -82,10 +82,20 @@ struct thread_master *master;
 /* Command logging */
 FILE *logfile;
 
+#ifdef ENABLE_OVSDB
+extern void reset_page_break_on_interrupt();
+#endif //ENABLE_OVSDB
+
 /* SIGTSTP handler.  This function care user's ^Z input. */
 void
 sigtstp (int sig)
 {
+
+#ifdef ENABLE_OVSDB
+  /* Reset the page_break settings to default */
+  reset_page_break_on_interrupt();
+#endif //ENABLE_OVSDB
+
   /* Execute "end" command. */
   vtysh_execute ("end");
 
@@ -107,6 +117,12 @@ sigtstp (int sig)
 void
 sigint (int sig)
 {
+
+#ifdef ENABLE_OVSDB
+  /* Reset the page_break settings to default */
+  reset_page_break_on_interrupt();
+#endif //ENABLE_OVSDB
+
   /* Check this process is not child process. */
   if (! execute_flag)
     {
