@@ -99,17 +99,18 @@ display_udpfwd_info (const char *if_name, vtysh_ovsdb_cbmsg_ptr p_msg)
 }
 
 /*-----------------------------------------------------------------------------
-| Function       : display_helper_address_info
-| Responsibility : To display dhcp-relay helper-address details
+| Function       : display_dhcp_relay_interface_config
+| Responsibility : To display dhcp-relay helper-address and bootp-gateway
+|                  details
 | Parameters     :
 |    *if_name    : Name of interface
 |     p_msg      : Used for idl operations
 -----------------------------------------------------------------------------*/
 static void
-display_helper_address_info (const char *if_name, vtysh_ovsdb_cbmsg_ptr p_msg)
+display_dhcp_relay_interface_config(const char *if_name, vtysh_ovsdb_cbmsg_ptr p_msg)
 {
     const struct ovsrec_dhcp_relay *row_serv;
-    char *helper_ip = NULL;
+    char *buff = NULL;
     size_t i = 0;
 
     /* Displaying the dhcp-relay helper addresses  */
@@ -122,11 +123,19 @@ display_helper_address_info (const char *if_name, vtysh_ovsdb_cbmsg_ptr p_msg)
             {
                 for (i = 0; i < row_serv->n_ipv4_ucast_server; i++)
                 {
-                    helper_ip = row_serv->ipv4_ucast_server[i];
+                    buff = row_serv->ipv4_ucast_server[i];
                     vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
-                        "ip helper-address", helper_ip);
+                        "ip helper-address", buff);
+                }
+                buff = (char *)smap_get(&row_serv->other_config,
+                                DHCP_RELAY_OTHER_CONFIG_MAP_BOOTP_GATEWAY);
+                if (buff)
+                {
+                    vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
+                        "ip bootp-gateway", buff);
                 }
             }
+
         }
     }
 
@@ -185,7 +194,7 @@ vtysh_intf_context_vrf_clientcallback(void *p_private)
         if (smap_get(&port_row->other_config, PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED)) {
             vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "ip proxy-arp");
         }
-        display_helper_address_info(ifrow->name, p_msg);
+        display_dhcp_relay_interface_config(ifrow->name, p_msg);
         display_udpfwd_info(ifrow->name, p_msg);
       }
       else
@@ -194,7 +203,7 @@ vtysh_intf_context_vrf_clientcallback(void *p_private)
           {
               vtysh_ovsdb_cli_print(p_msg, "interface %s", ifrow->name);
           }
-          display_helper_address_info(ifrow->name, p_msg);
+          display_dhcp_relay_interface_config(ifrow->name, p_msg);
           display_udpfwd_info(ifrow->name, p_msg);
       }
     }

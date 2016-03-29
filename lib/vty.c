@@ -699,6 +699,8 @@ vty_end_config (struct vty *vty)
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
     case LINK_AGGREGATION_NODE:
+    case QOS_QUEUE_PROFILE_NODE:
+    case QOS_SCHEDULE_PROFILE_NODE:
     case ZEBRA_NODE:
     case RIP_NODE:
     case RIPNG_NODE:
@@ -1116,6 +1118,8 @@ vty_stop_input (struct vty *vty)
     case INTERFACE_NODE:
     case VLAN_NODE:
     case LINK_AGGREGATION_NODE:
+    case QOS_QUEUE_PROFILE_NODE:
+    case QOS_SCHEDULE_PROFILE_NODE:
     case MGMT_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_INTERFACE_NODE:

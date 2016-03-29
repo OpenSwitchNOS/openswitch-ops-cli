@@ -53,6 +53,10 @@ typedef enum vtysh_context_idenum
   e_vtysh_sftp_server_context,
   e_vtysh_dhcp_relay_context,
   e_vtysh_udp_forwarder_context,
+  e_vtysh_qos_apply_global_context,
+  e_vtysh_qos_trust_global_context,
+  e_vtysh_qos_cos_map_context,
+  e_vtysh_qos_dscp_map_context,
   e_vtysh_access_list_context,
 } vtysh_contextid;
 
@@ -68,6 +72,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_ecmp,
   e_vtysh_config_context_ntp,
   e_vtysh_config_context_mstp,
+  e_vtysh_config_context_syslog,
 } vtysh_config_context_clientid;
 
 /* Router Context Client ID type */
