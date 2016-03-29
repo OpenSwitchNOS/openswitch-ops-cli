@@ -683,6 +683,125 @@ def noRunningConfigTest(dut01):
     return True
 
 
+def setRouteRedistribution(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="redistribute connected")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set connected route redistribution failed"
+
+    devIntReturn = dut01.DeviceInteract(command="redistribute static")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set static route redistribution failed"
+
+    devIntReturn = dut01.DeviceInteract(command="redistribute bgp")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set bgp route redistribution failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+
+    assert 'redistribute connected' in cmdOut, "Test to set connected route" \
+                                               "redistribution failed"
+    assert 'redistribute static' in cmdOut, \
+        "Test to set static route route redistribution failed"
+    assert 'redistribute bgp' in cmdOut, \
+        "Test to set bgp route redistribution failed"
+
+    return True
+
+
+def unsetRouteRedistribution(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no redistribute connected")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset connected route redistribution failed"
+
+    devIntReturn = dut01.DeviceInteract(command="no redistribute static")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset static route redistribution failed"
+
+    devIntReturn = dut01.DeviceInteract(command="no redistribute bgp")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset bgp route redistribution failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+
+    assert 'redistribute connected' not in cmdOut, "Test to unset connected" \
+           "route redistribution failed"
+    assert 'redistribute static' not in cmdOut, \
+        "Test to unset static route route redistribution failed"
+    assert 'redistribute bgp' not in cmdOut, \
+        "Test to unset bgp route redistribution failed"
+
+    return True
+
+
+def setDefaultRouteRedistribution(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(
+        command="default-information originate")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set default route redistribution failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    assert 'default-information originate' in cmdOut, "Test to set default" \
+           " route redistribution failed"
+
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(
+        command="default-information originate always")
+
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set default route redistribution failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+
+    assert 'default-information originate always' in cmdOut, \
+        "Test to set default route redistribution failed"
+
+    return True
+
+
+def unsetDefaultRouteRedistribution(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(
+        command="no default-information originate")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, \
+        "Test to unset default route redistribution failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+
+    assert 'default-information originate' not in cmdOut, \
+        "Test to set default route redistribution failed"
+
+    return True
+
+
 class Test_ospf_configuration:
 
     def setup_class(cls):
@@ -1037,3 +1156,35 @@ class Test_ospf_configuration:
             LogOutput('info', "Unset Interface md5 key - passed")
         else:
             LogOutput('error', "Unset Interface md5 key - failed")
+
+    def test_setRouteRedistribution(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setRouteRedistribution(dut01Obj)
+        if(retValue):
+            LogOutput('info', "set Route Redistribution - passed")
+        else:
+            LogOutput('error', "set Route Redistribution - failed")
+
+    def test_unsetRouteRedistribution(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetRouteRedistribution(dut01Obj)
+        if(retValue):
+            LogOutput('info', "unset Route Redistribution - passed")
+        else:
+            LogOutput('error', "unset Route Redistribution - failed")
+
+    def test_setDefaultRouteRedistribution(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setDefaultRouteRedistribution(dut01Obj)
+        if(retValue):
+            LogOutput('info', "set Default Route Redistribution - passed")
+        else:
+            LogOutput('error', "set Default Route Redistribution - failed")
+
+    def test_unsetDefaultRouteRedistribution(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetDefaultRouteRedistribution(dut01Obj)
+        if(retValue):
+            LogOutput('info', "unset Default Route Redistribution - passed")
+        else:
+            LogOutput('error', "unset Default Route Redistribution - failed")
