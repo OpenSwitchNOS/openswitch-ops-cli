@@ -1,7 +1,7 @@
 /*
  * Virtual terminal [aka TeletYpe] interface routine.
  * Copyright (C) 1997, 98 Kunihiro Ishiguro
- * Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+ * Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
  *
  * This file is part of GNU Zebra.
  *
@@ -36,6 +36,7 @@
 #include "vty.h"
 #include "privs.h"
 #include "network.h"
+#include <termios.h>
 
 #include <arpa/telnet.h>
 
@@ -88,6 +89,97 @@ static u_char restricted_mode = 0;
 /* Integrated configuration file path */
 char integrate_default[] = SYSCONFDIR INTEGRATE_DEFAULT_CONFIG;
 
+#ifdef ENABLE_OVSDB
+
+#define VTYSH_PAGE_NEXT_PAGE 1
+#define VTYSH_PAGE_NEXT_LINE 2
+#define VTYSH_PAGE_ABORT 3
+#define VTYSH_PAGE_NO_MORE_PAGE 4
+
+int vtysh_page_height = 0;
+int cur_page_height = 0;
+boolean skip_more_output = 0;
+extern pthread_mutex_t vtysh_ovsdb_mutex;
+
+
+/* Cleanup function to be called from interrupt signal handler, to release the
+   lock, reset the terminal settings etc. */
+void
+reset_page_break_on_interrupt()
+{
+  if(0 != cur_page_height)
+  {
+    static struct termios newt;
+    tcgetattr( STDIN_FILENO, &newt);
+    newt.c_lflag |= (ICANON);
+    newt.c_lflag |= (ECHO);
+    tcsetattr( STDIN_FILENO, TCSANOW, &newt);
+    pthread_mutex_unlock(&vtysh_ovsdb_mutex);
+    skip_more_output = 1;
+    /* using printf, as called from interrupt callback */
+    printf(
+        "\r                                                               \r");
+  }
+  return;
+}
+
+/* Displays the banner at the bottom when waiting for user input to move to
+   next page */
+int
+prompt_page_break(struct vty *vty)
+{
+  int retVal = VTYSH_PAGE_NEXT_PAGE;
+  char flag = '0';
+  static struct termios oldt, newt;
+
+  tcgetattr( STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON);
+  newt.c_lflag &= ~(ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+  vty_out(vty,"\r -- MORE --, next page: Space, next line: Enter, quit: q");
+  while (1)
+  {
+    flag = getchar();
+    if (flag == '\n' || flag == '\r')
+    {
+      vty_out(vty,
+        "\r                                                               \r");
+      retVal = VTYSH_PAGE_NEXT_LINE;
+      break;
+    }
+    else if (flag == 'q')
+    {
+      vty_out(vty,
+        "\r                                                               \r");
+      retVal = VTYSH_PAGE_ABORT;
+      break;
+    }
+
+    /* Consider any other char press as next page */
+    vty_out(vty,
+        "\r                                                               \r");
+    retVal = VTYSH_PAGE_NEXT_PAGE;
+    break;
+  }
+
+  /* Restore the old settings*/
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
+  return retVal;
+}
+
+
+void reset_page_height()
+{
+  cur_page_height = 0;
+  skip_more_output = 0;
+}
+
+#endif //ENABLE_OVSDB
+
+
 
 /* VTY standard output function. */
 int
@@ -101,9 +193,102 @@ vty_out (struct vty *vty, const char *format, ...)
 
   if (vty_shell (vty))
     {
+#ifndef ENABLE_OVSDB
       va_start (args, format);
       vprintf (format, args);
       va_end (args);
+#else
+    if (0 == vtysh_page_height)
+    {
+      va_start (args, format);
+      vprintf (format, args);
+      va_end (args);
+    }
+    else
+    {
+      char *line_start = NULL;
+      int i = 0;
+
+      if(skip_more_output)
+      {
+        return -1;
+      }
+
+      /* Try to write to initial buffer.  */
+      va_start (args, format);
+      len = vsnprintf (buf, sizeof buf, format, args);
+      va_end (args);
+
+      /* Initial buffer is not enough.  */
+      if (len < 0 || len >= size)
+      {
+        while (1)
+        {
+          if (len > -1)
+            size = len + 1;
+          else
+            size = size * 2;
+
+          p = XREALLOC (MTYPE_VTY_OUT_BUF, p, size);
+          if (! p)
+            return -1;
+
+          va_start (args, format);
+          len = vsnprintf (p, size, format, args);
+          va_end (args);
+
+          if (len > -1 && len < size)
+            break;
+        }
+      }
+
+      /* When initial buffer is enough to store all output.  */
+      if (! p)
+        p = buf;
+
+      line_start = p;
+      for (i = 0; i < len; i ++)
+      {
+        if ('\n' == *(p+i))
+        {
+          cur_page_height++;
+          if (cur_page_height == vtysh_page_height - 1)
+          {
+            int ret = 0;
+            *(p+i) = '\0';
+
+            printf("%s%s", line_start, VTY_NEWLINE);
+            line_start = p+i+1;
+
+            ret = prompt_page_break(vty);
+            if (VTYSH_PAGE_NEXT_PAGE == ret)
+            {
+              cur_page_height = 0;
+            }
+            else if (VTYSH_PAGE_NEXT_LINE == ret)
+            {
+              cur_page_height--;
+            }
+            else if (VTYSH_PAGE_ABORT == ret)
+            {
+              skip_more_output = 1;
+              if (p != buf)
+              {
+                XFREE (MTYPE_VTY_OUT_BUF, p);
+                return -1;
+              }
+            }
+          }
+        }
+
+      }
+      printf("%s", line_start);
+
+      /* If p is not different with buf, it is allocated buffer.  */
+      if (p != buf)
+        XFREE (MTYPE_VTY_OUT_BUF, p);
+    }
+#endif //ENABLE_OVSDB
     }
   else
     {
@@ -114,37 +299,37 @@ vty_out (struct vty *vty, const char *format, ...)
 
       /* Initial buffer is not enough.  */
       if (len < 0 || len >= size)
-	{
-	  while (1)
-	    {
-	      if (len > -1)
-		size = len + 1;
-	      else
-		size = size * 2;
+    {
+      while (1)
+        {
+          if (len > -1)
+        size = len + 1;
+          else
+        size = size * 2;
 
-	      p = XREALLOC (MTYPE_VTY_OUT_BUF, p, size);
-	      if (! p)
-		return -1;
+          p = XREALLOC (MTYPE_VTY_OUT_BUF, p, size);
+          if (! p)
+        return -1;
 
-	      va_start (args, format);
-	      len = vsnprintf (p, size, format, args);
-	      va_end (args);
+          va_start (args, format);
+          len = vsnprintf (p, size, format, args);
+          va_end (args);
 
-	      if (len > -1 && len < size)
-		break;
-	    }
-	}
+          if (len > -1 && len < size)
+        break;
+        }
+    }
 
       /* When initial buffer is enough to store all output.  */
       if (! p)
-	p = buf;
+    p = buf;
 
       /* Pointer p must point out buffer. */
       buffer_put (vty->obuf, (u_char *) p, len);
 
       /* If p is not different with buf, it is allocated buffer.  */
       if (p != buf)
-	XFREE (MTYPE_VTY_OUT_BUF, p);
+    XFREE (MTYPE_VTY_OUT_BUF, p);
     }
 
   return len;
