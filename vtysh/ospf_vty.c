@@ -4928,6 +4928,227 @@ DEFUN (cli_no_ospf_distance_ospf,
   return CMD_SUCCESS;
 }
 
+DEFUN (cli_ospf_redistribute_source,
+       cli_ospf_redistribute_source_cmd,
+       "redistribute (connected|static|bgp)",
+       REDIST_STR
+       CLI_REDIST_HELP_STR_OSPFD)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** redistribute = NULL;
+    int instance_id = OSPF_DEFAULT_INSTANCE_ID;
+    int redist_found = false;
+    int i = 0;
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+       VLOG_DBG ("VRF is not present.");
+       return CMD_SUCCESS;
+    }
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                               instance_id);
+    if (ospf_router_row == NULL)
+    {
+       VLOG_DBG ("OSPF Router instance not present");
+       return CMD_SUCCESS;
+    }
+    for (i = 0 ; i < ospf_router_row->n_redistribute ; i++)
+        if (ospf_router_row->redistribute[i] &&
+            !strcmp(argv[0],ospf_router_row->redistribute[i]))
+            redist_found = true;
+    if (redist_found)
+    {
+        /* Be mindfull to consider this case as successfull in CT */
+        VLOG_DBG ("%s Already redistribute to OSPF %d",argv[0],instance_id);
+        return CMD_SUCCESS;
+    }
+    else
+    {
+        OSPF_START_DB_TXN(ospf_router_txn);
+        redistribute = xmalloc(sizeof *ospf_router_row->redistribute *
+                                    ospf_router_row->n_redistribute+1);
+        if (!redistribute)
+        {
+            OSPF_ABORT_DB_TXN(ospf_router_txn,
+                                      "Unable to allocate memory");
+            return CMD_SUCCESS;
+        }
+        for (i = 0 ; i < ospf_router_row->n_redistribute ; i++)
+            redistribute[i] = ospf_router_row->redistribute[i];
+        redistribute[ospf_router_row->n_redistribute] = argv[0];
+        ovsrec_ospf_router_set_redistribute(ospf_router_row,redistribute,ospf_router_row->n_redistribute+1);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE(redistribute);
+    }
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_redistribute_source,
+       cli_no_ospf_redistribute_source_cmd,
+       "no redistribute (connected|static|bgp)",
+       NO_STR
+       REDIST_STR
+       CLI_REDIST_HELP_STR_OSPFD)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    char** redistribute = NULL;
+    int instance_id = OSPF_DEFAULT_INSTANCE_ID;
+    int redist_found = false;
+    int i = 0, j = 0;
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+       VLOG_DBG ("VRF is not present.");
+       return CMD_SUCCESS;
+    }
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                               instance_id);
+    if (ospf_router_row == NULL)
+    {
+       VLOG_DBG ("OSPF Router instance not present");
+       return CMD_SUCCESS;
+    }
+    for (i = 0 ; i < ospf_router_row->n_redistribute ; i++)
+        if (ospf_router_row->redistribute[i] &&
+            !strcmp(argv[0],ospf_router_row->redistribute[i]))
+            redist_found = true;
+    if (redist_found)
+    {
+        OSPF_START_DB_TXN(ospf_router_txn);
+        redistribute = xmalloc(sizeof *ospf_router_row->redistribute *
+                                    ospf_router_row->n_redistribute-1);
+        if (!redistribute)
+        {
+            OSPF_ABORT_DB_TXN(ospf_router_txn,
+                                      "Unable to allocate memory");
+            return CMD_SUCCESS;
+        }
+        for (i = 0,j = 0 ; i < ospf_router_row->n_redistribute ; i++)
+            if (ospf_router_row->redistribute[i] &&
+            strcmp(argv[0],ospf_router_row->redistribute[i]))
+            redistribute[j++] = ospf_router_row->redistribute[i];
+
+        ovsrec_ospf_router_set_redistribute(ospf_router_row,redistribute,ospf_router_row->n_redistribute-1);
+        OSPF_END_DB_TXN(ospf_router_txn);
+        SAFE_FREE(redistribute);
+    }
+    else
+    {
+        VLOG_DBG ("%s Not redistributed to OSPF %d",argv[0],instance_id);
+        return CMD_SUCCESS;
+    }
+
+  return CMD_SUCCESS;
+}
+
+/* Default information originate. */
+DEFUN (cli_ospf_default_information_originate,
+       cli_ospf_default_information_originate_cmd,
+       "default-information originate "
+       "{always}",
+       DEFAULT_REDIST_STR
+       DEFAULT_REDIST_ORIGINATE_STR
+       DEFAULT_REDIST_ALWAYS_STR)
+
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    struct smap def_redist_smap;
+    char** redistribute = NULL;
+    int instance_id = OSPF_DEFAULT_INSTANCE_ID;
+    bool redist_default = false;
+    bool redist_default_always = false;
+    int i = 0, j = 0;
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+       VLOG_DBG ("VRF is not present.");
+       return CMD_SUCCESS;
+    }
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                               instance_id);
+    if (ospf_router_row == NULL)
+    {
+       VLOG_DBG ("OSPF Router instance not present");
+       return CMD_SUCCESS;
+    }
+    smap_clone(&def_redist_smap,&(ospf_router_row->default_information));
+    redist_default = smap_get_bool(&def_redist_smap,OSPF_DEFAULT_INFO_ORIGINATE,false);
+    if (!redist_default)
+        smap_replace(&def_redist_smap,OSPF_DEFAULT_INFO_ORIGINATE,
+                                        OSPF_DEFAULT_INFO_ORIGINATE_SET);
+    if (NULL != argv[0])
+    {
+        redist_default_always = smap_get_bool(&def_redist_smap,
+                                    OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS,false);
+        if (!redist_default_always)
+            smap_replace(&def_redist_smap,OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS,
+                                        OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS_SET);
+    }
+    else
+        smap_replace(&def_redist_smap,OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS,
+                                        OSPF_ALWAYS_DEFAULT);
+
+    OSPF_START_DB_TXN(ospf_router_txn);
+    ovsrec_ospf_router_set_default_information(ospf_router_row,&def_redist_smap);
+    OSPF_END_DB_TXN(ospf_router_txn);
+    smap_destroy(&def_redist_smap);
+
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_default_information_originate,
+       cli_no_ospf_default_information_originate_cmd,
+       "no default-information originate ",
+       DEFAULT_REDIST_STR
+       DEFAULT_REDIST_ORIGINATE_STR)
+
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn=NULL;
+    struct smap def_redist_smap;
+    int instance_id = OSPF_DEFAULT_INSTANCE_ID;
+    int i = 0, j = 0;
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+       VLOG_DBG ("VRF is not present.");
+       return CMD_SUCCESS;
+    }
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id (vrf_row,
+                                               instance_id);
+    if (ospf_router_row == NULL)
+    {
+       VLOG_DBG ("OSPF Router instance not present");
+       return CMD_SUCCESS;
+    }
+    smap_clone(&def_redist_smap,&(ospf_router_row->default_information));
+    smap_replace(&def_redist_smap,OSPF_DEFAULT_INFO_ORIGINATE,OSPF_DEFAULT_INFO_ORIG_DEFAULT);
+    smap_replace(&def_redist_smap,OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS,OSPF_DEFAULT_INFO_ORIG_DEFAULT);
+
+    OSPF_START_DB_TXN(ospf_router_txn);
+    ovsrec_ospf_router_set_default_information(ospf_router_row,&def_redist_smap);
+    OSPF_END_DB_TXN(ospf_router_txn);
+    smap_destroy(&def_redist_smap);
+
+    return CMD_SUCCESS;
+}
+
 void
 ospf_vty_init(void)
 {
@@ -4949,6 +5170,10 @@ ospf_vty_init(void)
     install_element(OSPF_NODE, &cli_no_ospf_admin_distance_cmd);
     install_element(OSPF_NODE, &cli_ospf_distance_ospf_cmd);
     install_element(OSPF_NODE, &cli_no_ospf_distance_ospf_cmd);
+    install_element(OSPF_NODE, &cli_ospf_redistribute_source_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_redistribute_source_cmd);
+    install_element(OSPF_NODE, &cli_ospf_default_information_originate_cmd);
+    install_element(OSPF_NODE, &cli_no_ospf_default_information_originate_cmd);
 
     /* max-metric command */
     install_element(OSPF_NODE, &cli_ospf_router_max_metric_cmd);
