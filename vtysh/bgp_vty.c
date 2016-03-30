@@ -6734,8 +6734,6 @@ DEFUN(clear_bgp_all_soft_out,
     {
         VLOG_DBG("Successful transaction for clear bgp all"
                  " soft out\n");
-        vty_out(vty, "Successful transaction for clear bgp all"
-                " soft out command%s", VTY_NEWLINE);
     }
     else
     {
@@ -6867,11 +6865,10 @@ ALIAS(clear_ip_bgp_peer_vpnv4_soft_out,
 
 DEFUN(clear_bgp_peer_soft_out,
       clear_bgp_peer_soft_out_cmd,
-      "clear bgp (A.B.C.D|X:X::X:X) soft out",
+      "clear bgp A.B.C.D soft out",
       CLEAR_STR
       BGP_STR
       "BGP neighbor address to clear\n"
-      "BGP IPv6 neighbor to clear\n"
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
@@ -6962,9 +6959,6 @@ DEFUN(clear_bgp_peer_soft_out,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        vty_out(vty, "Successful transaction for clear bgp (A.B.C.D|X:X::X:X)"
-                " soft out command for peer %s%s",
-                argv[0], VTY_NEWLINE);
         return CMD_SUCCESS;
     }
     else
@@ -6989,11 +6983,10 @@ ALIAS(clear_bgp_peer_soft_out,
 
 ALIAS(clear_bgp_peer_soft_out,
       clear_bgp_peer_out_cmd,
-      "clear bgp (A.B.C.D|X:X::X:X) out",
+      "clear bgp A.B.C.D out",
       CLEAR_STR
       BGP_STR
       "BGP neighbor address to clear\n"
-      "BGP IPv6 neighbor to clear\n"
       "Soft reconfig outbound update\n")
 
 ALIAS(clear_bgp_peer_soft_out,
@@ -7150,9 +7143,6 @@ DEFUN(clear_bgp_peer_group_soft_out,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        vty_out(vty, "Successful transaction for clear bgp peer group"
-                 " soft out command for peer group %s%s",
-                 argv[0], VTY_NEWLINE);
         return CMD_SUCCESS;
     }
     else
@@ -7462,9 +7452,6 @@ DEFUN(clear_bgp_as_soft_out,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        vty_out(vty, "Successful transaction for clear bgp as "
-                "soft out command for peer with asn %s%s",
-                 argv[0], VTY_NEWLINE);
         return CMD_SUCCESS;
     }
     else
@@ -7768,8 +7755,6 @@ DEFUN(clear_bgp_all_soft_in,
     {
         VLOG_DBG("Successful transaction for clear bgp all"
                  " soft in\n");
-        vty_out(vty, "Successful transaction for clear bgp all"
-                 " soft in command%s", VTY_NEWLINE);
     }
     else
     {
@@ -7954,11 +7939,10 @@ ALIAS(clear_ip_bgp_peer_vpnv4_soft_in,
 
 DEFUN(clear_bgp_peer_soft_in,
       clear_bgp_peer_soft_in_cmd,
-      "clear bgp (A.B.C.D|X:X::X:X) soft in",
+      "clear bgp A.B.C.D soft in",
       CLEAR_STR
       BGP_STR
       "BGP neighbor address to clear\n"
-      "BGP IPv6 neighbor to clear\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -8050,9 +8034,6 @@ DEFUN(clear_bgp_peer_soft_in,
                  argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        vty_out(vty, "Successful transaction for clear bgp (A.B.C.D|X:X::X:X)"
-                 " soft in command for peer %s%s",
-                 argv[0], VTY_NEWLINE);
         return CMD_SUCCESS;
     }
     else
@@ -8077,11 +8058,10 @@ ALIAS(clear_bgp_peer_soft_in,
 
 ALIAS(clear_bgp_peer_soft_in,
       clear_bgp_peer_in_cmd,
-      "clear bgp (A.B.C.D|X:X::X:X) in",
+      "clear bgp A.B.C.D in",
       CLEAR_STR
       BGP_STR
       "BGP neighbor address to clear\n"
-      "BGP IPv6 neighbor to clear\n"
       "Soft reconfig inbound update\n")
 
 ALIAS(clear_bgp_peer_soft_in,
@@ -8296,10 +8276,6 @@ DEFUN(clear_bgp_peer_group_soft_in,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        VLOG_DBG("Successful transaction for clear bgp peer group"
-                 " soft in command for peer group %s%s",
-                  argv[0], VTY_NEWLINE);
-
         return CMD_SUCCESS;
     }
     else
@@ -8718,9 +8694,6 @@ DEFUN(clear_bgp_as_soft_in,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        vty_out(vty, "Successful transaction for clear bgp as "
-                "soft in command for peer with asn %s%s",
-                 argv[0], VTY_NEWLINE);
         return CMD_SUCCESS;
     }
     else
@@ -11521,205 +11494,23 @@ bgp_vty_init(void)
      * install_element(BGP_VPNV4_NODE, &exit_address_family_cmd);
      */
 
-    /* "Clear ip bgp commands". */
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_cmd);
-#ifdef HAVE_IPV6
-    install_element(ENABLE_NODE, &clear_bgp_all_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_instance_all_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_peer_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_peer_group_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_group_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_external_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_external_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_as_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_as_cmd);
-#endif /* HAVE_IPV6 */
-
-    /* "Clear ip bgp neighbor soft in". */
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE,
-                    &clear_ip_bgp_instance_all_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_ipv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_ipv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_ipv4_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_ipv4_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE,
-                    &clear_ip_bgp_instance_all_ipv4_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_ipv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_ipv4_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_ipv4_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_ipv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_ipv4_in_cmd);
-    install_element(ENABLE_NODE,
-                    &clear_ip_bgp_peer_group_ipv4_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_ipv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_ipv4_in_cmd);
-    install_element(ENABLE_NODE,
-                    &clear_ip_bgp_external_ipv4_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_ipv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_ipv4_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_ipv4_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_vpnv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_vpnv4_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_vpnv4_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_vpnv4_in_cmd);
-#ifdef HAVE_IPV6
     install_element(ENABLE_NODE, &clear_bgp_all_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_instance_all_soft_in_cmd);
     install_element(ENABLE_NODE, &clear_bgp_all_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_all_in_prefix_filter_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_soft_in_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_peer_in_prefix_filter_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_group_soft_in_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_group_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_peer_group_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_external_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_external_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_external_in_prefix_filter_cmd);
     install_element(ENABLE_NODE, &clear_bgp_as_soft_in_cmd);
     install_element(ENABLE_NODE, &clear_bgp_as_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_as_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_group_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_group_in_cmd);
-    install_element(ENABLE_NODE,
-                    &clear_bgp_ipv6_peer_group_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_external_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_external_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_external_in_prefix_filter_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_as_soft_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_as_in_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_as_in_prefix_filter_cmd);
-#endif /* HAVE_IPV6 */
 
-    /* "Clear ip bgp neighbor soft out". */
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_ipv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_ipv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_ipv4_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_ipv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_ipv4_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_ipv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_ipv4_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_ipv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_ipv4_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_ipv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_ipv4_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_vpnv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_vpnv4_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_vpnv4_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_vpnv4_out_cmd);
-#ifdef HAVE_IPV6
     install_element(ENABLE_NODE, &clear_bgp_all_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_instance_all_soft_out_cmd);
     install_element(ENABLE_NODE, &clear_bgp_all_out_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_soft_out_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_out_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_group_soft_out_cmd);
     install_element(ENABLE_NODE, &clear_bgp_peer_group_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_external_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_external_out_cmd);
     install_element(ENABLE_NODE, &clear_bgp_as_soft_out_cmd);
     install_element(ENABLE_NODE, &clear_bgp_as_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_group_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_group_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_external_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_external_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_as_soft_out_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_as_out_cmd);
-#endif /* HAVE_IPV6 */
-
-    /* "Clear ip bgp neighbor soft". */
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_ipv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_ipv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_ipv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_group_ipv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_external_ipv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_ipv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_vpnv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_vpnv4_soft_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_as_vpnv4_soft_cmd);
-#ifdef HAVE_IPV6
-    install_element(ENABLE_NODE, &clear_bgp_all_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_instance_all_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_peer_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_peer_group_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_external_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_as_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_group_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_external_soft_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_as_soft_cmd);
-#endif /* HAVE_IPV6 */
-
-    /* "Clear ip bgp neighbor rsclient". */
-    install_element(ENABLE_NODE, &clear_ip_bgp_all_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_all_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_peer_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_ip_bgp_instance_peer_rsclient_cmd);
-#ifdef HAVE_IPV6
-    install_element(ENABLE_NODE, &clear_bgp_all_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_instance_all_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_all_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_instance_all_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_peer_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_instance_peer_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_peer_rsclient_cmd);
-    install_element(ENABLE_NODE, &clear_bgp_ipv6_instance_peer_rsclient_cmd);
-#endif /* HAVE_IPV6 */
 
     /* "Show ip bgp summary" commands. */
     install_element(VIEW_NODE, &show_ip_bgp_summary_cmd);
