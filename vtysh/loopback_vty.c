@@ -629,6 +629,30 @@ delete_loopback_intf(const char *if_name)
     }
 }
 
+/* Comparator for sorting loopback interfaces */
+static int
+compare_nodes_by_loopback_id (const void *a_, const void *b_)
+{
+    const struct shash_node *const *a = a_;
+    const struct shash_node *const *b = b_;
+    unsigned long i1 = 0, i2 = 0;
+
+    sscanf((*a)->name,"lo%lu",&i1);
+    sscanf((*b)->name,"lo%lu",&i2);
+
+    if(i1 == i2)
+       return 0;
+    else if (i1 < i2)
+        return -1;
+    else
+        return 1;
+}
+
+const struct shash_node **
+sort_loopback_interfaces (const struct shash *sh) {
+     return shash_sort_with_compar(sh, compare_nodes_by_loopback_id);
+}
+
 DEFUN (cli_intf_show_interface_loopback_if,
         cli_intf_show_interface_loopback_if_cmd,
         "show interface loopback <1-2147483647>",
@@ -687,7 +711,7 @@ DEFUN (cli_intf_show_interface_loopback_if,
         shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
     }
 
-    nodes = shash_sort(&sorted_interfaces);
+    nodes = sort_loopback_interfaces(&sorted_interfaces);
     count = shash_count(&sorted_interfaces);
     if (brief) {
         for (idx = 0; idx < count; idx++)
