@@ -138,6 +138,7 @@ enum node_type
   DUMP_NODE,			/* Packet dump node. */
   FORWARDING_NODE,		/* IP forwarding node. */
   PROTOCOL_NODE,                /* protocol filtering node */
+  MIRROR_NODE,          /* mirror node */
 #ifdef ENABLE_OVSDB
   DHCP_SERVER_NODE,             /* DHCP server node */
   TFTP_SERVER_NODE,             /* TFTP server node */
