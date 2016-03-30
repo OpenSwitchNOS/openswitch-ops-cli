@@ -909,6 +909,7 @@ vty_end_config (struct vty *vty)
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
     case ACCESS_LIST_NODE:
+    case MIRROR_NODE:
 #endif
       vty_config_unlock (vty);
       vty->node = ENABLE_NODE;
@@ -1311,6 +1312,7 @@ vty_stop_input (struct vty *vty)
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
     case ACCESS_LIST_NODE:
+    case MIRROR_NODE:
 #endif
     case ZEBRA_NODE:
     case RIP_NODE:

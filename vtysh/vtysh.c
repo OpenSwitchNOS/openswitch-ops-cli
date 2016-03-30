@@ -1345,6 +1345,7 @@ vtysh_exit (struct vty *vty)
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
     case ACCESS_LIST_NODE:
+    case MIRROR_NODE:
 #endif
     case ZEBRA_NODE:
     case BGP_NODE:
