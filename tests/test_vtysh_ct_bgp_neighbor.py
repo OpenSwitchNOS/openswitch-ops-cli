@@ -139,6 +139,12 @@ class bgpTest(OpsVsiTest):
                              intf="%s-eth1" % switch.name)
             i += 1
 
+    def bgp_configure_cmd(self, switch, cfg_array=[]):
+        switch.cmdCLI("conf t")
+        for idx in range(0, len(cfg_array)):
+            switch.cmdCLI(str(cfg_array[idx]))
+        switch.cmdCLI("end")
+
     def verify_bgp_running(self):
         info("\n########## Verifying bgp processes.. ##########\n")
 
@@ -154,11 +160,10 @@ class bgpTest(OpsVsiTest):
 
         i = 0
         for switch in self.net.switches:
+            cfg_array = []
             cfg_array = BGP_CONFIGS[i]
             i += 1
-
-            SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
-
+            self.bgp_configure_cmd(switch, cfg_array)
     def verify_bgp_route_removed(self, switch, network, next_hop):
         info("\n########## Verifying route %s --> %s "
              "on switch %s removed... ##########\n" %
@@ -198,7 +203,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("router bgp %s" % BGP1_ASN)
         cfg_array.append("no neighbor %s" % BGP1_NEIGHBOR)
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def configure_neighbor_advertisement_interval(self):
         key = "advertisement-interval"
@@ -213,7 +218,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s %d" % (BGP1_NEIGHBOR,
                          key, advertisement_interval))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_neighbor_advertisement_interval(self):
         key = "advertisement-interval"
@@ -276,7 +281,7 @@ class bgpTest(OpsVsiTest):
                                                    key,
                                                    advertisement_interval))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def unconfigure_neighbor_advertisement_interval_alias(self):
         key = "advertisement-interval"
@@ -289,7 +294,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (BGP1_NEIGHBOR, \
                                                 key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_no_neighbor_advertisement_interval(self):
         key = "advertisement-interval"
@@ -351,7 +356,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s" % (BGP1_NEIGHBOR, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_neighbor_ebgp_multihop(self):
         key = "ebgp-multihop"
@@ -408,7 +413,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (BGP1_NEIGHBOR, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_no_neighbor_ebgp_multihop(self):
         key = "ebgp-multihop"
@@ -468,7 +473,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s" % (BGP1_NEIGHBOR, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def unconfigure_neighbor_ebgp_multihop_test_dependency(self):
         key = "ebgp-multihop"
@@ -484,7 +489,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s %d" % (BGP1_NEIGHBOR, \
             key2, ttl_security))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def configure_neighbor_ebgp_multihop_peer_group_test_dependency(self):
         key = "ebgp-multihop"
@@ -502,7 +507,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s" % (self.peer_group, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def unconfigure_neighbor_ebgp_multihop_peer_group_test_dependency(self):
         key = "ebgp-multihop"
@@ -518,7 +523,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s %d" % (self.peer_group, \
             key2, ttl_security))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def configure_neighbor_ebgp_multihop_peergroup(self):
         key = "ebgp-multihop"
@@ -534,7 +539,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s" % (self.peer_group, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_neighbor_ebgp_multihop_peergroup(self):
         key = "ebgp-multihop"
@@ -576,7 +581,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (self.peer_group, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_no_neighbor_ebgp_multihop_peergroup(self):
         key = "ebgp-multihop"
@@ -620,7 +625,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s %d" % (BGP1_NEIGHBOR, \
             key, ttl_security_hops))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_neighbor_ttl_security_hops(self):
         key = "ttl-security hops"
@@ -681,7 +686,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s %d" % (BGP1_NEIGHBOR, \
             key, ttl_security_hops))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def unconfigure_neighbor_ttl_security_hops_alias(self):
         key = "ttl-security hops"
@@ -694,7 +699,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (BGP1_NEIGHBOR, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_no_neighbor_ttl_security_hops(self):
         key = "ttl-security hops"
@@ -757,7 +762,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s %d" % (BGP1_NEIGHBOR, \
             key2, ttl_security))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def unconfigure_neighbor_ttl_security_test_dependency(self):
         key = "ebgp-multihop"
@@ -772,7 +777,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (BGP1_NEIGHBOR, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def configure_neighbor_ttl_security_peer_group_test_dependency(self):
         key = "ebgp-multihop"
@@ -790,7 +795,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s %d" % (self.peer_group, \
             key2, ttl_security))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def unconfigure_neighbor_ttl_security_peer_group_test_dependency(self):
         key = "ebgp-multihop"
@@ -805,7 +810,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (self.peer_group, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def configure_neighbor_ttl_security_hops_peergroup(self):
         key = "ttl-security hops"
@@ -822,7 +827,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s %d" % (self.peer_group, \
             key, ttl_security_hops))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_neighbor_ttl_security_hops_peergroup(self):
         key = "ttl-security hops"
@@ -866,7 +871,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s %d" % (self.peer_group, \
             key, ttl_security_hops))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_no_neighbor_ttl_security_hops_peergroup(self):
         key = "ttl-security hops"
@@ -911,7 +916,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s %s" % (BGP1_NEIGHBOR, \
             key, update_source))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_neighbor_update_source(self):
         key = "update-source"
@@ -972,7 +977,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (BGP1_NEIGHBOR, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def unconfigure_neighbor_update_source_alias(self):
         key = "update-source"
@@ -985,7 +990,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (BGP1_NEIGHBOR, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_no_neighbor_update_source(self):
         key = "update-source"
@@ -1047,7 +1052,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("neighbor %s %s %s" % (self.peer_group, \
             key, update_source))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_neighbor_update_source_peergroup(self):
         key = "update-source"
@@ -1091,7 +1096,7 @@ class bgpTest(OpsVsiTest):
         cfg_array.append("no neighbor %s %s" % (self.peer_group, \
             key))
 
-        SwitchVtyshUtils.vtysh_cfg_cmd(switch, cfg_array)
+        self.bgp_configure_cmd(switch, cfg_array)
 
     def verify_no_neighbor_update_source_peergroup(self):
         key = "update-source"
