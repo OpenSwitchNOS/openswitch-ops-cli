@@ -70,7 +70,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
             nbr_table =  bgp_router_context->value_bgp_neighbors[n_neighbors];
             if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
                 n_remote_as)
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %lu", "", "neighbor",
                                       bgp_router_context->
                                       key_bgp_neighbors[n_neighbors],
                                       "remote-as", *(bgp_router_context->
