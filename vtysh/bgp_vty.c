@@ -54,6 +54,7 @@
 #include "lib/routemap.h"
 #include "lib/plist.h"
 #include "lib/regex-gnu.h"
+#include "vrf-utils.h"
 
 extern struct ovsdb_idl *idl;
 
@@ -326,8 +327,11 @@ string_is_a_name (const char *string)
 static const struct ovsrec_vrf *
 get_ovsrec_vrf_with_name(char *name)
 {
-    /* TODO change this later when multi vrf's are supported */
-    return ovsrec_vrf_first(idl);
+    if (name == NULL)
+    {
+        return get_default_vrf(idl);
+    }
+    return vrf_lookup(idl, name);
 }
 
 /*
@@ -441,7 +445,7 @@ get_bgp_peer_group_with_bgp_router_and_name(const struct ovsrec_bgp_router *
 static const struct ovsrec_bgp_neighbor *
 get_bgp_neighbor_with_bgp_router_and_asn(const struct ovsrec_bgp_router *
                                          ovs_bgpr,
-                                         int asn)
+                                         int64_t asn)
 {
     const struct ovsrec_bgp_neighbor *neighbor_row;
     int i = 0;
@@ -2644,7 +2648,7 @@ cli_neighbor_remote_as_cmd_execute(char *vrf_name, struct vty *vty,
                                    int argc,const char *argv[])
 {
     const char *peer_str = argv[0];
-    int64_t remote_as = (int64_t) atoi(argv[1]);
+    int64_t remote_as = strtoll(argv[1], NULL, 10);
     const struct ovsrec_bgp_router *bgp_router_context;
     const struct ovsrec_vrf *vrf_row;
     const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor, *ovs_peer_grp;

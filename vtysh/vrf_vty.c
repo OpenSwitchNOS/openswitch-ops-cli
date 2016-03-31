@@ -49,6 +49,7 @@
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh/vtysh_ovsdb_vrf_context.h"
 #include "vtysh/utils/vrf_vtysh_utils.h"
+#include "vrf-utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
 extern struct ovsdb_idl *idl;
@@ -206,7 +207,7 @@ vrf_add (const char *vrf_name)
 
   /* OPS_TODO: In case multiple vrfs. */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (vrf_row)
     {
       vty_out (vty, "VRF already exists.%s", VTY_NEWLINE);
@@ -327,7 +328,7 @@ vrf_delete (const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -466,7 +467,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -577,7 +578,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
    * OPS_TODO: In case of multiple VRFs.
    */
 #ifdef VRF_ENABLE
-  vrf_row = vrf_lookup(vrf_name);
+  vrf_row = vrf_lookup(idl, vrf_name);
   if (!vrf_row)
     {
       vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
@@ -586,7 +587,7 @@ vrf_del_port (const char *if_name, const char *vrf_name)
       return CMD_SUCCESS;
     }
 #else
-  vrf_row = ovsrec_vrf_first (idl);
+  vrf_row = get_default_vrf(idl);
   if (vrf_row)
     {
       vty_out (vty, "Non-default VRFs not supported%s", VTY_NEWLINE);
@@ -709,13 +710,21 @@ vrf_routing (const char *if_name)
       return CMD_SUCCESS;
     }
 
-  if (check_iface_in_vrf (if_name))
-    {
-      VLOG_DBG ("%s Interface \"%s\" is already L3. No change required.",
+  if (check_iface_in_vrf(if_name)) {
+      vty_out(vty, "Interface %s is already L3.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is already L3. No change required.",
                 __func__, if_name);
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
+
+  if (check_iface_in_lag (if_name)) {
+      vty_out(vty, "Interface %s is associate to Lag.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is associate to Lag. ",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+  }
 
   default_bridge_row = ovsrec_bridge_first (idl);
   ports = xmalloc (
@@ -782,6 +791,14 @@ vrf_no_routing (const char *if_name)
       cli_do_config_abort (status_txn);
       return CMD_OVSDB_FAILURE;
     }
+
+  if (check_iface_in_lag(if_name)) {
+      vty_out(vty, "Interface %s is associate to Lag.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is associate to Lag. ",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+  }
 
   /* Check for spit interface conditions */
   if (!check_split_iface_conditions (if_name))

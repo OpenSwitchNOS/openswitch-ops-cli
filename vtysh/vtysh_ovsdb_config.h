@@ -96,6 +96,8 @@ typedef enum vtysh_interface_context_client_idenum
   e_vtysh_interface_context_vlan,
   e_vtysh_interface_context_vrf,
   e_vtysh_interface_context_mstp,
+  e_vtysh_interface_context_ospf,
+  e_vtysh_intf_context_client_id_max
 } vtysh_interface_context_clientid;
 
 /* Dependent Config Client ID type */
