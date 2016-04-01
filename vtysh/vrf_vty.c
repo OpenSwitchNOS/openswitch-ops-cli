@@ -1481,12 +1481,12 @@ show_vrf_info ()
                 port_row = (const struct ovsrec_port *)nodes[i]->data;
                 if (smap_get(&port_row->status, PORT_STATUS_MAP_ERROR) == NULL)
                   {
-                    vty_out (vty, "\t%s            %s%s", port_row->name,
+                    vty_out (vty, "\t%-8s            %-8s%s", port_row->name,
                              PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
                   }
                 else
                   {
-                    vty_out (vty, "\t%s            error : %s%s", port_row->name,
+                    vty_out (vty, "\t%-8s            error : %-8s%s", port_row->name,
                              smap_get(&port_row->status, PORT_STATUS_MAP_ERROR),
                              VTY_NEWLINE);
                   }
