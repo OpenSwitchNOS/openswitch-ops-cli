@@ -3737,7 +3737,7 @@ ospf_interface_priority_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached interface is present.");
+                          "Unattached OSPFv2 interface is present.");
     }
 
     ovsrec_port_set_ospf_priority(port_row, &priority, 1);
@@ -3807,7 +3807,7 @@ ospf_interface_mtu_ignore_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     ovsrec_port_set_ospf_mtu_ignore(port_row, &mtu_ignore, 1);
@@ -3871,7 +3871,7 @@ ospf_interface_cost_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     ovsrec_port_set_ospf_if_out_cost(port_row, &cost, 1);
@@ -3938,7 +3938,7 @@ ospf_interface_network_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     ovsrec_port_set_ospf_if_type(port_row, network_type);
@@ -4137,7 +4137,7 @@ ospf_interface_auth_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
         ovsrec_port_set_ospf_auth_type(port_row, auth_type);
@@ -4330,7 +4330,7 @@ ospf_interface_auth_key_cmd_execute(const char* ifname, bool no_flag,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     if(!no_flag)

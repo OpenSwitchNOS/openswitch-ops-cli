@@ -67,30 +67,30 @@ vtysh_intf_context_ospf_clientcallback(void *p_private)
     interval = ospf_get_port_intervals(port_row,
                                        OSPF_KEY_HELLO_INTERVAL);
     if ((interval > 0) && (interval != OSPF_HELLO_INTERVAL_DEFAULT))
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s %ld", " ",
                               "ip ospf hello-interval", interval);
 
     interval = ospf_get_port_intervals(port_row, OSPF_KEY_DEAD_INTERVAL);
     if ((interval > 0) && (interval != OSPF_DEAD_INTERVAL_DEFAULT))
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s %ld", " ",
                               "ip ospf dead-interval", interval);
 
     interval = ospf_get_port_intervals(port_row,
                                        OSPF_KEY_RETRANSMIT_INTERVAL);
     if ((interval > 0) && (interval != OSPF_RETRANSMIT_INTERVAL_DEFAULT))
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s %ld", " ",
                               "ip ospf retransmit-interval", interval);
 
     interval = ospf_get_port_intervals(port_row, OSPF_KEY_TRANSMIT_DELAY);
     if ((interval > 0) && (interval != OSPF_TRANSMIT_DELAY_DEFAULT))
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s %ld", " ",
                               "ip ospf transmit-delay", interval);
 
     if (port_row->ospf_priority &&
         (*port_row->ospf_priority != OSPF_ROUTER_PRIORITY_DEFAULT))
     {
         int_val = *port_row->ospf_priority;
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s %ld", " ",
                               "ip ospf priority", int_val);
     }
 
@@ -103,7 +103,7 @@ vtysh_intf_context_ospf_clientcallback(void *p_private)
         (*port_row->ospf_if_out_cost != OSPF_DEFAULT_COST))
     {
         int_val = *port_row->ospf_if_out_cost;
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", " ",
+        vtysh_ovsdb_cli_print(p_msg, "%4s%s %ld", " ",
                               "ip ospf cost", int_val);
     }
 
@@ -130,7 +130,8 @@ vtysh_intf_context_ospf_clientcallback(void *p_private)
 
     for (i = 0; i < port_row->n_ospf_auth_md5_keys; i++)
     {
-        vtysh_ovsdb_cli_print(p_msg, "%4sip ospf message-digest-key %d md5 %s",
+        vtysh_ovsdb_cli_print(p_msg, "%4sip ospf message-digest-key %ld md5 %s",
+                              " ",
                               port_row->key_ospf_auth_md5_keys[i],
                               port_row->value_ospf_auth_md5_keys[i]);
 
