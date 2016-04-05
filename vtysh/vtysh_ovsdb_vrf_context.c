@@ -170,6 +170,7 @@ vtysh_intf_context_vrf_clientcallback(void *p_private)
       if (display_l3_info(port_row, vrf_row)) {
         if (!p_msg->disp_header_cfg) {
           vtysh_ovsdb_cli_print(p_msg, "interface %s", ifrow->name);
+          p_msg->disp_header_cfg = true;
         }
         if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0) {
           vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "vrf attach ",
