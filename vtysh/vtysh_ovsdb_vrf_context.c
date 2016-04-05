@@ -30,6 +30,7 @@
 #include "vtysh/utils/system_vtysh_utils.h"
 #include "vtysh_ovsdb_vrf_context.h"
 #include "utils/vlan_vtysh_utils.h"
+#include "utils/intf_vtysh_utils.h"
 
 /*-----------------------------------------------------------------------------
 | Function : port_vrf_match
@@ -168,9 +169,7 @@ vtysh_intf_context_vrf_clientcallback(void *p_private)
     vrf_row = port_vrf_match(p_msg->idl, port_row);
     if (NULL != vrf_row) {
       if (display_l3_info(port_row, vrf_row)) {
-        if (!p_msg->disp_header_cfg) {
-          vtysh_ovsdb_cli_print(p_msg, "interface %s", ifrow->name);
-        }
+        PRINT_INTERFACE_NAME(p_msg->disp_header_cfg, p_msg, ifrow->name);
         if (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0) {
           vtysh_ovsdb_cli_print(p_msg, "%4s%s%s", "", "vrf attach ",
                                 vrf_row->name);
@@ -199,10 +198,7 @@ vtysh_intf_context_vrf_clientcallback(void *p_private)
       }
       else
       {
-          if (!p_msg->disp_header_cfg)
-          {
-              vtysh_ovsdb_cli_print(p_msg, "interface %s", ifrow->name);
-          }
+          PRINT_INTERFACE_NAME(p_msg->disp_header_cfg, p_msg, ifrow->name);
           display_dhcp_relay_interface_config(ifrow->name, p_msg);
           display_udpfwd_info(ifrow->name, p_msg);
       }
