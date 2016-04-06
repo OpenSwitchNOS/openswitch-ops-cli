@@ -60,8 +60,7 @@ vtysh_sftp_server_context_clientcallback (void *p_private)
 
     sftp_status = (char *)smap_get(&row->other_config, SFTP_SERVER_CONFIG);
     if (sftp_status && !strcmp(sftp_status, "true")) {
-        vtysh_ovsdb_cli_print(p_msg, "%s", "sftp-server");
-        vtysh_ovsdb_cli_print(p_msg, "%4s%s", "", "enable");
+        vtysh_ovsdb_cli_print(p_msg, "%s \n", "sftp server enable");
     }
 
     return e_vtysh_ok;
