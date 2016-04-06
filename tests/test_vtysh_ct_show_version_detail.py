@@ -19,6 +19,7 @@ from mininet.node import Host
 from mininet.net import Mininet
 from mininet.topo import SingleSwitchTopo
 from opsvsi.opsvsitest import OpsVsiTest, OpsVsiLink, VsiOpenSwitch
+import pytest
 
 
 class ShowVersionDetailCliCtTest(OpsVsiTest):
@@ -70,7 +71,7 @@ class ShowVersionDetailCliCtTest(OpsVsiTest):
             "Inserted records to Package_Info were not present in show version\
             detail output"
 
-
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class TestRunner:
     @classmethod
     def setup_class(cls):

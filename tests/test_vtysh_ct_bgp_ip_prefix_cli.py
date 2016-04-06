@@ -658,6 +658,7 @@ class bgp_prefixCLItest(OpsVsiTest):
          return True
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_vtysh_bgp_prefix:
 
     def setup_class(cls):

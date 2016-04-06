@@ -124,6 +124,7 @@ def sftpserver_disable(dut01):
     return True
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_sftpserver_configuration:
     def setup_class(cls):
         # Test object will parse command line and formulate the env.

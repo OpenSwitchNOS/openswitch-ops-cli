@@ -242,6 +242,7 @@ class bgpCLItest(OpsVsiTest):
             info("### Test to unconfigure Route-Map match commands FAILED! ###\n")
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_bgpd_router_cmds:
     def setup(self):
         pass
