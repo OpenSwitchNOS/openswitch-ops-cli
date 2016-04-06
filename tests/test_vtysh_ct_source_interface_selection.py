@@ -251,6 +251,7 @@ tftp protocol failed"
     return True
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_source_interface_configuration:
 
     def setup_class(cls):

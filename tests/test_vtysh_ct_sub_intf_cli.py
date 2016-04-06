@@ -179,6 +179,7 @@ def subintf_cli(**kwargs):
     LogOutput('info', "4.2  deleted successfully")
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_subintf_cli:
 
     def setup_class(cls):

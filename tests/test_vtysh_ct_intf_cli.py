@@ -218,6 +218,7 @@ class InterfaceCommandsTests(OpsVsiTest):
             'Test show running-config interface with LAG port - FAILED!'
         return True
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_interfaceCommands:
 
     def setup(self):
