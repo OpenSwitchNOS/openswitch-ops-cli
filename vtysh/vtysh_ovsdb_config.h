@@ -73,6 +73,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_ntp,
   e_vtysh_config_context_mstp,
   e_vtysh_config_context_syslog,
+  e_vtysh_config_context_snmp,
 } vtysh_config_context_clientid;
 
 /* Router Context Client ID type */
@@ -97,8 +98,10 @@ typedef enum vtysh_interface_context_client_idenum
   e_vtysh_interface_context_vlan,
   e_vtysh_interface_context_vrf,
   e_vtysh_interface_context_mstp,
+  e_vtysh_interface_context_ospf,
   e_vtysh_interface_context_access_list,
-} vtysh_intf_context_clientid;
+  e_vtysh_intf_context_client_id_max
+} vtysh_interface_context_clientid;
 
 /* Vlan Context client-id type */
 typedef enum vtysh_vlan_context_client_idenum

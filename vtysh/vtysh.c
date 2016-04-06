@@ -54,7 +54,7 @@
 #include "openswitch-idl.h"
 #include <crypt.h>
 #include "vswitch-idl.h"
-
+#include <ltdl.h>
 #ifdef ENABLE_OVSDB
 #include "vswitch-idl.h"
 #include "smap.h"
@@ -79,8 +79,6 @@ int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 int vtysh_show_startup = 0;
 #endif
-
-
 #define IS_IPV6_GLOBAL_UNICAST(i) !(IN6_IS_ADDR_UNSPECIFIED(i) | IN6_IS_ADDR_LOOPBACK(i) | \
                                     IN6_IS_ADDR_SITELOCAL(i)  |  IN6_IS_ADDR_MULTICAST(i)| \
                                     IN6_IS_ADDR_LINKLOCAL(i))
@@ -124,6 +122,57 @@ static struct vtysh_client *ripd_client = NULL;
 int vtysh_writeconfig_integrated = 0;
 
 extern char config_default[];
+
+/*
+ * Function : rbac_check_user_permission.
+ * Responsibility : routine to check if a user has a particular permission.This
+ *    function loads the rbac library runtime due to certain repository
+ *    dependancies.Once the dependency is resolved this function should be
+ *    removed.
+ * Parameters :
+ *     char * username  : char* type object containing the username.
+ *     char * permission: char* type object containing the permission
+ *                        to be checked
+ * Return :
+ *     bool: returns true if the user has the requisite permission else false
+ *
+ * TODO : This function should be removed once rbac repo is in place.
+ */
+
+bool rbac_check_user_permission(char * username, char * permission)
+{
+    lt_dlhandle dhhandle = 0;
+    bool retval = 0;
+    bool (*fun_ptr)(const char *, const char *) = NULL;
+    if ((username == NULL) || (permission == NULL))
+    {
+       return false;
+    }
+    lt_dlinit();
+    lt_dlerror();
+
+    dhhandle = lt_dlopen ("/usr/lib/librbac.so.0.1.0");
+
+    if (lt_dlerror())
+    {
+       VLOG_ERR ("Failed to load the rbac library");
+       return false;
+    }
+
+    fun_ptr = lt_dlsym (dhhandle,"rbac_check_user_permission");
+
+    if (lt_dlerror() || fun_ptr == NULL)
+    {
+       VLOG_ERR ("Failed to find rbac_check_user_permission");
+       lt_dlclose (dhhandle);
+       return false;
+    }
+
+    retval = fun_ptr( username, permission);
+    lt_dlclose (dhhandle);
+    return retval;
+}
+
 
 static void
 vclient_close (struct vtysh_client *vclient)
@@ -2317,7 +2366,7 @@ DEFUN (show_startup_config,
   char *temp_args[] = {"-D", TEMPORARY_STARTUP_SOCKET, "-c", "show running-config "};
   char *copy_db[] = {OVSDB_PATH, TEMPORARY_STARTUP_DB};
   char *run_server[] = {"--pidfile=/var/run/openvswitch/temp_startup.pid", "--detach", "--remote", "punix:/var/run/openvswitch/temp_startup.sock", TEMPORARY_STARTUP_DB};
-  char *remove_tempstartup_db[] = {"rm", "-f", TEMPORARY_STARTUP_DB_LOCK};
+  char *remove_tempstartup_db[] = {"-f", TEMPORARY_STARTUP_DB_LOCK};
   int ret = 0;
 
   // Check if temporary DB exists and OVSDB server running. If yes, remove it.
@@ -2374,7 +2423,7 @@ DEFUN (show_startup_config,
       return CMD_SUCCESS;
   }
 
-  if (execute_command ("sudo", 3, (const char **)remove_tempstartup_db)  == -1)
+  if (execute_command ("rm", 2, (const char **)remove_tempstartup_db)  == -1)
   {
       VLOG_ERR("Failed to remove temporary DB lock\n");
       return -1;
@@ -2678,83 +2727,32 @@ get_password(const char *prompt)
 
 /*Function to set the user passsword */
 static int
-set_user_passwd(const char *user)
+set_user_passwd(void)
 {
-    int ret;
-    struct crypt_data data;
-    data.initialized = 0;
-
-    char *password = NULL;
-    char *passwd = NULL;
-    char *cp = NULL;
-    const char *arg[4];
-    arg[0] = USERMOD;
-    arg[1] = "-p";
-    arg[3] = CONST_CAST(char*, user);
-
+    struct passwd *pw = NULL;
+    pw = getpwuid (getuid());
+    if (!pw)
+    {
+        vty_out (vty, "Changing password failed.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
     /* Cannot change the password for the user root */
-    if (!strcmp(user,"root"))
+    if (!strcmp (pw->pw_name, "root"))
     {
-        vty_out(vty, "Permission denied.\n");
-        return CMD_SUCCESS;
-    }
-    ret = check_user_group(user, OVSDB_GROUP);
-
-    /* Change the passwd if user is in ovsdb-client group list */
-    if (ret==1)
-    {
-        vty_out(vty,"Changing password for user %s %s", user, VTY_NEWLINE);
-        passwd = get_password("Enter new password: ");
-        if (!passwd)
-        {
-            vty_out(vty, "%s", VTY_NEWLINE);
-            vty_out(vty, "Entered empty password.");
-        }
-
-        vty_out(vty, "%s", VTY_NEWLINE);
-        cp = get_password("Confirm new password: ");
-        if (!cp)
-        {
-            vty_out(vty, "%s", VTY_NEWLINE);
-            vty_out(vty,"Entered empty password.");
-        }
-        if (strcmp(passwd,cp) != 0)
-        {
-            vty_out(vty, "%s", VTY_NEWLINE);
-            vty_out(vty,"Passwords do not match. Password unchanged.%s", VTY_NEWLINE);
-            free(passwd);
-            free(cp);
-            return CMD_SUCCESS;
-        }
-        else
-        {
-            vty_out(vty, "%s", VTY_NEWLINE);
-            vty_out(vty, "Password updated successfully.%s", VTY_NEWLINE);
-        }
-        /* Encrypt the password. String 'ab' is used to perturb the */
-        /* algorithm in  one of 4096 different ways. */
-        password = crypt_r(passwd,"ab",&data);
-        arg[2]=password;
-        execute_command("sudo", 4, (const char **)arg);
-        free(passwd);
-        free(cp);
-        return CMD_SUCCESS;
-    }
-    else
-    {
-        vty_out(vty, "Unknown User: %s.\n", user);
+        vty_out (vty, "Permission denied.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
+    execute_command (PASSWD, 0, NULL);
+    return CMD_SUCCESS;
 }
 #ifdef ENABLE_OVSDB
 DEFUN (vtysh_passwd,
        vtysh_passwd_cmd,
-       "password WORD",
-       "Change user password \n"
-       "User whose password is to be changed\n")
+       "password",
+       "Change user password \n")
 {
-    return set_user_passwd(argv[0]);
+    return set_user_passwd();
 }
 #endif
 
@@ -3039,7 +3037,9 @@ create_new_vtysh_user(const char *user)
     free(passwd);
     return CMD_ERR_NOTHING_TODO;
 }
-
+/*
+ * TODO: THis command maybe re used later once RBAC CLI infra comes up
+ */
 DEFUN(vtysh_user_add,
        vtysh_user_add_cmd,
        "user add WORD",
@@ -3093,7 +3093,9 @@ delete_user(const char *user)
 
     return CMD_SUCCESS;
 }
-
+/*
+ * TODO: THis command maybe re used later once RBAC CLI infra comes up
+ */
 DEFUN(vtysh_user_del,
        vtysh_user_del_cmd,
        "user remove WORD",
@@ -3103,7 +3105,9 @@ DEFUN(vtysh_user_del,
 {
     return delete_user(argv[0]);
 }
-
+/*
+ * TODO: THis command maybe re used later once RBAC CLI infra comes up
+ */
 DEFUN(vtysh_reboot,
       vtysh_reboot_cmd,
       "reboot",
@@ -3795,7 +3799,7 @@ int is_valid_ip_address(const char *ip_value)
 #endif /* ENABLE_OVSDB */
 
 void
-vtysh_init_vty (void)
+vtysh_init_vty ( struct passwd *pw)
 {
    /* Install nodes. */
    install_node (&bgp_node, NULL);
@@ -4060,7 +4064,6 @@ vtysh_init_vty (void)
   install_element (ENABLE_NODE, &vtysh_telnet_port_cmd);
   install_element (ENABLE_NODE, &vtysh_ssh_cmd);
 #endif /* ENABLE_OVSDB */
-  install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &vtysh_start_bash_cmd);
   install_element (ENABLE_NODE, &vtysh_start_zsh_cmd);
@@ -4104,10 +4107,10 @@ vtysh_init_vty (void)
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
 #endif
   install_element (ENABLE_NODE, &vtysh_passwd_cmd);
-  install_element (ENABLE_NODE, &vtysh_user_add_cmd);
-  install_element (ENABLE_NODE, &vtysh_user_del_cmd);
-
-  install_element (ENABLE_NODE, &vtysh_reboot_cmd);
+  if (rbac_check_user_permission(pw->pw_name, RBAC_SYS_MGMT))
+  {
+    install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
+  }
 
 #ifdef ENABLE_OVSDB
   /* vtysh_cli_post_init will install all the features

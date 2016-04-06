@@ -1010,14 +1010,14 @@ vtysh_ovsdb_interface_match(const char *str)
     // Search for each interface
     OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
     {
-        if ( strncmp(str,row->name, strlen(str)) == 0) {
+        if ( strcmp(str,row->name) == 0) {
             return 0;
         }
     }
     // Search for each lag port
     OVSREC_PORT_FOR_EACH_SAFE(lag_port, lag_port_next, idl)
     {
-        if ( strncmp(str,lag_port->name,strlen(str)) == 0){
+        if ( strcmp(str,lag_port->name) == 0){
             return 0;
         }
     }
@@ -1224,6 +1224,34 @@ check_port_in_bridge(const char *port_name)
         for (j = 0; j < br_cfg->n_ports; j++) {
             port_cfg = br_cfg->ports[j];
             if (strcmp(port_name, port_cfg->name) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/*
+ * This functions is used to check if interface is part of lag.
+ *
+ * Variables:
+ * if_name name of interface to check
+ */
+bool
+check_iface_in_lag(const char *if_name)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_interface *intf_row = NULL;
+    int i = 0;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if (strncmp(port_row->name, if_name, strlen(if_name)) == 0)
+            return false;
+        /* The interface can be associated with another port */
+        for (i = 0; i < port_row->n_interfaces; i++) {
+            intf_row = port_row->interfaces[i];
+            if (!strncmp(intf_row->name, if_name, strlen(if_name))) {
                 return true;
             }
         }

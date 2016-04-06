@@ -710,13 +710,21 @@ vrf_routing (const char *if_name)
       return CMD_SUCCESS;
     }
 
-  if (check_iface_in_vrf (if_name))
-    {
-      VLOG_DBG ("%s Interface \"%s\" is already L3. No change required.",
+  if (check_iface_in_vrf(if_name)) {
+      vty_out(vty, "Interface %s is already L3.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is already L3. No change required.",
                 __func__, if_name);
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
+
+  if (check_iface_in_lag (if_name)) {
+      vty_out(vty, "Interface %s is associate to Lag.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is associate to Lag. ",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+  }
 
   default_bridge_row = ovsrec_bridge_first (idl);
   ports = xmalloc (
@@ -783,6 +791,14 @@ vrf_no_routing (const char *if_name)
       cli_do_config_abort (status_txn);
       return CMD_OVSDB_FAILURE;
     }
+
+  if (check_iface_in_lag(if_name)) {
+      vty_out(vty, "Interface %s is associate to Lag.%s", if_name, VTY_NEWLINE);
+      VLOG_DBG("%s Interface \"%s\" is associate to Lag. ",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+  }
 
   /* Check for spit interface conditions */
   if (!check_split_iface_conditions (if_name))
@@ -1413,6 +1429,10 @@ static int
 show_vrf_info ()
 {
   const struct ovsrec_vrf *vrf_row = NULL;
+  const struct ovsrec_port *port_row = NULL;
+  const struct shash_node **nodes;
+  struct shash sorted_vrf;
+  uint16_t count;
   size_t i;
 
   vrf_row = ovsrec_vrf_first (idl);
@@ -1440,23 +1460,43 @@ show_vrf_info ()
       vty_out (vty, "VRF Name : %s%s\n", vrf_row->name, VTY_NEWLINE);
       vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
       vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
+
+      shash_init(&sorted_vrf);
       for (i = 0; i < vrf_row->n_ports; i++)
         {
-        if (smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR) == NULL)
-          {
-            vty_out (vty, "\t%s                %s%s", vrf_row->ports[i]->name,
-                     PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
-          }
-        else
-          {
-            vty_out (vty, "\t%s                error: %s%s", vrf_row->ports[i]->name,
-                     smap_get(&vrf_row->ports[i]->status, PORT_STATUS_MAP_ERROR),
-                     VTY_NEWLINE);
-          }
+          shash_add(&sorted_vrf, vrf_row->ports[i]->name,
+                    (void *)vrf_row->ports[i]);
         }
+
+      count = shash_count(&sorted_vrf);
+      if (count)
+        {
+          nodes = xmalloc(count * sizeof *nodes);
+          if (nodes)
+            {
+              ops_sort(&sorted_vrf, compare_nodes_vrf, nodes);
+
+              for (i = 0; i < count; i++)
+              {
+                port_row = (const struct ovsrec_port *)nodes[i]->data;
+                if (smap_get(&port_row->status, PORT_STATUS_MAP_ERROR) == NULL)
+                  {
+                    vty_out (vty, "\t%-8s            %-8s%s", port_row->name,
+                             PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
+                  }
+                else
+                  {
+                    vty_out (vty, "\t%-8s            error : %-8s%s", port_row->name,
+                             smap_get(&port_row->status, PORT_STATUS_MAP_ERROR),
+                             VTY_NEWLINE);
+                  }
+              }
+              free(nodes);
+            }
+        }
+      shash_destroy(&sorted_vrf);
     }
   return CMD_SUCCESS;
-
 }
 
 /*-----------------------------------------------------------------------------

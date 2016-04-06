@@ -41,6 +41,7 @@
 #include "memory.h"
 #include "timeval.h"
 
+#include <libaudit.h>
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
 #ifdef ENABLE_OVSDB
@@ -56,6 +57,9 @@ VLOG_DEFINE_THIS_MODULE(vtysh_main);
 
 extern int64_t timeout_start;
 extern struct termios tp;
+
+/* Return value of audit_open call. Use for subsequent audit call.*/
+int audit_fd = 0;
 
 /* VTY shell program name. */
 char *progname;
@@ -264,10 +268,14 @@ main (int argc, char **argv, char **env)
   int counter=0;
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
+  struct passwd *pw = NULL;
 
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
   vlog_set_verbosity("SYSLOG:INFO");
+
+  /* Initiate a connection to the audit framework for subsequent audit calls.*/
+  audit_fd = audit_open();
 
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
@@ -343,7 +351,20 @@ main (int argc, char **argv, char **env)
 	  break;
 	}
     }
-
+  pw = getpwuid( getuid());
+  if (pw == NULL)
+  {
+      fprintf(stderr,"Unknown User.\n");
+      exit(1);
+  }
+  if (!( rbac_check_user_permission(pw->pw_name,RBAC_READ_SWITCH_CONFIG) ||
+              rbac_check_user_permission(pw->pw_name,RBAC_WRITE_SWITCH_CONFIG)))
+  {
+      fprintf (stderr,
+              "%s does not have the required permissions to access Vtysh.\n",
+              pw->pw_name);
+      exit(1);
+  }
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_init_clients();
   vtysh_ovsdb_init(argc, argv, temp_db);
@@ -373,7 +394,7 @@ main (int argc, char **argv, char **env)
   vtysh_signal_init ();
 
   /* Make vty structure and register commands. */
-  vtysh_init_vty ();
+  vtysh_init_vty (pw);
 
   /* set CONSOLE as OFF */
   vlog_set_verbosity("CONSOLE:OFF");
@@ -531,7 +552,6 @@ main (int argc, char **argv, char **env)
 
   history_truncate_file(history_file,1000);
   printf ("\n");
-
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_exit();
 #endif
