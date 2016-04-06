@@ -144,6 +144,7 @@ class ecmpCLITest(OpsVsiTest):
         s1.cmdCLI("exit")
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_vtysh_ecmp:
 
     def setup_class(cls):

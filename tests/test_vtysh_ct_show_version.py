@@ -80,6 +80,7 @@ class ShowVersionTest(OpsVsiTest):
         assert os_name + " " + version == self.__get_show_version_result()
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class TestRunner:
     @classmethod
     def setup_class(cls):

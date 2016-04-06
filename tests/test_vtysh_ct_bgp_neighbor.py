@@ -1126,7 +1126,7 @@ class bgpTest(OpsVsiTest):
         return True
 
 
-
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_bgpd_neighbor_cmds:
     def setup(self):
         pass

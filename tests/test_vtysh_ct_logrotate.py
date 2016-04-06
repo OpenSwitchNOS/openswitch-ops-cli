@@ -163,6 +163,7 @@ class LogrotateTests(OpsVsiTest):
         switch.cmd('date --set=' + '"' + now + '"')
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_logrotate:
 
     def setup(self):

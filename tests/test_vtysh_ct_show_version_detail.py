@@ -70,7 +70,7 @@ class ShowVersionDetailCliCtTest(OpsVsiTest):
             "Inserted records to Package_Info were not present in show version\
             detail output"
 
-
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class TestRunner:
     @classmethod
     def setup_class(cls):

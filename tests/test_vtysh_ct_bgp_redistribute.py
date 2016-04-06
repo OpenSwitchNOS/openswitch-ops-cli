@@ -190,6 +190,7 @@ class bgp_redistributeCLItest(OpsVsiTest):
          return True
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_vtysh_bgp_redistribute:
 
     def setup_class(cls):
