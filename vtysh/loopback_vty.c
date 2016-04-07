@@ -83,20 +83,6 @@ DEFUN (vtysh_loopback_interface,
         return CMD_ERR_NOTHING_TODO;
     }
 
-    OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
-    {
-        if (strcmp(intf_row->type, OVSREC_INTERFACE_TYPE_LOOPBACK) == 0)
-        {
-            max_loopback_intf++;
-        }
-        if (max_loopback_intf >= MAX_LOOPBACK_INTF_COUNT)
-        {
-            vty_out(vty, "Maximun number of loopback interface exceeded.%s",
-                    VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
-    }
-
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {
         if (strcmp(port_row->name, ifname) == 0)
@@ -105,6 +91,20 @@ DEFUN (vtysh_loopback_interface,
             break;
         }
     }
+    OVSREC_INTERFACE_FOR_EACH(intf_row, idl)
+    {
+        if (strcmp(intf_row->type, OVSREC_INTERFACE_TYPE_LOOPBACK) == 0)
+        {
+            max_loopback_intf++;
+        }
+        if ((!port_found) && (max_loopback_intf >= MAX_LOOPBACK_INTF_COUNT))
+        {
+            vty_out(vty, "Maximun number of loopback interface exceeded.%s",
+                    VTY_NEWLINE);
+            return CMD_SUCCESS;
+        }
+    }
+
     if (!port_found)
     {
         txn = cli_do_config_start();
