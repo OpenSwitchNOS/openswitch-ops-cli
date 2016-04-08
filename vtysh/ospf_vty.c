@@ -55,7 +55,6 @@
 #include "lib/plist.h"
 #include "lib/libospf.h"
 #include "openswitch-dflt.h"
-#include "ospf_vty.h"
 
 /* Making formatted timer strings. */
 #define MINUTE_IN_SECONDS   60
@@ -68,6 +67,34 @@ extern struct ovsdb_idl *idl;
 
 VLOG_DEFINE_THIS_MODULE(ospf_vty);
 
+
+static const char *show_database_desc[] =
+{
+    "Router Link States",
+    "Net Link States",
+    "Summary Link States",
+    "ASBR-Summary Link States",
+    "AS External Link States",
+    "NSSA-external Link States",
+    "Link-Local Opaque-LSA",
+    "Area-Local Opaque-LSA",
+    "AS-external Opaque-LSA",
+};
+
+static const char *show_database_header[] =
+{
+   "Link ID         ADV Router      Age       Seq#       CkSum",
+   "Link ID         ADV Router      Age       Seq#       CkSum",
+   "Link ID         ADV Router      Age       Seq#       CkSum      Link count",
+   "Link ID         ADV Router      Age       Seq#       CkSum",
+   "Link ID         ADV Router      Age       Seq#       CkSum      Route",
+   "Link ID         ADV Router      Age       Seq#       CkSum",
+   "Link ID         ADV Router      Age       Seq#       CkSum      Route",
+   "unknown",
+   "Link ID         ADV Router      Age       Seq#       CkSum      Route",
+   "unknown",
+   "Link ID         ADV Router      Age       Seq#       CkSum",
+};
 
 /* Function to verify if the input string is in IP format. */
 static bool
@@ -326,17 +353,17 @@ ospf_nbr_options_print (const struct ovsrec_ospf_neighbor* nbr_row)
 
     for (i =0; i < nbr_row->n_nbr_options; i++)
     {
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_O) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_OPTION_STRING_O) == 0)
             options = options | OSPF_OPTION_O;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_DC) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_OPTION_STRING_DC) == 0)
             options = options | OSPF_OPTION_DC;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_EA) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_OPTION_STRING_EA) == 0)
             options = options | OSPF_OPTION_EA;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_NP) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_OPTION_STRING_NP) == 0)
             options = options | OSPF_OPTION_NP;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_MC) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_OPTION_STRING_MC) == 0)
             options = options | OSPF_OPTION_MC;
-        if(strcmp(nbr_row->nbr_options[i], OSPF_NBR_OPTION_STRING_E) == 0)
+        if(strcmp(nbr_row->nbr_options[i], OSPF_OPTION_STRING_E) == 0)
             options = options | OSPF_OPTION_E;
     }
 
@@ -3737,7 +3764,7 @@ ospf_interface_priority_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached interface is present.");
+                          "Unattached OSPFv2 interface is present.");
     }
 
     ovsrec_port_set_ospf_priority(port_row, &priority, 1);
@@ -3807,7 +3834,7 @@ ospf_interface_mtu_ignore_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     ovsrec_port_set_ospf_mtu_ignore(port_row, &mtu_ignore, 1);
@@ -3871,7 +3898,7 @@ ospf_interface_cost_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     ovsrec_port_set_ospf_if_out_cost(port_row, &cost, 1);
@@ -3938,7 +3965,7 @@ ospf_interface_network_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     ovsrec_port_set_ospf_if_type(port_row, network_type);
@@ -4137,7 +4164,7 @@ ospf_interface_auth_cmd_execute(const char* ifname,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
         ovsrec_port_set_ospf_auth_type(port_row, auth_type);
@@ -4330,7 +4357,7 @@ ospf_interface_auth_key_cmd_execute(const char* ifname, bool no_flag,
     if (port_row == NULL)
     {
         OSPF_ABORT_DB_TXN(ospf_router_txn,
-                          "Unattached Interface is present.");
+                          "Unattached OSPFv2 Interface is present.");
     }
 
     if(!no_flag)
@@ -4761,6 +4788,2185 @@ DEFUN (cli_ip_ospf_show,
     return CMD_SUCCESS;
 }
 
+
+/*function to print options in LSA table*/
+char *ospf_lsa_options_print (const struct ovsrec_ospf_lsa* lsa_row)
+{
+   static char buf[OSPF_OPTION_STR_MAXLEN];
+   int i = 0;
+   int options = 0;
+   for (i = 0; i < lsa_row->n_options; i++)
+   {
+      if(strcmp(lsa_row->options[i], OSPF_OPTION_STRING_O) == 0)
+          options = options | OSPF_OPTION_O;
+      if(strcmp(lsa_row->options[i], OSPF_OPTION_STRING_DC) == 0)
+          options = options | OSPF_OPTION_DC;
+      if(strcmp(lsa_row->options[i], OSPF_OPTION_STRING_EA) == 0)
+          options = options | OSPF_OPTION_EA;
+      if(strcmp(lsa_row->options[i], OSPF_OPTION_STRING_NP) == 0)
+          options = options | OSPF_OPTION_NP;
+      if(strcmp(lsa_row->options[i], OSPF_OPTION_STRING_MC) == 0)
+          options = options | OSPF_OPTION_MC;
+      if(strcmp(lsa_row->options[i], OSPF_OPTION_STRING_E) == 0)
+          options = options | OSPF_OPTION_E;
+      if(strcmp(lsa_row->options[i], OSPF_OPTION_STRING_T) == 0)
+          options = options | OSPF_OPTION_T;
+    }
+
+   snprintf (buf, OSPF_OPTION_STR_MAXLEN, "%d : *|%s|%s|%s|%s|%s|%s|*",
+       options,
+       (options & OSPF_OPTION_O)  ? "O"   : "-",
+       (options & OSPF_OPTION_DC) ? "DC"  : "-",
+       (options & OSPF_OPTION_EA) ? "EA"  : "-",
+       (options & OSPF_OPTION_NP) ? "N/P" : "-",
+       (options & OSPF_OPTION_MC) ? "MC"  : "-",
+       (options & OSPF_OPTION_E)  ? "E"   : "-");
+
+   return buf;
+ }
+
+/*function to print flags in LSA table*/
+char *ospf_lsa_flags_print (const struct ovsrec_ospf_lsa* lsa_row)
+{
+   static char buf[OSPF_FLAG_STR_MAXLEN];
+   int i = 0;
+   int flags = 0;
+   for (i = 0; i < lsa_row->n_flags; i++)
+   {
+      if(strcmp(lsa_row->flags[i], OSPF_FLAGS_STRING_ABR) == 0)
+          flags = flags | OSPF_FLAGS_ABR;
+      if(strcmp(lsa_row->flags[i], OSPF_FLAGS_STRING_ASBR) == 0)
+          flags = flags | OSPF_FLAGS_ASBR;
+      if(strcmp(lsa_row->flags[i], OSPF_FLAGS_STRING_VL) == 0)
+          flags = flags | OSPF_FLAGS_VL;
+   }
+
+   snprintf (buf, OSPF_FLAG_STR_MAXLEN, "%d : %s%s%s",
+       flags,
+       (flags & OSPF_FLAGS_ABR)  ? "ABR"            : "",
+       (flags & OSPF_FLAGS_ASBR) ? "ASBR"           : "",
+       (flags & OSPF_FLAGS_VL)   ? "VL-endpoint"    : "");
+   return buf;
+ }
+
+/*Funtion to print LSA type. */
+char *
+ospf_lsa_type_print(const char *if_state)
+{
+    if(strcmp(if_state,"type1_router_lsa") == 0)
+        return "router-LSA";
+    else if(strcmp(if_state, "type2_network_lsa") == 0)
+            return "network-LSA";
+    else if(strcmp(if_state,"type3_summary_lsa") == 0)
+            return "summary-LSA";
+    else if(strcmp(if_state,"type4_asbr_summary_lsa") == 0)
+            return "asbr_summary-LSA";
+    else if(strcmp(if_state,"type5_as_external_lsa") == 0)
+            return "as_external-LSA";
+    else if(strcmp(if_state,"type7_nssa_lsa") == 0)
+            return "nssa-LSA";
+    else if(strcmp(if_state,"type9_opaque_link_lsa") == 0)
+            return "opaque_link-LSA";
+    else if(strcmp(if_state,"type10_opaque_area_lsa") == 0)
+            return "opaque_area-LSA";
+    else if(strcmp(if_state,"type11_opaque_as_lsa") == 0)
+            return "opaque_as-LSA";
+    else
+        return OSPF_STRING_NULL ;
+}
+
+
+/*Function to print LSA details(like ls_age,ls_id etc) */
+void
+ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
+{
+
+   char timebuf[OSPF_TIME_SIZE];
+   char *val = NULL;
+   int64_t int_val = 0;
+   char area_str[OSPF_SHOW_STR_LEN];
+   int k ;
+
+  if(lsa_row->ls_birth_time)
+   {
+       int64_t time_age;
+       OSPF_LSA_AGE(lsa_row->ls_birth_time, time_age);
+       vty_out(vty, "  LS age: %ld%s", time_age,  VTY_NEWLINE);
+   }
+   else
+       vty_out(vty, "  LS age: %s%s",OSPF_DEFAULT_STR,VTY_NEWLINE);
+   if(lsa_row->n_options > 0)
+   {
+       vty_out (vty, "  Options: %s%s",
+          ospf_lsa_options_print(lsa_row), VTY_NEWLINE);
+   }
+   else
+   {
+       vty_out(vty, "  Options: %s%s",
+           "*|-|-|-|-|-|-|*", VTY_NEWLINE);
+   }
+
+   if(lsa_row->n_flags > 0)
+       vty_out (vty, "  LS Flags:  %s%s",
+          ospf_lsa_flags_print(lsa_row),VTY_NEWLINE);
+   else
+   {
+       vty_out (vty, "  LS Flags:  %s%s", OSPF_DEFAULT_STR,
+           VTY_NEWLINE);
+   }
+
+   if(lsa_row->lsa_type)
+       vty_out(vty,"  LS Type: %s%s",
+             ospf_lsa_type_print(lsa_row->lsa_type) , VTY_NEWLINE);
+
+   if(lsa_row->ls_id)
+   {
+       OSPF_IP_STRING_CONVERT(area_str, ntohl(lsa_row->ls_id));
+       vty_out (vty, "  Link State ID: %s%s",
+           area_str, VTY_NEWLINE);
+   }
+   else
+   {
+       vty_out (vty, "  Link State ID: %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+   }
+
+   if(lsa_row->adv_router)
+   {
+       OSPF_IP_STRING_CONVERT(area_str, ntohl(lsa_row->adv_router));
+       vty_out (vty, "  Advertising Router: %s%s",
+              area_str,VTY_NEWLINE);
+   }
+   else
+   {
+       vty_out (vty, "   Advertising Router: %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+   }
+   if(lsa_row->ls_seq_num)
+       vty_out (vty, "  LS Seq Number: 0x%08lx%s",
+                       (u_long)ntohl(lsa_row->ls_seq_num),VTY_NEWLINE);
+   else
+   {
+       vty_out (vty, "   LS Seq Number: %s%s",
+                       OSPF_DEFAULT_STR, VTY_NEWLINE);
+   }
+   if (lsa_row->n_chksum > 0)
+       vty_out (vty, "  Checksum: 0x%04x%s",
+                        ntohs(lsa_row->chksum),VTY_NEWLINE);
+   else
+        vty_out(vty, "  Checksum: %s%s",
+                       OSPF_DEFAULT_HEXA_VALUE,VTY_NEWLINE);
+
+
+   if(lsa_row->n_length > 0)
+       vty_out (vty, "  Length: %d%s", lsa_row->length,VTY_NEWLINE);
+   else
+   {
+       vty_out (vty, "   Length:  %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+   }
+
+   for(k = 0; k < lsa_row->n_lsa_data; k++)
+       vty_out(vty,"   %s%s", lsa_row->lsa_data[k],VTY_NEWLINE);
+
+   vty_out(vty, "%s", VTY_NEWLINE);
+}
+
+
+/*Function to print the database summary.*/
+static void
+ospf_lsa_database_detail_show(int type, char* link_id)
+{
+
+   const struct ovsrec_ospf_router *router_row = NULL;
+   const struct ovsrec_ospf_area *area_row = NULL;
+   const struct ovsrec_ospf_lsa  *lsa_row = NULL;
+   const struct ovsrec_vrf *vrf_row = NULL;
+   char area_str[OSPF_SHOW_STR_LEN];
+   const char *val = NULL;
+   int64_t instance_tag = 1;
+   int i, j;
+
+   vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+   router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
+   if (router_row == NULL)
+   {
+      vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+      return;
+   }
+
+   val = smap_get(&router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+   if(val)
+   {
+      vty_out (vty, "%s       OSPF Router with ID (%s)%s%s", VTY_NEWLINE,
+                 val, VTY_NEWLINE, VTY_NEWLINE);
+   }
+   else
+   {
+      vty_out (vty, "%s       OSPF Router%s%s", VTY_NEWLINE,
+                 VTY_NEWLINE, VTY_NEWLINE);
+   }
+
+    for(i = 0; i < router_row->n_areas; i++)
+    {
+       OSPF_IP_STRING_CONVERT(area_str, ntohl(router_row->key_areas[i]));
+       area_row = router_row->value_areas[i];
+       switch(type)
+       {
+           case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+           {
+               vty_out(vty,"          Router Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+           {
+               vty_out(vty,"         Net Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+           {
+               vty_out(vty,"        Summary Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+           {
+               vty_out(vty,"        ASBR Summary Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+           {
+               vty_out(vty,"        AS External Link States ");
+               vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+           {
+               vty_out(vty,"        NSSA-external Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+           {
+               vty_out(vty,"        Opaque-Link Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+           {
+               vty_out(vty,"        Opaque-Area Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+           {
+               vty_out(vty,"        Opaque-AS Link States ");
+               vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+               break;
+           }
+           default:
+              break;
+       }
+
+       switch(type)
+       {
+           case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+           {
+               for(j = 0; j < area_row->n_router_lsas; j++)
+               {
+                   if(link_id)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->router_lsas[j]->ls_id));
+                        if((strcmp(area_str, link_id)) == 0)
+                        {
+                            ospf_lsa_detail_show(area_row->router_lsas[j]);
+                        }
+                   }
+                   else
+                   {
+                       ospf_lsa_detail_show(area_row->router_lsas[j]);
+                   }
+               }
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+          {
+               for(j = 0; j < area_row->n_network_lsas; j++)
+               {
+                   if(link_id)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->network_lsas[j]->ls_id));
+                        if((strcmp(area_str, link_id)) == 0)
+                        {
+                             ospf_lsa_detail_show(area_row->network_lsas[j]);
+                        }
+                    }
+                    else
+                   {
+                        ospf_lsa_detail_show(area_row->network_lsas[j]);
+                   }
+               }
+               break;
+          }
+
+           case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+           {
+               for(j = 0; j < area_row->n_abr_summary_lsas; j++)
+               {
+                   if(link_id)
+                   {
+                         OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->abr_summary_lsas[j]->ls_id));
+                         if((strcmp(area_str, link_id)) == 0)
+                        {
+                             ospf_lsa_detail_show
+                                    (area_row->abr_summary_lsas[j]);
+                        }
+                   }
+                   else
+                   {
+                       ospf_lsa_detail_show(area_row->abr_summary_lsas[j]);
+                   }
+               }
+               break;
+           }
+
+           case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+           {
+               for(j = 0; j < area_row->n_asbr_summary_lsas; j++)
+               {
+                    if(link_id)
+                    {
+                            OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->asbr_summary_lsas[j]->ls_id));
+                            if((strcmp(area_str, link_id)) == 0)
+                            {
+                                ospf_lsa_detail_show
+                                    (area_row->asbr_summary_lsas[j]);
+                            }
+                     }
+                     else
+                    {
+                       ospf_lsa_detail_show(area_row->asbr_summary_lsas[j]);
+                   }
+               }
+               break;
+           }
+
+            case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+           {
+               for(j = 0; j < router_row->n_as_ext_lsas; j++)
+               {
+                    if(link_id)
+                    {
+                           OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(router_row->as_ext_lsas[j]->ls_id));
+                            if((strcmp(area_str, link_id)) == 0)
+                            {
+                                ospf_lsa_detail_show
+                                      (router_row->as_ext_lsas[j]);
+                            }
+                    }
+                    else
+                    {
+                        ospf_lsa_detail_show(router_row->as_ext_lsas[j]);
+                    }
+             }
+             break;
+           }
+
+            case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+           {
+               for(j = 0; j < area_row->n_as_nssa_lsas; j++)
+               {
+                   if(link_id)
+                   {
+                          OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->as_nssa_lsas[j]->ls_id));
+                            if((strcmp(area_str, link_id)) == 0)
+                            {
+                                ospf_lsa_detail_show
+                                      (area_row->as_nssa_lsas[j]);
+                            }
+                   }
+                   else
+                   {
+                       ospf_lsa_detail_show(area_row->as_nssa_lsas[j]);
+                   }
+               }
+               break;
+           }
+
+           case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+           {
+               for(j = 0; j < area_row->n_opaque_link_lsas; j++)
+               {
+                     if(link_id)
+                    {
+                            OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->opaque_link_lsas[j]->ls_id));
+                            if((strcmp(area_str, link_id)) == 0)
+                            {
+                                ospf_lsa_detail_show
+                                     (area_row->opaque_link_lsas[j]);
+                            }
+                        }
+                   else
+                   {
+                          ospf_lsa_detail_show(area_row->opaque_link_lsas[j]);
+                   }
+              }
+              break;
+           }
+
+           case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+           {
+               for(j = 0; j < area_row->n_opaque_area_lsas; j++)
+               {
+                    if(link_id)
+                       {
+                            OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->opaque_area_lsas[j]->ls_id));
+                            if((strcmp(area_str, link_id)) == 0)
+                            {
+                                ospf_lsa_detail_show
+                                    (area_row->opaque_area_lsas[j]);
+                            }
+                        }
+                   else
+                   {
+                       ospf_lsa_detail_show(area_row->opaque_area_lsas[j]);
+                   }
+               }
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+          {
+               for(j = 0; j < router_row->n_opaque_as_lsas; j++)
+               {
+                   if(link_id)
+                       {
+                            OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(router_row->opaque_as_lsas[j]->ls_id));
+                            if((strcmp(area_str, link_id)) == 0)
+                            {
+                                ospf_lsa_detail_show
+                                    (router_row->opaque_as_lsas[j]);
+                            }
+                        }
+                   else
+                   {
+                       ospf_lsa_detail_show(router_row->opaque_as_lsas[j]);
+                   }
+               }
+               break;
+           }
+           default:
+               break;
+         }
+    }
+}
+
+static void
+ospf_ip_maxage_detail_show()
+{
+    const struct ovsrec_ospf_router *router_row = NULL;
+    const struct ovsrec_ospf_lsa  *lsa_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    char area_str[OSPF_SHOW_STR_LEN];
+    const char *val = NULL;
+    int64_t ls_age = 0;
+    int64_t instance_tag = 1;
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
+    if (router_row == NULL)
+    {
+        vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+        return;
+    }
+    val = smap_get(&router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+    if(val)
+    {
+        vty_out (vty, "%s       OSPF Router with ID (%s)%s%s", VTY_NEWLINE,
+                 val, VTY_NEWLINE, VTY_NEWLINE);
+    }
+    else
+   {
+      vty_out (vty, "%s       OSPF Router%s%s", VTY_NEWLINE,
+                 VTY_NEWLINE, VTY_NEWLINE);
+   }
+    vty_out (vty, "%s           MaxAge Link States:%s%s",
+               VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
+
+    OVSREC_OSPF_LSA_FOR_EACH(lsa_row, idl)
+    {
+        OSPF_LSA_AGE_GET(lsa_row->ls_birth_time, ls_age);
+        if (ls_age >= OSPF_MAX_LSA_AGE)
+        {
+            if(lsa_row->lsa_type)
+            {
+                 vty_out (vty, "  Link type: %s%s",
+                     ospf_lsa_type_print(lsa_row->lsa_type), VTY_NEWLINE);
+            }
+            if(lsa_row->ls_id)
+            {
+                OSPF_IP_STRING_CONVERT(area_str, ntohl(lsa_row->ls_id));
+                vty_out (vty, "  Link State ID: %s%s",
+                              area_str, VTY_NEWLINE);
+            }
+            else
+            {
+                vty_out (vty, "  Link State ID: %s%s",
+                          OSPF_DEFAULT_STR, VTY_NEWLINE);
+            }
+            if(lsa_row->adv_router)
+            {
+                OSPF_IP_STRING_CONVERT(area_str, ntohl(lsa_row->adv_router));
+                vty_out (vty, "  Advertising Router: %s%s",
+                           area_str,VTY_NEWLINE);
+            }
+            else
+            {
+                vty_out (vty, "   Advertising Router: %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+            }
+            vty_out(vty, "%s", VTY_NEWLINE);
+        }
+    }
+}
+
+DEFUN(cli_ip_ospf_database,
+       cli_ip_ospf_database_type_id_cmd,
+       "show ip ospf database (" OSPF_LSA_TYPES_CMD_STR "|max-age)" ,
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       "Database summary\n"
+       OSPF_LSA_TYPES_DESC
+       "LSAs in MaxAge list\n"
+       )
+{
+    if(argv[0] && !strcmp(argv[0], "router" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0], "network" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "summary" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "asbr-summary" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "external" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "nssa-external" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-link" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-area" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-as" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA, NULL);
+    else if(argv[0] && !strcmp(argv[0] , "max-age" ))
+        ospf_ip_maxage_detail_show();
+    else
+        return ;
+
+    return CMD_SUCCESS;
+}
+
+DEFUN(cli_ip_ospf_database_id,
+         cli_ip_ospf_database_type_link_id_cmd,
+         "show ip ospf database (" OSPF_LSA_TYPES_CMD_STR ") A.B.C.D" ,
+         SHOW_STR
+         IP_STR
+         OSPF_STR
+         "Database summary\n"
+         OSPF_LSA_TYPES_DESC
+         "Link State ID (as an IPv4 address)\n"
+        )
+{
+     if(argv[0] && !strcmp(argv[0], "router" ))
+         ospf_lsa_database_detail_show
+             (OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA, argv[1]);
+     else if(argv[0] && !strcmp(argv[0], "network" ))
+         ospf_lsa_database_detail_show
+             (OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA, argv[1]);
+     else if(argv[0] && !strcmp(argv[0] , "summary" ))
+         ospf_lsa_database_detail_show
+             (OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "asbr-summary" ))
+        ospf_lsa_database_detail_show
+             (OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "as-external" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "nssa-external" ))
+        ospf_lsa_database_detail_show
+             (OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-link" ))
+        ospf_lsa_database_detail_show
+             (OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-area" ))
+        ospf_lsa_database_detail_show
+             (OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-as" ))
+        ospf_lsa_database_detail_show
+            (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA, argv[1]);
+     else
+          return ;
+     return CMD_SUCCESS;
+}
+
+
+/*
+Function to print the self-originated link states
+*/
+static void
+ospf_print_self_originate_link_states(int type)
+{
+
+   const struct ovsrec_ospf_router *router_row = NULL;
+   const struct ovsrec_ospf_area *area_row = NULL;
+   const struct ovsrec_ospf_lsa  *lsa_row = NULL;
+   const struct ovsrec_vrf *vrf_row = NULL;
+   char area_str[OSPF_SHOW_STR_LEN];
+   const char *val = NULL;
+   int64_t instance_tag = 1;
+   int i, j;
+
+   vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+   router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
+   if (router_row == NULL)
+   {
+      vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+      return;
+   }
+
+   val = smap_get(&router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+   if(val)
+   {
+      vty_out (vty, "%s       OSPF Router with ID (%s)%s%s", VTY_NEWLINE,
+                 val, VTY_NEWLINE, VTY_NEWLINE);
+   }
+   else
+   {
+      vty_out (vty, "%s       OSPF Router%s%s", VTY_NEWLINE,
+                OSPF_DEFAULT_STR, VTY_NEWLINE, VTY_NEWLINE);
+   }
+
+    for(i = 0; i < router_row->n_areas; i++)
+    {
+       OSPF_IP_STRING_CONVERT(area_str, ntohl(router_row->key_areas[i]));
+       area_row = router_row->value_areas[i];
+       switch(type)
+       {
+           case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+           {
+               vty_out(vty,"          Router Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+           {
+               vty_out(vty,"         Net Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+           {
+               vty_out(vty,"        Summary Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+           {
+               vty_out(vty,"        ASBR Summary Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+           {
+               vty_out(vty,"        AS External Link States ");
+               vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+           {
+               vty_out(vty,"        NSSA-external Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+           {
+               vty_out(vty,"        Opaque-Link Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+           {
+               vty_out(vty,"        Opaque-Area Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str);
+               break;
+
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+           {
+               vty_out(vty,"        Opaque-AS Link States ");
+               vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+               break;
+           }
+           default:
+              break;
+    }
+       switch(type)
+       {
+           case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+           {
+               for(j = 0; j < area_row->n_router_lsas; j++)
+               {
+                    if(val)
+                    {
+                         OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->router_lsas[j]->adv_router));
+                          if((strcmp(area_str, val)) == 0)
+                          {
+                              ospf_lsa_detail_show(area_row->router_lsas[j]);
+                          }
+                    }
+                }
+                break;
+            }
+           case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+          {
+               for(j = 0; j < area_row->n_network_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->network_lsas[j]->adv_router));
+                        if((strcmp(area_str, val)) == 0)
+                        {
+                             ospf_lsa_detail_show(area_row->network_lsas[j]);
+                        }
+                    }
+                }
+                break;
+           }
+
+           case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+           {
+               for(j = 0; j < area_row->n_abr_summary_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->abr_summary_lsas[j]->adv_router));
+                         if((strcmp(area_str, val)) == 0)
+                        {
+                             ospf_lsa_detail_show
+                                    (area_row->abr_summary_lsas[j]);
+                        }
+                    }
+                }
+                break;
+            }
+
+           case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+           {
+               for(j = 0; j < area_row->n_asbr_summary_lsas; j++)
+               {
+                  if(val)
+                  {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->asbr_summary_lsas[j]->adv_router));
+                        if((strcmp(area_str, val)) == 0)
+                        {
+                             ospf_lsa_detail_show
+                                  (area_row->asbr_summary_lsas[j]);
+                         }
+                    }
+                }
+                break;
+            }
+
+           case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+           {
+               for(j = 0; j < router_row->n_as_ext_lsas; j++)
+               {
+                    if(val)
+                    {
+                         OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(router_row->as_ext_lsas[j]->adv_router));
+                         if((strcmp(area_str, val)) == 0)
+                         {
+                              ospf_lsa_detail_show
+                                      (router_row->as_ext_lsas[j]);
+                         }
+                     }
+                }
+                break;
+            }
+
+            case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+           {
+               for(j = 0; j < area_row->n_as_nssa_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->as_nssa_lsas[j]->adv_router));
+                         if((strcmp(area_str, val)) == 0)
+                         {
+                              ospf_lsa_detail_show
+                                      (area_row->as_nssa_lsas[j]);
+                         }
+                    }
+                }
+                break;
+            }
+
+           case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+           {
+               for(j = 0; j < area_row->n_opaque_link_lsas; j++)
+               {
+                   if(val)
+                   {
+                         OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->opaque_link_lsas[j]->adv_router));
+                         if((strcmp(area_str, val)) == 0)
+                         {
+                              ospf_lsa_detail_show
+                                     (area_row->opaque_link_lsas[j]);
+                         }
+                    }
+               }
+               break;
+           }
+
+           case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+           {
+               for(j = 0; j < area_row->n_opaque_area_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->opaque_area_lsas[j]->adv_router));
+                        if((strcmp(area_str, val)) == 0)
+                        {
+                             ospf_lsa_detail_show
+                                    (area_row->opaque_area_lsas[j]);
+                        }
+                    }
+                }
+                break;
+            }
+           case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+          {
+               for(j = 0; j < router_row->n_opaque_as_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(router_row->opaque_as_lsas[j]->adv_router));
+                        if((strcmp(area_str, val)) == 0)
+                        {
+                              ospf_lsa_detail_show
+                                    (router_row->opaque_as_lsas[j]);
+                         }
+                    }
+                }
+                break;
+           }
+
+           default:
+               break;
+         }
+    }
+}
+
+
+DEFUN(cli_ip_ospf_database_self_originate,
+         cli_ip_ospf_database_self_originate_cmd,
+       "show ip ospf database (" OSPF_LSA_TYPES_CMD_STR ") self-originate",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       "Database summary\n"
+       OSPF_LSA_TYPES_DESC
+       "Self-originated link states\n")
+{
+     if(argv[0] && !strcmp(argv[0], "router" ))
+         ospf_print_self_originate_link_states
+             (OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA);
+     else if(argv[0] && !strcmp(argv[0], "network" ))
+         ospf_print_self_originate_link_states
+             (OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA);
+     else if(argv[0] && !strcmp(argv[0] , "summary" ))
+         ospf_print_self_originate_link_states
+             (OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA);
+    else if(argv[0] && !strcmp(argv[0] , "asbr-summary" ))
+        ospf_print_self_originate_link_states
+             (OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA);
+    else if(argv[0] && !strcmp(argv[0] , "as-external" ))
+        ospf_print_self_originate_link_states
+            (OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA);
+    else if(argv[0] && !strcmp(argv[0] , "nssa-external" ))
+        ospf_print_self_originate_link_states
+             (OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-link" ))
+        ospf_print_self_originate_link_states
+             (OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-area" ))
+        ospf_print_self_originate_link_states
+             (OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-as" ))
+        ospf_print_self_originate_link_states
+            (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA);
+     else
+          return ;
+     return CMD_SUCCESS;
+}
+
+/*
+Function to print the self-originated link states
+with link id specified
+*/
+static void
+ospf_print_self_originate_match_link_id(int type, char* link_id)
+{
+
+   const struct ovsrec_ospf_router *router_row = NULL;
+   const struct ovsrec_ospf_area *area_row = NULL;
+   const struct ovsrec_ospf_lsa  *lsa_row = NULL;
+   const struct ovsrec_vrf *vrf_row = NULL;
+   char area_str[OSPF_SHOW_STR_LEN];
+   const char *val = NULL;
+   int64_t instance_tag = 1;
+   int i, j;
+
+   vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+   router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
+   if (router_row == NULL)
+   {
+      vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+      return;
+   }
+
+   val = smap_get(&router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+   if(val)
+   {
+      vty_out (vty, "%s       OSPF Router with ID (%s)%s%s", VTY_NEWLINE,
+                 val, VTY_NEWLINE, VTY_NEWLINE);
+   }
+   else
+   {
+      vty_out (vty, "%s       OSPF Router%s%s", VTY_NEWLINE,
+                 VTY_NEWLINE, VTY_NEWLINE);
+   }
+
+    for(i = 0; i < router_row->n_areas; i++)
+    {
+       OSPF_IP_STRING_CONVERT(area_str, ntohl(router_row->key_areas[i]));
+       area_row = router_row->value_areas[i];
+       switch(type)
+       {
+           case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+           {
+               vty_out(vty,"          Router Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str );
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+           {
+               vty_out(vty,"         Net Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str );
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+           {
+               vty_out(vty,"        Summary Link States (Area %s",area_str);
+               ospf_area_header_print(area_row, area_str );
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+           {
+               vty_out(vty,"        ASBR Summary Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str );
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+           {
+               vty_out(vty,"        AS External Link States ");
+               vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+           {
+               vty_out(vty,"        NSSA-external Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str );
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+           {
+               vty_out(vty,"        Opaque-Link Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str );
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+           {
+               vty_out(vty,"        Opaque-Area Link States (Area %s",
+                                                                      area_str);
+               ospf_area_header_print(area_row, area_str );
+               break;
+           }
+           case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+           {
+               vty_out(vty,"        Opaque-AS Link States ");
+               vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+               break;
+           }
+           default:
+              break;
+    }
+       switch(type)
+       {
+           case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+           {
+               for(j = 0; j < area_row->n_router_lsas; j++)
+               {
+                    OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->router_lsas[j]->adv_router));
+                    if(val)
+                    {
+                         if(((strcmp(area_str, val)) == 0) &&
+                                       (strcmp(link_id, val) == 0))
+                         {
+                              ospf_lsa_detail_show(area_row->router_lsas[j]);
+                         }
+                    }
+                }
+                break;
+            }
+           case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+           {
+               for(j = 0; j < area_row->n_network_lsas; j++)
+               {
+                    OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->network_lsas[j]->adv_router));
+                    if(val)
+                    {
+                         if(((strcmp(area_str, val)) == 0) &&
+                                         (strcmp(link_id, val) == 0))
+                         {
+                              ospf_lsa_detail_show(area_row->network_lsas[j]);
+                         }
+                     }
+                }
+                break;
+            }
+
+           case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+           {
+               for(j = 0; j < area_row->n_abr_summary_lsas; j++)
+               {
+                     OSPF_IP_STRING_CONVERT(area_str,
+                            ntohl(area_row->abr_summary_lsas[j]->adv_router));
+                     if(val)
+                     {
+                          if(((strcmp(area_str, val)) == 0) &&
+                                      (strcmp(link_id, val) == 0))
+                          {
+                               ospf_lsa_detail_show
+                                     (area_row->abr_summary_lsas[j]);
+                          }
+                      }
+                 }
+                 break;
+             }
+
+           case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+           {
+               for(j = 0; j < area_row->n_asbr_summary_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                          ntohl(area_row->asbr_summary_lsas[j]->adv_router));
+                        if(((strcmp(area_str, val)) == 0) &&
+                                     (strcmp(link_id, val) == 0))
+                        {
+                              ospf_lsa_detail_show
+                                    (area_row->asbr_summary_lsas[j]);
+                        }
+                    }
+               }
+               break;
+           }
+
+            case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+           {
+               for(j = 0; j < router_row->n_as_ext_lsas; j++)
+               {
+                   if(val)
+                   {
+                         OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(router_row->as_ext_lsas[j]->adv_router));
+                          if(((strcmp(area_str, val)) == 0) &&
+                                     (strcmp(link_id, val) == 0))
+                          {
+                                ospf_lsa_detail_show
+                                      (router_row->as_ext_lsas[j]);
+                          }
+                    }
+               }
+               break;
+             }
+
+            case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+           {
+               for(j = 0; j < area_row->n_as_nssa_lsas; j++)
+               {
+                    if(val)
+                    {
+                          OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->as_nssa_lsas[j]->adv_router));
+                          if(((strcmp(area_str, val)) == 0) &&
+                                     (strcmp(link_id, val) == 0))
+                          {
+                               ospf_lsa_detail_show
+                                      (area_row->as_nssa_lsas[j]);
+                          }
+                     }
+               }
+               break;
+           }
+
+           case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+           {
+                for(j = 0; j < area_row->n_opaque_link_lsas; j++)
+                {
+                    if(val)
+                    {
+                         OSPF_IP_STRING_CONVERT(area_str,
+                            ntohl(area_row->opaque_link_lsas[j]->adv_router));
+                         if(((strcmp(area_str, val)) == 0) &&
+                                     (strcmp(link_id, val) == 0))
+                         {
+                              ospf_lsa_detail_show
+                                     (area_row->opaque_link_lsas[j]);
+                         }
+                     }
+                 }
+                 break;
+             }
+
+           case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+           {
+               for(j = 0; j < area_row->n_opaque_area_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                           ntohl(area_row->opaque_area_lsas[j]->adv_router));
+                        if(((strcmp(area_str, val)) == 0) &&
+                                     (strcmp(link_id, val) == 0))
+                        {
+                             ospf_lsa_detail_show
+                                    (area_row->opaque_area_lsas[j]);
+                        }
+                    }
+                }
+               break;
+            }
+           case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+          {
+               for(j = 0; j < router_row->n_opaque_as_lsas; j++)
+               {
+                   if(val)
+                   {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                           ntohl(router_row->opaque_as_lsas[j]->adv_router));
+                        if(((strcmp(area_str, val)) == 0) &&
+                                     (strcmp(link_id, val) == 0))
+                        {
+                             ospf_lsa_detail_show
+                                    (router_row->opaque_as_lsas[j]);
+                         }
+                    }
+               }
+               break;
+            }
+
+           default:
+               break;
+         }
+    }
+}
+
+
+DEFUN (cli_show_ip_ospf_database_self,
+       cli_show_ip_ospf_database_type_id_self_originate_cmd,
+       "show ip ospf database (" OSPF_LSA_TYPES_CMD_STR ") A.B.C.D self-originate",
+       SHOW_STR
+       IP_STR
+       "OSPF information\n"
+       "Database summary\n"
+       OSPF_LSA_TYPES_DESC
+       "Link State ID (as an IPv4 address)\n"
+       "Self-originated link states\n")
+{
+    if(argv[0] && !strcmp(argv[0], "router" ))
+        ospf_print_self_originate_match_link_id
+                     (OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0], "network" ))
+        ospf_print_self_originate_match_link_id
+                     (OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "summary" ))
+        ospf_print_self_originate_match_link_id
+                     (OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "asbr-summary" ))
+        ospf_print_self_originate_match_link_id
+                     (OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "as-external" ))
+        ospf_print_self_originate_match_link_id
+                    (OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "nssa-external" ))
+        ospf_print_self_originate_match_link_id
+                     (OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-link" ))
+         ospf_print_self_originate_match_link_id
+                     (OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-area" ))
+         ospf_print_self_originate_match_link_id
+                     (OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA, argv[1]);
+     else if(argv[0] && !strcmp(argv[0] , "opaque-as" ))
+         ospf_print_self_originate_match_link_id
+                    (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA, argv[1]);
+     else
+         return ;
+     return CMD_SUCCESS;
+    }
+
+/*
+Function to print all the columns under LSA which are
+self-originated
+*/
+void
+ospf_area_lsa_show_self_originate(const struct
+                     ovsrec_ospf_router *ospf_router_row, const char* value)
+{
+     int i, j, type = 0;
+     int64_t int_val = 0;
+     char area_str[OSPF_SHOW_STR_LEN];
+     char router_str[OSPF_SHOW_STR_LEN];
+     char timebuf[OSPF_TIME_SIZE];
+     const struct ovsrec_ospf_area *ospf_area_row = NULL;
+     const struct ovsrec_ospf_lsa  *lsa_row = NULL;
+
+     for(i = 0; i < ospf_router_row->n_areas; i++)
+     {
+          OSPF_IP_STRING_CONVERT(area_str,
+                                   ntohl(ospf_router_row->key_areas[i]));
+
+         ospf_area_row = ospf_router_row->value_areas[i];
+
+         if (ospf_area_row->n_router_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+
+            vty_out(vty,"%s%s",
+                  show_database_header[OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA],
+                  VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_router_lsas; j++)
+            {
+               OSPF_IP_STRING_CONVERT(router_str,
+                          ntohl(ospf_area_row->router_lsas[j]->adv_router));
+               if(value)
+               {
+                   if((strcmp(router_str, value)) == 0)
+                   {
+                       ospf_lsa_show_one_row(ospf_area_row->router_lsas[j],
+                         OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA);
+                   }
+                }
+            }
+         }
+
+         if (ospf_area_row->n_network_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+                show_database_header[OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA],
+                                                        VTY_NEWLINE);
+
+             for(j = 0; j < ospf_area_row->n_network_lsas; j++)
+             {
+                 if(value)
+                 {
+                     OSPF_IP_STRING_CONVERT(router_str,
+                          ntohl(ospf_area_row->network_lsas[j]->adv_router));
+                     if((strcmp(router_str, value)) == 0)
+                     {
+                         ospf_lsa_show_one_row(ospf_area_row->network_lsas[j],
+                                     OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA);
+                      }
+                 }
+             }
+         }
+
+         if (ospf_area_row->n_abr_summary_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+             show_database_header[OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA],
+                                                        VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_abr_summary_lsas; j++)
+            {
+                if(value)
+                {
+                    OSPF_IP_STRING_CONVERT(router_str,
+                     ntohl(ospf_area_row->abr_summary_lsas[j]->adv_router));
+                    if((strcmp(router_str, value)) == 0)
+                    {
+                        ospf_lsa_show_one_row
+                           (ospf_area_row->ospf_area_summary_addresses[j],
+                                     OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA);
+                    }
+                 }
+             }
+         }
+
+         if(ospf_area_row->n_asbr_summary_lsas)
+         {
+             vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+             ospf_area_header_print(ospf_area_row, area_str);
+             vty_out(vty,"%s%s",
+              show_database_header[OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA],
+                                                         VTY_NEWLINE);
+
+             for(j = 0; j < ospf_area_row->n_asbr_summary_lsas; j++)
+             {
+                  if(value)
+                  {
+                      OSPF_IP_STRING_CONVERT(router_str,
+                      ntohl(ospf_area_row->asbr_summary_lsas[j]->adv_router));
+                      if((strcmp(router_str, value)) == 0)
+                      {
+                           ospf_lsa_show_one_row
+                            (ospf_area_row->asbr_summary_lsas[j],
+                                      OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA);
+                      }
+                  }
+              }
+           }
+         if(ospf_area_row->n_as_nssa_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+                show_database_header[OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA],
+                                                          VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_as_nssa_lsas; j++)
+            {
+                if(value)
+                {
+                    OSPF_IP_STRING_CONVERT(router_str,
+                           ntohl(ospf_area_row->as_nssa_lsas[j]->adv_router));
+                    if((strcmp(router_str, value)) == 0)
+                    {
+                         ospf_lsa_show_one_row(ospf_area_row->as_nssa_lsas[j],
+                                           OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA);
+                    }
+                 }
+            }
+        }
+         if(ospf_area_row->n_opaque_link_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+            show_database_header[OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA],
+                                                        VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_opaque_link_lsas; j++)
+            {
+                 if(value)
+                 {
+                      OSPF_IP_STRING_CONVERT(router_str,
+                        ntohl(ospf_area_row->opaque_link_lsas[j]->adv_router));
+                      if((strcmp(router_str, value)) == 0)
+                      {
+                          ospf_lsa_show_one_row(ospf_area_row->opaque_link_lsas[j],
+                                    OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA);
+                      }
+                  }
+              }
+          }
+
+         if(ospf_area_row->n_opaque_area_lsas)
+         {
+             vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+             ospf_area_header_print(ospf_area_row, area_str);
+             vty_out(vty,"%s%s",
+             show_database_header[OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA],
+                                                          VTY_NEWLINE);
+
+             for(j = 0; j < ospf_area_row->n_opaque_area_lsas; j++)
+             {
+                 if(value)
+                 {
+                      OSPF_IP_STRING_CONVERT(router_str,
+                      ntohl(ospf_area_row->opaque_area_lsas[j]->adv_router));
+                      if((strcmp(router_str, value)) == 0)
+                     {
+                          ospf_lsa_show_one_row
+                            (ospf_area_row->opaque_area_lsas[j],
+                                   OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA);
+                      }
+                  }
+               }
+           }
+
+     if(ospf_router_row->n_as_ext_lsas)
+     {
+         vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                         show_database_desc[type++]);
+
+         vty_out(vty,"%s%s",
+           show_database_header[OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA],
+                                                           VTY_NEWLINE);
+
+         for(j = 0; j < ospf_router_row->n_as_ext_lsas; j++)
+         {
+             if(value)
+             {
+                 OSPF_IP_STRING_CONVERT(router_str,
+                         ntohl(ospf_router_row->as_ext_lsas[j]->adv_router));
+                 if((strcmp(router_str, value)) == 0)
+                 {
+                      ospf_lsa_show_one_row(ospf_router_row->as_ext_lsas[j],
+                                       OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA);
+                 }
+             }
+          }
+        }
+     if(ospf_router_row->n_opaque_as_lsas)
+     {
+          vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                           show_database_desc[type]);
+
+          vty_out(vty,"%s%s",
+            show_database_header[OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA],
+                                                            VTY_NEWLINE);
+
+          for(j = 0; j < ospf_router_row->n_opaque_as_lsas; j++)
+          {
+              if(value)
+              {
+                   OSPF_IP_STRING_CONVERT(router_str,
+                     ntohl(ospf_router_row->opaque_as_lsas[j]->adv_router));
+                   if((strcmp(router_str, value)) == 0)
+                   {
+                       ospf_lsa_show_one_row
+                             (ospf_router_row->opaque_as_lsas[j],
+                                      OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA);
+                   }
+                }
+          }
+     }
+     return;
+    }
+}
+
+/*
+Function to print the ospf database with self-originate
+*/
+void
+ospf_ip_database_show_self_originate()
+{
+     const struct ovsrec_ospf_router *ospf_router_row = NULL;
+     const struct ovsrec_vrf *vrf_row = NULL;
+     const char *val = NULL;
+     int64_t instance_tag = 1;
+     int64_t int_val = 0;
+     int i;
+
+     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+
+    /* See if it already exists. */
+     ospf_router_row =
+     ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
+
+     if (ospf_router_row == NULL)
+     {
+          vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+          return;
+     }
+
+     val = smap_get(&ospf_router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+     if (val)
+          vty_out(vty, "%s       OSPF Router with ID (%s)%s", VTY_NEWLINE,
+                                        val, VTY_NEWLINE);
+     else
+     {
+      vty_out (vty, "%s       OSPF Router%s%s", VTY_NEWLINE,
+                 VTY_NEWLINE, VTY_NEWLINE);
+   }
+
+     ospf_area_lsa_show_self_originate(ospf_router_row, val);
+     return;
+
+}
+
+DEFUN (cli_show_ip_ospf_database_self_originate,
+       cli_show_ip_ospf_database_cmd_self_originate,
+       "show ip ospf database self-originate",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       "Database summary\n"
+       "Self-originated link states\n")
+{
+     ospf_ip_database_show_self_originate();
+     return CMD_SUCCESS;
+}
+
+DEFUN(show_ip_ospf_database,
+       show_ip_ospf_database_type_id_adv_router_cmd,
+       "show ip ospf database (" OSPF_LSA_TYPES_CMD_STR ") adv-router A.B.C.D",
+       SHOW_STR
+       IP_STR
+       "OSPF information\n"
+       "Database summary\n"
+       OSPF_LSA_TYPES_DESC
+       "Advertising Router link states\n"
+       "Advertising Router (as an IP address)\n")
+{
+
+    if(argv[0] && !strcmp(argv[0], "router" ))
+        ospf_adv_router_display
+          (OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0], "network" ))
+        ospf_adv_router_display
+           (OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "summary" ))
+        ospf_adv_router_display
+            (OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "asbr-summary" ))
+        ospf_adv_router_display
+            (OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "as-external" ))
+        ospf_adv_router_display
+            (OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "nssa-external" ))
+        ospf_adv_router_display
+            (OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-link" ))
+        ospf_adv_router_display
+             (OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-area" ))
+        ospf_adv_router_display
+            (OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA, argv[1]);
+    else if(argv[0] && !strcmp(argv[0] , "opaque-as" ))
+        ospf_adv_router_display
+            (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA, argv[1]);
+    else
+        return ;
+    return CMD_SUCCESS;
+}
+
+/*
+Function to print the lsa table for
+a specified adv-router ID
+*/
+void
+ospf_adv_router_display(int type, char* adv_router)
+{
+    const struct ovsrec_ospf_router *router_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+    const struct ovsrec_ospf_lsa  *lsa_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    char area_str[OSPF_SHOW_STR_LEN];
+    const char *val = NULL;
+    int64_t instance_tag = 1;
+    int i, j;
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
+    if (router_row == NULL)
+    {
+        vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+        return;
+    }
+
+    val = smap_get(&router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+    if(val)
+    {
+        vty_out (vty, "%s       OSPF Router with ID (%s)%s%s", VTY_NEWLINE,
+                  val, VTY_NEWLINE, VTY_NEWLINE);
+    }
+    else
+   {
+      vty_out (vty, "%s       OSPF Router%s%s", VTY_NEWLINE,
+                 VTY_NEWLINE, VTY_NEWLINE);
+   }
+
+    for(i = 0; i < router_row->n_areas; i++)
+    {
+        OSPF_IP_STRING_CONVERT(area_str, ntohl(router_row->key_areas[i]));
+        area_row = router_row->value_areas[i];
+        switch(type)
+        {
+             case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+             {
+                 vty_out(vty,"          Router Link States (Area %s",area_str);
+                 ospf_area_header_print(area_row, area_str );
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+             {
+                 vty_out(vty,"         Net Link States (Area %s",area_str);
+                 ospf_area_header_print(area_row, area_str );
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+             {
+                 vty_out(vty,"        Summary Link States (Area %s",area_str);
+                 ospf_area_header_print(area_row, area_str );
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+             {
+                 vty_out(vty,"        ASBR Summary Link States (Area %s",
+                                                                     area_str);
+                 ospf_area_header_print(area_row, area_str );
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+             {
+                 vty_out(vty,"        AS External Link States ");
+                 vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+             {
+                 vty_out(vty,"        NSSA-external Link States (Area %s",
+                                                                      area_str);
+                 ospf_area_header_print(area_row, area_str );
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+             {
+                 vty_out(vty,"        Opaque-Link Link States (Area %s",
+                                                                      area_str);
+                 ospf_area_header_print(area_row, area_str );
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+             {
+                 vty_out(vty,"        Opaque-Area Link States (Area %s",
+                                                                      area_str);
+                 ospf_area_header_print(area_row, area_str );
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+             {
+                 vty_out(vty,"        Opaque-AS Link States ");
+                 vty_out(vty, "%s%s", VTY_NEWLINE, VTY_NEWLINE);
+                 break;
+             }
+             default:
+                 break;
+         }
+         switch(type)
+         {
+             case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+             {
+                 for(j = 0; j < area_row->n_router_lsas; j++)
+                 {
+                     OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->router_lsas[j]->adv_router));
+                     if((strcmp(area_str, adv_router)) == 0)
+                     {
+                         ospf_lsa_detail_show(area_row->router_lsas[j]);
+                     }
+                 }
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+             {
+                 for(j = 0; j < area_row->n_network_lsas; j++)
+                 {
+                     OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->network_lsas[j]->adv_router));
+                     if((strcmp(area_str, adv_router)) == 0)
+                     {
+                         ospf_lsa_detail_show(area_row->network_lsas[j]);
+                     }
+                 }
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+             {
+                 for(j = 0; j < area_row->n_abr_summary_lsas; j++)
+                 {
+                      OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->abr_summary_lsas[j]->adv_router));
+                      if((strcmp(area_str, adv_router)) == 0)
+                      {
+                             ospf_lsa_detail_show
+                                    (area_row->abr_summary_lsas[j]);
+                      }
+                 }
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+             {
+                 for(j = 0; j < area_row->n_asbr_summary_lsas; j++)
+                 {
+                       OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->asbr_summary_lsas[j]->adv_router));
+                       if((strcmp(area_str, adv_router)) == 0)
+                       {
+                              ospf_lsa_detail_show
+                                   (area_row->asbr_summary_lsas[j]);
+                       }
+                 }
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+             {
+                 for(j = 0; j < router_row->n_as_ext_lsas; j++)
+                 {
+                        OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(router_row->as_ext_lsas[j]->adv_router));
+                        if((strcmp(area_str, adv_router)) == 0)
+                        {
+                               ospf_lsa_detail_show
+                                      (router_row->as_ext_lsas[j]);
+                         }
+                }
+                break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+             {
+                 for(j = 0; j < area_row->n_as_nssa_lsas; j++)
+                 {
+                         OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->as_nssa_lsas[j]->adv_router));
+                         if((strcmp(area_str, adv_router)) == 0)
+                         {
+                                ospf_lsa_detail_show
+                                      (area_row->as_nssa_lsas[j]);
+                         }
+                 }
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+             {
+                 for(j = 0; j < area_row->n_opaque_link_lsas; j++)
+                 {
+                          OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->opaque_link_lsas[j]->adv_router));
+                          if((strcmp(area_str, adv_router)) == 0)
+                          {
+                                ospf_lsa_detail_show
+                                     (area_row->opaque_link_lsas[j]);
+                          }
+                 }
+                 break;
+             }
+             case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+             {
+                 for(j = 0; j < area_row->n_opaque_area_lsas; j++)
+                 {
+                          OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(area_row->opaque_area_lsas[j]->adv_router));
+                          if((strcmp(area_str, adv_router)) == 0)
+                          {
+                               ospf_lsa_detail_show
+                                    (area_row->opaque_area_lsas[j]);
+                          }
+                  }
+                  break;
+            }
+            case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+            {
+                  for(j = 0; j < router_row->n_opaque_as_lsas; j++)
+                  {
+                          OSPF_IP_STRING_CONVERT(area_str,
+                                ntohl(router_row->opaque_as_lsas[j]->adv_router));
+                          if((strcmp(area_str, adv_router)) == 0)
+                          {
+                               ospf_lsa_detail_show
+                                    (router_row->opaque_as_lsas[j]);
+                          }
+                 }
+                 break;
+            }
+            default:
+                break;
+        }
+    }
+}
+
+/*
+Function to print a single lsa row based on the parameter
+type being passed
+*/
+void
+ospf_lsa_show_one_row(const struct ovsrec_ospf_lsa *lsa_row, int type)
+{
+     int64_t int_val = 0;
+     char area_str[OSPF_SHOW_STR_LEN];
+     char timebuf[OSPF_TIME_SIZE];
+     char val;
+     if (lsa_row->ls_id)
+     {
+         OSPF_IP_STRING_CONVERT(area_str, ntohl(lsa_row->ls_id));
+         vty_out (vty, "%-15s ", area_str);
+     }
+     else
+     {
+         vty_out(vty, "%-15s ", OSPF_DEFAULT_STR);
+     }
+     if (lsa_row->adv_router)
+     {
+         OSPF_IP_STRING_CONVERT(area_str, ntohl(lsa_row->adv_router));
+         vty_out (vty, "%-15s ", area_str);
+     }
+     else
+     {
+         vty_out(vty, "%-15s ", OSPF_DEFAULT_STR);
+     }
+     if(lsa_row->ls_birth_time)
+     {
+        int64_t time_age ;
+        OSPF_LSA_AGE(lsa_row->ls_birth_time, time_age);
+        vty_out(vty, "%-8ld ", time_age);
+     }
+     else
+         vty_out(vty, "%8s ", OSPF_DEFAULT_STR);
+
+     if(lsa_row->ls_seq_num)
+         vty_out (vty, " 0x%08lx", (u_long)ntohl(lsa_row->ls_seq_num));
+     else
+         vty_out(vty, "%s", OSPF_DEFAULT_HEXA_VALUE);
+
+     if (lsa_row->n_chksum > 0)
+          vty_out (vty, " 0x%08lx", ntohs (*lsa_row->chksum));
+     else
+          vty_out(vty, "%s", OSPF_DEFAULT_HEXA_VALUE);
+     switch(type)
+     {
+         case OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA:
+             if (lsa_row->n_num_router_links)
+                 vty_out (vty, " %-ld", *lsa_row->num_router_links);
+             else
+                 vty_out(vty, " %-d", OSPF_DEFAULT_LSA_ROUTER_LINKS);
+             break;
+
+         case OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA:
+             if (lsa_row->prefix)
+                 vty_out (vty, " %s", lsa_row->prefix);
+             break;
+
+         case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
+         case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
+             if (lsa_row->prefix)
+                 vty_out (vty, " %s %s", lsa_row->prefix, lsa_row->lsa_data);
+             break;
+
+          case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
+          case OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA:
+          case OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA:
+          case OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA:
+          case OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA:
+          default:
+              break;
+     }
+     vty_out (vty, VTY_NEWLINE);
+     return;
+}
+
+/*
+Function to print a single header
+*/
+void ospf_area_header_print(const struct ovsrec_ospf_area * ospf_area_row,
+                                 char area_str[])
+{
+
+         vty_out(vty,"(Area %s", area_str);
+         if (!strcmp(ospf_area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_NSSA) ||
+                          !strcmp(ospf_area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_NSSA_NO_SUMMARY))
+        {
+             vty_out(vty, " [NSSA]");
+        }
+        else if (!strcmp(ospf_area_row->area_type,
+                               OVSREC_OSPF_AREA_AREA_TYPE_STUB) ||
+                             !strcmp(ospf_area_row->area_type,
+                            OVSREC_OSPF_AREA_AREA_TYPE_STUB_NO_SUMMARY))
+        {
+             vty_out(vty, " [Stub]");
+        }
+        vty_out(vty,")%s%s", VTY_NEWLINE, VTY_NEWLINE);
+}
+
+/*
+Function to print all the columns under LSA
+*/
+void
+ospf_area_lsa_show(const struct ovsrec_ospf_router *ospf_router_row)
+{
+     int i, j, type = 0;
+     int64_t int_val = 0;
+     char area_str[OSPF_SHOW_STR_LEN];
+     char timebuf[OSPF_TIME_SIZE];
+     char val;
+     const struct ovsrec_ospf_area *ospf_area_row = NULL;
+     const struct ovsrec_ospf_lsa  *lsa_row = NULL;
+
+     for(i = 0; i < ospf_router_row->n_areas; i++)
+     {
+          OSPF_IP_STRING_CONVERT(area_str,
+                                   ntohl(ospf_router_row->key_areas[i]));
+
+         ospf_area_row = ospf_router_row->value_areas[i];
+
+         if (ospf_area_row->n_router_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+
+            vty_out(vty,"%s%s",
+                  show_database_header[OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA],
+                  VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_router_lsas; j++)
+            {
+               ospf_lsa_show_one_row(ospf_area_row->router_lsas[j],
+                     OSPF_LSA_LSA_TYPE_TYPE1_ROUTER_LSA);
+            }
+         }
+
+         if (ospf_area_row->n_network_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+                show_database_header[OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA],
+                                                        VTY_NEWLINE);
+
+             for(j = 0; j < ospf_area_row->n_network_lsas; j++)
+             {
+                ospf_lsa_show_one_row(ospf_area_row->network_lsas[j],
+                                     OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA);
+             }
+         }
+
+         if (ospf_area_row->n_ospf_area_summary_addresses)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+             show_database_header[OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA],
+                                                        VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_ospf_area_summary_addresses; j++)
+            {
+               ospf_lsa_show_one_row
+                          (ospf_area_row->ospf_area_summary_addresses[j],
+                                     OSPF_LSA_LSA_TYPE_TYPE3_ABR_SUMMARY_LSA);
+            }
+         }
+
+         if(ospf_area_row->n_asbr_summary_lsas)
+         {
+             vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+             ospf_area_header_print(ospf_area_row, area_str);
+             vty_out(vty,"%s%s",
+              show_database_header[OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA],
+                                                         VTY_NEWLINE);
+
+             for(j = 0; j < ospf_area_row->n_asbr_summary_lsas; j++)
+             {
+                 ospf_lsa_show_one_row(ospf_area_row->asbr_summary_lsas[j],
+                                      OSPF_LSA_LSA_TYPE_TYPE4_ASBR_SUMMARY_LSA);
+             }
+         }
+
+         if(ospf_area_row->n_as_nssa_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+                show_database_header[OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA],
+                                                          VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_as_nssa_lsas; j++)
+            {
+                ospf_lsa_show_one_row(ospf_area_row->as_nssa_lsas[j],
+                                           OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA);
+            }
+         }
+         if(ospf_area_row->n_opaque_link_lsas)
+         {
+            vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+            ospf_area_header_print(ospf_area_row, area_str);
+            vty_out(vty,"%s%s",
+            show_database_header[OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA],
+                                                        VTY_NEWLINE);
+
+            for(j = 0; j < ospf_area_row->n_opaque_link_lsas; j++)
+            {
+                 ospf_lsa_show_one_row(ospf_area_row->opaque_link_lsas[j],
+                    OSPF_LSA_LSA_TYPE_TYPE9_OPAQUE_LINK_LSA);
+            }
+         }
+
+         if(ospf_area_row->n_opaque_area_lsas)
+         {
+             vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                             show_database_desc[type++]);
+             ospf_area_header_print(ospf_area_row, area_str);
+             vty_out(vty,"%s%s",
+             show_database_header[OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA],
+                                                          VTY_NEWLINE);
+
+             for(j = 0; j < ospf_area_row->n_opaque_area_lsas; j++)
+             {
+                 ospf_lsa_show_one_row(ospf_area_row->opaque_area_lsas[j],
+                                   OSPF_LSA_LSA_TYPE_TYPE10_OPAQUE_AREA_LSA);
+             }
+         }
+
+     }
+
+     if(ospf_router_row->n_as_ext_lsas)
+     {
+         vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                         show_database_desc[type++]);
+
+         vty_out(vty,"%s%s",
+           show_database_header[OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA],
+                                                           VTY_NEWLINE);
+
+         for(j = 0; j < ospf_router_row->n_as_ext_lsas; j++)
+         {
+             ospf_lsa_show_one_row(ospf_router_row->as_ext_lsas[j],
+                                       OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA);
+         }
+     }
+
+     if(ospf_router_row->n_opaque_as_lsas)
+     {
+          vty_out(vty,"%s                %s ",VTY_NEWLINE,
+                                           show_database_desc[type]);
+
+          vty_out(vty,"%s%s",
+            show_database_header[OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA],
+                                                            VTY_NEWLINE);
+
+          for(j = 0; j < ospf_router_row->n_opaque_as_lsas; j++)
+          {
+              ospf_lsa_show_one_row(ospf_router_row->opaque_as_lsas[j],
+                                      OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA);
+          }
+     }
+     return;
+}
+
+/*
+Function to print the ospf database
+*/
+void
+ospf_ip_database_show()
+{
+     const struct ovsrec_ospf_router *ospf_router_row = NULL;
+     const struct ovsrec_vrf *vrf_row = NULL;
+     const char *val = NULL;
+     int64_t instance_tag = 1;
+     int64_t int_val = 0;
+     int i;
+
+     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+
+    /* See if it already exists. */
+     ospf_router_row =
+     ospf_router_lookup_by_instance_id(vrf_row, instance_tag);
+
+     if (ospf_router_row == NULL)
+     {
+          vty_out (vty, " OSPF Routing Process not enabled%s", VTY_NEWLINE);
+          return;
+     }
+
+     val = smap_get(&ospf_router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+     if (val)
+          vty_out(vty, "%s       OSPF Router with ID (%s)%s", VTY_NEWLINE,
+                                        val, VTY_NEWLINE);
+     else
+    {
+      vty_out (vty, "%s       OSPF Router%s%s", VTY_NEWLINE,
+                 VTY_NEWLINE, VTY_NEWLINE);
+    }
+     ospf_area_lsa_show(ospf_router_row);
+     return;
+
+}
+
+DEFUN (cli_show_ip_ospf_database,
+       cli_show_ip_ospf_database_cmd,
+       "show ip ospf database",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       "Database summary\n")
+{
+     ospf_ip_database_show();
+     return CMD_SUCCESS;
+}
 
 DEFUN (cli_ip_ospf_interface_show,
        cli_ip_ospf_interface_show_cmd,
@@ -5553,7 +7759,13 @@ ospf_vty_init(void)
     install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_nbrid_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_nbr_nbrid_detail_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_route_show_cmd);
-
+    install_element(ENABLE_NODE, &cli_ip_ospf_database_type_id_cmd);
+    install_element(ENABLE_NODE, &cli_show_ip_ospf_database_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_database_type_link_id_cmd);
+    install_element(ENABLE_NODE, &show_ip_ospf_database_type_id_adv_router_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_database_self_originate_cmd);
+    install_element(ENABLE_NODE, &cli_show_ip_ospf_database_cmd_self_originate);
+    install_element(ENABLE_NODE, &cli_show_ip_ospf_database_type_id_self_originate_cmd);
     /* show running-config router ospf */
     install_element(ENABLE_NODE, &cli_ip_ospf_running_config_show_cmd);
 
