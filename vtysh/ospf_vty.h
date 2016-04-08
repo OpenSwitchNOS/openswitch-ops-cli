@@ -84,6 +84,8 @@
 #define OSPF_NETWORK_RANGE_LEN      25
 #define OSPF_TIMER_KEY_MAX_LENGTH   80
 #define OSPF_STAT_NAME_LEN          64
+#define OSPF_DEFAULT_HEXA_VALUE          "0x00000000"
+#define OSPF_DEFAULT_LSA_ROUTER_LINKS          0
 
 /* Neighbor FSM states */
 #define OSPF_NFSM_STATE_ATTEMPT           "Attempt"
@@ -96,6 +98,20 @@
 #define OSPF_NFSM_STATE_INIT              "Init"
 #define OSPF_NFSM_STATE_LOADING           "Loading"
 #define OSPF_NFSM_STATE_2_WAY             "2-Way"
+
+#define OSPF_LSA_TYPES_CMD_STR                                                \
+    "asbr-summary|external|network|router|summary|nssa-external|opaque-link|opaque-area|opaque-as"
+
+#define OSPF_LSA_TYPES_DESC                                                   \
+   "ASBR summary link states\n"                                               \
+   "External link states\n"                                                   \
+   "Network link states\n"                                                    \
+   "Router link states\n"                                                     \
+   "Network summary link states\n"                                            \
+   "NSSA external link state\n"                                               \
+   "Link local Opaque-LSA\n"                                             \
+   "Link area Opaque-LSA\n"                                            \
+   "Link AS Opaque-LSA\n"
 
 #define OSPF_DEFAULT_INFO_ORIGINATE                "default_info_originate"
 #define OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS         "always"
@@ -113,18 +129,20 @@
 #define DEFAULT_REDIST_ALWAYS_STR "Always advertise default route\n"
 
 #define OSPF_DEFAULT_INSTANCE_ID 1
+
 /*
-** depending on the outcome of the db transaction, returns
-** the appropriate value for the cli command execution.
-*/
-inline static int
-cli_command_result (enum ovsdb_idl_txn_status status)
-{
-    if ((status == TXN_SUCCESS) || (status == TXN_UNCHANGED)) {
-        return CMD_SUCCESS;
-    }
-    return CMD_WARNING;
-}
+	** depending on the outcome of the db transaction, returns
+	** the appropriate value for the cli command execution.
+	*/
+	inline static int
+	cli_command_result (enum ovsdb_idl_txn_status status)
+	{
+		if ((status == TXN_SUCCESS) || (status == TXN_UNCHANGED)) {
+			return CMD_SUCCESS;
+		}
+		return CMD_WARNING;
+	}
+
 /********************** standard database txn operations ***********************/
 
 #define OSPF_START_DB_TXN(txn)                                  \
@@ -228,13 +246,13 @@ vtysh_init_intf_ospf_context_clients();
 #define OSPF_KEY_AREA_STATS_ASBR_COUNT          "asbr_count"
 
 
-#define OSPF_NBR_OPTION_STRING_T               "type_of_service"
-#define OSPF_NBR_OPTION_STRING_E               "external_routing"
-#define OSPF_NBR_OPTION_STRING_MC              "multicast"
-#define OSPF_NBR_OPTION_STRING_NP              "type_7_lsa"
-#define OSPF_NBR_OPTION_STRING_EA              "external_attributes_lsa"
-#define OSPF_NBR_OPTION_STRING_DC              "demand_circuits"
-#define OSPF_NBR_OPTION_STRING_O               "opaque_lsa"
+#define OSPF_OPTION_STRING_T               "type_of_service"
+#define OSPF_OPTION_STRING_E               "external_routing"
+#define OSPF_OPTION_STRING_MC              "multicast"
+#define OSPF_OPTION_STRING_NP              "type_7_lsa"
+#define OSPF_OPTION_STRING_EA              "external_attributes_lsa"
+#define OSPF_OPTION_STRING_DC              "demand_circuits"
+#define OSPF_OPTION_STRING_O               "opaque_lsa"
 
 #define OSPF_PATH_TYPE_STRING_INTER_AREA       "inter_area"
 #define OSPF_PATH_TYPE_STRING_INTRA_AREA       "intra_area"
@@ -242,6 +260,7 @@ vtysh_init_intf_ospf_context_clients();
 
 #define OSPF_EXT_TYPE_STRING_TYPE1             "ext_type_1"
 #define OSPF_EXT_TYPE_STRING_TYPE2             "ext_type_2"
+
 
 
 /* OSPF Default values */
