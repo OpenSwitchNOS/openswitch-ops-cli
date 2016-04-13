@@ -36,6 +36,8 @@ pkg_check_modules(OPSUTILS REQUIRED opsutils)
 
 add_definitions(-DHAVE_CONFIG_H -DSYSCONFDIR="${CMAKE_INSTALL_SYSCONFDIR}")
 
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -D FTR_PROXY_ARP=1 -D FTR_LOCAL_PROXY_ARP=1")
+
 include_directories(
   ${CMAKE_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/lib
