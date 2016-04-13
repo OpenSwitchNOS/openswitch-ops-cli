@@ -39,14 +39,4 @@ const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
 
 const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 
-
-#ifdef FTR_PROXY_ARP
-static int vrf_proxy_arp_toggle_state(const char *if_name, const char* value);
-#endif /* FTR_PROXY_ARP */
-
-#ifdef FTR_LOCAL_PROXY_ARP
-static int vrf_local_proxy_arp_toggle_state(const char *if_name,
-                                            const char* value);
-#endif /* FTR_LOCAL_PROXY_ARP */
-
 #endif /* _VRF_VTY_H */
