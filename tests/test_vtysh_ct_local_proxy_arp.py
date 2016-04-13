@@ -298,8 +298,6 @@ def LocalproxyArpOnParentInterfaceTest(dut01):
     return True
 
 
-@pytest.mark.skipif(True, reason="Disabling this testcase "
-                    "since local proxy ARP feature is globally disabled")
 class Test_Local_proxy_arp_configuration:
 
     def setup_class(cls):
