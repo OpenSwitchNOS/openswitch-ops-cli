@@ -1500,3 +1500,24 @@ vtysh_ovsdb_show_version_detail(void)
         }
     }
 }
+
+/* Show version detail ops */
+void
+vtysh_ovsdb_show_version_detail_ops(void)
+{
+    const struct ovsrec_package_info *row = NULL;
+    unsigned int ops_len = strlen("ops-");
+
+    OVSREC_PACKAGE_INFO_FOR_EACH(row, idl) {
+        /* Display only if ops package */
+        if (row && (strncmp(row->name, "ops-", ops_len) == 0)) {
+            vty_out(vty, "PACKAGE     : %-128s\n",  row->name);
+            vty_out(vty, "VERSION     : %-128s\n",
+                (row->version[0] == '\0') ? "Not Available" : row->version);
+            vty_out(vty, "SOURCE TYPE : %-128s\n",
+                (row->src_type[0] == '\0') ? "Not Available" : row->src_type);
+            vty_out(vty, "SOURCE URL  : %-128s\n\n",
+                (row->src_url[0] == '\0') ? "Not Available" : row->src_url);
+        }
+    }
+}
