@@ -38,11 +38,17 @@ def get_show_version_detail_cli_ct_result(sw1):
     output = ''.join(lines)
     return output
 
+def get_show_version_detail_ops_cli_ct_result(sw1):
+    lines = sw1('show version detail ops').splitlines()
+    lines = [line.replace(' ', '') for line in lines]
+    output = ''.join(lines)
+    return output
+
 
 def add_git_entry_to_package_info(sw1):
     sw1('ovsdb-client transact \'["OpenSwitch", \
             {"op":"insert", "table": "Package_Info", "row": \
-            {"name": "test-repo-1", "src_type": "git", \
+            {"name": "ops-test-repo-1", "src_type": "git", \
             "src_url": "git.testRepo1.net", \
             "version":"abcdef007" } } ]\'', shell='bash')
 
@@ -58,7 +64,7 @@ def add_other_entry_to_package_info(sw1):
 def test_vtysh_ct_show_version_detail(topology):
     sw1 = topology.get("sw1")
     assert sw1 is not None
-    record1 = "{}{}{}{}".format("PACKAGE:test-repo-1",
+    record1 = "{}{}{}{}".format("PACKAGE:ops-test-repo-1",
                                 "VERSION:abcdef007",
                                 "SOURCETYPE:git",
                                 "SOURCEURL:git.testRepo1.net")
@@ -70,3 +76,19 @@ def test_vtysh_ct_show_version_detail(topology):
     add_other_entry_to_package_info(sw1)
     output = get_show_version_detail_cli_ct_result(sw1)
     assert record1 in output and record2 in output
+
+def test_vtysh_ct_show_version_detail_ops(topology):
+    sw1 = topology.get("sw1")
+    assert sw1 is not None
+    record1 = "{}{}{}{}".format("PACKAGE:ops-test-repo-1",
+                                "VERSION:abcdef007",
+                                "SOURCETYPE:git",
+                                "SOURCEURL:git.testRepo1.net")
+    record2 = "{}{}{}{}".format("PACKAGE:test-repo-2",
+                                "VERSION:1.0.0",
+                                "SOURCETYPE:other",
+                                "SOURCEURL:ftp.testRepo2.com/file.tar.gz")
+    add_git_entry_to_package_info(sw1)
+    add_other_entry_to_package_info(sw1)
+    output = get_show_version_detail_ops_cli_ct_result(sw1)
+    assert record1 in output and record2 not in output
