@@ -705,6 +705,7 @@ show_routes (struct vty *vty, char * ip_addr_family)
   int disp_flag = 1;
   char str[50];
   int i, active_route_next_hops;
+  extern struct ovsdb_idl_index_cursor route_cursor;
 #ifdef VRF_ENABLE
   char *vrf_name = vrf;
 
@@ -712,7 +713,7 @@ show_routes (struct vty *vty, char * ip_addr_family)
     vrf_name = DEFAULT_VRF_NAME;
 #endif
 
-  OVSREC_ROUTE_FOR_EACH (row_route, idl)
+  OVSREC_ROUTE_FOR_EACH_BYINDEX (row_route, &route_cursor)
     {
 #ifdef VRF_ENABLE
       if (strncmp(row_route->vrf->name, vrf_name,OVSDB_VRF_NAME_MAXLEN))
@@ -1489,6 +1490,7 @@ show_rib (struct vty *vty, char * ip_addr_family)
   int disp_flag = 1;
   char str[50];
   int i;
+  extern struct ovsdb_idl_index_cursor route_cursor;
 #ifdef VRF_ENABLE
   char *vrf_name = vrf;
 
@@ -1496,7 +1498,7 @@ show_rib (struct vty *vty, char * ip_addr_family)
     vrf_name = DEFAULT_VRF_NAME;
 #endif
 
-  OVSREC_ROUTE_FOR_EACH (row_route, idl)
+  OVSREC_ROUTE_FOR_EACH_BYINDEX (row_route, &route_cursor)
     {
       if (row_route->protocol_private != NULL)
         {
