@@ -565,11 +565,12 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
   int ipv6_flag = 0;
   char str[50];
   int i;
+  extern struct ovsdb_idl_index_cursor route_cursor;
 
   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                            "vtysh_config_context_staticroute_clientcallback entered");
 
-  OVSREC_ROUTE_FOR_EACH(row_route, p_msg->idl) {
+  OVSREC_ROUTE_FOR_EACH_BYINDEX(row_route, &route_cursor) {
       ipv4_flag = 0;
       ipv6_flag = 0;
       if (strcmp(row_route->from, OVSREC_ROUTE_FROM_STATIC)) {
