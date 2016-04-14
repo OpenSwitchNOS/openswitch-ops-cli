@@ -526,6 +526,16 @@ ntp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_ntp_key_col_trust_enable);
 }
 
+static void
+copp_ovsdb_init()
+{
+    /* Add System Table */
+    ovsdb_idl_add_table(idl, &ovsrec_table_system);
+
+    /* Add columns in System Table */
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_copp_statistics);
+}
+
 /*
  * Create a connection to the OVSDB at db_path and create
  * the idl cache.
@@ -604,6 +614,9 @@ ovsdb_init(const char *db_path)
 
     /* Add tables/columns needed for NTP config commands. */
     ntp_ovsdb_init();
+
+    /* Add tables/columns needed for copp commands. */
+    copp_ovsdb_init();
 }
 
 static void
