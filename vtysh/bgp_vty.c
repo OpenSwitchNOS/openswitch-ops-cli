@@ -511,44 +511,57 @@ bgp_get_rib_path_attributes(const struct ovsrec_bgp_route *rib_row,
     assert(data);
     memset(data, 0, sizeof(*data));
 
-    data->flags = smap_get_int(&rib_row->path_attributes,
-                               OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_FLAGS, 0);
-    data->aspath = smap_get(&rib_row->path_attributes,
-                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_AS_PATH);
-    data->origin = smap_get(&rib_row->path_attributes,
-                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ORIGIN);
-    data->local_pref = smap_get_int(&rib_row->path_attributes,
-                                    OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_LOC_PREF,0);
-    data->weight = smap_get_int(&rib_row->path_attributes,
-                                OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_WEIGHT, BGP_ATTR_DEFAULT_WEIGHT);
-    data->aggregator_id = smap_get_int(&rib_row->path_attributes,
-                                       OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_AGGREGATOR_ID, 0);
-    data->aggregator_addr = smap_get(&rib_row->path_attributes,
-                                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_AGGREGATOR_ADDR);
-    data->atomic_aggregate = smap_get(&rib_row->path_attributes,
-                                      OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ATOMIC_AGGREGATE);
-    data->community = smap_get(&rib_row->path_attributes,
-                               OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_COMMUNITY);
-    data->ecommunity = smap_get(&rib_row->path_attributes,
-                                OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ECOMMUNITY);
+    if (rib_row->n_flags) {
+        data->flags = *rib_row->flags;
+    }
 
-    const char *value;
-    value = smap_get(&rib_row->path_attributes,
-                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_INTERNAL);
-    if (!strcmp(value, "true")) {
-        data->internal = 1;
-    } else {
-        data->internal = 0;
+    if (rib_row->aspath) {
+        data->aspath = rib_row->aspath;
     }
-    value = smap_get(&rib_row->path_attributes,
-                     OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_IBGP);
-    if (!strcmp(value, "true")) {
-        data->ibgp = 1;
-    } else {
-        data->ibgp = 0;
+
+    if (rib_row->origin) {
+        data->origin = rib_row->origin;
     }
-    data->uptime = smap_get(&rib_row->path_attributes,
-                            OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_UPTIME);
+
+    if (rib_row->n_local_pref) {
+        data->local_pref = *rib_row->local_pref;
+    }
+
+    if (rib_row->n_protocol_ibgp) {
+        data->ibgp = *rib_row->protocol_ibgp;
+    }
+
+    if (rib_row->n_protocol_internal) {
+        data->internal = *rib_row->protocol_internal;
+    }
+
+    if (rib_row->n_weight) {
+        data->weight = *rib_row->weight;
+    }
+
+    if (rib_row->n_aggregator_as) {
+        data->aggregator_id = *rib_row->aggregator_as;
+    }
+
+    if (rib_row->aggregator_addr) {
+        data->aggregator_addr = rib_row->aggregator_addr;
+    }
+
+    if (rib_row->atomic_aggregate) {
+        data->atomic_aggregate = rib_row->atomic_aggregate;
+    }
+
+    if (rib_row->community) {
+        data->community = rib_row->community;
+    }
+
+    if (rib_row->ecommunity) {
+        data->ecommunity = rib_row->ecommunity;
+    }
+
+    if (rib_row->uptime) {
+        data->uptime = rib_row->uptime;
+    }
     return;
 }
 
