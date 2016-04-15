@@ -422,7 +422,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
   struct ovsdb_idl_txn *status_txn = NULL;
   enum ovsdb_idl_txn_status status;
   struct ovsrec_port **ports;
-  size_t i, n;
+  size_t i = 0, n = 0;
 
   status_txn = cli_do_config_start ();
 
@@ -508,10 +508,12 @@ vrf_add_port (const char *if_name, const char *vrf_name)
         ports[n++] = unlink_vrf_row->ports[i];
     }
   ovsrec_vrf_set_ports (unlink_vrf_row, ports, n);
+  free(ports);
+
   ovsrec_port_delete (port_row);
   port_row = port_check_and_add (if_name, true, false, status_txn);
 
-  xrealloc (ports, sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
+  ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
   for (i = 0; i < vrf_row->n_ports; i++)
     ports[i] = vrf_row->ports[i];
 
