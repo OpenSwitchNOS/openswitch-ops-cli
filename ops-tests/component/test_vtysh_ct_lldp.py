@@ -18,6 +18,7 @@
 # 02111-1307, USA.
 
 from time import sleep
+from pytest import mark
 
 TOPOLOGY = """
 # +-------+
@@ -363,6 +364,8 @@ def lldp_show_local_device_test(sw1):
     assert counter is 3
 
 
+@mark.skipif(True, reason="Needs new management interface fix from Modular "
+                          "Framework")
 def test_vtysh_ct_lldp(topology, step):
     sw1 = topology.get("sw1")
     step('Test to enable LLDP feature')

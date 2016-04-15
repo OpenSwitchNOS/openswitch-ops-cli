@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from pytest import mark
+
 TOPOLOGY = """
 #
 # +-------+
@@ -27,6 +29,7 @@ TOPOLOGY = """
 """
 
 
+@mark.skipif(True, reason="Build image issue. Show running-config issue.")
 def test_vrf_cli(topology, step):
     first_interface = '12'
     second_interface = '13'

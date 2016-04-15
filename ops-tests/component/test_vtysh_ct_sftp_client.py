@@ -46,7 +46,7 @@ def test_sftp_client_configuration(topology, step):
     cmd = copy+username+hostip+srcpath+dstpath
 
     sw1._shells['vtysh']._prompt = (
-        '.*switch#'
+        'switch#'
     )
     out = sw1(cmd)
     assert 'Username should be less than 256 characters' in out
@@ -70,7 +70,7 @@ def test_sftp_client_configuration(topology, step):
     cmd = copy+username+hostname+srcpath+dstpath
 
     sw1._shells['vtysh']._prompt = (
-        '.*switch#'
+        'switch#'
     )
     out = sw1(cmd)
     assert 'Hostname should be less than 256 characters' in out

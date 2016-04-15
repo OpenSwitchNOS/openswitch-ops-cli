@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pytest
 import re
 
 TOPOLOGY = """
@@ -29,6 +30,7 @@ TOPOLOGY = """
 """
 
 
+@pytest.mark.skipif(True, reason="CR 1934")
 def test_interface_commands(topology, step):
     sw1 = topology.get('sw1')
 
@@ -94,21 +96,21 @@ def test_interface_commands(topology, step):
     step("### Test to verify dynamic helpstr for interface speed cli  ###")
     sw1('set interface 1 hw_intf_info:speeds="1000"', shell='vsctl')
     sw1('interface 1')
-
+    # set_trace()
     out = sw1('speed ?')
     sw1(' ')
     assert '1000   Mb/s supported' in out and \
            '10000  Mb/s not supported' in out and \
            '40000  Mb/s not supported' in out, \
            'Test to verify dyn helpstr for int speeds=1000 - FAILED!'
-
     sw1('set interface 1 hw_intf_info:speeds="1000,10000"', shell='vsctl')
     out = sw1('speed ?')
-    sw1(' ')
+    # set_trace()
     assert '1000   Mb/s supported' in out and \
            '10000  Mb/s supported' in out and \
            '40000  Mb/s not supported' in out, \
            'Test to verify dyn helpstr for int speeds="1000,10000" - FAILED!'
+    sw1(' ')
     sw1('set interface 1 hw_intf_info:speeds="40000"', shell='vsctl')
     sw1('interface 1')
     out = sw1('speed ?')
