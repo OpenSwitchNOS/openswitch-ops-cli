@@ -500,18 +500,26 @@ vrf_add_port (const char *if_name, const char *vrf_name)
       return CMD_SUCCESS;
     }
 
-  ports = xmalloc (
-      sizeof *unlink_vrf_row->ports * (unlink_vrf_row->n_ports - 1));
-  for (i = n = 0; i < unlink_vrf_row->n_ports; i++)
+  if (unlink_vrf_row->n_ports > 1)
     {
-      if (unlink_vrf_row->ports[i] != port_row)
-        ports[n++] = unlink_vrf_row->ports[i];
+      ports = xmalloc (
+          sizeof *unlink_vrf_row->ports * (unlink_vrf_row->n_ports - 1));
+      for (i = n = 0; i < unlink_vrf_row->n_ports; i++)
+        {
+          if (unlink_vrf_row->ports[i] != port_row)
+            ports[n++] = unlink_vrf_row->ports[i];
+        }
     }
   ovsrec_vrf_set_ports (unlink_vrf_row, ports, n);
+  if (ports != NULL)
+    {
+      free(ports);
+    }
+
   ovsrec_port_delete (port_row);
   port_row = port_check_and_add (if_name, true, false, status_txn);
 
-  xrealloc (ports, sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
+  ports = xmalloc(sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
   for (i = 0; i < vrf_row->n_ports; i++)
     ports[i] = vrf_row->ports[i];
 
