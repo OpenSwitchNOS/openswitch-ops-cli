@@ -32,6 +32,7 @@ include(FindPkgConfig)
 
 pkg_check_modules(OVSCOMMON REQUIRED libovscommon)
 pkg_check_modules(OVSDB REQUIRED libovsdb)
+pkg_check_modules(OPSUTILS REQUIRED opsutils)
 
 add_definitions(-DHAVE_CONFIG_H -DSYSCONFDIR="${CMAKE_INSTALL_SYSCONFDIR}")
 
@@ -55,17 +56,20 @@ add_executable(vtysh
   source_interface_selection_vty.c
   vtysh_ovsdb_source_interface_context.c
   ecmp_vty.c sftp_vty.c
-  ospf_vty.c
+  ospf_vty.c vtysh_ovsdb_ospf_context.c
+  sflow_vty.c
   vtysh_ovsdb_sftp_context.c
   utils/vlan_vtysh_utils.c
   utils/intf_vtysh_utils.c
-  utils/vrf_vtysh_utils.c)
+  utils/vrf_vtysh_utils.c
+  utils/audit_log_utils.c)
 
 target_link_libraries(vtysh PUBLIC
   ${OVSCOMMON_LIBRARIES}
   ${OVSDB_LIBRARIES}
   ${OPSCLI_LIBRARIES}
-  crypt pthread readline ops-cli)
+  ${OPSUTILS_LIBRARIES}
+  crypt pthread readline ops-cli audit opsutils)
 
 install(
   TARGETS vtysh
@@ -78,4 +82,5 @@ install(
   FILES
   utils/system_vtysh_utils.h utils/vlan_vtysh_utils.h utils/lacp_vtysh_utils.h
   utils/intf_vtysh_utils.h utils/vrf_vtysh_utils.h utils/ovsdb_vtysh_utils.h
+  utils/audit_log_utils.h
   DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/vtysh/utils")

@@ -41,6 +41,7 @@
 #include "memory.h"
 #include "timeval.h"
 
+#include <libaudit.h>
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
 #ifdef ENABLE_OVSDB
@@ -56,6 +57,9 @@ VLOG_DEFINE_THIS_MODULE(vtysh_main);
 
 extern int64_t timeout_start;
 extern struct termios tp;
+
+/* Return value of audit_open call. Use for subsequent audit call.*/
+int audit_fd = 0;
 
 /* VTY shell program name. */
 char *progname;
@@ -247,6 +251,7 @@ main (int argc, char **argv, char **env)
 {
   char *p;
   int opt;
+  char *verbosity_arg = NULL;
   int dryrun = 0;
   int boot_flag = 0;
 #ifndef ENABLE_OVSDB
@@ -263,10 +268,14 @@ main (int argc, char **argv, char **env)
   int counter=0;
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
+  struct passwd *pw = NULL;
 
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
-  vlog_set_verbosity("SYSLOG:DBG");
+  vlog_set_verbosity("SYSLOG:INFO");
+
+  /* Initiate a connection to the audit framework for subsequent audit calls.*/
+  audit_fd = audit_open();
 
   /* Preserve name of myself. */
   progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
@@ -330,7 +339,7 @@ main (int argc, char **argv, char **env)
           enable_mininet_test_prompt = 1;
           break;
         case 'v':
-          vlog_set_verbosity(optarg);
+          verbosity_arg = strdup(optarg);
           break;
         case 'D':
           temp_db = optarg;
@@ -342,7 +351,20 @@ main (int argc, char **argv, char **env)
 	  break;
 	}
     }
-
+  pw = getpwuid( getuid());
+  if (pw == NULL)
+  {
+      fprintf(stderr,"Unknown User.\n");
+      exit(1);
+  }
+  if (!( rbac_check_user_permission(pw->pw_name,RBAC_READ_SWITCH_CONFIG) ||
+              rbac_check_user_permission(pw->pw_name,RBAC_WRITE_SWITCH_CONFIG)))
+  {
+      fprintf (stderr,
+              "%s does not have the required permissions to access Vtysh.\n",
+              pw->pw_name);
+      exit(1);
+  }
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_init_clients();
   vtysh_ovsdb_init(argc, argv, temp_db);
@@ -372,10 +394,16 @@ main (int argc, char **argv, char **env)
   vtysh_signal_init ();
 
   /* Make vty structure and register commands. */
-  vtysh_init_vty ();
-  /* set CONSOLE as OFF and SYSLOG as DBG for Dynamicaly Linked VLOG moduler list*/
+  vtysh_init_vty (pw);
+
+  /* set CONSOLE as OFF */
   vlog_set_verbosity("CONSOLE:OFF");
-  vlog_set_verbosity("SYSLOG:DBG");
+  if (verbosity_arg) {
+      vlog_set_verbosity(verbosity_arg);
+      free(verbosity_arg);
+  }
+  else
+      vlog_set_verbosity("SYSLOG:INFO");
 
   vtysh_user_init ();
   vtysh_config_init ();
@@ -499,13 +527,31 @@ main (int argc, char **argv, char **env)
 
   snprintf(history_file, sizeof(history_file), "%s/.history_quagga", getenv("HOME"));
   read_history(history_file);
+
+#ifdef ENABLE_OVSDB
+  /*
+   * Wait for  ovsdb to be loaded. If ovsdb is not ready and user tries to configure,
+   * commands will fail to execute. So, wait for idl sequence number to change which
+   * indicates OVSDB is ready for transactions.
+   */
+  counter = 0;
+  do
+  {
+    if (vtysh_ovsdb_is_loaded())
+    {
+        break;
+    }
+    usleep(500000); //sleep for 500 msec
+    counter++;
+  } while (counter < MAX_TIMEOUT_FOR_IDL_CHANGE);
+#endif
+
   /* Main command loop. */
   while (vtysh_rl_gets ())
     vtysh_execute (line_read);
 
   history_truncate_file(history_file,1000);
   printf ("\n");
-
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_exit();
 #endif

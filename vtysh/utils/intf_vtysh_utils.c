@@ -150,8 +150,145 @@ display_l3_info(const struct ovsrec_port *port_row,
    if (port_row->ip4_address || (port_row->n_ip4_address_secondary > 0)
         || port_row->ip6_address || (port_row->n_ip6_address_secondary > 0)
         || smap_get(&port_row->other_config, PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED)
+        || smap_get(&port_row->other_config,
+                    PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED)
         || (strcmp(vrf_row->name, DEFAULT_VRF_NAME) != 0)) {
      return true;
    }
    return false;
+}
+
+/*-----------------------------------------------------------------------------
+| Function : show_l3_interface_rx_stats
+| Responsibility : Display L3 RX statistics
+| Parameters :
+|   struct vty* vty            : Used for ouput
+|   const struct ovsdb_*datum  : Statitistics data
+| Return : void
+-----------------------------------------------------------------------------*/
+void
+show_l3_interface_rx_stats(struct vty *vty, const struct ovsdb_datum *datum)
+{
+    union ovsdb_atom atom;
+    unsigned int index;
+
+    const char *if_l3_rx_stat_keys [] = {
+        "l3_uc_rx_packets",
+        "l3_uc_rx_bytes",
+        "l3_mc_rx_packets",
+        "l3_mc_rx_bytes"
+    };
+
+    vty_out(vty, "       L3:%s", VTY_NEWLINE);
+    atom.string = if_l3_rx_stat_keys[0];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "            ucast: %"PRIu64" packets, ",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    atom.string = if_l3_rx_stat_keys[1];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "%"PRIu64" bytes",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    vty_out(vty, "%s", VTY_NEWLINE);
+
+    atom.string = if_l3_rx_stat_keys[2];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "            mcast: %"PRIu64" packets, ",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    atom.string = if_l3_rx_stat_keys[3];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "%"PRIu64" bytes",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    vty_out(vty, "%s", VTY_NEWLINE);
+}
+
+/*-----------------------------------------------------------------------------
+| Function : show_l3_interface_tx_stats
+| Responsibility : Display L3 TX statistics
+| Parameters :
+|   struct vty* vty            : Used for ouput
+|   const struct ovsdb_*datum  : Statitistics data
+| Return : void
+-----------------------------------------------------------------------------*/
+void
+show_l3_interface_tx_stats(struct vty *vty, const struct ovsdb_datum *datum)
+{
+    union ovsdb_atom atom;
+    unsigned int index;
+
+    const char *if_l3_rx_stat_keys [] = {
+        "l3_uc_tx_packets",
+        "l3_uc_tx_bytes",
+        "l3_mc_tx_packets",
+        "l3_mc_tx_bytes"
+    };
+
+    vty_out(vty, "       L3:%s", VTY_NEWLINE);
+    atom.string = if_l3_rx_stat_keys[0];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "            ucast: %"PRIu64" packets, ",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    atom.string = if_l3_rx_stat_keys[1];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "%"PRIu64" bytes",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    vty_out(vty, "%s", VTY_NEWLINE);
+
+    atom.string = if_l3_rx_stat_keys[2];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "            mcast: %"PRIu64" packets, ",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    atom.string = if_l3_rx_stat_keys[3];
+    index = ovsdb_datum_find_key(datum, &atom, OVSDB_TYPE_STRING);
+    vty_out(vty, "%"PRIu64" bytes",
+            (index == UINT_MAX)? 0 : datum->values[index].integer);
+    vty_out(vty, "%s", VTY_NEWLINE);
+}
+
+/*-----------------------------------------------------------------------------
+| Function : show_l3_stats
+| Responsibility : Display L3 interface statistics
+| Parameters :
+|   struct vty* vty                : Used for ouput
+|   struct ovsrec_interface *ifrow : Interface row
+| Return : void
+-----------------------------------------------------------------------------*/
+void
+show_l3_stats(struct vty *vty, const struct ovsrec_interface *ifrow)
+{
+    const struct ovsdb_datum *datum;
+
+    datum = ovsrec_interface_get_statistics(ifrow, OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
+    if (NULL == datum)
+      return;
+
+    vty_out(vty, " RX%s", VTY_NEWLINE);
+    show_l3_interface_rx_stats(vty, datum);
+    vty_out(vty, " TX%s", VTY_NEWLINE);
+    show_l3_interface_tx_stats(vty, datum);
+    vty_out(vty, "%s", VTY_NEWLINE);
+}
+
+/*-----------------------------------------------------------------------------
+| Function : interface_find
+| Responsibility : Lookup interface table entry
+| Parameters :
+|   const chat *ifname : Interface name
+| Return : const struct ovsrec_interface*
+-----------------------------------------------------------------------------*/
+const struct ovsrec_interface*
+interface_find(const char *ifname)
+{
+    const struct ovsrec_interface *row;
+
+    if (!ifname) {
+        return NULL;
+    }
+    // Search for each interface
+    OVSREC_INTERFACE_FOR_EACH(row, idl)
+    {
+        if ( strcmp(ifname,row->name) == 0) {
+            return row;
+        }
+    }
+    return NULL;
 }

@@ -43,6 +43,14 @@ bool display_l3_info(const struct ovsrec_port *port_row,
 /*TODO :Below code will be remove as part of show running infra*/
 int cli_show_subinterface_row(const struct ovsrec_interface *ifrow,\
                                bool brief);
+
+void show_subinterface_status(const struct ovsrec_interface *ifrow, bool brief,
+        const struct ovsrec_interface *if_parent_row, int64_t key_subintf_parent);
+
 int delete_sub_intf(const char *sub_intf_name);
 
+void show_l3_stats(struct vty *vty, const struct ovsrec_interface *ifrow);
+void show_l3_interface_rx_stats(struct vty *vty, const struct ovsdb_datum *datum);
+void show_l3_interface_tx_stats(struct vty *vty, const struct ovsdb_datum *datum);
+const struct ovsrec_interface* interface_find(const char *ifname);
 #endif /* _INTF_VTYSH_UTILS_H  */

@@ -23,7 +23,6 @@
 
 #include "hash.h"
 #include "if.h"
-#include "filter.h"
 #include "command.h"
 #include "distribute.h"
 #include "memory.h"

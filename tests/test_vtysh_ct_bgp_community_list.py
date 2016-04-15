@@ -182,6 +182,7 @@ class bgp_communitylistCLItest(OpsVsiTest):
          return True
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_vtysh_bgp_community:
 
     def setup_class(cls):

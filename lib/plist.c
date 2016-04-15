@@ -250,7 +250,7 @@ prefix_list_insert (afi_t afi, const char *name)
       return plist;
     }
 
-  /* In case of insertion is made at the tail of access_list. */
+  /* In case of insertion is made at the tail of prefix_list. */
   if (point == NULL)
     {
       plist->prev = list->tail;
@@ -259,7 +259,7 @@ prefix_list_insert (afi_t afi, const char *name)
       return plist;
     }
 
-  /* In case of insertion is made at the head of access_list. */
+  /* In case of insertion is made at the head of prefix_list. */
   if (point == list->head)
     {
       plist->next = list->head;
@@ -268,7 +268,7 @@ prefix_list_insert (afi_t afi, const char *name)
       return plist;
     }
 
-  /* Insertion is made at middle of the access_list. */
+  /* Insertion is made at middle of the prefix_list. */
   plist->next = point;
   plist->prev = point->prev;
 
@@ -783,7 +783,7 @@ vty_prefix_list_install (struct vty *vty, afi_t afi, const char *name,
       return CMD_WARNING;
     }
 
-  /* Install new filter to the access_list. */
+  /* Install new entry to the prefix_list. */
   prefix_list_entry_add (plist, pentry);
 
   return CMD_SUCCESS;
@@ -894,7 +894,7 @@ vty_prefix_list_uninstall (struct vty *vty, afi_t afi, const char *name,
       return CMD_WARNING;
     }
 
-  /* Install new filter to the access_list. */
+  /* Install new filter to the prefix_list. */
   prefix_list_entry_delete (plist, pentry, 1);
 
   return CMD_SUCCESS;

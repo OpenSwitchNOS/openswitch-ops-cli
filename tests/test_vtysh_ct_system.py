@@ -157,6 +157,7 @@ class PlatformSystemTests(OpsVsiTest):
         return True
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_sys:
 
     def setup(self):

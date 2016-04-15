@@ -55,8 +55,8 @@ def runningConfigTest(dut01):
     dut01.DeviceInteract(command="exit")
 
     cmdOut = dut01.cmdVtysh(command="show running-config")
-    assert 'enable' in cmdOut, "Test to show SFTP server " \
-                               "in running config failed"
+    assert 'sftp server enable' in cmdOut, "Test to show SFTP server " \
+                                           "in running config failed"
 
     return True
 
@@ -72,8 +72,8 @@ def noRunningConfigTest(dut01):
     dut01.DeviceInteract(command="exit")
 
     cmdOut = dut01.cmdVtysh(command="show running-config")
-    assert 'enable' in cmdOut, "Test to show SFTP server " \
-                               "in running config failed"
+    assert 'sftp server enable' in cmdOut, "Test to show SFTP server " \
+                                           "in running config failed"
 
     #Disable the SFTP server and verify the config is removed
     #in the show running command.
@@ -84,8 +84,8 @@ def noRunningConfigTest(dut01):
     dut01.DeviceInteract(command="exit")
 
     cmdOut = dut01.cmdVtysh(command="show running-config")
-    assert 'enable' not in cmdOut, "Test to show SFTP server " \
-                                   "in running config failed"
+    assert 'sftp server enable' not in cmdOut, "Test to show SFTP server " \
+                                               "in running config failed"
 
     return True
 
@@ -124,6 +124,7 @@ def sftpserver_disable(dut01):
     return True
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_sftpserver_configuration:
     def setup_class(cls):
         # Test object will parse command line and formulate the env.

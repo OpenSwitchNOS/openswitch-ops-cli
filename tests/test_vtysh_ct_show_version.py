@@ -20,6 +20,8 @@ from mininet.net import Mininet
 from mininet.topo import SingleSwitchTopo
 from opsvsi.opsvsitest import OpsVsiTest, OpsVsiLink, VsiOpenSwitch
 
+import pytest
+
 
 class ShowVersionTest(OpsVsiTest):
     def setupNet(self):
@@ -80,6 +82,7 @@ class ShowVersionTest(OpsVsiTest):
         assert os_name + " " + version == self.__get_show_version_result()
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class TestRunner:
     @classmethod
     def setup_class(cls):

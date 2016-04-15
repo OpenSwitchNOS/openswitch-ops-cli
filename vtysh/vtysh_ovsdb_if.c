@@ -59,6 +59,7 @@
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
+#include "vrf-utils.h"
 
 #define TMOUT_POLL_INTERVAL 20
 
@@ -405,6 +406,26 @@ vrf_ovsdb_init()
 }
 
 static void
+sflow_ovsdb_init()
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_sflow);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_sampling);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_header);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_max_datagram);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_polling);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_targets);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_agent);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_agent_addr_family);
+    ovsdb_idl_add_column(idl, &ovsrec_sflow_col_statistics);
+    ovsdb_idl_add_column(idl, &ovsrec_system_col_sflow);
+
+    ovsdb_idl_add_table(idl, &ovsrec_table_port);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_name);
+    ovsdb_idl_add_column(idl, &ovsrec_port_col_other_config);
+}
+
+static void
 policy_ovsdb_init ()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_bgp_community_filter);
@@ -560,6 +581,9 @@ ovsdb_init(const char *db_path)
     /* BGP tables. */
     bgp_ovsdb_init();
     l3routes_ovsdb_init();
+
+    /* SFLOW tables. */
+    sflow_ovsdb_init();
 
     /* OSPF tables */
     ospf_ovsdb_init();
@@ -1009,14 +1033,14 @@ vtysh_ovsdb_interface_match(const char *str)
     // Search for each interface
     OVSREC_INTERFACE_FOR_EACH_SAFE(row, next, idl)
     {
-        if ( strncmp(str,row->name, strlen(str)) == 0) {
+        if ( strcmp(str,row->name) == 0) {
             return 0;
         }
     }
     // Search for each lag port
     OVSREC_PORT_FOR_EACH_SAFE(lag_port, lag_port_next, idl)
     {
-        if ( strncmp(str,lag_port->name,strlen(str)) == 0){
+        if ( strcmp(str,lag_port->name) == 0){
             return 0;
         }
     }
@@ -1230,21 +1254,34 @@ check_port_in_bridge(const char *port_name)
     return false;
 }
 
-
 /*
- * Check for presence of VRF and return VRF row.
+ * This functions is used to check if interface is part of lag.
+ *
+ * Variables:
+ * if_name name of interface to check
  */
-const struct ovsrec_vrf*
-vrf_lookup (const char *vrf_name)
+bool
+check_iface_in_lag(const char *if_name)
 {
-    const struct ovsrec_vrf *vrf_row = NULL;
-    OVSREC_VRF_FOR_EACH (vrf_row, idl)
-      {
-        if (strcmp (vrf_row->name, vrf_name) == 0)
-        return vrf_row;
-      }
-    return NULL;
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_interface *intf_row = NULL;
+    int i = 0;
+
+    OVSREC_PORT_FOR_EACH(port_row, idl)
+    {
+        if (strncmp(port_row->name, if_name, strlen(if_name)) == 0)
+            return false;
+        /* The interface can be associated with another port */
+        for (i = 0; i < port_row->n_interfaces; i++) {
+            intf_row = port_row->interfaces[i];
+            if (!strncmp(intf_row->name, if_name, strlen(if_name))) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
+
 
 /*
  * This functions is used to check if port row exists.
@@ -1297,7 +1334,7 @@ port_check_and_add (const char *port_name, bool create,
             const struct ovsrec_vrf *default_vrf_row = NULL;
             struct ovsrec_port **ports = NULL;
             size_t i;
-            default_vrf_row = vrf_lookup (DEFAULT_VRF_NAME);
+            default_vrf_row = get_default_vrf(idl);
             ports = xmalloc (
                     sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
             for (i = 0; i < default_vrf_row->n_ports; i++)

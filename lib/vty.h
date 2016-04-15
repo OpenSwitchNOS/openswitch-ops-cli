@@ -68,8 +68,7 @@ struct vty
   /* History insert end point */
   int hindex;
 
-  /* For current referencing point of interface, route-map,
-     access-list etc... */
+  /* For current referencing point of interface, route-map, etc... */
   void *index;
 
   /* For storing list of interface, vlan etc... */

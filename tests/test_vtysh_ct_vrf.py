@@ -91,6 +91,45 @@ class vrfCLITest(OpsVsiTest):
 
         s1.cmdCLI('exit')
 
+    def test_routing_interface_in_lag(self):
+        '''
+            Test routing/no routing interface associate to lag
+        '''
+
+        info("\n########## routing/no routing interface "
+             "associate to lag ##########\n")
+        s1 = self.net.switches[0]
+        s1.cmdCLI('conf t')
+        s1.cmdCLI('interface lag 1')
+        s1.cmdCLI('no routing')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('lacp fallback')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + first_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('lag 1')
+        ret = s1.cmdCLI('routing')
+        assert 'is associate to Lag' in ret, \
+               'Adding default VRF validation failed'
+        s1.cmdCLI('exit')
+        s1.cmdCLI('interface lag 2')
+        s1.cmdCLI('lacp mode active')
+        s1.cmdCLI('lacp fallback')
+        s1.cmdCLI('exit')
+        intf_cmd = 'interface ' + second_interface
+        s1.cmdCLI(intf_cmd)
+        s1.cmdCLI('lag 2')
+        ret = s1.cmdCLI('no routing')
+        assert 'is associate to Lag' in ret, \
+               'Adding default VRF validation failed'
+
+        info("### Check of routing - no routing on "
+             "Interface in LAG validation passed ###\n")
+
+        # Cleanup
+
+        s1.cmdCLI('exit')
+
     def test_interface(self):
         '''
             Test attaching/detaching interface to/from VRF
@@ -650,8 +689,8 @@ class vrfCLITest(OpsVsiTest):
             + intf2 + ' failed'
         info('### Show running config for ' + intf2 + ' passed ###\n')
 
-        assert 'no lldp reception' in output[intf3_output + 1] \
-            and 'no routing' in output[intf3_output + 2], \
+        assert 'no lldp receive' in output[intf3_output + 2] \
+                and 'no routing' in output[intf3_output + 3], \
             'Show running config for ' + intf3 + ' failed'
         info('### Show running config for ' + intf3 + ' passed ###\n')
 
@@ -799,6 +838,7 @@ class vrfCLITest(OpsVsiTest):
         s1.cmdCLI('exit')
 
 
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_vtysh_vrf:
 
     def setup_class(cls):
@@ -837,6 +877,9 @@ class Test_vtysh_vrf:
 
     def test_split_interfaces(self):
         self.test.test_split_interfaces()
+
+    def test_routing_interface_in_lag(self):
+        self.test.test_routing_interface_in_lag()
 
     def __del__(self):
         del self.test

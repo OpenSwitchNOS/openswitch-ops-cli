@@ -199,6 +199,12 @@ vtysh_config_parse_line (const char *line)
 #endif
       else if (strncmp (line, "interface lag", strlen ("interface lag")) == 0)
           config = config_get (LINK_AGGREGATION_NODE, line);
+      else if (strncmp (line, "qos queue-profile",
+              strlen ("qos queue-profile")) == 0)
+          config = config_get (QOS_QUEUE_PROFILE_NODE, line);
+      else if (strncmp (line, "qos schedule-profile",
+              strlen ("qos schedule-profile")) == 0)
+          config = config_get (QOS_SCHEDULE_PROFILE_NODE, line);
       else if (strncmp (line, "router-id", strlen ("router-id")) == 0)
 	config = config_get (ZEBRA_NODE, line);
       else if (strncmp (line, "router rip", strlen ("router rip")) == 0)
@@ -219,11 +225,6 @@ vtysh_config_parse_line (const char *line)
 	config = config_get (BGP_NODE, line);
       else if (strncmp (line, "route-map", strlen ("route-map")) == 0)
 	config = config_get (RMAP_NODE, line);
-      else if (strncmp (line, "access-list", strlen ("access-list")) == 0)
-	config = config_get (ACCESS_NODE, line);
-      else if (strncmp (line, "ipv6 access-list",
-	       strlen ("ipv6 access-list")) == 0)
-	config = config_get (ACCESS_IPV6_NODE, line);
       else if (strncmp (line, "ip prefix-list",
 	       strlen ("ip prefix-list")) == 0)
 	config = config_get (PREFIX_NODE, line);
@@ -299,9 +300,9 @@ vtysh_config_parse (char *line)
 /* Macro to check delimiter is needed between each configuration line
  * or not. */
 #define NO_DELIMITER(I)  \
-  ((I) == ACCESS_NODE || (I) == PREFIX_NODE || (I) == IP_NODE \
+  ((I) == PREFIX_NODE || (I) == IP_NODE \
    || (I) == AS_LIST_NODE || (I) == COMMUNITY_LIST_NODE || \
-   (I) == ACCESS_IPV6_NODE || (I) == PREFIX_IPV6_NODE \
+   (I) == PREFIX_IPV6_NODE \
    || (I) == SERVICE_NODE || (I) == FORWARDING_NODE || (I) == DEBUG_NODE \
    || (I) == AAA_NODE)
 

@@ -127,9 +127,7 @@ enum node_type
   MASC_NODE,			/* MASC for multicast.  */
   IRDP_NODE,			/* ICMP Router Discovery Protocol mode. */
   IP_NODE,			/* Static ip route node. */
-  ACCESS_NODE,			/* Access list node. */
   PREFIX_NODE,			/* Prefix list node. */
-  ACCESS_IPV6_NODE,		/* Access list node. */
   PREFIX_IPV6_NODE,		/* Prefix list node. */
   AS_LIST_NODE,			/* AS list node. */
   COMMUNITY_LIST_NODE,		/* Community list node. */
@@ -142,9 +140,12 @@ enum node_type
 #ifdef ENABLE_OVSDB
   DHCP_SERVER_NODE,             /* DHCP server node */
   TFTP_SERVER_NODE,             /* TFTP server node */
+  ACCESS_LIST_NODE,             /* Access Control List node */
   VLAN_NODE,                    /* Vlan Node */
   MGMT_INTERFACE_NODE,          /* Management Interface Node*/
   LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
+  QOS_QUEUE_PROFILE_NODE,       /* QoS Queue Profile Node. */
+  QOS_SCHEDULE_PROFILE_NODE,    /* QoS Schedule Profile Node. */
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
   SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
   LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
@@ -593,6 +594,9 @@ struct dyn_cb_func
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
+
+/* Added for SFLOW */
+#define SFLOW_STR     "SFLOW Configuration\n"
 
 /* VLAN help strings */
 #define VLAN_STR            "VLAN configuration\n"

@@ -64,6 +64,8 @@ int vtysh_regex_match(const char *regString, const char *inp);
 
 void *vtysh_ovsdb_main_thread(void *arg);
 
+bool check_iface_in_lag (const char *if_name);
+
 bool check_iface_in_bridge(const char *if_name);
 
 bool check_iface_in_vrf(const char *if_name);
@@ -81,9 +83,8 @@ const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                              bool attach_to_default_vrf,
                                              struct ovsdb_idl_txn *txn);
 
-const struct ovsrec_vrf* vrf_lookup(const char *vrf_name);
-
 extern struct ovsrec_vlan *vlan_row;
+
 bool check_if_internal_vlan(const struct ovsrec_vlan *vlan_row);
 
 void vtysh_ovsdb_show_version_detail(void);

@@ -97,7 +97,22 @@
 #define OSPF_NFSM_STATE_LOADING           "Loading"
 #define OSPF_NFSM_STATE_2_WAY             "2-Way"
 
+#define OSPF_DEFAULT_INFO_ORIGINATE                "default_info_originate"
+#define OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS         "always"
+#define OSPF_DEFAULT_INFO_ORIGINATE_SET            "true"
+#define OSPF_DEFAULT_INFO_ORIGINATE_ALWAYS_SET     "true"
 
+#define REDIST_STR "Redistribute information from another routing protocol\n"
+#define CLI_REDIST_HELP_STR_OSPFD \
+  "Connected routes (directly attached subnet or host)\n" \
+  "Statically configured routes\n" \
+  "Border Gateway Protocol (BGP)\n"
+
+#define DEFAULT_REDIST_STR "Control distribution of default information\n"
+#define DEFAULT_REDIST_ORIGINATE_STR "Distribute a default route\n"
+#define DEFAULT_REDIST_ALWAYS_STR "Always advertise default route\n"
+
+#define OSPF_DEFAULT_INSTANCE_ID 1
 /*
 ** depending on the outcome of the db transaction, returns
 ** the appropriate value for the cli command execution.
@@ -193,6 +208,9 @@ void ospf_vty_init (void);
 int64_t
 ospf_get_port_intervals(const struct ovsrec_port* port_row,
                             const char *key);
+int
+vtysh_init_intf_ospf_context_clients();
+
 
 /* OSPF KEYS */
 
@@ -232,6 +250,7 @@ ospf_get_port_intervals(const struct ovsrec_port* port_row,
 #define OSPF_TRANSMIT_DELAY_DEFAULT         1
 #define OSPF_RETRANSMIT_INTERVAL_DEFAULT    5
 #define OSPF_ROUTE_TYPE2_COST_DEFAULT       16777215
+#define OSPF_ROUTER_PRIORITY_DEFAULT        1
 /* TBD - To be modified when auto reference bandwidth is supported. */
 #define OSPF_DEFAULT_COST                   10
 #endif /* _OSPF_VTY_H */
