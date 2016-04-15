@@ -483,6 +483,7 @@ logrotate_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_system_col_logrotate_config);
 }
 
+
 static void
 mgmt_intf_ovsdb_init()
 {
@@ -604,6 +605,7 @@ ovsdb_init(const char *db_path)
 
     /* Add tables/columns needed for NTP config commands. */
     ntp_ovsdb_init();
+
 }
 
 static void
