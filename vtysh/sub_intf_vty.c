@@ -829,6 +829,62 @@ show_subinterface_status(const struct ovsrec_interface *ifrow, bool brief,
     }
 }
 
+/* Comparator for sorting sub interfaces */
+static int
+compare_nodes_by_subintf_id (const void *a_, const void *b_)
+{
+    const struct shash_node *const *a = a_;
+    const struct shash_node *const *b = b_;
+    unsigned int id_intf1 = 0, id_intf2 = 0;
+    unsigned long tag_sub_intf1 = 0, tag_sub_intf2 = 0;
+
+    /* Extract the interface and sub-interface id */
+    sscanf((*a)->name, "%u.%lu", &id_intf1, &tag_sub_intf1);
+    sscanf((*b)->name, "%u.%lu", &id_intf2, &tag_sub_intf2);
+
+    if(id_intf1 == id_intf2) {
+        if (tag_sub_intf1 == tag_sub_intf2) {
+            return 0;
+        }
+        else if (tag_sub_intf1 < tag_sub_intf2) {
+            return -1;
+        }
+         else {
+            return 1;
+        }
+    }
+    else if (id_intf1 < id_intf2) {
+        return -1;
+    }
+    else {
+        return 1;
+    }
+}
+
+const struct shash_node **
+sort_sub_interfaces (const struct shash *sh)
+{
+    if (shash_is_empty(sh)) {
+        return NULL;
+    } else {
+        const struct shash_node **nodes;
+        struct shash_node *node;
+
+        size_t i, n;
+
+        n = shash_count(sh);
+        nodes = xmalloc(n * sizeof *nodes);
+        i = 0;
+        SHASH_FOR_EACH (node, sh) {
+            nodes[i++] = node;
+        }
+        ovs_assert(i == n);
+
+        qsort(nodes, n, sizeof *nodes, compare_nodes_by_subintf_id);
+        return nodes;
+    }
+}
+
 DEFUN (cli_intf_show_subintferface_ifname,
         cli_intf_show_subintferface_ifname_cmd,
         "show interface A.B {brief}",
@@ -882,6 +938,8 @@ DEFUN (cli_intf_show_subintferface_if_all,
     char subif_prefix[MAX_IFNAME_LENGTH] = {0}, *subif_ptr = NULL;
     struct shash sorted_interfaces;
     bool brief = false;
+    const struct shash_node **nodes;
+    int idx, count;
 
     if ((argv[0] != NULL) && (strchr(argv[0], '.'))){
          return CMD_ERR_NO_MATCH;
@@ -906,9 +964,21 @@ DEFUN (cli_intf_show_subintferface_if_all,
         strcpy(subif_prefix, argv[0]);
         subif_ptr = strtok(subif_prefix, ".");
     }
+
     shash_init(&sorted_interfaces);
+
     OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
     {
+        shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
+    }
+
+    nodes = sort_sub_interfaces(&sorted_interfaces);
+    count = shash_count(&sorted_interfaces);
+
+    for (idx = 0; idx < count; idx++)
+    {
+        ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+
         if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) != 0)
         {
             continue;
@@ -918,8 +988,10 @@ DEFUN (cli_intf_show_subintferface_if_all,
             continue;
         }
         cli_show_subinterface_row(ifrow, brief);
-
     }
+
+    shash_destroy(&sorted_interfaces);
+    free(nodes);
 }
 
 DEFUN (vtysh_sub_interface,
