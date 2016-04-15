@@ -61,7 +61,8 @@ add_executable(vtysh
   vtysh_ovsdb_sftp_context.c
   utils/vlan_vtysh_utils.c
   utils/intf_vtysh_utils.c
-  utils/vrf_vtysh_utils.c)
+  utils/vrf_vtysh_utils.c
+  utils/passwd_srv_utils.c)
 
 target_link_libraries(vtysh PUBLIC
   ${OVSCOMMON_LIBRARIES}

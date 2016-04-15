@@ -98,6 +98,8 @@ struct vtysh_alias_data {
 #define USERDEL "/usr/sbin/userdel"
 #define USER_NAME_MAX_LENGTH 32
 
+#define OPS_ADMIN_GROUP "ops_admin"
+
 #define TEMPORARY_STARTUP_SOCKET "temp_startup.sock"
 #define OVSDB_PATH "/var/run/openvswitch/ovsdb.db"
 #define TEMPORARY_STARTUP_DB "/var/run/openvswitch/temp_startup.db"
