@@ -3822,36 +3822,13 @@ DEFUN (show_version,
        SHOW_STR
        "Displays zebra version\n")
 {
-  vty_out (vty, "%s %s (%s).%s", QUAGGA_PROGNAME, QUAGGA_VERSION,
-	   host.name?host.name:"", VTY_NEWLINE);
-  vty_out (vty, "%s%s", GIT_INFO, VTY_NEWLINE);
+    vty_out (vty, "%s %s (%s).%s", QUAGGA_PROGNAME, QUAGGA_VERSION,
+             host.name?host.name:"", VTY_NEWLINE);
+    vty_out (vty, "%s%s", GIT_INFO, VTY_NEWLINE);
 
-  return CMD_SUCCESS;
+    return CMD_SUCCESS;
 }
-#else
-DEFUN (show_version,
-       show_version_cmd,
-       "show version",
-       SHOW_STR
-       SHOW_VERSION_STR)
-{
-  vty_out (vty, "%s %s%s", vtysh_ovsdb_os_name_get(),
-           vtysh_ovsdb_switch_version_get(), VTY_NEWLINE);
-  return CMD_SUCCESS;
-}
-#endif /* ENABLE_OVSDB */
-
-/* Show version detail. */
-DEFUN (show_version_detail,
-       show_version_detail_cmd,
-       "show version detail",
-       SHOW_STR
-       SHOW_VERSION_STR
-       SHOW_VERSION_DETAIL_STR)
-{
-  vtysh_ovsdb_show_version_detail();
-  return CMD_SUCCESS;
-}
+#endif
 
 /* Help display function for all node. */
 DEFUN (config_help,
@@ -5071,8 +5048,6 @@ cmd_init (int terminal)
   install_node (&config_node, config_write_host);
 
   /* Each node's basic commands. */
-  install_element (VIEW_NODE, &show_version_cmd);
-  install_element (VIEW_NODE, &show_version_detail_cmd);
   if (terminal)
     {
       install_element (VIEW_NODE, &config_list_cmd);
@@ -5104,9 +5079,10 @@ cmd_init (int terminal)
     }
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
-#endif
+
   install_element (ENABLE_NODE, &show_version_cmd);
-  install_element (ENABLE_NODE, &show_version_detail_cmd);
+  install_element (VIEW_NODE, &show_version_cmd);
+#endif
 
   if (terminal)
     {

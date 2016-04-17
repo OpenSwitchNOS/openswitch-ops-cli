@@ -548,21 +548,6 @@ ovsdb_init(const char *db_path)
     /* Add system table. */
     ovsdb_idl_add_table(idl, &ovsrec_table_system);
 
-    /* Add software_info column */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_software_info);
-
-    /* Add switch version column */
-    ovsdb_idl_add_column(idl, &ovsrec_system_col_switch_version);
-
-    /* Add Package_Info table for show version detail. */
-    ovsdb_idl_add_table(idl, &ovsrec_table_package_info);
-
-    /* Add name, src_url, src_type version column for show version detail. */
-    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_name);
-    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_version);
-    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_src_type);
-    ovsdb_idl_add_column(idl, &ovsrec_package_info_col_src_url);
-
     /* Add hostname columns. */
     ovsdb_idl_add_column(idl, &ovsrec_system_col_hostname);
 
@@ -733,43 +718,6 @@ vtysh_ovsdb_domainname_get()
     }
 
     return NULL;
-}
-
-
-/*
- * The get command to read from the ovsdb system table
- * software_info:os_name value.
- */
-const char *
-vtysh_ovsdb_os_name_get(void)
-{
-    const struct ovsrec_system *ovs;
-    const char *os_name = NULL;
-
-    ovs = ovsrec_system_first(idl);
-    if (ovs) {
-        os_name = smap_get(&ovs->software_info, SYSTEM_SOFTWARE_INFO_OS_NAME);
-    }
-
-    return os_name ? os_name : "OpenSwitch";
-}
-
-/*
- * The get command to read from the ovsdb system table
- * switch_version column.
- */
-const char *
-vtysh_ovsdb_switch_version_get(void)
-{
-    const struct ovsrec_system *ovs;
-
-    ovs = ovsrec_system_first(idl);
-    if (ovs == NULL) {
-        VLOG_ERR("unable to retrieve any system table rows");
-        return "";
-    }
-
-    return ovs->switch_version ? ovs->switch_version : "";
 }
 
 /*
@@ -1478,25 +1426,6 @@ utils_vtysh_rl_describe_output(struct vty* vty, vector describe, int width)
                         token->desc);
                 }
             }
-        }
-    }
-}
-
-/* Show version detail */
-void
-vtysh_ovsdb_show_version_detail(void)
-{
-    const struct ovsrec_package_info *row = NULL;
-
-    OVSREC_PACKAGE_INFO_FOR_EACH(row, idl) {
-        if (row) {
-            vty_out(vty, "PACKAGE     : %-128s\n",  row->name);
-            vty_out(vty, "VERSION     : %-128s\n",
-                (row->version[0] == '\0') ? "Not Available" : row->version);
-            vty_out(vty, "SOURCE TYPE : %-128s\n",
-                (row->src_type[0] == '\0') ? "Not Available" : row->src_type);
-            vty_out(vty, "SOURCE URL  : %-128s\n\n",
-                (row->src_url[0] == '\0') ? "Not Available" : row->src_url);
         }
     }
 }
