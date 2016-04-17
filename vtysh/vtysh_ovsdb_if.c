@@ -1282,22 +1282,19 @@ check_iface_in_lag(const char *if_name)
     return false;
 }
 
-
 /*
- * This functions is used to check if port row exists.
+ * This function is used to get port row corresponding to the port name
+ * from the Port Table.
  *
  * Variables:
- * port_name -> name of port to check
- * create -> flag to create port if not found
- * attach_to_default_vrf -> attach newly created port to default VRF
+ * port_name -> name of port to get the port row.
  */
 const struct ovsrec_port*
-port_check_and_add (const char *port_name, bool create,
-                    bool attach_to_default_vrf, struct ovsdb_idl_txn *txn)
+port_get_port_row(const char *port_name)
 {
+    int i = 0;
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_interface *intf_row = NULL;
-    int i = 0;
 
     OVSREC_PORT_FOR_EACH (port_row, idl)
     {
@@ -1311,6 +1308,52 @@ port_check_and_add (const char *port_name, bool create,
             }
         }
     }
+    return NULL;
+}
+
+/*
+ * This function is used to attach the port row to default vrf.
+ *
+ * Variables:
+ * port_row -> port row that is to be added to the default vrf.
+ */
+void
+port_attach_to_default_vrf(const struct ovsrec_port *port_row)
+{
+    const struct ovsrec_vrf *default_vrf_row = NULL;
+    struct ovsrec_port **ports = NULL;
+    size_t i;
+
+    default_vrf_row = get_default_vrf(idl);
+    ports = xmalloc (
+            sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
+    for (i = 0; i < default_vrf_row->n_ports; i++)
+        ports[i] = default_vrf_row->ports[i];
+
+    struct ovsrec_port
+        *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+    ports[default_vrf_row->n_ports] = temp_port_row;
+    ovsrec_vrf_set_ports (default_vrf_row, ports,
+                          (default_vrf_row->n_ports + 1));
+    free (ports);
+}
+
+/*
+ * This function is used to check if port row exists.
+ *
+ * Variables:
+ * port_name -> name of port to check
+ * create -> flag to create port if not found
+ * attach_to_default_vrf -> attach newly created port to default VRF
+ */
+const struct ovsrec_port*
+port_check_and_add (const char *port_name, bool create,
+                    bool attach_to_default_vrf, struct ovsdb_idl_txn *txn)
+{
+    const struct ovsrec_port *port_row = NULL;
+
+    port_row = port_get_port_row(port_name);
+
     if (!port_row && create)
     {
         const struct ovsrec_interface *if_row = NULL;
@@ -1331,26 +1374,10 @@ port_check_and_add (const char *port_name, bool create,
         }
         if (attach_to_default_vrf)
         {
-            const struct ovsrec_vrf *default_vrf_row = NULL;
-            struct ovsrec_port **ports = NULL;
-            size_t i;
-            default_vrf_row = get_default_vrf(idl);
-            ports = xmalloc (
-                    sizeof *default_vrf_row->ports * (default_vrf_row->n_ports + 1));
-            for (i = 0; i < default_vrf_row->n_ports; i++)
-                ports[i] = default_vrf_row->ports[i];
-
-            struct ovsrec_port
-                *temp_port_row = CONST_CAST(struct ovsrec_port*,
-                        port_row);
-            ports[default_vrf_row->n_ports] = temp_port_row;
-            ovsrec_vrf_set_ports (default_vrf_row, ports,
-                    default_vrf_row->n_ports + 1);
-            free (ports);
+            port_attach_to_default_vrf(port_row);
         }
-        return port_row;
     }
-    return NULL;
+    return port_row;
 }
 
 

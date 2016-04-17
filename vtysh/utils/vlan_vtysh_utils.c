@@ -227,7 +227,11 @@ create_vlan_interface(const char *vlan_if)
     for (i = 0; i < vrf_row->n_ports; i++) {
         vrf_port_list[i] = vrf_row->ports[i];
     }
-    vrf_port_list[vrf_row->n_ports] = (struct ovsrec_port *)port_row;
+
+    struct ovsrec_port
+    *temp_port_row = CONST_CAST(struct ovsrec_port*, port_row);
+
+    vrf_port_list[vrf_row->n_ports] = temp_port_row;
     ovsrec_vrf_set_ports(vrf_row, vrf_port_list, vrf_row->n_ports + 1);
     free(vrf_port_list);
 
@@ -277,7 +281,7 @@ delete_vlan_interface(const char *vlan_if)
     const struct ovsrec_interface *if_row = NULL;
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_bridge *bridge_row = NULL;
-    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL, *vrf = NULL;
 
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
@@ -312,6 +316,7 @@ delete_vlan_interface(const char *vlan_if)
     {
         if (strcmp(port_row->name, vlan_if) == 0) {
             port_exist = true;
+            break;
         }
     }
 
@@ -324,9 +329,17 @@ delete_vlan_interface(const char *vlan_if)
         return CMD_OVSDB_FAILURE;
     }
 
+    OVSREC_VRF_FOR_EACH (vrf, idl)
+    {
+        for (i = 0; i < vrf->n_ports; i++)
+        {
+            if (vrf->ports[i] == port_row)
+                vrf_row = vrf;
+        }
+    }
+
     /* Remove the port row from vrf */
-    /* Iterate through each VRF */
-    OVSREC_VRF_FOR_EACH(vrf_row, idl)
+    if (vrf_row != NULL)
     {
         vrf_port_list =
             xmalloc(sizeof(struct ovsrec_port) * (vrf_row->n_ports - 1));
@@ -341,6 +354,14 @@ delete_vlan_interface(const char *vlan_if)
             ovsrec_vrf_set_ports(vrf_row, vrf_port_list, vrf_row->n_ports - 1);
         }
         free(vrf_port_list);
+    }
+    else
+    {
+        vty_out(vty,
+                "Vlan interface is not part of any VRF. Cannot delete %s",
+                VTY_NEWLINE);
+        cli_do_config_abort(status_txn);
+        return CMD_OVSDB_FAILURE;
     }
 
     /* Remove the port row from bridge */
