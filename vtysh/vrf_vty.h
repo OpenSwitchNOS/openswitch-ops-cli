@@ -39,4 +39,10 @@ const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
 
 const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 
+int
+vrf_add_port (const char *if_name, const char *vrf_name);
+
+int
+vrf_del_port (const char *if_name, const char *vrf_name);
+
 #endif /* _VRF_VTY_H */

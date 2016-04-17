@@ -805,6 +805,27 @@ DEFUN (cli_intf_show_interface_loopback,
             vty_flags, 0, argv);
 }
 
+DEFUN (cli_loopback_if_vrf_add_port,
+    cli_loopback_if_vrf_add_port_cmd,
+    "vrf attach VRF_NAME",
+    VRF_STR
+    "Attach Loopback Interface to VRF\n"
+    "VRF name\n")
+{
+  return vrf_add_port((char*) vty->index, argv[0]);
+}
+
+DEFUN (cli_loopback_if_vrf_del_port,
+    cli_loopback_if_vrf_del_port_cmd,
+    "no vrf attach VRF_NAME",
+    NO_STR
+    VRF_STR
+    "Detach Loopback Interface from VRF\n"
+    "VRF name\n")
+{
+  return vrf_del_port((char*) vty->index, argv[0]);
+}
+
 DEFUN (cli_loopback_if_config_ip4,
         cli_loopback_if_config_ip4_cmd,
         "ip address A.B.C.D/M",
@@ -870,6 +891,8 @@ loopback_intf_vty_init (void)
     install_element (CONFIG_NODE,  &vtysh_del_loopback_interface_cmd);
 
     /*Configurations at LOOPBACK_INTERFACE_NODE*/
+    install_element (LOOPBACK_INTERFACE_NODE, &cli_loopback_if_vrf_add_port_cmd);
+    install_element (LOOPBACK_INTERFACE_NODE, &cli_loopback_if_vrf_del_port_cmd);
     install_element (LOOPBACK_INTERFACE_NODE, &cli_loopback_if_config_ip4_cmd);
     install_element (LOOPBACK_INTERFACE_NODE, &cli_loopback_if_del_ip4_cmd);
     install_element (LOOPBACK_INTERFACE_NODE,
