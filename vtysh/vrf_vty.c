@@ -413,7 +413,7 @@ vrf_delete (const char *vrf_name)
  * Adds an interface/port to a VRF.
  * Takes interface name and VRF name as arguments.
  */
-static int
+int
 vrf_add_port (const char *if_name, const char *vrf_name)
 {
   const struct ovsrec_vrf *vrf_row = NULL;
@@ -508,7 +508,11 @@ vrf_add_port (const char *if_name, const char *vrf_name)
         ports[n++] = unlink_vrf_row->ports[i];
     }
   ovsrec_vrf_set_ports (unlink_vrf_row, ports, n);
-  ovsrec_port_delete (port_row);
+
+  if (VERIFY_VLAN_IFNAME (if_name) != 0)
+    {
+      ovsrec_port_delete (port_row);
+    }
   port_row = port_check_and_add (if_name, true, false, status_txn);
 
   xrealloc (ports, sizeof *vrf_row->ports * (vrf_row->n_ports + 1));
@@ -547,7 +551,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
 /*
  * This function is used to delete a port linked to a VRF.
  */
-static int
+int
 vrf_del_port (const char *if_name, const char *vrf_name)
 {
   const struct ovsrec_vrf *vrf_row = NULL;
@@ -645,7 +649,10 @@ vrf_del_port (const char *if_name, const char *vrf_name)
         ports[n++] = vrf_row->ports[i];
     }
   ovsrec_vrf_set_ports (vrf_row, ports, n);
-  ovsrec_port_delete (port_row);
+  if (VERIFY_VLAN_IFNAME (if_name) != 0)
+    {
+      ovsrec_port_delete (port_row);
+    }
   port_row = port_check_and_add (if_name, true, true, status_txn);
   free (ports);
 
