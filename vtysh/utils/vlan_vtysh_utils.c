@@ -328,19 +328,23 @@ delete_vlan_interface(const char *vlan_if)
     /* Iterate through each VRF */
     OVSREC_VRF_FOR_EACH(vrf_row, idl)
     {
-        vrf_port_list =
-            xmalloc(sizeof(struct ovsrec_port) * (vrf_row->n_ports - 1));
-        for (i = 0, j = 0; i < vrf_row->n_ports; i++) {
-            if (strcmp(vrf_row->ports[i]->name, vlan_if) != 0) {
-                vrf_port_list[j] = vrf_row->ports[i];
-                j++;
+        port_row = port_get_port_row(vlan_if);
+        if ( vrf_row == port_vrf_lookup (port_row))
+        {
+            vrf_port_list =
+                xmalloc(sizeof(struct ovsrec_port) * (vrf_row->n_ports - 1));
+            for (i = 0, j = 0; i < vrf_row->n_ports; i++) {
+                if (strcmp(vrf_row->ports[i]->name, vlan_if) != 0) {
+                    vrf_port_list[j] = vrf_row->ports[i];
+                    j++;
+                }
             }
+            /* If we find the interface then update the vrf port list */
+            if (i > j) {
+                ovsrec_vrf_set_ports(vrf_row, vrf_port_list, vrf_row->n_ports - 1);
+            }
+            free(vrf_port_list);
         }
-        /* If we find the interface then update the vrf port list */
-        if (i > j) {
-            ovsrec_vrf_set_ports(vrf_row, vrf_port_list, vrf_row->n_ports - 1);
-        }
-        free(vrf_port_list);
     }
 
     /* Remove the port row from bridge */
