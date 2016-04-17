@@ -32,8 +32,6 @@ void vtysh_ovsdb_init(int argc, char *argv[], char *db_name);
 
 const char *vtysh_ovsdb_os_name_get(void);
 
-const char *vtysh_ovsdb_switch_version_get(void);
-
 void vtysh_ovsdb_domainname_set(const char * in);
 
 int vtysh_ovsdb_domainname_reset(char *domainname_arg);
@@ -86,7 +84,5 @@ const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
 extern struct ovsrec_vlan *vlan_row;
 
 bool check_if_internal_vlan(const struct ovsrec_vlan *vlan_row);
-
-void vtysh_ovsdb_show_version_detail(void);
 
 #endif /* VTYSH_OVSDB_IF_H */
