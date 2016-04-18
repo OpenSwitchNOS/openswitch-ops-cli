@@ -16,6 +16,7 @@
 # under the License.
 
 import re
+import pytest
 
 TOPOLOGY = """
 #
@@ -29,6 +30,7 @@ TOPOLOGY = """
 """
 
 
+@pytest.mark.skipif(True, reason="Defective validations lines 102-120")
 def test_interface_commands(topology, step):
     sw1 = topology.get('sw1')
 
