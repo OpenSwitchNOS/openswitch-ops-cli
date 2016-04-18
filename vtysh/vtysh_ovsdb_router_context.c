@@ -927,6 +927,33 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
                         "max-metric router-lsa on-startup", val);
             }
 
+            /*Compatible rfc1583*/
+            redist_def_orig = smap_get_bool(&ospf_router_row->other_config, OSPF_KEY_RFC1583_COMPATIBLE,
+                                             OSPF_RFC1583_COMPATIBLE_DEFAULT);
+            if (redist_def_orig)
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s", "",
+                        "compatible rfc1583");
+            }
+
+            /*Default metric*/
+            val = smap_get(&ospf_router_row->other_config, OSPF_KEY_ROUTER_DEFAULT_METRIC);
+            if ((atoi(val) > 0) && (atoi(val) != atoi(OSPF_DEFAULT_METRIC_DEFAULT)))
+            {
+                 vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "default-metric", atoi(val));
+            }
+
+            /*Timers lsa-group-pacing*/
+            for (i = 0; i < ospf_router_row->n_lsa_timers; i++) {
+              if (strcmp(ospf_router_row->key_lsa_timers[i],OSPF_KEY_LSA_GROUP_PACING) == 0) {
+                distance = ospf_router_row->value_lsa_timers[i];
+              }
+            }
+            if ((distance > 0) && (distance != OSPF_LSA_GROUP_PACING_DEFAULT))
+            {
+              vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "timers lsa-group-pacing", distance);
+            }
+
             /* Distance */
             distance = ospf_get_distance(ospf_router_row,
                                          OVSREC_OSPF_ROUTER_DISTANCE_ALL);
