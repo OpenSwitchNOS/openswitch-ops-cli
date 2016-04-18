@@ -254,6 +254,96 @@ def unsetDistanceTest(dut01):
     assert 'distance 5' not in cmdOut, "Test to unset distance failed"
     return True
 
+def setCompatiblerfc1583Test(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="compatible rfc1583")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set compatible rfc1583 cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'compatible rfc1583' in cmdOut, "Test to set compatible rfc1583 failed"
+    return True
+
+
+def unsetCompatiblerfc1583Test(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no compatible rfc1583")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset compatible rfc1583 cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'compatible rfc1583' not in cmdOut, "Test to unset compatible rfc1583 failed"
+    return True
+
+def setDefaultmetricTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="default-metric 190")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set default-metric cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'default-metric 190' in cmdOut, "Test to set default-metric failed"
+    return True
+
+def unsetDefaultmetricTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no default-metric 190")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset default-metric cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'default-metric 190' not in cmdOut, "Test to unset default-metric failed"
+    return True
+
+def setTimerslsagrouppacingTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="timers lsa-group-pacing 250")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set timers lsa-group-pacing cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'timers lsa-group-pacing 250' in cmdOut, "Test to set timers lsa-group-pacing failed"
+    return True
+
+def unsetTimerslsagrouppacingTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no timers lsa-group-pacing 250")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset timers lsa-group-pacing cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'timers lsa-group-pacing 250' not in cmdOut, "Test to unset timers lsa-group-pacing  failed"
+    return True
 
 def configure(**kwargs):
     '''
@@ -1131,6 +1221,54 @@ class Test_ospf_configuration:
             LogOutput('info', "no form running config show - passed")
         else:
             LogOutput('error', "no form running config show - failed")
+
+    def test_setCompatiblerfc1583Test(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setCompatiblerfc1583Test(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Set compatible rfc1583 - passed")
+        else:
+            LogOutput('error', "Set compatible rfc1583 - failed")
+
+    def test_unsetCompatiblerfc1583Test(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetCompatiblerfc1583Test(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset Compatible rfc1583 - passed")
+        else:
+            LogOutput('error', "Unset Compatible rfc1583 - failed")
+
+    def test_setDefaultmetricTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setDefaultmetricTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Set default-metric - passed")
+        else:
+            LogOutput('error', "Set default-metric - failed")
+
+    def test_unsetDefaultmetricTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetDefaultmetricTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset default-metric - passed")
+        else:
+            LogOutput('error', "Unset default-metric - failed")
+
+    def test_setTimerslsagrouppacingTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setTimerslsagrouppacingTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Set timers lsa-group-pacing - passed")
+        else:
+            LogOutput('error', "Set timers lsa-group-pacing - failed")
+
+    def test_unsetTimerslsagrouppacingTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetTimerslsagrouppacingTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset timers lsa-group-pacing - passed")
+        else:
+            LogOutput('error', "Unset timers lsa-group-pacing - failed")
 
     def test_configure(self):
         dut01Obj = self.topoObj.deviceObjGet(device="dut01")
