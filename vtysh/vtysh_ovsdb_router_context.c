@@ -878,6 +878,7 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
     int64_t distance = 0;
     bool redist_def_orig = false;
     bool redist_def_orig_always = false;
+    int metric, timers;
 
     vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                              "vtysh_context_router_ospf_clientcallback entered");
@@ -925,6 +926,39 @@ vtysh_router_context_ospf_clientcallback(void *p_private)
             {
                 vtysh_ovsdb_cli_print(p_msg, "%4s%s %s", "",
                         "max-metric router-lsa on-startup", val);
+            }
+
+            /*Compatible rfc1583*/
+            redist_def_orig = smap_get_bool(&ospf_router_row->other_config,
+                                            OSPF_KEY_RFC1583_COMPATIBLE,
+                                            OSPF_RFC1583_COMPATIBLE_DEFAULT);
+            if (redist_def_orig)
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s", "",
+                        "compatible rfc1583");
+            }
+
+            /*Default metric*/
+            metric = smap_get_int(&ospf_router_row->other_config,
+                                  OSPF_KEY_ROUTER_DEFAULT_METRIC,
+                                  OSPF_DEFAULT_METRIC_DEFAULT);
+            if ((metric > 0) && (metric != atoi(OSPF_DEFAULT_METRIC_DEFAULT)))
+            {
+                 vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "", "default-metric",
+                                                                        metric);
+            }
+
+            /*Timers lsa-group-pacing*/
+            for (i = 0; i < ospf_router_row->n_lsa_timers; i++) {
+                if (strcmp(ospf_router_row->key_lsa_timers[i],
+                                             OSPF_KEY_LSA_GROUP_PACING) == 0) {
+                    timers = ospf_router_row->value_lsa_timers[i];
+                }
+            }
+            if ((timers > 0) && (timers != OSPF_LSA_GROUP_PACING_DEFAULT))
+            {
+                vtysh_ovsdb_cli_print(p_msg, "%4s%s %d", "",
+                                             "timers lsa-group-pacing", timers);
             }
 
             /* Distance */

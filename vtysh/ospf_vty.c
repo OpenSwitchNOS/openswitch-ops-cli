@@ -2127,6 +2127,233 @@ static int ospf_max_metric_admin_cmd_execute(bool no_flag,
 
 }
 
+/*-----------------------------------------------------------------------------
+  | Function : ospf_router_default_metric_cmd_exec
+  | Responsibility : Used to set the default-metric value.
+  | Parameters :
+  |     bool set_flag                 : It has a bool value. If the set_flag is false,
+  |                                     then do validate the user-given metric
+  |                                     with the current metric.
+  |     const char *metric            : Metric used for redistributed routes
+  |                                     in the OSPF
+  | Return : zero for success and non-zero for failure.
+  -----------------------------------------------------------------------------*/
+static int
+ospf_router_default_metric_cmd_exec (bool set_flag, const char * metric)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct smap smap;
+    int64_t instance_id = 1;
+    int value_metric;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
+                                                              instance_id);
+    if (ospf_router_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    smap_clone(&smap, &ospf_router_row->other_config);
+    if (set_flag == false) {
+        value_metric = smap_get_int(&smap, OSPF_KEY_ROUTER_DEFAULT_METRIC,
+                                           OSPF_DEFAULT_METRIC_DEFAULT);
+        if (value_metric != atoi(metric)) {
+            OSPF_ABORT_DB_TXN(ospf_router_txn,
+                           "Value was not configured earlier.");
+            return CMD_SUCCESS;
+        }
+        smap_replace(&smap,  OSPF_KEY_ROUTER_DEFAULT_METRIC,
+                               CONST_CAST(char*, OSPF_DEFAULT_METRIC_DEFAULT));
+    } else
+        smap_replace(&smap,  OSPF_KEY_ROUTER_DEFAULT_METRIC, metric);
+
+    ovsrec_ospf_router_set_other_config(ospf_router_row, &smap);
+
+    smap_destroy(&smap);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+}
+
+/*-----------------------------------------------------------------------------
+  | Function : ospf_update_timers_for_lsa_group_pacing
+  | Responsibility : Used to update the timers lsa_group_pacing.
+  | Parameters :
+  |     bool set_flag                 : It has a bool value. If the set_flag is
+  |                                     false, then do validate the user-given
+  |                                     interval with the current interval.
+  |     const struct ovsrec_ospf_router *ospf_router_row : Store OSPF_Router row.
+  |     int duration                  : The time interval for grouping different
+  |                                     LSAs of the same age
+  | Return : zero for success and non-zero for failure.
+  -----------------------------------------------------------------------------*/
+int
+ospf_update_timers_for_lsa_group_pacing(bool set_flag,
+                     const struct ovsrec_ospf_router *ospf_router_row,
+                     int duration)
+{
+    int64_t *value_list;
+    char **key_list;
+    int i = 0, j = 0;
+    bool is_present = false;
+
+    key_list =
+      xmalloc(OSPF_TIMER_KEY_MAX_LENGTH * (ospf_router_row->n_lsa_timers + 1));
+    value_list =
+      xmalloc(sizeof *ospf_router_row->value_lsa_timers *
+                             (ospf_router_row->n_lsa_timers));
+
+    if (!key_list || !value_list)
+    {
+        SAFE_FREE(key_list);
+        SAFE_FREE(value_list);
+        VLOG_DBG("Memory alloc failed, could not add network to router.%s",
+                  VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    for (i = 0; i < ospf_router_row->n_lsa_timers; i++) {
+        if (strcmp(ospf_router_row->key_lsa_timers[i],
+                                         OSPF_KEY_LSA_GROUP_PACING) == 0) {
+            j = i;
+            is_present = true;
+        }
+        key_list[i] =  ospf_router_row->key_lsa_timers[i];
+        value_list[i] = ospf_router_row->value_lsa_timers[i];
+    }
+
+    if (set_flag == false){
+        if (ospf_router_row->value_lsa_timers[j] != duration){
+            fprintf (stderr,"Value was not configured earlier.\n");
+            SAFE_FREE(key_list);
+            SAFE_FREE(value_list);
+            return CMD_SUCCESS;
+        }
+        duration = OSPF_LSA_GROUP_PACING_DEFAULT;
+    }
+
+    if (is_present == true)
+        value_list[j] =  duration;
+    ovsrec_ospf_router_set_lsa_timers(ospf_router_row, key_list, value_list,
+                                              (ospf_router_row->n_lsa_timers));
+
+    SAFE_FREE(key_list);
+    SAFE_FREE(value_list);
+
+    return CMD_SUCCESS;
+}
+
+/*-----------------------------------------------------------------------------
+  | Function : ospf_router_timers_lsa_group_pacing_set
+  | Responsibility : Used to call the update timers lsa_group_pacing function.
+  | Parameters :
+  |     bool set_flag                 : It has a bool value. If the flag is
+  |                                     false, then do validate the user-given
+  |                                     interval with the current interval.
+  |     int duration                  : The time interval for grouping different
+  |                                     LSAs of the same age
+  | Return : zero for success and non-zero for failure.
+  -----------------------------------------------------------------------------*/
+static int
+ospf_router_timers_lsa_group_pacing_set(bool set_flag, int duration)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    int64_t instance_id = 1;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
+                                                              instance_id);
+    if (ospf_router_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    if (ospf_update_timers_for_lsa_group_pacing(set_flag, ospf_router_row,
+                                                   duration) != CMD_SUCCESS)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Setting timers failed.");
+    }
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+
+}
+
+/*-----------------------------------------------------------------------------
+  | Function : ospf_router_compat_rfc1583_cmd_exe
+  | Responsibility : Used to enable or disable the compatible rfc1583.
+  | Parameters :
+  |     bool set_flag                 : It has a bool value, that will enable
+  |                                     and disable the compatible rfc1583.
+  | Return :  zero for success and non-zero for failure.
+  -----------------------------------------------------------------------------*/
+static int
+ospf_router_compat_rfc1583_cmd_exe(bool set_flag)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct smap smap;
+    int64_t instance_id = 1;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
+                                                              instance_id);
+    if (ospf_router_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    smap_clone(&smap, &ospf_router_row->other_config);
+    if (set_flag == true)
+        smap_replace(&smap, OSPF_KEY_RFC1583_COMPATIBLE, "true");
+    else
+        smap_replace(&smap, OSPF_KEY_RFC1583_COMPATIBLE,
+                              OSPF_RFC1583_COMPATIBLE_DEFAULT);
+    ovsrec_ospf_router_set_other_config(ospf_router_row, &smap);
+
+    smap_destroy(&smap);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+}
+
 void
 ospf_interface_one_row_print(struct vty *vty,const char* ifname,
                         const struct ovsrec_ospf_interface *ospf_interface_row)
@@ -4749,6 +4976,72 @@ DEFUN (cli_no_ospf_area_stub_no_summary,
 }
 
 
+DEFUN (ospf_compatible_rfc1583,
+       ospf_compatible_rfc1583_cmd,
+       "compatible rfc1583",
+       "OSPF compatibility list\n"
+       "Compatible with RFC 1583 (Default: false)\n")
+{
+    return ospf_router_compat_rfc1583_cmd_exe(true);
+}
+
+DEFUN (ospf_no_compatible_rfc1583,
+       ospf_no_compatible_rfc1583_cmd,
+       "no compatible rfc1583",
+       NO_STR
+       "OSPF compatibility list\n"
+       "Compatible with RFC 1583 (Default: false)\n")
+{
+    return ospf_router_compat_rfc1583_cmd_exe(false);
+}
+
+DEFUN (ospf_default_metric,
+       ospf_default_metric_cmd,
+       "default-metric <0-16777214>",
+       "Set metric of redistributed routes\n"
+       "Default metric (Default: 20)\n")
+{
+    return ospf_router_default_metric_cmd_exec(true, argv[0]);
+}
+
+DEFUN (ospf_no_default_metric,
+       ospf_no_default_metric_cmd,
+       "no default-metric [<0-16777214>]",
+       NO_STR
+       "Set metric of redistributed routes\n"
+       "Default metric (Default: 20)\n")
+{
+    if (argc)
+      return ospf_router_default_metric_cmd_exec(false, argv[0]);
+    else
+      return ospf_router_default_metric_cmd_exec(true,
+                         CONST_CAST(char*, OSPF_DEFAULT_METRIC_DEFAULT));
+}
+
+DEFUN(ospf_timers_lsa_group_pacing,
+      ospf_timers_lsa_group_pacing_cmd,
+      "timers lsa-group-pacing <1-1800>",
+      "Set timer in seconds\n"
+      "Set timer for OSPF LSA group-pacing\n"
+      "Idle timer range in seconds (Default: 10)\n")
+{
+    return ospf_router_timers_lsa_group_pacing_set(true, atoi(argv[0]));
+}
+
+DEFUN(ospf_timers_no_lsa_group_pacing,
+      ospf_timers_no_lsa_group_pacing_cmd,
+      "no timers lsa-group-pacing [<1-1800>]",
+      NO_STR
+      "Set timer in seconds\n"
+      "Set timer for OSPF LSA group-pacing\n"
+      "Idle timer range in seconds (Default: 10)\n")
+{
+      if (argc)
+        return ospf_router_timers_lsa_group_pacing_set(false, atoi(argv[0]));
+      else
+        return ospf_router_timers_lsa_group_pacing_set(true,
+                                              OSPF_LSA_GROUP_PACING_DEFAULT);
+}
 
 DEFUN (cli_ip_ospf_show,
        cli_ip_ospf_show_cmd,
@@ -5512,6 +5805,13 @@ ospf_vty_init(void)
     install_element(OSPF_NODE, &cli_ospf_area_stub_no_summary_cmd);
     install_element(OSPF_NODE, &cli_no_ospf_area_stub_cmd);
     install_element(OSPF_NODE, &cli_no_ospf_area_stub_no_summary_cmd);
+
+    install_element(OSPF_NODE, &ospf_compatible_rfc1583_cmd);
+    install_element(OSPF_NODE, &ospf_no_compatible_rfc1583_cmd);
+    install_element(OSPF_NODE, &ospf_default_metric_cmd);
+    install_element(OSPF_NODE, &ospf_no_default_metric_cmd);
+    install_element(OSPF_NODE, &ospf_timers_lsa_group_pacing_cmd);
+    install_element(OSPF_NODE, &ospf_timers_no_lsa_group_pacing_cmd);
 
     /* OSPF Intervals */
     install_element(INTERFACE_NODE, &cli_ospf_router_hello_interval_cmd);
