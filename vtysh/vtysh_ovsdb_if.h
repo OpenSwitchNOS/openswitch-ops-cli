@@ -27,6 +27,7 @@
 
 #define MAX_MACADDR_LEN 17
 #define DEFAULT_SESSION_TIMEOUT_PERIOD 30
+#define OVS_OSPF_VL_MAX_COUNT        256
 
 void vtysh_ovsdb_init(int argc, char *argv[], char *db_name);
 

@@ -1144,6 +1144,433 @@ def unsetDefaultRouteRedistribution(dut01):
     return True
 
 
+def setAreaVirtualLink(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link " + virtualLink
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set area %s virtual-link %s failed" % \
+                         (area, virtualLink)
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                return True
+
+    return False
+
+
+def unsetAreaVirtualLink(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link " + virtualLink
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset area %s virtual-link %s failed" % \
+                         (area, virtualLink)
+
+    output = devIntReturn.get('buffer')
+    assert 'Virtual link configuration is not present.' not in output, \
+        "Test to unset virtual-link in area failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                return False
+
+    return True
+
+
+def setVirtualLinkHelloIntervalTest(dut01, area, virtualLink, interval):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link " + virtualLink + " hello-interval "\
+          + interval
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set virtual-link hello-interval command" \
+        " failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "hello-interval" in line:
+                    return True
+
+    return False
+
+
+def unsetVirtualLinkHelloIntervalTest(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link " + virtualLink + \
+          " hello-interval"
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset virtual-link hello-interval command" \
+        " failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "hello-interval" in line:
+                    return False
+
+    return True
+
+
+def setVirtualLinkTransmitDelayTest(dut01, area, virtualLink, interval):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link " + virtualLink + \
+          " transmit-delay " + interval
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set virtual-link transmit-delay command" \
+        " failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "transmit-delay" in line:
+                    return True
+
+    return False
+
+
+def unsetVirtualLinkTransmitDelayTest(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link " \
+          + virtualLink + " transmit-delay"
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset virtual-link transmit-delay command" \
+        " failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "transmit-delay" in line:
+                    return False
+
+    return True
+
+
+def setVirtualLinkRetransmitIntervalTest(dut01, area, virtualLink, interval):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link " + virtualLink + \
+          " retransmit-interval " + interval
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0,\
+        "Test to set virtual-link retransmit-interval command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "retransmit-interval" in line:
+                    return True
+
+    return False
+
+
+def unsetVirtualLinkRetransmitIntervalTest(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link "\
+          + virtualLink + " retransmit-interval"
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, \
+        "Test to unset virtual-link retransmit-interval command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "retransmit-interval" in line:
+                    return False
+
+    return True
+
+
+def setVirtualLinkDeadIntervalTest(dut01, area, virtualLink, interval):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link " \
+          + virtualLink + " dead-interval " + interval
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, \
+        "Test to set virtual-link dead-interval command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "dead-interval" in line:
+                    return True
+
+    return False
+
+
+def unsetVirtualLinkDeadIntervalTest(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link "\
+          + virtualLink + " dead-interval"
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, \
+        "Test to unset virtual-link dead-interval command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "dead-interval" in line:
+                    return False
+
+    return True
+
+
+def setVirtualLinkAuthMsgDigestTest(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link "\
+          + virtualLink + " authentication message-digest"
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set virtual-link authentication " \
+        "message-digest command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "authentication" in line:
+                    if "message-digest" in line:
+                        return True
+
+    return False
+
+
+def unsetVirtualLinkAuthMsgDigestTest(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link "\
+          + virtualLink + " authentication"
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset virtual-link authentication " \
+        "message-digest command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "authentication" in line:
+                    return False
+
+    return True
+
+
+def setVirtualLinkAuthKeyTest(dut01, area, virtualLink, auth_key):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link " \
+          + virtualLink + " authentication-key " + auth_key
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set virtual-link authentication-key " \
+        "command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "authentication-key" in line:
+                    if auth_key in line:
+                        return True
+
+    return False
+
+
+def unsetVirtualLinkAuthKeyTest(dut01, area, virtualLink):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link " \
+          + virtualLink + " authentication-key"
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset virtual-link authentication-key " \
+        "command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "authentication-key" in line:
+                    return False
+
+    return True
+
+
+def setVirtualLinkMsgDigestKeyTest(dut01, area, virtualLink, key, md5_key):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "area " + area + " virtual-link " + virtualLink + \
+          " message-digest-key " + key + " md5 " + md5_key
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set virtual-link message-digest-key " \
+        "command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "message-digest-key" in line:
+                    if key in line:
+                        if "md5" in line:
+                            if md5_key in line:
+                                return True
+
+    return False
+
+
+def unsetVirtualLinkMsgDigestKeyTest(dut01, area, virtualLink, key):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    cmd = "no area " + area + " virtual-link " + \
+          virtualLink + " message-digest-key " + key
+
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset virtual-link message-digest-key " \
+        "command failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running-config")
+    lines = cmdOut.split('\n')
+    for line in lines:
+        if "virtual-link" in line:
+            if virtualLink in line:
+                if "message-digest-key" in line:
+                    if key in line:
+                        if md5 in line:
+                            if md5_key in line:
+                                return False
+
+    return True
+
+
 #@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_ospf_configuration:
 
@@ -1691,3 +2118,156 @@ class Test_ospf_configuration:
             LogOutput('info', "Unset Interface NetworkType - passed")
         else:
             LogOutput('error', "Unset Interface NetworkType - failed")
+
+    def test_setAreaVirtualLink(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setAreaVirtualLink(dut01Obj, "2", "10.10.10.10")
+        if(retValue):
+            LogOutput('info', "set Area virtual-link - passed")
+        else:
+            assert False, "set Area virtual-link - failed"
+
+    def test_unsetAreaVirtualLink(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetAreaVirtualLink(dut01Obj, "2", "10.10.10.10")
+        if(retValue):
+            LogOutput('info', "unset Area virtual-link - passed")
+        else:
+            assert False, "unset Area virtual-link - failed"
+
+    def test_setVirtualLinkHelloIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setVirtualLinkHelloIntervalTest(dut01Obj,
+                                                   "2", "10.10.10.1", "5")
+        if(retValue):
+            LogOutput('info', "set Area virtual-link hello-interval - passed")
+        else:
+            assert False, "set Area virtual-link hello-interval - failed"
+
+    def test_unsetVirtualLinkHelloIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetVirtualLinkHelloIntervalTest(dut01Obj,
+                                                     "2", "10.10.10.1")
+        if(retValue):
+            LogOutput('info',
+                      "unset Area virtual-link hello-interval - passed")
+        else:
+            assert False, "unset Area virtual-link hello-interval - failed"
+
+    def test_setVirtualLinkTransmitDelayTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setVirtualLinkTransmitDelayTest(dut01Obj,
+                                                   "2", "10.10.10.2", "5")
+        if(retValue):
+            LogOutput('info', "set Area virtual-link transmit-delay - passed")
+        else:
+            assert False, "set Area virtual-link transmit-delay - failed"
+
+    def test_unsetVirtualLinkTransmitDelayTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetVirtualLinkTransmitDelayTest(dut01Obj,
+                                                     "2", "10.10.10.2")
+        if(retValue):
+            LogOutput('info',
+                      "unset Area virtual-link transmit-delay - passed")
+        else:
+            assert False, "unset Area virtual-link transmit-delay - failed"
+
+    def test_setVirtualLinkRetransmitIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setVirtualLinkRetransmitIntervalTest(dut01Obj,
+                                                        "2", "10.10.10.3", "4")
+        if(retValue):
+            LogOutput('info',
+                      "set Area virtual-link retransmit-interval - passed")
+        else:
+            assert False, "set Area virtual-link retransmit-interval - failed"
+
+    def test_unsetVirtualLinkRetransmitIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetVirtualLinkRetransmitIntervalTest(dut01Obj,
+                                                          "2", "10.10.10.3")
+        if(retValue):
+            LogOutput('info',
+                      "unset Area virtual-link retransmit-interval - passed")
+        else:
+            assert False, \
+                "unset Area virtual-link retransmit-interval - failed"
+
+    def test_setVirtualLinkDeadIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setVirtualLinkDeadIntervalTest(dut01Obj,
+                                                  "2", "10.10.10.4", "20")
+        if(retValue):
+            LogOutput('info', "set Area virtual-link dead-interval - passed")
+        else:
+            assert False, "set Area virtual-link dead-interval - failed"
+
+    def test_unsetVirtualLinkDeadIntervalTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetVirtualLinkDeadIntervalTest(dut01Obj,
+                                                    "2", "10.10.10.4")
+        if(retValue):
+            LogOutput('info',
+                      "unset Area virtual-link dead-interval - passed")
+        else:
+            assert False, "unset Area virtual-link dead-interval - failed"
+
+    def test_setVirtualLinkAuthMsgDigestTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setVirtualLinkAuthMsgDigestTest(dut01Obj,
+                                                   "2", "10.10.10.5")
+        if(retValue):
+            LogOutput('info',
+                      "set virtual-link authentication MD5 - passed")
+        else:
+            assert False, "set virtual-link authentication MD5 - failed"
+
+    def test_unsetVirtualLinkAuthMsgDigestTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetVirtualLinkAuthMsgDigestTest(dut01Obj,
+                                                     "2", "10.10.10.5")
+        if(retValue):
+            LogOutput('info',
+                      "unset virtual-link authentication MD5 - passed")
+        else:
+            assert False, \
+                "unset virtual-link authentication MD5 - failed"
+
+    def test_setVirtualLinkAuthKeyTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setVirtualLinkAuthKeyTest(dut01Obj,
+                                             "2", "10.10.10.6", "ospf")
+        if(retValue):
+            LogOutput('info', "set virtual-link authentication-key - passed")
+        else:
+            assert False, "set virtual-link authentication-key - failed"
+
+    def test_unsetVirtualLinkAuthKeyTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetVirtualLinkAuthKeyTest(dut01Obj, "2", "10.10.10.6")
+        if(retValue):
+            LogOutput('info',
+                      "unset virtual-link authentication-key - passed")
+        else:
+            assert False, "unset virtual-link authentication-key- failed"
+
+    def test_setVirtualLinkMsgDigestKeyTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = \
+            setVirtualLinkMsgDigestKeyTest(dut01Obj,
+                                           "2", "10.10.10.7", "3", "ospf")
+        if(retValue):
+            LogOutput('info', "set virtual-link message-digest-key - passed")
+        else:
+            assert False, "set virtual-link message-digest-key- failed"
+
+    def test_unsetVirtualLinkMsgDigestKeyTest(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetVirtualLinkMsgDigestKeyTest(dut01Obj,
+                                                    "2", "10.10.10.7", "3")
+        if(retValue):
+            LogOutput('info',
+                      "unset virtual-link message-digest-key - passed")
+        else:
+            assert False, "unset virtual-link message-digest-key- failed"
