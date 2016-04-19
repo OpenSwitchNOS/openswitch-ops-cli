@@ -562,6 +562,8 @@ main (int argc, char **argv, char **env)
   } while (counter < MAX_TIMEOUT_FOR_IDL_CHANGE);
 #endif
 
+  ospf_area_vlink_init();
+
   /* Main command loop. */
   while (vtysh_rl_gets ())
     vtysh_execute (line_read);
