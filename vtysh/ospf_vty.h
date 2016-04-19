@@ -129,8 +129,8 @@
 #define DEFAULT_REDIST_ORIGINATE_STR "Distribute a default route\n"
 #define DEFAULT_REDIST_ALWAYS_STR "Always advertise default route\n"
 
-#define OSPF_DEFAULT_INSTANCE_ID 1
-
+#define OSPF_DEFAULT_INSTANCE_ID     1
+#define OVS_OSPF_VL_MTU              1500
 /*
 ** depending on the outcome of the db transaction, returns
 ** the appropriate value for the cli command execution.
@@ -162,6 +162,10 @@ cli_command_result (enum ovsdb_idl_txn_status status)
         status = cli_do_config_finish(txn);               \
         return cli_command_result(status);                \
     } while (0)
+
+#define OSPF_END_DB_TXN_STATUS(txn)                   \
+       enum ovsdb_idl_txn_status status;              \
+       status = cli_do_config_finish(txn);
 
 #define OSPF_ERRONEOUS_DB_TXN(txn, error_message)                   \
     do {                                                            \
@@ -287,6 +291,8 @@ vtysh_init_intf_ospf_context_clients();
 
 #define OSPF_EXT_TYPE_STRING_TYPE1             "ext_type_1"
 #define OSPF_EXT_TYPE_STRING_TYPE2             "ext_type_2"
+#define OSPF_KEY_AREA_FULL_VL_NEIGHBORS        "full_virtual_nbrs"
+
 
 /* OSPF Default values */
 #define OSPF_HELLO_INTERVAL_DEFAULT         10

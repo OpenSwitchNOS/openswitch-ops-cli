@@ -64,6 +64,7 @@
 
 
 extern struct ovsdb_idl *idl;
+extern unsigned char ospf_vlink_count[];
 
 VLOG_DEFINE_THIS_MODULE(ospf_vty);
 
@@ -1454,7 +1455,18 @@ ospf_one_area_show(struct vty *vty,int64_t area_id,
     {
         vty_out(vty, "    Area has no authentication %s", VTY_NEWLINE);
     }
-
+    /* Fully adjacent VL neighbors */
+    val = smap_get(&ospf_area_row->status, OSPF_KEY_AREA_FULL_VL_NEIGHBORS);
+    if(val)
+    {
+        vty_out(vty, "    Number of full virtual adjacencies going through this area: %d%s",
+                atoi(val), VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out(vty, "    Number of full virtual adjacencies going through this area: 0%s",
+                 VTY_NEWLINE);
+    }
     /* SPF timestamp */
     val = smap_get(&ospf_area_row->status, OSPF_KEY_AREA_SPF_LAST_RUN);
     if(val)
@@ -2154,6 +2166,340 @@ static int ospf_max_metric_admin_cmd_execute(bool no_flag,
 
 }
 
+static struct ovsrec_ospf_neighbor*
+find_ospf_nbr_by_if_addr (const struct ovsrec_ospf_interface* ovs_oi, struct in_addr src)
+{
+    struct ovsrec_ospf_neighbor* nbr_row = NULL;
+    int i = 0;
+
+    for (i = 0 ; i < ovs_oi->n_neighbors ; i++)
+    {
+        nbr_row = ovs_oi->neighbors[i];
+        if (nbr_row && (*(nbr_row->nbr_if_addr) == (int64_t)(src.s_addr)))
+            return nbr_row;
+    }
+    return NULL;
+}
+
+static void
+ospf_vl_interface_one_row_print(struct vty *vty,
+                        const struct ovsrec_ospf_interface *ospf_interface_row)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct ovsrec_ospf_area *ospf_area_row = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_ospf_neighbor *ospf_nbr_row = NULL;
+    int i, j, n_adjacent_nbrs = 0;
+    int64_t area_id = 0, router_id = 0, intervals = 0;
+    int64_t dr_id = 0, bdr_id = 0, dr_if_addr = 0, bdr_if_addr = 0;
+    const char *val = NULL;
+    bool is_dr_present = false;
+    bool is_bdr_present = false;
+    bool is_present = false;
+    const struct ovsrec_vrf *vrf_row;
+    int instance_id = 1;
+    char timebuf[OSPF_TIME_SIZE];
+    char area_str[OSPF_SHOW_STR_LEN];
+    int ret;
+    struct in_addr id;
+    struct in_addr peer_id;
+
+    memset (&id, 0, sizeof (struct in_addr));
+    memset (&peer_id, 0, sizeof (struct in_addr));
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    ospf_router_row =
+    ospf_router_lookup_by_instance_id(vrf_row, instance_id);
+
+    /* Get the port row. */
+    port_row = ospf_interface_row->port;
+    if(!port_row ||
+       !port_row->ip4_address ||
+       !ospf_interface_row->ospf_vlink)
+    {
+        vty_out(vty, "Interface %s", ospf_interface_row->name);
+        vty_out(vty, " MTU %u bytes, BW 0 Kbit <DOWN>%s",OVS_OSPF_VL_MTU,
+              VTY_NEWLINE);
+        return;
+    }
+
+    OVSREC_OSPF_AREA_FOR_EACH(ospf_area_row, idl)
+    {
+        for (j = 0; j < ospf_area_row->n_ospf_interfaces; j++)
+        {
+            if (strcmp(ospf_area_row->ospf_interfaces[j]->name,ospf_interface_row->name) == 0)
+            {
+                is_present = true;
+                break;
+            }
+        }
+        if (is_present == true)
+            break;
+    }
+
+    /* Get the area id from the router table */
+    if ((ospf_area_row != NULL) &&
+        (strcmp(ospf_area_row->ospf_interfaces[j]->name, ospf_interface_row->name) == 0) &&
+        (ospf_router_row != NULL))
+    {
+        for (i = 0; i < ospf_router_row->n_areas; i++)
+        {
+            if (ospf_router_row->value_areas[i] == ospf_area_row)
+            {
+                area_id = ospf_router_row->key_areas[i];
+                break;
+            }
+        }
+    }
+    else
+    {
+        ospf_area_row = NULL;
+        ospf_router_row = NULL;
+    }
+
+    /* Ifname and state */
+    vty_out(vty, "Interface %s", ospf_interface_row->name);
+    vty_out(vty, " MTU 1500 bytes, BW 0 Kbit <UP>%s",VTY_NEWLINE);
+
+    /* IP */
+    if (port_row->ip4_address) {
+        peer_id.s_addr = ospf_interface_row->ospf_vlink->peer_router_id;
+        vty_out(vty, "  Internet address %s, Peer %s,", port_row->ip4_address,
+                                inet_ntoa (peer_id));
+    }
+
+    if(ospf_area_row != NULL)
+    {
+        OSPF_IP_STRING_CONVERT(area_str, ntohl(area_id));
+        vty_out(vty, " Area %s", area_str);
+
+        if ((strcmp(ospf_area_row->area_type, OSPF_AREA_TYPE_NSSA) == 0) ||
+            (strcmp(ospf_area_row->area_type,
+                    OSPF_AREA_TYPE_NSSA_NO_SUMMARY) == 0))
+        {
+            vty_out(vty, " [NSSA]");
+        }
+        else if ((strcmp(ospf_area_row->area_type, OSPF_AREA_TYPE_STUB) == 0) ||
+            (strcmp(ospf_area_row->area_type,
+                    OSPF_AREA_TYPE_STUB_NO_SUMMARY) == 0))
+
+        {
+            vty_out(vty, " [Stub]");
+        }
+    }
+    vty_out(vty, "%s", VTY_NEWLINE);
+
+    /* MTU ignore */
+    if (port_row->n_ospf_mtu_ignore)
+    {
+        bool bool_value = *port_row->ospf_mtu_ignore;
+        if (bool_value)
+        {
+            vty_out(vty, "  MTU mismatch detection: enabled%s", VTY_NEWLINE);
+        }
+        else
+            vty_out(vty, "  MTU mismatch detection: not enabled%s", VTY_NEWLINE);
+    }
+    else
+        vty_out(vty, "  MTU mismatch detection: not enabled%s", VTY_NEWLINE);
+
+    /* Router ID */
+    if (ospf_router_row != NULL)
+    {
+        val = smap_get(&ospf_router_row->router_id, OSPF_KEY_ROUTER_ID_VAL);
+        if(val)
+        {
+            vty_out(vty, "  Router ID : %s,", val);
+
+
+            ret = inet_aton (val, &id);
+            if (!ret || (id.s_addr == 0))
+            {
+                VLOG_DBG("Invalid Router id - %s%s", val, VTY_NEWLINE);
+            }
+            else
+            {
+                router_id = id.s_addr;
+            }
+        }
+        else
+        {
+            vty_out(vty, "  Router ID : %s,", OSPF_DEFAULT_STR);
+            router_id = 0;
+        }
+    }
+    else
+    {
+        vty_out(vty, "  Router ID : %s,", OSPF_DEFAULT_STR);
+        router_id = 0;
+    }
+
+    vty_out(vty, " Network Type VIRTUALLINK,");
+
+    /* cost */
+    if (port_row->n_ospf_if_out_cost > 0)
+        vty_out(vty, " Cost: %ld %s", port_row->ospf_if_out_cost[0], VTY_NEWLINE);
+    else
+        vty_out(vty, " Cost: %d %s", OSPF_DEFAULT_COST, VTY_NEWLINE);
+
+    /* Transmit delay */
+    intervals = smap_get_int(&(ospf_interface_row->ospf_vlink->other_config),
+                    OSPF_KEY_TRANSMIT_DELAY,OSPF_TRANSMIT_DELAY_DEFAULT);
+    vty_out(vty, "  Transmit Delay is %ld sec,", intervals);
+
+    /* State */
+    vty_out(vty, " State <%s>,",ospf_ifsm_print(ospf_interface_row->ifsm_state));
+
+    /* Priority */
+    if(port_row->n_ospf_priority)
+        vty_out(vty, " Priority %ld %s", *port_row->ospf_priority, VTY_NEWLINE);
+
+    /* Parse through the neighbor table and get information */
+    is_dr_present = false;
+    is_bdr_present = false;
+    n_adjacent_nbrs = 0;
+
+    for (j = 0; j < ospf_interface_row->n_neighbors; j++)
+    {
+        ospf_nbr_row = ospf_interface_row->neighbors[j];
+
+        /* DR */
+        if ((ospf_nbr_row->n_nbr_router_id > 0) &&
+            (*ospf_nbr_row->nbr_router_id == router_id))
+        {
+            struct in_addr if_addr;
+            const struct ovsrec_ospf_neighbor* dr_nbr = NULL;
+            if((ospf_nbr_row->dr) && (*ospf_nbr_row->dr))
+            {
+                dr_id = *ospf_nbr_row->dr;
+                if (dr_id)
+                {
+                    if_addr.s_addr = dr_id;
+                    dr_nbr = find_ospf_nbr_by_if_addr(ospf_interface_row,if_addr);
+                    if (dr_nbr)
+                        dr_if_addr = *dr_nbr->nbr_if_addr;
+                    is_dr_present = true;
+                }
+            }
+
+            /* BDR */
+            if((ospf_nbr_row->bdr) && (*ospf_nbr_row->bdr))
+            {
+                bdr_id = *ospf_nbr_row->bdr;
+                if (bdr_id)
+                {
+                    if_addr.s_addr = bdr_id;
+                    dr_nbr = find_ospf_nbr_by_if_addr(ospf_interface_row,if_addr);
+                    if (dr_nbr)
+                        dr_if_addr = *dr_nbr->nbr_if_addr;
+                    is_bdr_present = true;
+                }
+            }
+
+            break;
+        }
+    }
+
+    for (j = 0; j < ospf_interface_row->n_neighbors; j++)
+    {
+      ospf_nbr_row = ospf_interface_row->neighbors[j];
+      /* Count number of adjacent neighbor */
+      if(strcmp(ospf_nbr_row->nfsm_state, OSPF_NEIGHBOR_FSM_FULL) == 0)
+      {
+          n_adjacent_nbrs++;
+      }
+    }
+
+    char show_str[OSPF_SHOW_STR_LEN];
+
+    if(is_dr_present)
+    {
+        memset(show_str,'\0', OSPF_SHOW_STR_LEN);
+        OSPF_IP_STRING_CONVERT(show_str, ntohl(dr_id));
+        vty_out(vty, "  Designated Router (ID) %s,", show_str);
+        memset(show_str,'\0', OSPF_SHOW_STR_LEN);
+        OSPF_IP_STRING_CONVERT(show_str, ntohl(dr_if_addr));
+        vty_out(vty, "  Interface Address %s%s", show_str, VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "  No designated router on this network%s",
+                 VTY_NEWLINE);
+    }
+
+    if(is_bdr_present)
+    {
+        memset(show_str,'\0', OSPF_SHOW_STR_LEN);
+        OSPF_IP_STRING_CONVERT(show_str, ntohl(bdr_id));
+        vty_out(vty, "  Backup Designated Router (ID) %s,", show_str);
+        memset(show_str,'\0', OSPF_SHOW_STR_LEN);
+        OSPF_IP_STRING_CONVERT(show_str, ntohl(bdr_if_addr));
+        vty_out(vty, "  Interface Address %s%s", show_str, VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "  No backup designated router on this network%s",
+                 VTY_NEWLINE);
+    }
+    vty_out(vty, "  Multicast group memberships: <None>%s", VTY_NEWLINE);
+
+    /* Timer intervals */
+    /* Hello */
+    intervals  = smap_get_int(&(ospf_interface_row->ospf_vlink->other_config),
+                    OSPF_KEY_HELLO_INTERVAL,OSPF_HELLO_INTERVAL_DEFAULT);
+    vty_out(vty, "  Timer intervals configured, Hello %ld", intervals);
+
+    /* Dead */
+    intervals = smap_get_int(&(ospf_interface_row->ospf_vlink->other_config),
+                    OSPF_KEY_DEAD_INTERVAL, OSPF_DEAD_INTERVAL_DEFAULT);
+    vty_out(vty, " Dead %ld", intervals);
+
+    /* Wait */
+    vty_out(vty, " wait %ld", intervals);
+
+    /* Retransmit */
+    intervals = smap_get_int(&(ospf_interface_row->ospf_vlink->other_config),
+                    OSPF_KEY_RETRANSMIT_INTERVAL, OSPF_RETRANSMIT_INTERVAL_DEFAULT);
+    vty_out(vty, " Retransmit %ld%s", intervals,VTY_NEWLINE);
+
+    /* Hello due in */
+    val =smap_get(&ospf_interface_row->status, OSPF_KEY_INTERFACE_ACTIVE);
+    if (val)
+    {
+        if (atoi(val) == true)
+        {
+            val = smap_get(&ospf_interface_row->status, OSPF_KEY_HELLO_DUE);
+            if (val)
+            {
+                vty_out(vty, "    Hello due in  %s %s",
+                        ospf_timer_adjust_post(val, timebuf, sizeof(timebuf)),
+                        VTY_NEWLINE);
+            }
+            else
+            {
+                vty_out(vty, "    Hello due in  %ds %s", 0, VTY_NEWLINE);
+            }
+        }
+        else
+        {
+            vty_out(vty, "    no Hello (Passive Interface) %s", VTY_NEWLINE);
+        }
+    }
+    else // Interface is not active.
+    {
+        vty_out(vty, "    no Hello (Passive Interface) %s", VTY_NEWLINE);
+    }
+
+    /* Neighbor count and Adjacent neighbor count */
+    if (ospf_interface_row->n_neighbors)
+        vty_out(vty, "  Neighbor Count is %ld, Adjacent neighbor count is %d%s",
+            (ospf_interface_row->n_neighbors - 1), n_adjacent_nbrs, VTY_NEWLINE);
+    else
+        vty_out(vty, "  Neighbor Count is 0, Adjacent neighbor count is %d%s",
+                n_adjacent_nbrs, VTY_NEWLINE);
+
+}
+
 /*-----------------------------------------------------------------------------
   | Function : ospf_router_default_metric_cmd_exec
   | Responsibility : Used to set the default-metric value.
@@ -2767,8 +3113,11 @@ ospf_ip_router_interface_show(const char* ifname)
         /* Print all the interfaces present */
         OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
         {
-            ospf_interface_one_row_print(vty, ospf_interface_row->name,
-                                         ospf_interface_row);
+            if (!ospf_interface_row->ospf_vlink)
+                ospf_interface_one_row_print(vty, ospf_interface_row->name,
+                                             ospf_interface_row);
+            else
+                ospf_vl_interface_one_row_print (vty, ospf_interface_row);
         }
     }
 }
@@ -2801,8 +3150,32 @@ ospf_nbr_state_print(const char *state)
         return "NONE";
 }
 
+static const char *
+ospf_nbr_dr_state_print (struct in_addr router_id,
+                            const struct ovsrec_ospf_interface* ovs_oi,
+                                   int64_t nbr_ifaddr)
+{
+    int i = 0;
+
+    for (i = 0 ; i < ovs_oi->n_neighbors ; i++)
+    {
+        if (ovs_oi->neighbors[i]->nbr_router_id[0] == router_id.s_addr)
+        {
+            if (ovs_oi->neighbors[i]->dr &&
+                ovs_oi->neighbors[i]->dr[0] == nbr_ifaddr)
+                return "DR";
+            else if (ovs_oi->neighbors[i]->bdr &&
+                    ovs_oi->neighbors[i]->bdr[0] == nbr_ifaddr)
+                return "Backup";
+        }
+    }
+
+    return "DROther";
+}
+
 void
 ospf_neighbor_one_row_print(
+                            const struct ovsrec_ospf_interface* ovs_oi,
                             const struct ovsrec_ospf_neighbor *ospf_nbr_row,
                             bool all_flag)
 {
@@ -2859,26 +3232,13 @@ ospf_neighbor_one_row_print(
     else
         strncpy(show_str, OSPF_DEFAULT_STR, OSPF_SHOW_STR_LEN);
 
-    /* Priority and State. */
     memset(state_str,'\0', OSPF_SHOW_STR_LEN);
-    if ((ospf_nbr_row->dr) && (ospf_nbr_row->nbr_if_addr) &&
-       (*ospf_nbr_row->dr == *ospf_nbr_row->nbr_if_addr))
-    {
-        snprintf(state_str, OSPF_SHOW_STR_LEN, "%s/%s",
-                 ospf_nbr_state_print(ospf_nbr_row->nfsm_state), "DR");
-    }
-    else if ((ospf_nbr_row->bdr) && (ospf_nbr_row->nbr_if_addr) &&
-       (*ospf_nbr_row->bdr == *ospf_nbr_row->nbr_if_addr))
-    {
-        snprintf(state_str, OSPF_SHOW_STR_LEN, "%s/%s",
-                 ospf_nbr_state_print(ospf_nbr_row->nfsm_state), "Backup");
-    }
-    else
-    {
-        snprintf(state_str, OSPF_SHOW_STR_LEN, "%s/%s",
-                 ospf_nbr_state_print(ospf_nbr_row->nfsm_state), "DROther");
-    }
+    snprintf(state_str, OSPF_SHOW_STR_LEN, "%s/%s",
+                 ospf_nbr_state_print(ospf_nbr_row->nfsm_state),
+                 ospf_nbr_dr_state_print (id,ovs_oi,ospf_nbr_row->nbr_if_addr[0]));
 
+
+    /* Priority and State. */
     if(ospf_nbr_row->n_nbr_priority)
     {
         vty_out(vty, "%-15s %3ld %-15s ", show_str, *ospf_nbr_row->nbr_priority,
@@ -2908,10 +3268,15 @@ ospf_neighbor_one_row_print(
         {
             if (interface_row->neighbors[j] == ospf_nbr_row)
             {
-                port_row = interface_row->port;
-                snprintf(show_str, OSPF_SHOW_STR_LEN, "%s:%s",
-                         interface_row->name,
-                        port_row->ip4_address);
+               if (!interface_row->ospf_vlink) {
+                    port_row = interface_row->port;
+                    snprintf(show_str, OSPF_SHOW_STR_LEN, "%s:%s",
+                             interface_row->name,
+                            port_row->ip4_address);
+                }
+                else
+                    snprintf(show_str, OSPF_SHOW_STR_LEN, "%s",
+                             interface_row->name);
                 vty_out (vty, "%-20s ", show_str);
                 is_present = true;
                 break;
@@ -3197,7 +3562,8 @@ ospf_ip_router_neighbor_show(const char* ifname,
                 for(i = 0; i < ospf_interface_row->n_neighbors; i++)
                 {
                     ospf_nbr_row = ospf_interface_row->neighbors[i];
-                    ospf_neighbor_one_row_print(ospf_nbr_row, all_flag);
+                    ospf_neighbor_one_row_print(ospf_interface_row,
+                                                ospf_nbr_row, all_flag);
                 }
             }
         }
@@ -3205,19 +3571,28 @@ ospf_ip_router_neighbor_show(const char* ifname,
     else if (nbr_id != 0)
     {
         /* Print all the neighbor entries matching the nbr id present */
-        OVSREC_OSPF_NEIGHBOR_FOR_EACH(ospf_nbr_row, idl)
+        OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
         {
-            if (nbr_id == *ospf_nbr_row->nbr_router_id)
-                ospf_neighbor_one_row_print(ospf_nbr_row, all_flag);
-
+            for(i = 0; i < ospf_interface_row->n_neighbors; i++)
+            {
+                ospf_nbr_row = ospf_interface_row->neighbors[i];
+                if (nbr_id == *ospf_nbr_row->nbr_router_id)
+                    ospf_neighbor_one_row_print(ospf_interface_row,
+                                                ospf_nbr_row, all_flag);
+            }
         }
     }
     else
     {
         /* Print all the rows */
-        OVSREC_OSPF_NEIGHBOR_FOR_EACH(ospf_nbr_row, idl)
+         OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
         {
-            ospf_neighbor_one_row_print(ospf_nbr_row, all_flag);
+            for(i = 0; i < ospf_interface_row->n_neighbors; i++)
+            {
+                ospf_nbr_row = ospf_interface_row->neighbors[i];
+                ospf_neighbor_one_row_print(ospf_interface_row,
+                                                ospf_nbr_row, all_flag);
+            }
         }
     }
 }
@@ -4668,6 +5043,105 @@ ospf_md5_key_update_to_port(const struct ovsrec_port *port_row,
     return CMD_SUCCESS;
 }
 
+/* Update the key if key id is already present.
+    Insert md5 key in the Port table if not present */
+int
+ospf_md5_key_update_to_vl(const struct ovsrec_ospf_vlink *vl_row,
+                           int64_t key_id,const char *key)
+{
+    int64_t *key_id_list;
+    char **key_list;
+    int i = 0;
+
+    key_id_list = xmalloc(sizeof(int64_t) * (vl_row->n_ospf_auth_md5_keys + 1));
+    key_list = xmalloc(sizeof * vl_row->key_ospf_auth_md5_keys*
+                              (vl_row->n_ospf_auth_md5_keys + 1));
+
+    if (!key_id_list || !key_list)
+    {
+        SAFE_FREE(key_id_list);
+        SAFE_FREE(key_list);
+        VLOG_DBG("Memory alloc failed, could not update md5 key in VL.%s",
+                 VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    for (i = 0; i < vl_row->n_ospf_auth_md5_keys; i++)
+    {
+        if (vl_row->key_ospf_auth_md5_keys[i] == key_id)
+        {
+            SAFE_FREE(key_id_list);
+            SAFE_FREE(key_list);
+            return CMD_ERR_AMBIGUOUS;
+        }
+        else
+        {
+            key_id_list[i] = vl_row->key_ospf_auth_md5_keys[i];
+            key_list[i] = vl_row->value_ospf_auth_md5_keys[i];
+        }
+    }
+
+    key_id_list[vl_row->n_ospf_auth_md5_keys] = key_id;
+    key_list[vl_row->n_ospf_auth_md5_keys] = CONST_CAST(char *, key);
+    ovsrec_ospf_vlink_set_ospf_auth_md5_keys(vl_row, key_id_list, key_list,
+                                      (vl_row->n_ospf_auth_md5_keys + 1));
+
+    SAFE_FREE(key_id_list);
+    SAFE_FREE(key_list);
+
+    return CMD_SUCCESS;
+}
+
+/* Delete the key if key id is already present.*/
+int
+ospf_md5_key_remove_from_vl(const struct ovsrec_ospf_vlink *vl_row,
+                              int64_t key_id)
+{
+    int64_t *key_id_list;
+    char **key_list;
+    int i = 0, j =0;
+    bool is_present = false;
+    int res = CMD_ERR_NO_MATCH;
+
+    key_id_list = xmalloc(sizeof(int64_t) * (vl_row->n_ospf_auth_md5_keys));
+    key_list = xmalloc(sizeof * vl_row->key_ospf_auth_md5_keys*
+                              (vl_row->n_ospf_auth_md5_keys));
+
+    if (!key_id_list || !key_list)
+    {
+        SAFE_FREE(key_id_list);
+        SAFE_FREE(key_list);
+        VLOG_DBG("Memory alloc failed, could not update md5 key in port.%s",
+                 VTY_NEWLINE);
+        return CMD_OVSDB_FAILURE;
+    }
+
+    for (i = 0; i < vl_row->n_ospf_auth_md5_keys; i++)
+    {
+        if (!is_present && vl_row->key_ospf_auth_md5_keys[i] == key_id)
+        {
+            is_present = true;
+            res = CMD_SUCCESS;
+        }
+        else
+        {
+            key_id_list[j] = vl_row->key_ospf_auth_md5_keys[i];
+            key_list[j] = vl_row->value_ospf_auth_md5_keys[i];
+            j++;
+        }
+    }
+
+    if(is_present == true)
+    {
+        ovsrec_ospf_vlink_set_ospf_auth_md5_keys(vl_row, key_id_list, key_list,
+                                   (vl_row->n_ospf_auth_md5_keys - 1));
+    }
+
+    SAFE_FREE(key_id_list);
+    SAFE_FREE(key_list);
+
+    return res;
+}
 
 /* Delete the key if key id is already present.*/
 int
@@ -8136,6 +8610,978 @@ DEFUN (cli_no_ospf_default_information_originate,
     return CMD_SUCCESS;
 }
 
+static int
+ospf_vlink_set_other_config(const struct ovsrec_ospf_vlink *vlink_row,
+                                int argc, const char **argv)
+{
+    struct smap smap;
+
+    const char temp[10];
+
+    smap_clone(&smap, &(vlink_row->other_config));
+    switch(argv[2][0])
+    {
+       case 'h':
+       /* Hello interval */
+       if (argc == 3)
+       {
+           snprintf(temp, 10, "%d", OSPF_HELLO_INTERVAL_DEFAULT);
+           smap_replace(&smap, OSPF_KEY_HELLO_INTERVAL, temp);
+       }
+       else
+           smap_replace(&smap, OSPF_KEY_HELLO_INTERVAL, argv[3]);
+       break;
+
+       case 'r':
+       /* Retransmit Interval */
+       if (argc == 3)
+       {
+           snprintf(temp, 10, "%d", OSPF_RETRANSMIT_INTERVAL_DEFAULT);
+           smap_replace(&smap, OSPF_KEY_RETRANSMIT_INTERVAL, temp);
+       }
+       else
+           smap_replace(&smap, OSPF_KEY_RETRANSMIT_INTERVAL, argv[3]);
+       break;
+
+       case 't':
+       /* Transmit Delay */
+       if (argc == 3)
+       {
+           snprintf(temp, 10, "%d", OSPF_TRANSMIT_DELAY_DEFAULT);
+           smap_replace(&smap, OSPF_KEY_TRANSMIT_DELAY, temp);
+       }
+       else
+           smap_replace(&smap, OSPF_KEY_TRANSMIT_DELAY, argv[3]);
+        break;
+
+       case 'd':
+       /* Dead Interval */
+       if (argc == 3)
+       {
+           snprintf(temp, 10, "%d", OSPF_DEAD_INTERVAL_DEFAULT);
+           smap_replace(&smap, OSPF_KEY_DEAD_INTERVAL, temp);
+       }
+       else
+       {
+          int hello_interval = 0, interval = 0;
+          hello_interval = smap_get_int(&smap, OSPF_KEY_HELLO_INTERVAL,
+                              OSPF_HELLO_INTERVAL_DEFAULT);
+
+          interval = atoi(argv[3]);
+          if (hello_interval > interval)
+          {
+              vty_out (vty, "Dead interval cannot be less than hello interval.");
+              smap_destroy(&smap);
+              return 1;
+          }
+          else if((interval % hello_interval) != 0)
+          {
+              vty_out (vty, "Dead interval should be multiple(s) of hello interval.");
+              smap_destroy(&smap);
+              return 1;
+           }
+           smap_replace(&smap, OSPF_KEY_DEAD_INTERVAL, argv[3]);
+       }
+       break;
+    }
+    ovsrec_ospf_vlink_set_other_config(vlink_row, &smap);
+    smap_destroy(&smap);
+    return 0;
+}
+
+void
+ospf_vlink_set_authentication(const struct ovsrec_ospf_vlink *vlink_row,
+                                int argc, const char **argv, bool no_flag)
+{
+    char* auth_type = NULL;
+    if (no_flag)
+    {
+        ovsrec_ospf_vlink_set_ospf_auth_type(vlink_row,NULL);
+        return;
+    }
+
+    if (argc == 2) /* Simple authentication */
+    {
+        auth_type = OVSREC_OSPF_VLINK_OSPF_AUTH_TYPE_TEXT;
+        ovsrec_ospf_vlink_set_ospf_auth_type(vlink_row,auth_type);
+        return;
+    }
+    if (argc >2 &&
+        !strcmp(argv[2],"message-digest")) /* message-digest */
+    {
+        auth_type = OVSREC_OSPF_VLINK_OSPF_AUTH_TYPE_MD5;
+        ovsrec_ospf_vlink_set_ospf_auth_type(vlink_row,auth_type);
+        return;
+    }
+    else if (argc >2 &&
+        !strcmp(argv[2],"null")) /* NULL */
+    {
+        auth_type = OVSREC_OSPF_VLINK_OSPF_AUTH_TYPE_NULL;
+        ovsrec_ospf_vlink_set_ospf_auth_type(vlink_row,auth_type);
+        return;
+    }
+}
+
+void
+ospf_vlink_set_authentication_key(const struct ovsrec_ospf_vlink *vlink_row,
+                                         int argc, const char **argv)
+{
+    char* auth_text = NULL;
+    int64_t key_id = 0;
+    int result;
+    int i = 0;
+
+    if (3 == argc) /* Simple auth key */
+    {
+        auth_text = (argv[2])?argv[2]:NULL;
+        ovsrec_ospf_vlink_set_ospf_auth_text_key(vlink_row,auth_text);
+        return;
+    }
+
+    if (argc > 3) /* message-digest-key */
+    {
+        key_id = atoi(argv[2]);
+        auth_text = (argv[3])?argv[3]:NULL;
+        result = ospf_md5_key_update_to_vl(vlink_row, key_id, auth_text);
+        if ( result == CMD_ERR_AMBIGUOUS)
+        {
+            vty_out(vty,"MD5 key is already present%s",VTY_NEWLINE);
+        }
+        else if ( result != CMD_SUCCESS)
+        {
+            vty_out(vty,"MD5 key updation failed.%",VTY_NEWLINE);
+        }
+    }
+}
+
+void
+ospf_vlink_unset_authentication_key (const struct ovsrec_ospf_vlink *vlink_row,
+                                                     int argc, const char **argv)
+{
+    char* auth_text = NULL;
+    int64_t key_id = 0;
+    int result;
+    int i = 0;
+
+    if (2 == argc) /* Simple auth key */
+    {
+        ovsrec_ospf_vlink_set_ospf_auth_text_key(vlink_row,NULL);
+        return;
+    }
+
+    if (argc > 2) /* message-digest-key */
+    {
+        key_id = atoi(argv[2]);
+        result = ospf_md5_key_remove_from_vl(vlink_row, key_id);
+        if ( result == CMD_ERR_NO_MATCH)
+        {
+            vty_out(vty,"MD5 key not present.",VTY_NEWLINE);
+        }
+        else if ( result != CMD_SUCCESS)
+        {
+            vty_out(vty,"MD5 key deletion failed.",VTY_NEWLINE);
+        }
+    }
+}
+
+DEFUN (cli_ospf_area_vlink,
+       cli_ospf_area_vlink_cmd,
+       "area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n")
+{
+    struct smap smap;
+    struct in_addr area_id;
+    struct in_addr peer_router_id;
+
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
+    const struct ovsrec_ospf_vlink *vlink_row = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+
+    int64_t* key_ospf_vlink = NULL;
+    int instance_id = 1;
+    int i = 0;
+
+    char name[10];
+    bool found = 0;
+
+    memset (&peer_router_id, 0, sizeof (struct in_addr));
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID(area_id, argv[0]);
+    OSPF_GET_AREA_ID(peer_router_id, argv[1]);
+
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        vty_out(vty, "VRF is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_id);
+    if (ospf_router_row == NULL)
+    {
+        vty_out(vty, "OSPF router is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id.s_addr);
+    /* Insert the new row and link the area row to the router table. */
+    if (area_row == NULL)
+    {
+        area_row = ovsrec_ospf_area_insert(ospf_router_txn);
+        if (ospf_area_insert_to_router(ospf_router_row, area_row,
+                                       area_id.s_addr) != CMD_SUCCESS)
+        {
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Could not update configuration.");
+        }
+    }
+
+    OVSREC_OSPF_VLINK_FOR_EACH(vlink_row, idl)
+    {
+        if (vlink_row->area_id == area_id.s_addr &&
+            vlink_row->peer_router_id == peer_router_id.s_addr)
+        {
+            found = 1;
+
+            if (argc > 2)
+            {
+                if (ospf_vlink_set_other_config(vlink_row, argc, argv))
+                {
+                    SAFE_FREE(ospf_vlink);
+                    SAFE_FREE(key_ospf_vlink);
+                    OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "");
+                }
+                else
+                    OSPF_END_DB_TXN(ospf_router_txn);
+            }
+            else
+            {
+                vty_out(vty, "Area ID and Peer Router ID is already configured\n");
+                break;
+            }
+        }
+    }
+
+    /* Insert the new row and link the vlink row to the area table. */
+    if (found == 0)
+    {
+        ospf_vlink = xmalloc (sizeof * area_row->value_ospf_vlinks *
+                                       (area_row->n_ospf_vlinks + 1));
+        key_ospf_vlink = xmalloc (sizeof * area_row->key_ospf_vlinks *
+                                           (area_row->n_ospf_vlinks + 1));
+        if (!ospf_vlink || !key_ospf_vlink)
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            VLOG_DBG ("Memory allocation failed");
+            return CMD_WARNING;
+        }
+
+        for (i = 0 ; i < area_row->n_ospf_vlinks ; i++)
+        {
+             ospf_vlink[i] = area_row->value_ospf_vlinks[i];
+             key_ospf_vlink[i] = area_row->key_ospf_vlinks[i];
+        }
+
+        vlink_row = ovsrec_ospf_vlink_insert(ospf_router_txn);
+        for (i = 0; i < OVS_OSPF_VL_MAX_COUNT; i++)
+        {
+            if (!(ospf_vlink_count[i]))
+                break;
+        }
+
+        if (i < OVS_OSPF_VL_MAX_COUNT)
+        {
+            snprintf(name, 10, "VLINK%d", i);
+        }
+        else
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            vty_out (vty,"Maximum vlink count(%d) reached%s.",
+                OVS_OSPF_VL_MAX_COUNT, VTY_NEWLINE);
+            return CMD_WARNING;
+        }
+
+        ovsrec_ospf_vlink_set_name(vlink_row, name);
+        ovsrec_ospf_vlink_set_area_id(vlink_row, area_id.s_addr);
+        ovsrec_ospf_vlink_set_peer_router_id(vlink_row, peer_router_id.s_addr);
+
+        if (ospf_vlink_set_other_config(vlink_row, argc, argv))
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "");
+        }
+
+        ospf_vlink[area_row->n_ospf_vlinks] = vlink_row;
+        key_ospf_vlink[area_row->n_ospf_vlinks] = vlink_row->peer_router_id;
+        ovsrec_ospf_area_set_ospf_vlinks(area_row, key_ospf_vlink, ospf_vlink,
+                                         area_row->n_ospf_vlinks + 1);
+    }
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN_STATUS(ospf_router_txn);
+    if ((status != TXN_SUCCESS) && (status != TXN_UNCHANGED)) {
+        ospf_vlink_count[i] = 0;
+        return CMD_WARNING;
+    }
+    else
+        ospf_vlink_count[i] = 1;
+
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_ospf_area_vlink_auth,
+       cli_ospf_area_vlink_auth_cmd,
+       "area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D authentication ",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Enable authentication on this virtual link\n")
+{
+    struct smap smap;
+    struct in_addr area_id;
+    struct in_addr peer_router_id;
+
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
+    const struct ovsrec_ospf_vlink *vlink_row = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+
+    int64_t* key_ospf_vlink = NULL;
+    int instance_id = 1;
+    int i = 0;
+
+    char name[10];
+    bool found = 0;
+
+    memset (&peer_router_id, 0, sizeof (struct in_addr));
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID(area_id, argv[0]);
+    OSPF_GET_AREA_ID(peer_router_id, argv[1]);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        vty_out(vty, "VRF is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_id);
+    if (ospf_router_row == NULL)
+    {
+        vty_out(vty, "OSPF router is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id.s_addr);
+
+    /* Insert the new row and link the area row to the router table. */
+    if (area_row == NULL)
+    {
+        area_row = ovsrec_ospf_area_insert(ospf_router_txn);
+        if (ospf_area_insert_to_router(ospf_router_row, area_row,
+                                       area_id.s_addr) != CMD_SUCCESS)
+        {
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Could not update configuration.");
+        }
+    }
+
+    OVSREC_OSPF_VLINK_FOR_EACH(vlink_row, idl)
+    {
+        if (vlink_row->area_id == area_id.s_addr &&
+            vlink_row->peer_router_id == peer_router_id.s_addr)
+            found = 1;
+            break;
+    }
+
+    /* Insert the new row and link the vlink row to the area table. */
+    if (found == 0)
+    {
+        ospf_vlink = xmalloc (sizeof * area_row->value_ospf_vlinks *
+                                       (area_row->n_ospf_vlinks + 1));
+        key_ospf_vlink = xmalloc (sizeof * area_row->key_ospf_vlinks *
+                                           (area_row->n_ospf_vlinks + 1));
+        if (!ospf_vlink || !key_ospf_vlink)
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            VLOG_DBG ("Memory allocation failed");
+            return CMD_WARNING;
+        }
+
+        for (i = 0 ; i < area_row->n_ospf_vlinks ; i++)
+        {
+             ospf_vlink[i] = area_row->value_ospf_vlinks[i];
+             key_ospf_vlink[i] = area_row->key_ospf_vlinks[i];
+        }
+
+        vlink_row = ovsrec_ospf_vlink_insert(ospf_router_txn);
+        for (i = 0; i < OVS_OSPF_VL_MAX_COUNT; i++)
+        {
+            if (!(ospf_vlink_count[i]))
+                break;
+        }
+
+        if (i < OVS_OSPF_VL_MAX_COUNT)
+        {
+            snprintf(name, 10, "VLINK%d", i);
+        }
+        else
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            vty_out (vty,"Maximum vlink count(%d) reached%s.",
+                OVS_OSPF_VL_MAX_COUNT, VTY_NEWLINE);
+            return CMD_WARNING;
+        }
+
+        ovsrec_ospf_vlink_set_area_id(vlink_row, area_id.s_addr);
+        ovsrec_ospf_vlink_set_name(vlink_row, name);
+        ovsrec_ospf_vlink_set_peer_router_id(vlink_row, peer_router_id.s_addr);
+
+        ospf_vlink_set_authentication (vlink_row, argc, argv,false);
+
+        ospf_vlink[area_row->n_ospf_vlinks] = vlink_row;
+        key_ospf_vlink[area_row->n_ospf_vlinks] = vlink_row->peer_router_id;
+        ovsrec_ospf_area_set_ospf_vlinks(area_row, key_ospf_vlink, ospf_vlink,
+                                         area_row->n_ospf_vlinks + 1);
+    }
+    else
+        ospf_vlink_set_authentication (vlink_row, argc, argv,false);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN_STATUS(ospf_router_txn);
+    if ((status != TXN_SUCCESS) && (status != TXN_UNCHANGED)) {
+        ospf_vlink_count[i] = 0;
+        return CMD_WARNING;
+    }
+    else
+        ospf_vlink_count[i] = 1;
+
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_area_vlink,
+       cli_no_ospf_area_vlink_cmd,
+       "no area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n")
+{
+    struct smap smap;
+    struct in_addr area_id;
+    struct in_addr peer_router_id;
+
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
+    const struct ovsrec_ospf_vlink *vlink_row = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+
+    int64_t* key_ospf_vlink = NULL;
+    int instance_id = 1;
+    int i = 0, n = 0, j = 0;
+
+    bool found = 0;
+
+    memset (&peer_router_id, 0, sizeof (struct in_addr));
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID(area_id, argv[0]);
+    OSPF_GET_AREA_ID(peer_router_id, argv[1]);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        vty_out(vty, "VRF is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_id);
+    if (ospf_router_row == NULL)
+    {
+        vty_out(vty, "OSPF router is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id.s_addr);
+    if (area_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Area configuration is not present.");
+    }
+
+    OVSREC_OSPF_VLINK_FOR_EACH(vlink_row, idl)
+    {
+        if (vlink_row->area_id == area_id.s_addr &&
+            vlink_row->peer_router_id == peer_router_id.s_addr)
+        {
+            found = 1;
+            if (argc > 2)
+            {
+                if (ospf_vlink_set_other_config(vlink_row, argc, argv))
+                    OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "");
+                else
+                    OSPF_END_DB_TXN(ospf_router_txn);
+            }
+            break;
+        }
+    }
+
+    if (found == 1)
+    {
+        ospf_vlink = xmalloc (sizeof * area_row->value_ospf_vlinks *
+                                          (area_row->n_ospf_vlinks - 1));
+        key_ospf_vlink = xmalloc (sizeof * area_row->key_ospf_vlinks *
+                                             (area_row->n_ospf_vlinks - 1));
+        if (!ospf_vlink || !key_ospf_vlink)
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            VLOG_DBG ("Memory allocation failed");
+            return CMD_WARNING;
+        }
+
+        sscanf(vlink_row->name, "VLINK%d", &n);
+        for (i = j = 0 ; i < area_row->n_ospf_vlinks && j < (area_row->n_ospf_vlinks - 1); i++)
+        {
+            if (vlink_row->peer_router_id != (area_row->value_ospf_vlinks[i]->peer_router_id))
+            {
+                ospf_vlink[j] = area_row->value_ospf_vlinks[i];
+                key_ospf_vlink[j++] = area_row->key_ospf_vlinks[i];
+            }
+        }
+
+        ovsrec_ospf_area_set_ospf_vlinks(area_row, key_ospf_vlink, ospf_vlink,
+                                         area_row->n_ospf_vlinks - 1);
+    }
+    else
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Virtual link configuration is not present.");
+    }
+
+    /* End of transaction. */
+       OSPF_END_DB_TXN_STATUS(ospf_router_txn);
+    if ((status != TXN_SUCCESS) && (status != TXN_UNCHANGED))
+    {
+        return CMD_WARNING;
+    }
+    else
+        ospf_vlink_count[n] = 0;
+
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_area_vlink_auth,
+       cli_no_ospf_area_vlink_auth_cmd,
+       "no area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D authentication",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Enable authentication on this virtual link\n")
+{
+    struct smap smap;
+    struct in_addr area_id;
+    struct in_addr peer_router_id;
+
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
+    const struct ovsrec_ospf_vlink *vlink_row = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+
+    int64_t* key_ospf_vlink = NULL;
+    int instance_id = 1;
+    int i = 0, n = 0;
+
+    bool found = 0;
+
+    memset (&peer_router_id, 0, sizeof (struct in_addr));
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID(area_id, argv[0]);
+    OSPF_GET_AREA_ID(peer_router_id, argv[1]);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        vty_out(vty, "VRF is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_id);
+    if (ospf_router_row == NULL)
+    {
+        vty_out(vty, "OSPF router is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id.s_addr);
+    if (area_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Area configuration is not present.");
+    }
+
+    OVSREC_OSPF_VLINK_FOR_EACH(vlink_row, idl)
+    {
+        if (vlink_row->area_id == area_id.s_addr &&
+            vlink_row->peer_router_id == peer_router_id.s_addr)
+        {
+            found = 1;
+            break;
+        }
+    }
+
+    if (found == 1)
+    {
+        ospf_vlink_set_authentication (vlink_row, argc, argv,true);
+    }
+    else
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Virtual link configuration is not present.");
+    }
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN_STATUS(ospf_router_txn);
+    if ((status != TXN_SUCCESS) && (status != TXN_UNCHANGED))
+    {
+        return CMD_WARNING;
+    }
+    else
+        ospf_vlink_count[n] = 0;
+
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_ospf_area_vlink_auth_key,
+       cli_ospf_area_vlink_auth_key_cmd,
+       "area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D authentication-key "
+       "AUTH_KEY",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Authentication password (key)\n"
+       "The OSPF password (key)\n")
+{
+    struct smap smap;
+    struct in_addr area_id;
+    struct in_addr peer_router_id;
+
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
+    const struct ovsrec_ospf_vlink *vlink_row = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+
+    int64_t* key_ospf_vlink = NULL;
+    int instance_id = 1;
+    int i = 0;
+
+    char name[10];
+    bool found = 0;
+
+    memset (&peer_router_id, 0, sizeof (struct in_addr));
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID(area_id, argv[0]);
+    OSPF_GET_AREA_ID(peer_router_id, argv[1]);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        vty_out(vty, "VRF is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_id);
+    if (ospf_router_row == NULL)
+    {
+        vty_out(vty, "OSPF router is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id.s_addr);
+
+    /* Insert the new row and link the area row to the router table. */
+    if (area_row == NULL)
+    {
+        area_row = ovsrec_ospf_area_insert(ospf_router_txn);
+        if (ospf_area_insert_to_router(ospf_router_row, area_row,
+                                       area_id.s_addr) != CMD_SUCCESS)
+        {
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Could not update configuration.");
+        }
+    }
+
+    OVSREC_OSPF_VLINK_FOR_EACH(vlink_row, idl)
+    {
+        if (vlink_row->area_id == area_id.s_addr &&
+            vlink_row->peer_router_id == peer_router_id.s_addr)
+            found = 1;
+            break;
+    }
+
+    /* Insert the new row and link the vlink row to the area table. */
+    if (found == 0)
+    {
+        ospf_vlink = xmalloc (sizeof * area_row->value_ospf_vlinks *
+                                       (area_row->n_ospf_vlinks + 1));
+        key_ospf_vlink = xmalloc (sizeof * area_row->key_ospf_vlinks *
+                                           (area_row->n_ospf_vlinks + 1));
+        if (!ospf_vlink || !key_ospf_vlink)
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            VLOG_DBG ("Memory allocation failed");
+            return CMD_WARNING;
+        }
+
+        for (i = 0 ; i < area_row->n_ospf_vlinks ; i++)
+        {
+             ospf_vlink[i] = area_row->value_ospf_vlinks[i];
+             key_ospf_vlink[i] = area_row->key_ospf_vlinks[i];
+        }
+
+        vlink_row = ovsrec_ospf_vlink_insert(ospf_router_txn);
+        for (i = 0; i < OVS_OSPF_VL_MAX_COUNT; i++)
+        {
+            if (!(ospf_vlink_count[i]))
+                break;
+        }
+
+        if (i < OVS_OSPF_VL_MAX_COUNT)
+        {
+            snprintf(name, 10, "VLINK%d", i);
+        }
+        else
+        {
+            SAFE_FREE(ospf_vlink);
+            SAFE_FREE(key_ospf_vlink);
+            vty_out (vty,"Maximum vlink count(%d) reached%s.",
+                OVS_OSPF_VL_MAX_COUNT, VTY_NEWLINE);
+            return CMD_WARNING;
+        }
+
+        ovsrec_ospf_vlink_set_area_id(vlink_row, area_id.s_addr);
+        ovsrec_ospf_vlink_set_name(vlink_row, name);
+        ovsrec_ospf_vlink_set_peer_router_id(vlink_row, peer_router_id.s_addr);
+
+        ospf_vlink_set_authentication_key (vlink_row, argc, argv);
+
+        ospf_vlink[area_row->n_ospf_vlinks] = vlink_row;
+        key_ospf_vlink[area_row->n_ospf_vlinks] = vlink_row->peer_router_id;
+        ovsrec_ospf_area_set_ospf_vlinks(area_row, key_ospf_vlink, ospf_vlink,
+                                         area_row->n_ospf_vlinks + 1);
+    }
+    else
+        ospf_vlink_set_authentication_key (vlink_row, argc, argv);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN_STATUS(ospf_router_txn);
+    if ((status != TXN_SUCCESS) && (status != TXN_UNCHANGED)) {
+        ospf_vlink_count[i] = 0;
+        return CMD_WARNING;
+    }
+    else
+        ospf_vlink_count[i] = 1;
+
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_no_ospf_area_vlink_auth_key,
+       cli_no_ospf_area_vlink_auth_key_cmd,
+       "no area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D "
+       "authentication-key",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Authentication password (key)\n")
+{
+    struct smap smap;
+    struct in_addr area_id;
+    struct in_addr peer_router_id;
+
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
+    const struct ovsrec_ospf_vlink *vlink_row = NULL;
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+
+    int64_t* key_ospf_vlink = NULL;
+    int instance_id = 1;
+    int i = 0, n = 0;
+
+    bool found = 0;
+
+    memset (&peer_router_id, 0, sizeof (struct in_addr));
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID(area_id, argv[0]);
+    OSPF_GET_AREA_ID(peer_router_id, argv[1]);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        vty_out(vty, "VRF is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row, instance_id);
+    if (ospf_router_row == NULL)
+    {
+        vty_out(vty, "OSPF router is not present.%s", VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+    area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id.s_addr);
+    if (area_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Area configuration is not present.");
+    }
+
+    OVSREC_OSPF_VLINK_FOR_EACH(vlink_row, idl)
+    {
+        if (vlink_row->area_id == area_id.s_addr &&
+            vlink_row->peer_router_id == peer_router_id.s_addr)
+        {
+            found = 1;
+            break;
+        }
+    }
+
+    if (found == 1)
+    {
+        ospf_vlink_unset_authentication_key (vlink_row, argc, argv);
+    }
+    else
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "Virtual link configuration is not present.");
+    }
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN_STATUS(ospf_router_txn);
+    if ((status != TXN_SUCCESS) && (status != TXN_UNCHANGED))
+    {
+        return CMD_WARNING;
+    }
+    else
+        ospf_vlink_count[n] = 0;
+
+    return CMD_SUCCESS;
+}
+
+ALIAS (cli_ospf_area_vlink_auth,
+       cli_ospf_area_vlink_auth_param1_cmd,
+       "area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D authentication "
+       "(message-digest|null)",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Enable authentication on this virtual link\n"
+       "Use message-digest authentication\n"
+       "Use null authentication\n")
+
+ALIAS (cli_ospf_area_vlink_auth_key,
+       cli_ospf_area_vlink_auth_key_md5_cmd,
+       "area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D "
+       "message-digest-key <1-255> md5 MD5_KEY",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Message digest authentication password (key)\n"
+       "Key ID\n"
+       "Use MD5 algorithm\n"
+       "The OSPF password (key)")
+
+ALIAS (cli_no_ospf_area_vlink_auth_key,
+       cli_no_ospf_area_vlink_auth_key_md5_cmd,
+       "no area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D "
+       "message-digest-key <1-255>",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Message digest authentication password (key)\n"
+       "Key ID\n")
+
+ALIAS (cli_ospf_area_vlink,
+       cli_ospf_area_vlink_param1_cmd,
+       "area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D "
+       "(hello-interval|retransmit-interval|transmit-delay|dead-interval) <1-65535>",
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Time between HELLO packets\n"
+       "Time between retransmitting lost link state advertisements\n"
+       "Link state transmit delay\n"
+       "Interval after which a neighbor is declared dead\n"
+       "Seconds\n")
+
+ALIAS (cli_no_ospf_area_vlink,
+       cli_no_ospf_area_vlink_param1_cmd,
+       "no area (A.B.C.D|<0-4294967295>) virtual-link A.B.C.D "
+       "(hello-interval|retransmit-interval|transmit-delay|dead-interval)",
+       NO_STR
+       OSPF_AREA_STR
+       OSPF_AREA_IP_STR
+       OSPF_AREA_RANGE
+       "Configure a virtual link\n"
+       "Router ID of the remote ABR\n"
+       "Time between HELLO packets\n"
+       "Time between retransmitting lost link state advertisements\n"
+       "Link state transmit delay\n"
+       "Interval after which a neighbor is declared dead\n")
+
 void
 ospf_vty_init(void)
 {
@@ -8191,6 +9637,19 @@ ospf_vty_init(void)
     install_element(OSPF_NODE, &ospf_no_default_metric_cmd);
     install_element(OSPF_NODE, &ospf_timers_lsa_group_pacing_cmd);
     install_element(OSPF_NODE, &ospf_timers_no_lsa_group_pacing_cmd);
+
+    /* "area virtual-link" commands. */
+    install_element (OSPF_NODE, &cli_ospf_area_vlink_cmd);
+    install_element (OSPF_NODE, &cli_ospf_area_vlink_param1_cmd);
+    install_element (OSPF_NODE, &cli_no_ospf_area_vlink_cmd);
+    install_element (OSPF_NODE, &cli_no_ospf_area_vlink_param1_cmd);
+    install_element (OSPF_NODE, &cli_ospf_area_vlink_auth_cmd);
+    install_element (OSPF_NODE, &cli_ospf_area_vlink_auth_param1_cmd);
+    install_element (OSPF_NODE, &cli_no_ospf_area_vlink_auth_cmd);
+    install_element (OSPF_NODE, &cli_ospf_area_vlink_auth_key_cmd);
+    install_element (OSPF_NODE, &cli_no_ospf_area_vlink_auth_key_cmd);
+    install_element (OSPF_NODE, &cli_ospf_area_vlink_auth_key_md5_cmd);
+    install_element (OSPF_NODE, &cli_no_ospf_area_vlink_auth_key_md5_cmd);
 
     /* OSPF Intervals */
     install_element(INTERFACE_NODE, &cli_ospf_router_hello_interval_cmd);
