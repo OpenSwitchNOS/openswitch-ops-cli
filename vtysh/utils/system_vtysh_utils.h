@@ -24,6 +24,11 @@
 #define _SYSTEMVTYSH_UTILS_H
 
 #define FAN_SPEED_OVERRIDE_STR "fan_speed_override"
-const char **psu_state_string;
+
+#define POWER_SUPPLY_FAULT_ABSENT  "Absent"
+#define POWER_SUPPLY_FAULT_INPUT   "Input Fault"
+#define POWER_SUPPLY_FAULT_OUTPUT  "Output Fault"
+#define POWER_SUPPLY_OK            "OK"
+#define POWER_SUPPLY_UNKNOWN       "Unknown"
 
 #endif /* _SYSTEM_VTYSH_UTILS_H  */
