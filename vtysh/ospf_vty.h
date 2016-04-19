@@ -144,6 +144,10 @@ cli_command_result (enum ovsdb_idl_txn_status status)
         return cli_command_result(status);                \
     } while (0)
 
+#define OSPF_END_DB_TXN_STATUS(txn)                   \
+       enum ovsdb_idl_txn_status status;              \
+       status = cli_do_config_finish(txn);
+
 #define OSPF_ERRONEOUS_DB_TXN(txn, error_message)                   \
     do {                                                            \
         cli_do_config_abort(txn);                                   \
@@ -242,6 +246,7 @@ vtysh_init_intf_ospf_context_clients();
 
 #define OSPF_EXT_TYPE_STRING_TYPE1             "ext_type_1"
 #define OSPF_EXT_TYPE_STRING_TYPE2             "ext_type_2"
+#define OSPF_KEY_AREA_FULL_VL_NEIGHBORS        "full_virtual_nbrs"
 
 
 /* OSPF Default values */
