@@ -66,6 +66,7 @@
 int64_t timeout_start;
 struct termios tp;
 long long int next_poll_msec;
+unsigned char ospf_vlink_count[256] = {0};
 
 typedef unsigned char boolean;
 
@@ -1498,5 +1499,18 @@ vtysh_ovsdb_show_version_detail(void)
             vty_out(vty, "SOURCE URL  : %-128s\n\n",
                 (row->src_url[0] == '\0') ? "Not Available" : row->src_url);
         }
+    }
+}
+
+void
+ospf_area_vlink_init(void)
+{
+    const struct ovsrec_ospf_vlink *vlink_row = NULL;
+    int n;
+
+    OVSREC_OSPF_VLINK_FOR_EACH(vlink_row, idl)
+    {
+        sscanf(vlink_row->name, "VLINK%d", &n);
+        ospf_vlink_count[n] = 1;
     }
 }

@@ -25,6 +25,7 @@
 #ifndef _OSPF_VTY_H
 #define _OSPF_VTY_H
 
+
 #define OSPF_CMD_AS_RANGE "<0-4294967295>"
 
 #define SAFE_FREE(x) if (x) {free(x);x=NULL;}
@@ -113,6 +114,7 @@
 #define DEFAULT_REDIST_ALWAYS_STR "Always advertise default route\n"
 
 #define OSPF_DEFAULT_INSTANCE_ID 1
+
 /*
 ** depending on the outcome of the db transaction, returns
 ** the appropriate value for the cli command execution.
@@ -125,6 +127,7 @@ cli_command_result (enum ovsdb_idl_txn_status status)
     }
     return CMD_WARNING;
 }
+
 /********************** standard database txn operations ***********************/
 
 #define OSPF_START_DB_TXN(txn)                                  \
@@ -158,6 +161,10 @@ cli_command_result (enum ovsdb_idl_txn_status status)
         vty_out(vty, " %s\n", message);                             \
         return CMD_SUCCESS;                                         \
     } while (0)
+
+#define END_DB_TXN_STATUS(txn)                   \
+      enum ovsdb_idl_txn_status status;              \
+      status = cli_do_config_finish(txn);
 
 /********************** helper routines which find things ***********************/
 
@@ -242,6 +249,7 @@ vtysh_init_intf_ospf_context_clients();
 
 #define OSPF_EXT_TYPE_STRING_TYPE1             "ext_type_1"
 #define OSPF_EXT_TYPE_STRING_TYPE2             "ext_type_2"
+#define OSPF_KEY_AREA_FULL_VL_NEIGHBORS        "full_virtual_nbrs"
 
 
 /* OSPF Default values */
