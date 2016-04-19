@@ -95,6 +95,16 @@
 	- [Invalid VLAN input parameters](#invalid-vlan-input-parameters)
 	- [Add/Delete VLAN interface](#adddelete-vlan-interface)
 	- [Modify VLAN interface](#modify-vlan-interface)
+- [sFlow](#sflow)
+    - [Test sFlow global status](#test-sflow-global-status)
+    - [Test sFlow sampling rate](#test-sflow-sampling-rate)
+    - [Test sFlow header size](#test-sflow-header-size)
+    - [Test sFlow max datagram size](#test-sflow-max-datagram-size)
+    - [Test sFlow polling](#test-sflow-polling)
+    - [Test sFlow collector](#test-sflow-collector)
+    - [Test sFlow agent interface](#test-sflow-agent-interface)
+    - [Test sFlow show interface](#test-sflow-show-interface)
+    - [Test sFlow show running)](#test-sflow-show-running)
 
 ## VRF Add/Delete
 
@@ -990,7 +1000,7 @@ The test case checks the internal VLAN range by giving a start value greater tha
 #### Setup
 Single Switch Topology
 #### Description
-Check the internal VLAN range by giving a start number that is larger than the ending number for the range. 
+Check the internal VLAN range by giving a start number that is larger than the ending number for the range.
 
 Run the command:
 ```
@@ -1012,7 +1022,7 @@ The test case checks if both start and end of a range can be equal.
 #### Setup
 Single Switch Topology
 #### Description
-Check internal VLAN range by giving the same number for both the start and end of the range. 
+Check internal VLAN range by giving the same number for both the start and end of the range.
 
 Run the command:
 ```
@@ -2585,4 +2595,306 @@ root(config-if-vlan)do show running-config
 #### Test Result Criteria
 ##### Test Pass Criteria
 The IP address should be displayed for the `do show running-config` command.
+##### Test Fail Criteria
+
+## sFlow
+### Test sFlow global status
+#### Objective
+This function checks whether a new row gets created when you enable
+sFlow and a reference to it gets stored in the System table.Also, it
+verifies whether the row name is set as 'global'.
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Check the `ovsdb-client monitor sFlow --detach` command.
+Run the commands:
+```
+root(config)sflow enable
+root(config)do show sflow
+
+root#ovsdb-client monitor sFlow --detach
+
+root(config)no sflow enable
+root(config)do show sflow
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. On enabling sFlow globally using the command `sflow enable` the `do show sflow` command output should show sFlow as enabled.
+2. The `ovsdb-client monitor sFlow --detach` command output should show a sFlow row named 'global' created.
+3. On disabling sflow globally using the command `no sflow enable` the `do show sflow` command output should show sFlow as disabled.
+
+##### Test Fail Criteria
+
+### Test sFlow sampling rate
+### Objective
+This function verifies correct setting/unsetting of sflow default and
+non-default sampling rate
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)do show sflow
+
+root(config)sflow sampling 50000
+root(config)do show sflow
+
+root(config)no sflow sampling
+root(config)do show sflow
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. The `do show sflow` command opuput should show sFlow sampling value as default ie 4096 when not set.
+2. On setting the sampling rate using the command `sflow sampling <rate>` we should see the new rate in the `do show sflow` command output.
+3. On unsetting the sampling rate using the command `no sflow sampling` we should see the default sampling rate in the `do show sflow` command output.
+
+##### Test Fail Criteria
+
+### Test sFlow header size
+### Objective
+This function verifies correct setting/unsetting of sflow default and
+non-default header size
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)do show sflow
+
+root(config)sflow header-size 70
+root(config)do show sflow
+
+root(config)no sflow header-size
+root(config)do show sflow
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. The `do show sflow` output without sflow header size configuration should show default header size ie 128.
+2. On setting the sflow header size using the command `sflow header-size 70` the `do show sflow` command output should show the header size as 70.
+3. On unsetting the sflow header size using the command `no sflow header-size` the `do show sflow` command output should show the default header size ie 128.
+
+##### Test Fail Criteria
+
+### Test sFlow max datagram size
+### Objective
+This function verifies correct setting/unsetting of sflow default and
+non-default max-datagram size
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)do show sflow
+
+root(config)sflow max-datagram-size 10
+root(config)do show sflow
+
+root(config)no sflow max-datagram-size
+root(config)do show sflow
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. The `do show sflow` output without sflow max datagram size configuration should show default max datagram size ie 1400.
+2. On setting the sflow header size using the command `sflow max-datagram-size 10` the `do show sflow` command output should show the max datagram size as 10.
+3. On unsetting the sflow header size using the command `no sflow max-datagram-size` the `do show sflow` command output should show the default max datagram size ie 1400.
+
+##### Test Fail Criteria
+
+### Test sFlow polling
+### Objective
+This function verifies correct setting/unsetting of sflow default and
+non-default polling interval
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)do show sflow
+
+root(config)sflow polling 10
+root(config)do show sflow
+
+root(config)no sflow polling
+root(config)do show sflow
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. The `do show sflow` output without polling interval configuration should show default polling interval ie 30.
+2. On setting the sflow polling interval using the command `sflow polling 10` the `do show sflow` command output should show the polling interval as 10.
+3. On unsetting the sflow polling interval using the command `no sflow polling` the `do show sflow` command output should show the default polling interval ie 30.
+
+##### Test Fail Criteria
+
+### Test sFlow collector
+### Objective
+This function verifies correct setting/unsetting of sflow collector ip, port and vrf and whether default port and vrf values get set when not passed by the user.
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)sflow collector 255.255.255.255
+root(config)do show sflow
+
+root(config)sflow collector 255.255.255.254 port 1234
+root(config)do show sflow
+
+root(config)sflow collector 255.255.255.254 port 1234
+
+root(config)sflow collector 255.255.255.253 port 5678 vrf vrf_default
+root(config)do show sflow
+
+root(config)sflow collector 255.255.255.252
+
+root(config)no sflow collector 255.255.255.254 port 1234
+root(config)no sflow collector 255.255.255.253 port 5678 vrf
+root(config)do show sflow
+
+root(config)sflow collector 255.255.255.252 vrf vrf1
+
+root(config)sflow collector ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff port 65535 vrf vrf_default
+root(config)do show sflow
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. On configuring the collector to 255.255.255.255 using the command `sflow collector 255.255.255.255` the `do show sflow` command output should show collector ip set to the same with the default port ie 65535 and default vrf ie vrf_default.
+2. On configuring the collector to 255.255.255.254 and port to 1234 using the command `sflow collector 255.255.255.254 port 1234` the `do show sflow` command output should show collector ip and port set to the same and default vrf ie vrf_default.
+3. On configuring the  same collector as in step 2 using the command `sflow collector 255.255.255.254 port 1234` we get an error saying duplicte collector.
+4. On configuring the collector to 255.255.255.253, port to 5678 and vrf to vrf_default using the command `sflow collector 255.255.255.254 port 5678 vrf vrf_default` the `do show sflow` command output should show collector ip, port and vrf set to the same.
+5. On configuring a fourth collector using the command `sflow collector 255.255.255.252` we get an error saying that a maximum of 3 collectors are allowed.
+6. On unsetting the collectors in step 2 and step 4 using the command `no sflow collector 255.255.255.254 port 1234` and `no sflow collector 255.255.255.254 port 1234 vrf vrf_default` the `do show sflow` command output should not show these collectors
+7. On configuring the collector to 255.255.255.252 and vrf to vrf1 using the command `sflow collector 255.255.255.254 port 5678 vrf vrf1` should give an error saying that only default vrf is allowed.
+8. On configuring the collector to ipv6 address  ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, port to 65535 and vrf to vrf_default using the command `sflow collector ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff port 65535 vrf vrf_default` the `do show sflow` command output should show collector ip, port and vrf set to the same.
+
+##### Test Fail Criteria
+
+### Test sFlow agent interface
+#### Objective
+This function verifies correct setting/unsetting of L3 agent interface and its family and also validates the interface before setting it.
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)sflow agent-interface 100
+
+root(config)interface 19
+root(config-if)ip address 10.10.10.10/32
+root(config-if)exit
+root(config)sflow agent-interface 19
+root(config)do show sflow
+
+root(config)interface 29
+root(config-if)ip address 20.20.20.20/32
+root(config-if)exit
+root(config)sflow agent-interface 29 agent-address-family ipv4
+root(config)do show sflow
+
+root(config)no sflow agent-interface
+root(config)do show sflow
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. On setting the agent interface to 100 using the command `sflow agent-interface 100` we should get an error since its an invalid interface.
+2. On setting the interface ip for interface 19 and sflow agent interface to interface 19 using the command `sflow agent-interface 19` the `do show sflow` command output should show sflow agent interface as 19.
+3. On setting the interface ip for interface 29 and sflow agent interface to interface 29 and agent address family to ipv4 using the command `sflow agent-interface 29 ipv4` the `do show sflow` command output should show sflow agent interface as 29 and agent address family as ipv4.
+6. On unsetting the sflow agent interface using the command `no sflow agent-interface` the `do show sflow` command output should not show any sflow agent interface.
+##### Test Fail Criteria
+
+### Test sFlow show interface
+#### Objective
+This function verifies the output of 'show sflow interface INTERFACE'
+command across the configuration set in the sFlow table.
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)sflow enable
+root(config)sflow sampling 20
+root(config)sflow collector 255.255.255.254 port 1234
+root(config)do show sflow interface 1
+
+root(config)interface 1
+root(config-if)no sflow enable
+root(config-if)exit
+root(config)do show sflow interface 1
+
+root(config)no sflow enable
+root(config)no sflow sampling
+root(config)no sflow collector 255.255.255.254 port 1234
+root(config)do show running-config
+root(config)do show running-config interface 1
+root(config)do show interface 1
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. On enabing sflow, configurig sampling rate to 20 and setting the collector ip the `do show sflow interface 1` command should show that sFlow is enabled, the configured sampling rate and Number of samples.
+2. On disabling sflow on an interface 1 using the command `no sflow enable` on interface context mode the `do show sflow interface 1` command output should show sFlow disabled.
+3. On unconfiguring the sFlow sampling,the sFlow collector and disabling sFlow the `do show running-config` and `do show running-config interface 1` command output should show 'no sflow enabled'.And the `do show interface 1` output should show sflow disabled.
+
+##### Test Fail Criteria
+
+## Test sFlow show running
+### Objective
+This function verifies the output of 'show running-config' command across the configuration set in the sFlow table
+#### Requirements
+- Virtual Mininet Test Setup
+- **CT file**: ops-cli/vtysh/tests/test_vtysh_ct_sflow.py
+
+#### Setup
+Single Switch Topology
+#### Description
+Check the `do show sflow` command.
+Run the commands:
+```
+root(config)sflow enable
+root(config)sflow sampling 54321
+root(config)sflow agent-interface 19 ipv6
+root(config)do show running-config
+```
+#### Test Result Criteria
+##### Test Pass Criteria
+1. On enabing sflow, configuring the sFlow sampling and the sFlow agent interface the `do show running-config` command should show all the configuration.
+
 ##### Test Fail Criteria
