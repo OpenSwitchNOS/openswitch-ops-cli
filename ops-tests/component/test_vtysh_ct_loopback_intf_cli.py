@@ -20,11 +20,6 @@
 OpenSwitch Test for switchd related configurations.
 """
 
-import pytest
-
-# from pytest import set_trace
-# from time import sleep
-
 TOPOLOGY = """
 # +-------+
 # |  ops1 |
@@ -35,7 +30,6 @@ TOPOLOGY = """
 """
 
 
-@pytest.mark.skipif(True, reason="Defective validation line 59")
 def test_vtysh_ct_loopback_intf_cli(topology, step):
     ops1 = topology.get('ops1')
     assert ops1 is not None
@@ -56,10 +50,8 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
 
     ops1("ip address 192.168.1.5/24")
 
-    out = ops1("get interface lo1 ip4_address", shell="vsctl").splitlines()
-    if len(out) == 2:
-        out = out[1]
-    assert " " in out
+    out = ops1("get port lo1 ip4_address", shell="vsctl")
+    assert "192.168.1.5/24" in out
 
     ops1("exit")
     ops1("no interface loopback 1")

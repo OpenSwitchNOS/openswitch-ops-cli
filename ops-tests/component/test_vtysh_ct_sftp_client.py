@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import pytest
-
 TOPOLOGY = """
 #
 # +-------+
@@ -29,7 +27,6 @@ TOPOLOGY = """
 """
 
 
-@pytest.mark.skipif(True, reason="Problematic validation lines 44-55")
 def test_sftp_client_configuration(topology, step):
     sw1 = topology.get('sw1')
 
@@ -49,7 +46,7 @@ def test_sftp_client_configuration(topology, step):
     cmd = copy+username+hostip+srcpath+dstpath
 
     sw1._shells['vtysh']._prompt = (
-        '.*switch#'
+        'switch#'
     )
     out = sw1(cmd)
     assert 'Username should be less than 256 characters' in out
@@ -73,7 +70,7 @@ def test_sftp_client_configuration(topology, step):
     cmd = copy+username+hostname+srcpath+dstpath
 
     sw1._shells['vtysh']._prompt = (
-        '.*switch#'
+        'switch#'
     )
     out = sw1(cmd)
     assert 'Hostname should be less than 256 characters' in out
