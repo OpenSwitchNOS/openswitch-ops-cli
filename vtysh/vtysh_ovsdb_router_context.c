@@ -787,6 +787,7 @@ void vtysh_router_context_ospf_area_callback(vtysh_ovsdb_cbmsg_ptr p_msg,
 {
     const struct ovsrec_ospf_area *area_row = NULL;
     int i = 0;
+    int64_t intervals = 0;
     const char *val = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
     char disp_str[OSPF_SHOW_STR_LEN];
@@ -854,6 +855,87 @@ void vtysh_router_context_ospf_area_callback(vtysh_ovsdb_cbmsg_ptr p_msg,
             {
                 vtysh_ovsdb_cli_print(p_msg, "%4sarea %s stub no-summary", "",
                                       area_str);
+            }
+        }
+
+        /* area virtual-link */
+        if(area_row->n_ospf_vlinks > 0)
+        {
+            char vlink_str[OSPF_SHOW_STR_LEN];
+            int j = 0;
+
+            struct ovsrec_ospf_vlink *vlink_row = NULL;
+            for (j = 0; j < area_row->n_ospf_vlinks; j++)
+            {
+                vlink_row = area_row->value_ospf_vlinks[j];
+                OSPF_IP_STRING_CONVERT(vlink_str, ntohl(vlink_row->peer_router_id));
+                vtysh_ovsdb_cli_print(p_msg, "%4sarea %s virtual-link %s", "",
+                          area_str, vlink_str);
+                if (vlink_row->ospf_auth_type)
+                {
+                    if (!strcmp (vlink_row->ospf_auth_type,
+                        OVSREC_OSPF_VLINK_OSPF_AUTH_TYPE_TEXT))
+                        vtysh_ovsdb_cli_print(p_msg,
+                        "%4sarea %s virtual-link %s authentication", "",
+                          area_str, vlink_str);
+                    else if (!strcmp (vlink_row->ospf_auth_type,
+                        OVSREC_OSPF_VLINK_OSPF_AUTH_TYPE_MD5))
+                        vtysh_ovsdb_cli_print(p_msg,
+                        "%4sarea %s virtual-link %s authentication "\
+                        "message-digest", "", area_str, vlink_str);
+                    else if (!strcmp (vlink_row->ospf_auth_type,
+                        OVSREC_OSPF_VLINK_OSPF_AUTH_TYPE_MD5))
+                        vtysh_ovsdb_cli_print(p_msg,
+                        "%4sarea %s virtual-link %s authentication "\
+                        "null", "", area_str, vlink_str);
+                }
+                intervals = smap_get_int(&(vlink_row->other_config),
+                    OSPF_KEY_HELLO_INTERVAL,OSPF_HELLO_INTERVAL_DEFAULT);
+                if (intervals != OSPF_HELLO_INTERVAL_DEFAULT)
+                {
+                    vtysh_ovsdb_cli_print(p_msg,
+                        "%4sarea %s virtual-link %s hello-interval %ld", "",
+                          area_str, vlink_str, intervals);
+                }
+                intervals = smap_get_int(&(vlink_row->other_config),
+                    OSPF_KEY_DEAD_INTERVAL,OSPF_DEAD_INTERVAL_DEFAULT);
+                if (intervals != OSPF_DEAD_INTERVAL_DEFAULT)
+                {
+                    vtysh_ovsdb_cli_print(p_msg,
+                        "%4sarea %s virtual-link %s dead-interval %ld", "",
+                          area_str, vlink_str, intervals);
+                }
+                intervals = smap_get_int(&(vlink_row->other_config),
+                    OSPF_KEY_RETRANSMIT_INTERVAL,OSPF_RETRANSMIT_INTERVAL_DEFAULT);
+                if (intervals != OSPF_RETRANSMIT_INTERVAL_DEFAULT)
+                {
+                    vtysh_ovsdb_cli_print(p_msg,
+                        "%4sarea %s virtual-link %s retransmit-interval %ld", "",
+                          area_str, vlink_str, intervals);
+                }
+                intervals = smap_get_int(&(vlink_row->other_config),
+                    OSPF_KEY_TRANSMIT_DELAY,OSPF_TRANSMIT_DELAY_DEFAULT);
+                if (intervals != OSPF_TRANSMIT_DELAY_DEFAULT)
+                {
+                    vtysh_ovsdb_cli_print(p_msg,
+                        "%4sarea %s virtual-link %s transmit-delay %ld", "",
+                          area_str, vlink_str, intervals);
+                }
+                if (vlink_row->ospf_auth_text_key)
+                    vtysh_ovsdb_cli_print(p_msg,
+                    "%4sarea %s virtual-link %s authentication-key %s", "",
+                          area_str, vlink_str,vlink_row->ospf_auth_text_key);
+                if (vlink_row->n_ospf_auth_md5_keys)
+                {
+                    int k = 0;
+                    for (k = 0 ; k < vlink_row->n_ospf_auth_md5_keys ; k++)
+                    {
+                        vtysh_ovsdb_cli_print(p_msg, "%4sarea %s virtual-link %s"\
+                        " message-digest-key %d md5 %s", "",
+                          area_str, vlink_str,vlink_row->key_ospf_auth_md5_keys[k],
+                          vlink_row->value_ospf_auth_md5_keys[k]);
+                    }
+                }
             }
         }
     }

@@ -89,4 +89,6 @@ bool check_if_internal_vlan(const struct ovsrec_vlan *vlan_row);
 
 void vtysh_ovsdb_show_version_detail(void);
 
+void ospf_area_vlink_init(void);
+
 #endif /* VTYSH_OVSDB_IF_H */

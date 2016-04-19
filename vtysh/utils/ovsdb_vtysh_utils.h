@@ -77,4 +77,9 @@ cli_command_result (enum ovsdb_idl_txn_status status)
         return CMD_SUCCESS;                                         \
     } while (0)
 
+#define END_DB_TXN_STATUS(txn)                   \
+               enum ovsdb_idl_txn_status status;              \
+               status = cli_do_config_finish(txn);
+
+
 #endif /* _OVSDB_VTY_UTILS_H  */

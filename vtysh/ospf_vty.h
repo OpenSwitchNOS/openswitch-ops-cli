@@ -24,6 +24,8 @@
  */
 #ifndef _OSPF_VTY_H
 #define _OSPF_VTY_H
+#include "utils/ovsdb_vtysh_utils.h"
+
 
 #define OSPF_CMD_AS_RANGE "<0-4294967295>"
 
@@ -113,18 +115,7 @@
 #define DEFAULT_REDIST_ALWAYS_STR "Always advertise default route\n"
 
 #define OSPF_DEFAULT_INSTANCE_ID 1
-/*
-** depending on the outcome of the db transaction, returns
-** the appropriate value for the cli command execution.
-*/
-inline static int
-cli_command_result (enum ovsdb_idl_txn_status status)
-{
-    if ((status == TXN_SUCCESS) || (status == TXN_UNCHANGED)) {
-        return CMD_SUCCESS;
-    }
-    return CMD_WARNING;
-}
+
 /********************** standard database txn operations ***********************/
 
 #define OSPF_START_DB_TXN(txn)                                  \
@@ -242,6 +233,7 @@ vtysh_init_intf_ospf_context_clients();
 
 #define OSPF_EXT_TYPE_STRING_TYPE1             "ext_type_1"
 #define OSPF_EXT_TYPE_STRING_TYPE2             "ext_type_2"
+#define OSPF_KEY_AREA_FULL_VL_NEIGHBORS        "full_virtual_nbrs"
 
 
 /* OSPF Default values */
