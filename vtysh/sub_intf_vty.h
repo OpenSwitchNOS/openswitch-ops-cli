@@ -43,7 +43,6 @@
 #define SUB_IF_OVSDB_TXN_CREATE_ERROR "Could not create the OVSDB" \
                                       "transaction.Function=%s Line=%d"
 
-#define INTF_HELP_STR                 "Interface to create"
 void sub_if_vty_init(void);
 void sub_intf_vty_init (void);
 void encapsulation_vty_init(void);

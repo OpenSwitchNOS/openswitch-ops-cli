@@ -333,7 +333,7 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
         }
         else if (port_row->ip4_address_secondary != NULL )
         {
-            port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary);
+            port_ip_subnet = mask_ip4_subnet(*port_row->ip4_address_secondary);
 
             if (input_ip_subnet == port_ip_subnet)
             {
@@ -412,7 +412,7 @@ DEFUN (cli_sub_intf_del_ip4,
     enum ovsdb_idl_txn_status status;
     bool port_found = false;
     const char *if_name = (char*)vty->index;
-    char *ip4[IP_ADDRESS_LENGTH];
+    char ip4[IP_ADDRESS_LENGTH];
 
     if (NULL != argv[0])
     {
