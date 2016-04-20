@@ -1,0 +1,9 @@
+Verified+1: Zuul <zuul@lists.openswitch.net>
+Code-Review+2: Namsoo Kim <nkim@hpe.com>
+Verified+2: Namsoo Kim <nkim@hpe.com>
+Workflow+1: Namsoo Kim <nkim@hpe.com>
+Submitted-by: Namsoo Kim <nkim@hpe.com>
+Submitted-at: Wed, 20 Apr 2016 03:01:19 +0000
+Reviewed-on: https://review.openswitch.net/7303
+Project: openswitch/ops-cli
+Branch: refs/heads/feature/ops-passwd-srv
