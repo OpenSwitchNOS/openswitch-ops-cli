@@ -3145,6 +3145,7 @@ autocomplete_command_tokens(struct cmd_element *matched_element, vector vline)
   struct cmd_token *word_token;
   const char *word;
   vector keyword_vector;
+  char *line_token = ".LINE";
 
   cmd_matcher_init(&matcher, matched_element, 0,
                    vline, -1, NULL, NULL);
@@ -3225,6 +3226,11 @@ autocomplete_command_tokens(struct cmd_element *matched_element, vector vline)
        }
        if ((cmd_token != NULL) && !(strcmp(cmd_token, "alias")))
          break;
+  }
+  if (!(strcmp(cmd_token, line_token)))
+  {
+    for (; matcher.word_index < vector_active(vline); matcher.word_index++)
+      strcat(strcat(cmd_string, vline->index[matcher.word_index]), " ");
   }
   return cmd_string;
 }
