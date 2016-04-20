@@ -1,6 +1,6 @@
 /* Virtual terminal [aka TeletYpe] interface routine
    Copyright (C) 1997 Kunihiro Ishiguro
-   Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+   Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
 
 This file is part of GNU Zebra.
 
@@ -251,7 +251,7 @@ extern int vty_shell (struct vty *);
 extern int vty_shell_serv (struct vty *);
 extern void vty_hello (struct vty *);
 extern int vty_command (struct vty *vty, char *buf);
-
+extern void set_page_height(int lines);
 /* Send a fixed-size message to all vty terminal monitors; this should be
    an async-signal-safe function. */
 extern void vty_log_fixed (char *buf, size_t len);

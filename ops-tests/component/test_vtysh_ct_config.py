@@ -20,7 +20,7 @@
 OpenSwitch Test for switchd related configurations.
 """
 
-# from pytest import set_trace
+import pytest
 # from time import sleep
 
 TOPOLOGY = """
@@ -285,6 +285,7 @@ def restoreconfigfromrunningconfig(dut, step):
     dut('end')
 
 
+@pytest.mark.skipif(True, reason="Defective validation line 76")
 def test_vtysh_ct_config(topology, step):
     ops1 = topology.get('ops1')
     assert ops1 is not None

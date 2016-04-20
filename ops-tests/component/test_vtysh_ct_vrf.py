@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pytest
+
 TOPOLOGY = """
 #
 # +-------+
@@ -27,6 +29,7 @@ TOPOLOGY = """
 """
 
 
+@pytest.mark.skipif(True, reason="Defective validations lines 379-389")
 def test_vrf_cli(topology, step):
     first_interface = '12'
     second_interface = '13'
