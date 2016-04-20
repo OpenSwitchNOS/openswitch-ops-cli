@@ -1147,8 +1147,8 @@ DEFUN(bgp_config_type,
       "bgp config-type (cisco|zebra)",
       BGP_STR
       "Configuration type\n"
-      "cisco\n"
-      "zebra\n")
+      "Display BGP configurations in Cisco compatible format\n"
+      "Display BGP configurations in Zebra compatible format\n")
 {
     report_unimplemented_command(vty, argc, argv);
     return CMD_SUCCESS;
