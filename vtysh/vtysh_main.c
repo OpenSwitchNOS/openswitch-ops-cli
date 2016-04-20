@@ -285,7 +285,7 @@ main (int argc, char **argv, char **env)
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
   struct passwd *pw = NULL;
-
+  bool perm;
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
   vlog_set_verbosity("SYSLOG:INFO");
@@ -373,6 +373,7 @@ main (int argc, char **argv, char **env)
       fprintf(stderr,"Unknown User.\n");
       exit(1);
   }
+  perm = rbac_check_user_permission(pw->pw_name,RBAC_READ_SWITCH_CONFIG);
   if (!( rbac_check_user_permission(pw->pw_name,RBAC_READ_SWITCH_CONFIG) ||
               rbac_check_user_permission(pw->pw_name,RBAC_WRITE_SWITCH_CONFIG)))
   {

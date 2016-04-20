@@ -3851,6 +3851,18 @@ int is_valid_ip_address(const char *ip_value)
 void
 vtysh_init_vty ( struct passwd *pw)
 {
+  bool perm;
+
+  perm = rbac_check_user_permission(pw->pw_name,RBAC_WRITE_SWITCH_CONFIG);
+  if (!( rbac_check_user_permission(pw->pw_name,RBAC_READ_SWITCH_CONFIG) ||
+              rbac_check_user_permission(pw->pw_name,RBAC_WRITE_SWITCH_CONFIG)))
+  {
+      fprintf (stderr,
+              "%s does not have the required permissions to access Vtysh.\n",
+              pw->pw_name);
+      exit(1);
+  }
+
    /* Install nodes. */
    install_node (&bgp_node, NULL);
 #ifndef ENABLE_OVSDB
@@ -3923,7 +3935,9 @@ vtysh_init_vty ( struct passwd *pw)
 #endif /* ENABLE_OVSDB */
 
    install_element (VIEW_NODE, &vtysh_enable_cmd);
-   install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
+   if (perm) {
+       install_element (ENABLE_NODE, &vtysh_config_terminal_cmd);
+   }
    install_element (ENABLE_NODE, &vtysh_disable_cmd);
    install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
@@ -4062,22 +4076,26 @@ vtysh_init_vty ( struct passwd *pw)
 #endif
 
    install_element (ENABLE_NODE, &vtysh_show_running_config_cmd);
-  install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
-  install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
+   if (perm) {
+      install_element (ENABLE_NODE, &vtysh_copy_runningconfig_startupconfig_cmd);
+      install_element (ENABLE_NODE, &vtysh_erase_startupconfig_cmd);
 #ifdef ENABLE_OVSDB
-  install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
+      install_element (ENABLE_NODE, &vtysh_copy_startupconfig_runningconfig_cmd);
 #endif /* ENABLE_OVSDB */
 #ifndef ENABLE_OVSDB
-  install_element (ENABLE_NODE, &vtysh_write_file_cmd);
-  install_element (ENABLE_NODE, &vtysh_write_cmd);
-  /* "write terminal" command. */
-  install_element (ENABLE_NODE, &vtysh_write_terminal_cmd);
+      install_element (ENABLE_NODE, &vtysh_write_file_cmd);
+      install_element (ENABLE_NODE, &vtysh_write_cmd);
+      /* "write terminal" command. */
+      install_element (ENABLE_NODE, &vtysh_write_terminal_cmd);
 #endif /* ENABLE_OVSDB */
+   }
   install_element (CONFIG_NODE, &vtysh_integrated_config_cmd);
 #ifndef ENABLE_OVSDB
   install_element (CONFIG_NODE, &no_vtysh_integrated_config_cmd);
-  /* "write memory" command. */
-  install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
+  if (perm) {
+      /* "write memory" command. */
+      install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
+  }
 #endif
 #ifndef ENABLE_OVSDB
   install_element (VIEW_NODE, &vtysh_terminal_length_cmd);

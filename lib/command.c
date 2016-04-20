@@ -42,6 +42,9 @@ Boston, MA 02111-1307, USA.  */
 
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
+#define RBAC_READ_SWITCH_CONFIG                 "READ_SWITCH_CONFIG"
+#define RBAC_WRITE_SWITCH_CONFIG                "WRITE_SWITCH_CONFIG"
+#define RBAC_SYS_MGMT                           "SYS_MGMT"
 
 #define MAX_CMD_LEN 256
 #define MAX_DYN_HELPSTR_LEN 256
@@ -5048,7 +5051,24 @@ cmd_init (int terminal)
   token_cr.type = TOKEN_TERMINAL;
   token_cr.cmd = command_cr;
   token_cr.desc = XSTRDUP(MTYPE_CMD_TOKENS, "");
+  struct passwd *pw = NULL;
+  bool perm;
 
+  pw = getpwuid( getuid());
+  if (pw == NULL)
+  {
+      fprintf(stderr,"Unknown User.\n");
+      exit(1);
+  }
+  perm = rbac_check_user_permission(pw->pw_name,RBAC_WRITE_SWITCH_CONFIG);
+  if (!( rbac_check_user_permission(pw->pw_name,RBAC_READ_SWITCH_CONFIG) ||
+              rbac_check_user_permission(pw->pw_name,RBAC_WRITE_SWITCH_CONFIG)))
+  {
+      fprintf (stderr,
+              "%s does not have the required permissions to access Vtysh.\n",
+              pw->pw_name);
+      exit(1);
+  }
   /* Allocate initial top vector of commands. */
   cmdvec = vector_init (VECTOR_MIN_SIZE);
 
@@ -5099,8 +5119,10 @@ cmd_init (int terminal)
     {
       install_default (ENABLE_NODE);
       install_element (ENABLE_NODE, &config_disable_cmd);
-      install_element (ENABLE_NODE, &config_terminal_cmd);
-      install_element (ENABLE_NODE, &copy_runningconfig_startupconfig_cmd);
+      if (perm) {
+        install_element (ENABLE_NODE, &config_terminal_cmd);
+        install_element (ENABLE_NODE, &copy_runningconfig_startupconfig_cmd);
+      }
     }
 #ifndef ENABLE_OVSDB
   install_element (ENABLE_NODE, &show_startup_config_cmd);
