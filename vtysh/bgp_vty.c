@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <libaudit.h>
 #include "command.h"
 #include "vtysh/vtysh.h"
 #include "log.h"
@@ -183,6 +184,58 @@ static const struct lookup_entry set_table[] = {
     {"weight", "weight"},
     {NULL, NULL},
 };
+
+/********************** Audit Logging ***********************/
+
+/** Buffer size, large enough to hold audit log messages **/
+#define BGP_CLI_AUDIT_BUFFER_SIZE 512
+
+/** File descriptor for audit logging */
+static int audit_fd;
+
+/**
+ * Initialize the audit log
+ */
+static void
+bgp_audit_init(void) {
+    audit_fd = audit_open();
+}
+
+/**
+ * Encode the given arg_name and arg_value into the given aubuf and ausize
+ */
+static void
+bgp_audit_encode(char *aubuf, size_t ausize,
+                 const char *arg_name, const char *arg_value)
+{
+    char *cfg;
+    if (arg_value != NULL) {
+        cfg = audit_encode_nv_string(arg_name, arg_value, 0);
+        if (cfg != NULL) {
+            /* New length includes trailing space and NULL byte */
+            if (strlen(aubuf) + strlen(cfg) + 2 <= ausize) {
+                strcat(aubuf, cfg);
+                strcat(aubuf, " ");
+            } else {
+                VLOG_ERR("Audit log message buffer length exceeded");
+            }
+            free(cfg);
+        }
+    }
+}
+
+/**
+ * Log the given aubuf and command_result to the audit log
+ */
+static void
+bgp_audit_log(char *aubuf, int command_result)
+{
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    aubuf[strlen(aubuf) - 1] = '\0'; /* Chomp trailing space */
+    audit_log_user_message(audit_fd, AUDIT_USYS_CONFIG, aubuf, hostname,
+                           NULL, NULL, command_result);
+}
 
 /********************** Simple error handling ***********************/
 
@@ -1268,10 +1321,19 @@ DEFUN(router_bgp,
       AS_STR)
 {
     int64_t asn;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:router-bgp-create-update ";
+    int result;
+    char asn_str[15];
 
     asn = strtoll(argv[0], NULL, 10);
+    sprintf(asn_str, "%ld", asn);
 
-    return cli_router_bgp_cmd_execute(NULL, asn);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "as number", asn_str);
+
+    result = cli_router_bgp_cmd_execute(NULL, asn);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 ALIAS(router_bgp,
@@ -1350,10 +1412,19 @@ DEFUN(no_router_bgp,
       AS_STR)
 {
     int64_t asn;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:router-bgp-delete ";
+    int result;
+    char asn_str[15];
 
     asn = strtoll(argv[0], NULL, 10);
+    sprintf(asn_str, "%ld", asn);
 
-    return cli_no_router_bgp_cmd_execute(NULL, asn);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "as number", asn_str);
+
+    result = cli_no_router_bgp_cmd_execute(NULL, asn);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 ALIAS(no_router_bgp,
@@ -1419,7 +1490,17 @@ DEFUN(bgp_router_id,
       "Override configured router identifier\n"
       "Manually configured router identifier\n")
 {
-    return cli_bgp_router_id_cmd_execute(NULL, CONST_CAST(char*, argv[0]));
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-router-id-create-update ";
+    int result;
+
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
+
+    result = cli_bgp_router_id_cmd_execute(NULL, CONST_CAST(char*, argv[0]));
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -1512,11 +1593,23 @@ DEFUN(no_bgp_router_id,
       BGP_STR
       "Override configured router identifier\n")
 {
-    if (argc == 1)
-        return cli_no_bgp_router_id_val_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-router-id-delete ";
+    int result;
+
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+
+    if (argc == 1) {
+        bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
+        result = cli_no_bgp_router_id_val_cmd_execute(NULL,
                                                     CONST_CAST(char*, argv[0]));
-    else
-        return cli_no_bgp_router_id_cmd_execute(NULL);
+    }
+    else {
+        result = cli_no_bgp_router_id_cmd_execute(NULL);
+    }
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 ALIAS(no_bgp_router_id,
@@ -1672,7 +1765,15 @@ DEFUN(bgp_maxpaths,
       "Forward packets over multiple paths\n"
       "Number of paths (Default: 1)\n")
 {
-    return cli_bgp_maxpaths_cmd_execute(NULL, atoi(argv[0]));
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-maximum-path-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "maximum paths", argv[0]);
+
+    result = cli_bgp_maxpaths_cmd_execute(NULL, atoi(argv[0]));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(bgp_maxpaths_ibgp,
@@ -1693,7 +1794,17 @@ DEFUN(no_bgp_maxpaths,
       "Forward packets over multiple paths\n"
       "Number of paths (Default: 1)\n")
 {
-    return cli_bgp_maxpaths_cmd_execute(NULL, 0);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-maximum-path-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "maximum paths", 0);
+
+    result = cli_bgp_maxpaths_cmd_execute(NULL, 0);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
+
 }
 
 ALIAS(no_bgp_maxpaths,
@@ -1823,9 +1934,19 @@ DEFUN(bgp_timers,
       "Keepalive interval (Default: 60 seconds)\n"
       "Holdtime (Default: 180 seconds)\n")
 {
-    return ((argc==2)
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:timer-bgp-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "keepalive", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "holdtime", argv[1]);
+
+    result = ((argc==2)
             ? cli_bgp_timers_cmd_execute(NULL, atoi(argv[0]), atoi(argv[1]))
             : CMD_ERR_AMBIGUOUS);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_bgp_timers,
@@ -1835,7 +1956,15 @@ DEFUN(no_bgp_timers,
       "Adjust routing timers\n"
       "BGP timers\n")
 {
-    return cli_no_bgp_timers_cmd_execute(NULL);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:timer-bgp-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+
+    result = cli_no_bgp_timers_cmd_execute(NULL);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 ALIAS(no_bgp_timers,
@@ -2012,7 +2141,15 @@ DEFUN(bgp_fast_external_failover,
       "Immediately reset session if a link to a directly connected "
       "external peer goes down\n")
 {
-    return cli_bgp_fast_external_failover_cmd_execute(NULL);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-fast-external-failover-enable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+
+    result = cli_bgp_fast_external_failover_cmd_execute(NULL);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -2054,7 +2191,15 @@ DEFUN(no_bgp_fast_external_failover,
       "Immediately reset session if a link to a directly connected "
       "external peer goes down\n")
 {
-    return cli_no_bgp_fast_external_failover_cmd_execute(NULL);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-fast-external-failover-disable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+
+    result = cli_no_bgp_fast_external_failover_cmd_execute(NULL);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 /* "Bgp enforce-first-as" configuration. */
@@ -2224,7 +2369,15 @@ DEFUN(bgp_log_neighbor_changes,
       "BGP specific commands\n"
       "Log neighbor up/down and reset reason\n")
 {
-    return cli_bgp_log_neighbor_changes_cmd_execute(NULL);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-log-neighbor-changes-enable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+
+    result = cli_bgp_log_neighbor_changes_cmd_execute(NULL);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -2265,7 +2418,15 @@ DEFUN(no_bgp_log_neighbor_changes,
       "BGP specific commands\n"
       "Log neighbor up/down and reset reason\n")
 {
-    return cli_no_bgp_log_neighbor_changes_cmd_execute(NULL);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-log-neighbor-changes-disable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+
+    result = cli_no_bgp_log_neighbor_changes_cmd_execute(NULL);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 /* "Bgp bestpath med" configuration. */
@@ -2434,7 +2595,16 @@ DEFUN(bgp_network,
        "Specify a network to announce via BGP\n"
        "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 {
-    return cli_bgp_network_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-network-ipv4-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
+
+    result = cli_bgp_network_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static bool
@@ -2522,7 +2692,16 @@ DEFUN(no_bgp_network,
       "Specify a network to announce via BGP\n"
       "IP prefix <network>/<length>, e.g., 35.0.0.0/8\n")
 {
-    return cli_no_bgp_network_cmd_execute(NULL, argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-network-ipv4-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
+
+    result = cli_no_bgp_network_cmd_execute(NULL, argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(ipv6_bgp_network,
@@ -2531,7 +2710,16 @@ DEFUN(ipv6_bgp_network,
        "Specify a network to announce via BGP\n"
        "IPv6 prefix <network>/<length>\n")
 {
-    return cli_bgp_network_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-network-ipv6-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ipv6 address", argv[0]);
+
+    result = cli_bgp_network_cmd_execute (NULL, CONST_CAST(char*, argv[0]));
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_ipv6_bgp_network,
@@ -2541,7 +2729,16 @@ DEFUN(no_ipv6_bgp_network,
       "Specify a network to announce via BGP\n"
       "IPv6 prefix <network>/<length>\n")
 {
-    return cli_no_bgp_network_cmd_execute(NULL, argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-network-ipv6-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ipv6 address", argv[0]);
+
+    result = cli_no_bgp_network_cmd_execute(NULL, argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 /* "Bgp import-check" configuration. */
@@ -2747,12 +2944,22 @@ DEFUN(neighbor_remote_as,
       "Specify a BGP neighbor\n"
       AS_STR)
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-remote-as-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "range", argv[1]);
+
     if (argc != 2) {
         vty_out(vty, "\nargc should be 2, it is %d; %s: %d\n",
                 argc, __FILE__, __LINE__);
         return CMD_WARNING;
     }
-    return cli_neighbor_remote_as_cmd_execute(NULL, vty, argc, argv);
+    result = cli_neighbor_remote_as_cmd_execute(NULL, vty, argc, argv);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 void
@@ -2904,7 +3111,16 @@ DEFUN(no_neighbor,
       NEIGHBOR_STR
       NEIGHBOR_ADDR_STR2)
 {
-    return cli_no_neighbor_cmd_execute(NULL, argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
+    result = cli_no_neighbor_cmd_execute(NULL, argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 ALIAS(no_neighbor,
@@ -2998,7 +3214,16 @@ DEFUN(neighbor_peer_group,
       "Neighbor tag\n"
       "Configure peer-group\n")
 {
-    return cli_neighbor_peer_group_cmd_execute(NULL, argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:neighbor-peer-group-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
+    result = cli_neighbor_peer_group_cmd_execute(NULL, argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_peer_group,
@@ -3009,7 +3234,16 @@ DEFUN(no_neighbor_peer_group,
       "Neighbor tag\n"
       "Configure peer-group\n")
 {
-    return cli_no_neighbor_peer_group_cmd_execute(NULL, argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:neighbor-peer-group-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
+    result = cli_no_neighbor_peer_group_cmd_execute(NULL, argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_peer_group_remote_as,
@@ -3144,13 +3378,23 @@ DEFUN(neighbor_password,
       "Set a password\n"
       "The password\n")
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:neighbor-password-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "line", argv[1]);
+
     if (argc != 2) {
         vty_out(vty, "\n%%Insufficient parameters,"
                      " neighbor <ipaddr> password <pwd>\n");
         return CMD_WARNING;
     }
 
-    return cli_neighbor_password_execute(NULL, argc, argv);
+    result = cli_neighbor_password_execute(NULL, argc, argv);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_password,
@@ -3307,7 +3551,17 @@ DEFUN(neighbor_set_peer_group,
       "Member of the peer-group\n"
       "peer-group name\n")
 {
-    return cli_neighbor_set_peer_group_cmd_execute(NULL, argv[0], argv[1]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-peer-group-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "peer-group", argv[1]);
+
+    result = cli_neighbor_set_peer_group_cmd_execute(NULL, argv[0], argv[1]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -3373,7 +3627,17 @@ DEFUN(no_neighbor_set_peer_group,
       "Member of the peer-group\n"
       "peer-group name\n")
 {
-    return cli_no_neighbor_set_peer_group_cmd_execute(NULL, argv[0], argv[1]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-peer-group-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "peer-group", argv[1]);
+
+    result = cli_no_neighbor_set_peer_group_cmd_execute(NULL, argv[0], argv[1]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 /* Neighbor passive. */
@@ -3665,12 +3929,20 @@ DEFUN(neighbor_remove_private_as,
       NEIGHBOR_ADDR_STR2
       "Remove private AS number from outbound updates\n")
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-remove-private-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
     if (argc != 1) {
         VLOG_ERR("\nargc should be 1, it is %d; %s: %d\n",
                  argc, __FILE__, __LINE__);
         return CMD_WARNING;
     }
-    return cli_neighbor_remove_private_as_cmd_execute(vty, argc, argv);
+    result = cli_neighbor_remove_private_as_cmd_execute(vty, argc, argv);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -3716,12 +3988,20 @@ DEFUN(no_neighbor_remove_private_as,
       NEIGHBOR_ADDR_STR2
       "Remove private AS number from outbound updates\n")
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-remove-private-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
     if (argc != 1) {
         VLOG_ERR("\nargc should be 1, it is %d; %s: %d\n",
                  argc, __FILE__, __LINE__);
         return CMD_WARNING;
     }
-    return cli_no_neighbor_remove_private_as_cmd_execute(vty, argc, argv);
+    result = cli_no_neighbor_remove_private_as_cmd_execute(vty, argc, argv);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 /* Neighbor send-community. */
@@ -3828,7 +4108,16 @@ DEFUN(neighbor_soft_reconfiguration,
       "Per neighbor soft reconfiguration\n"
       "Allow inbound soft reconfiguration for this neighbor\n")
 {
-    return cli_neighbor_soft_reconfiguration_inbound_cmd_execute(NULL, argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-soft-config-inbound-enable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
+    result = cli_neighbor_soft_reconfiguration_inbound_cmd_execute(NULL, argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -3879,8 +4168,17 @@ DEFUN(no_neighbor_soft_reconfiguration,
       "Per neighbor soft reconfiguration\n"
       "Allow inbound soft reconfiguration for this neighbor\n")
 {
-    return cli_no_neighbor_soft_reconfiguration_inbound_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-soft-config-inbound-disable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
+    result = cli_no_neighbor_soft_reconfiguration_inbound_cmd_execute(NULL,
                                                                     argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(neighbor_route_reflector_client,
@@ -4304,7 +4602,16 @@ DEFUN(neighbor_ebgp_multihop,
       NEIGHBOR_ADDR_STR2
       "Allow EBGP neighbors not on directly connected networks\n")
 {
-    return cli_neighbor_ebgp_multihop_execute(NULL, argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-ebgp-multihop-enable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
+    result = cli_neighbor_ebgp_multihop_execute(NULL, argv[0]);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_ebgp_multihop,
@@ -4321,6 +4628,11 @@ DEFUN(no_neighbor_ebgp_multihop,
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
     const char* ip_addr = argv[0];
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-ebgp-multihop-disable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
 
     START_DB_TXN(txn);
 
@@ -4445,13 +4757,21 @@ DEFUN(neighbor_description,
       "Neighbor specific description\n"
       "Up to 80 characters describing this neighbor\n")
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-description-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "description", argv[1]);
+
     if (argc == 1) {
         vty_out(vty, "\n%%Insufficient parameters: neighbor <ipaddr>"
                      " description <desc>\n");
         return CMD_WARNING;
     }
 
-    return cli_neighbor_description_execute(argc, argv);
+    result = cli_neighbor_description_execute(argc, argv);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_description,
@@ -4468,6 +4788,10 @@ DEFUN(no_neighbor_description,
     const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-description-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
 
     START_DB_TXN(txn);
 
@@ -4553,8 +4877,16 @@ DEFUN(neighbor_update_source,
       "Source of routing updates\n"
       BGP_UPDATE_SOURCE_HELP_STR)
 {
-    cli_neighbor_update_source_execute(NULL, argv[0], argv[1]);
-    return CMD_SUCCESS;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-update-source-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "address string", argv[1]);
+
+    result = cli_neighbor_update_source_execute(NULL, argv[0], argv[1]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_update_source,
@@ -4571,6 +4903,8 @@ DEFUN(no_neighbor_update_source,
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
     const char* ip_addr = argv[0];
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-update-source-delete ";
+    int result;
 
     START_DB_TXN(txn);
 
@@ -4604,6 +4938,9 @@ DEFUN(no_neighbor_update_source,
             ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
         }
     }
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
 
     ovsrec_bgp_neighbor_set_update_source(ovs_bgp_neighbor, NULL);
 
@@ -4829,12 +5166,21 @@ DEFUN(neighbor_timers,
       "Keepalive interval (Default: 60 seconds)\n"
       "Holdtime (Default: 180 seconds)\n")
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-timer-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "keepalive", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "holdtime", argv[2]);
+
     if (argc != 3) {
         vty_out(vty, "\n%%Insufficient parameters, neighbor <ipaddr>"
                      " timers <keepalive><holdtime>");
         return CMD_WARNING;
     }
-    return cli_neighbor_timers_execute(NULL, argc, argv);
+    result = cli_neighbor_timers_execute(NULL, argc, argv);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_timers,
@@ -4853,6 +5199,8 @@ DEFUN(no_neighbor_timers,
     const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-timer-delete ";
+    int result;
 
     START_DB_TXN(txn);
 
@@ -4879,8 +5227,10 @@ DEFUN(no_neighbor_timers,
         ovsrec_bgp_neighbor_set_timers(ovs_bgp_neighbor, key_timers,
                                        (int64_t *)&tim_val,0);
     }
-    END_DB_TXN(txn);
 
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
+    END_DB_TXN(txn);
 }
 
 DEFUN(neighbor_timers_connect,
@@ -4963,9 +5313,18 @@ DEFUN(neighbor_advertise_interval,
       "Minimum interval between sending BGP routing updates\n"
       "time in seconds\n")
 {
-    return ((argc==2)
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-advertisment-interval-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "advertisement-interval", argv[1]);
+
+    result = ((argc==2)
             ? cli_neighbor_advertisement_interval_cmd_execute(argc, argv)
             : CMD_ERR_AMBIGUOUS);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 /*No neighbor advertisement interval*/
@@ -4983,6 +5342,8 @@ DEFUN(no_neighbor_advertise_interval,
     const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-advertisment-interval-delete ";
+    int result;
 
     START_DB_TXN(txn);
 
@@ -5003,6 +5364,10 @@ DEFUN(no_neighbor_advertise_interval,
     if (ovs_bgp_neighbor) {
         ovsrec_bgp_neighbor_set_advertisement_interval(ovs_bgp_neighbor, NULL, 0);
     }
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+
     END_DB_TXN(txn);
 }
 
@@ -5185,10 +5550,20 @@ DEFUN(neighbor_prefix_list,
       "Filter incoming updates\n"
       "Filter outgoing updates\n")
 {
-    return cli_neighbor_prefix_list_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-prefix-list-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "direction", argv[2]);
+
+    result = cli_neighbor_prefix_list_cmd_execute(NULL,
                                               CONST_CAST(char*, argv[0]),
                                               CONST_CAST(char*, argv[1]),
                                               CONST_CAST(char*, argv[2]));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -5272,9 +5647,19 @@ DEFUN(no_neighbor_prefix_list,
       "Filter incoming updates\n"
       "Filter outgoing updates\n")
 {
-    return cli_no_neighbor_prefix_list_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-prefix-list-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "direction", argv[2]);
+
+    result = cli_no_neighbor_prefix_list_cmd_execute(NULL,
                                                  CONST_CAST(char*, argv[0]),
                                                  CONST_CAST(char*, argv[2]));
+    bgp_audit_log(aubuf, !result);
+    return result;
+
 }
 
 /* AS-Path Filter */
@@ -5403,10 +5788,20 @@ DEFUN(neighbor_filter_list,
       "Filter incoming routes\n"
       "Filter outgoing routes\n")
 {
-    return cli_neighbor_aspath_filter_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-filter-list-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "direction", argv[2]);
+
+    result = cli_neighbor_aspath_filter_cmd_execute(NULL,
                                                   CONST_CAST(char*, argv[0]),
                                                   CONST_CAST(char*, argv[1]),
                                                   CONST_CAST(char*, argv[2]));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -5476,9 +5871,18 @@ DEFUN(no_neighbor_filter_list,
       "Filter incoming routes\n"
       "Filter outgoing routes\n")
 {
-    return cli_no_neighbor_aspath_filter_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-filter-list-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "direction", argv[2]);
+
+    result = cli_no_neighbor_aspath_filter_cmd_execute(NULL,
                                                      CONST_CAST(char*, argv[0]),
                                                      CONST_CAST(char*, argv[2]));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 /* ip as-path access-list */
@@ -5617,6 +6021,12 @@ DEFUN(ip_as_path, ip_as_path_cmd,
        "A regular-expression to match the BGP AS paths\n")
 {
     regex_t *regex = NULL;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-path-access-list-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "action", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "description", argv_concat(argv, argc, 2));
 
     regex = bgp_regcomp(argv_concat(argv, argc, 2));
 
@@ -5625,9 +6035,12 @@ DEFUN(ip_as_path, ip_as_path_cmd,
         return CMD_WARNING;
     }
 
-    return policy_set_aspath_filter_in_ovsdb(vty, AFI_IP,
+    result = policy_set_aspath_filter_in_ovsdb(vty, AFI_IP,
                                              argv[0], argv[1],
                                              argv_concat(argv, argc, 2));
+    bgp_audit_log(aubuf, !result);
+    return result;
+
 }
 
 static int
@@ -5686,7 +6099,16 @@ DEFUN(no_ip_as_path,
        "Specify packets to forward\n"
        "A regular-expression to match the BGP AS paths\n")
 {
-    return policy_no_aspath_filter_in_ovsdb(AFI_IP, argv[0], argv[1], argv_concat(argv, argc, 2));
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-path-access-list-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "action", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "description", argv_concat(argv, argc, 2));
+
+    result = policy_no_aspath_filter_in_ovsdb(AFI_IP, argv[0], argv[1], argv_concat(argv, argc, 2));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_ip_as_path_all,
@@ -5698,7 +6120,14 @@ DEFUN(no_ip_as_path_all,
        "Specify an access list name\n"
        "Regular expression access list name\n")
 {
-    return policy_no_aspath_filter_name_in_ovsdb(argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-path-access-list-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+
+    result = policy_no_aspath_filter_name_in_ovsdb(argv[0]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 struct ovsrec_route_map *
@@ -5812,10 +6241,20 @@ DEFUN(neighbor_route_map,
       "Apply map to routes going into a Route-Server client's table\n"
       "Apply map to routes coming from a Route-Server client")
 {
-    return cli_neighbor_route_map_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-route-map-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "direction", argv[2]);
+
+    result = cli_neighbor_route_map_cmd_execute(NULL,
                                               CONST_CAST(char*, argv[0]),
                                               CONST_CAST(char*, argv[1]),
                                               CONST_CAST(char*, argv[2]));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -5903,9 +6342,19 @@ DEFUN(no_neighbor_route_map,
       "Apply map to routes going into a Route-Server client's table\n"
       "Apply map to routes coming from a Route-Server client")
 {
-    return cli_no_neighbor_route_map_cmd_execute(NULL,
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-route-map-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "directions", argv[2]);
+
+    result = cli_no_neighbor_route_map_cmd_execute(NULL,
                                                  CONST_CAST(char*, argv[0]),
                                                  CONST_CAST(char*, argv[2]));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(neighbor_unsuppress_map,
@@ -6134,12 +6583,21 @@ DEFUN(neighbor_allowas_in,
       NEIGHBOR_ADDR_STR2
       "Accept as-path with my AS present in it\n")
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-allows-as-in-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "allowas-in", argv[1]);
+
     if (argc != 2) {
     vty_out(vty, "\n%%Insufficient parameters, neighbor <ipaddr>"
                  " allowas-in <val>\n");
     return CMD_WARNING;
     }
-    return cli_allow_as_in_execute(NULL, argc, argv);
+
+    result = cli_allow_as_in_execute(NULL, argc, argv);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 ALIAS(neighbor_allowas_in,
@@ -6165,6 +6623,8 @@ DEFUN(no_neighbor_allowas_in,
     const struct ovsrec_bgp_router *bgp_router_context;
     struct ovsdb_idl_txn *txn;
     char *vrf_name = NULL;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-allows-as-in-delete ";
+    int result;
 
     START_DB_TXN(txn);
 
@@ -6187,6 +6647,10 @@ DEFUN(no_neighbor_allowas_in,
         /* To write to ovsdb nbr table */
         ovsrec_bgp_neighbor_set_allow_as_in(ovs_bgp_neighbor, &allow_num, 0);
     }
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "allowas-in", argv[1]);
+
     END_DB_TXN(txn);
 }
 
@@ -6249,8 +6713,15 @@ DEFUN(neighbor_ttl_security,
       NEIGHBOR_ADDR_STR2
       "Specify the maximum number of hops to the BGP peer\n")
 {
-    cli_neighbor_ttl_security_hops_execute(NULL, argv[0], atoi(argv[1]));
-    return CMD_SUCCESS;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-security-hops-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "hops", argv[1]);
+
+    result = cli_neighbor_ttl_security_hops_execute(NULL, argv[0], atoi(argv[1]));
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_neighbor_ttl_security,
@@ -6267,6 +6738,8 @@ DEFUN(no_neighbor_ttl_security,
     struct ovsdb_idl_txn* txn;
     char* vrf_name = NULL;
     const char* ip_addr = argv[0];
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-neighbor-security-hops-delete ";
+    int result;
 
     START_DB_TXN(txn);
 
@@ -6302,6 +6775,9 @@ DEFUN(no_neighbor_ttl_security,
     }
 
     ovsrec_bgp_neighbor_set_ttl_security_hops(ovs_bgp_neighbor, NULL, 0);
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "hops", argv[1]);
 
     END_DB_TXN(txn);
 }
@@ -6881,6 +7357,10 @@ DEFUN(clear_bgp_peer_soft_out,
     int clear_bgp_neighbor_table_performed = 0;
     char buffer[BUF_LEN] = {0};
     struct smap smap_status;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-clear-ip-soft-out ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ip address", argv[0]);
 
     VLOG_DBG("clear_bgp_peer_soft_out_cmd for %s\n", argv[0]);
 
@@ -6888,7 +7368,9 @@ DEFUN(clear_bgp_peer_soft_out,
     {
         VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     bgp_router_row = ovsrec_bgp_router_first(idl);
@@ -6899,7 +7381,9 @@ DEFUN(clear_bgp_peer_soft_out,
         VLOG_DBG("BGP router row does not exist\n");
         vty_out(vty, "%%BGP router does not exist%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     row =
@@ -6911,7 +7395,9 @@ DEFUN(clear_bgp_peer_soft_out,
       VLOG_DBG("BGP neighbor row does not exist\n");
       vty_out(vty, "%%BGP neighbor does not exist%s", VTY_NEWLINE);
       cli_do_config_abort(status_txn);
-      return CMD_OVSDB_FAILURE;
+      result = CMD_OVSDB_FAILURE;
+      bgp_audit_log(aubuf, !result);
+      return result;
     }
 
     if (row->bgp_peer_group) {
@@ -6921,7 +7407,9 @@ DEFUN(clear_bgp_peer_soft_out,
                  "since it's part of peer group\n",
                  argv[0]);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested =
@@ -6938,7 +7426,9 @@ DEFUN(clear_bgp_peer_soft_out,
                                     clear_bgp_neighbor_table_performed)
                                     == false) {
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested++;
@@ -6959,14 +7449,18 @@ DEFUN(clear_bgp_peer_soft_out,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        return CMD_SUCCESS;
+        result = CMD_SUCCESS;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
     else
     {
        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
        VLOG_ERR("Error in transaction for clear bgp (A.B.C.D|X:X::X:X)"
                 "soft out for peer %s\n", argv[0]);
-       return CMD_OVSDB_FAILURE;
+       result = CMD_OVSDB_FAILURE;
+       bgp_audit_log(aubuf, !result);
+       return result;
     }
 }
 
@@ -7074,14 +7568,20 @@ DEFUN(clear_bgp_peer_group_soft_out,
     int clear_bgp_neighbor_table_performed = 0;
     char buffer[BUF_LEN] = {0};
     struct smap smap_status;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-clear-peer-group ";
+    int result;
 
     VLOG_DBG("clear_bgp_peer_group_soft_out_cmd for %s\n", argv[0]);
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "peer-group", argv[0]);
 
     if(NULL == status_txn)
     {
         VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     bgp_router_row = ovsrec_bgp_router_first(idl);
@@ -7092,7 +7592,9 @@ DEFUN(clear_bgp_peer_group_soft_out,
         VLOG_DBG("BGP router row does not exist\n");
         vty_out(vty, "%%BGP router does not exist%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     row =
@@ -7104,7 +7606,9 @@ DEFUN(clear_bgp_peer_group_soft_out,
         VLOG_DBG("BGP neighbor peer group does not exist\n");
         vty_out(vty, "%%BGP neighbor peer group does not exist%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested =
@@ -7121,7 +7625,9 @@ DEFUN(clear_bgp_peer_group_soft_out,
                                     clear_bgp_neighbor_table_performed)
                                     == false) {
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested++;
@@ -7143,14 +7649,18 @@ DEFUN(clear_bgp_peer_group_soft_out,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        return CMD_SUCCESS;
+        result = CMD_SUCCESS;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
     else
     {
        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
        VLOG_ERR("Error in transaction for clear bgp peer group"
                 "soft out for peer-group %s\n", argv[0]);
-       return CMD_OVSDB_FAILURE;
+       result = CMD_OVSDB_FAILURE;
+       bgp_audit_log(aubuf, !result);
+       return result;
     }
 }
 
@@ -7955,14 +8465,20 @@ DEFUN(clear_bgp_peer_soft_in,
     int clear_bgp_neighbor_table_performed = 0;
     char buffer[BUF_LEN] = {0};
     struct smap smap_status;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:clear-bgp-neighbor ";
+    int result;
 
     VLOG_DBG("clear_bgp_peer_soft_in_cmd for %s\n", argv[0]);
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "neighbor", argv[0]);
 
     if(NULL == status_txn)
     {
         VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     bgp_router_row  = ovsrec_bgp_router_first(idl);
@@ -7973,7 +8489,9 @@ DEFUN(clear_bgp_peer_soft_in,
         VLOG_DBG("BGP router row does not exist\n");
         vty_out(vty, "%%BGP router does not exist%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     row =
@@ -7985,7 +8503,9 @@ DEFUN(clear_bgp_peer_soft_in,
         VLOG_DBG("BGP neighbor row does not exist\n");
         vty_out(vty, "%%BGP neighbor does not exist%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     if (row->bgp_peer_group) {
@@ -7995,7 +8515,9 @@ DEFUN(clear_bgp_peer_soft_in,
                  "since it's part of peer group\n",
                  argv[0]);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested =
@@ -8012,7 +8534,9 @@ DEFUN(clear_bgp_peer_soft_in,
                                     clear_bgp_neighbor_table_performed)
                                     == false) {
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested++;
@@ -8034,14 +8558,18 @@ DEFUN(clear_bgp_peer_soft_in,
                  argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        return CMD_SUCCESS;
+        result = CMD_SUCCESS;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
     else
     {
        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
        VLOG_ERR("Error in transaction for clear bgp (A.B.C.D|X:X::X:X)"
                 "soft in for peer %s\n", argv[0]);
-       return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 }
 
@@ -8207,14 +8735,19 @@ DEFUN(clear_bgp_peer_group_soft_in,
     int clear_bgp_neighbor_table_performed = 0;
     char buffer[BUF_LEN] = {0};
     struct smap smap_status;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-clear-peer-group ";
+    int result;
 
     VLOG_DBG("clear_bgp_peer_group_soft_in_cmd for %s\n", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "peer-group", argv[0]);
 
     if(NULL == status_txn)
     {
         VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     bgp_router_row = ovsrec_bgp_router_first(idl);
@@ -8225,7 +8758,9 @@ DEFUN(clear_bgp_peer_group_soft_in,
         VLOG_DBG("BGP router row does not exist\n");
         vty_out(vty, "%%BGP router does not exist%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     row =
@@ -8237,7 +8772,9 @@ DEFUN(clear_bgp_peer_group_soft_in,
         VLOG_DBG("BGP neighbor peer group does not exist\n");
         vty_out(vty, "%%BGP neighbor peer group does not exist%s", VTY_NEWLINE);
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested =
@@ -8254,7 +8791,9 @@ DEFUN(clear_bgp_peer_group_soft_in,
                                     clear_bgp_neighbor_table_performed)
                                     == false) {
         cli_do_config_abort(status_txn);
-        return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 
     clear_bgp_neighbor_table_requested++;
@@ -8276,14 +8815,18 @@ DEFUN(clear_bgp_peer_group_soft_in,
                  " Clear count is %d\n", argv[0],
                  clear_bgp_neighbor_table_requested,
                  clear_bgp_neighbor_table_performed);
-        return CMD_SUCCESS;
+        result = CMD_SUCCESS;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
     else
     {
        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
        VLOG_ERR("Error in transaction for clear bgp peer group"
                 "soft in for peer group %s\n", argv[0]);
-       return CMD_OVSDB_FAILURE;
+        result = CMD_OVSDB_FAILURE;
+        bgp_audit_log(aubuf, !result);
+        return result;
     }
 }
 
@@ -10354,8 +10897,17 @@ DEFUN(bgp_redistribute_ipv4,
       "Statically configured routes\n"
       "Open Shortest Path First (OSPFv2)\n")
 {
-    cli_bgp_redistribute_cmd_execute(NULL,argv[0],NULL);
-    return CMD_SUCCESS;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-redistribute ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "type", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", NULL);
+
+    result = cli_bgp_redistribute_cmd_execute(NULL,argv[0],NULL);
+
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(bgp_redistribute_ipv4_rmap,
@@ -10368,8 +10920,16 @@ DEFUN(bgp_redistribute_ipv4_rmap,
       "Route map reference\n"
       "Pointer to route-map entries\n")
 {
-    cli_bgp_redistribute_cmd_execute(NULL,argv[0],argv[1]);
-    return CMD_SUCCESS;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-redistribute-rmap ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "type", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[1]);
+
+    result = cli_bgp_redistribute_cmd_execute(NULL,argv[0],argv[1]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(bgp_redistribute_ipv4_metric,
@@ -10498,8 +11058,16 @@ DEFUN(no_bgp_redistribute_ipv4,
       "Statically configured routes\n"
       "Open Shortest Path First (OSPFv2)\n")
 {
-    cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],NULL);
-    return CMD_SUCCESS;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-redistribute-disable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "type", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", NULL);
+
+    result = cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],NULL);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_bgp_redistribute_ipv4_rmap,
@@ -10513,8 +11081,16 @@ DEFUN(no_bgp_redistribute_ipv4_rmap,
       "Route map reference\n"
       "Pointer to route-map entries\n")
 {
-    cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],argv[1]);
-    return CMD_SUCCESS;
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-redistribute-rmap-disable ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "vrf name", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "type", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[1]);
+
+    result = cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],argv[1]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_bgp_redistribute_ipv4_metric,
@@ -11723,6 +12299,9 @@ bgp_vty_init(void)
     install_element(VIEW_NODE, &show_bgp_views_cmd);
     install_element(RESTRICTED_NODE, &show_bgp_views_cmd);
     install_element(ENABLE_NODE, &show_bgp_views_cmd);
+
+    /* Initialize audit logging */
+    bgp_audit_init();
 }
 
 /*
@@ -12007,9 +12586,22 @@ DEFUN(ip_prefix_list_seq,
       "Minimum prefix length\n"
       "Maximum prefix length to be matched\n")
 {
-     return policy_set_prefix_list_in_ovsdb (vty, AFI_IP, argv[0], argv[1],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ip-prefix-list-unicast-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", argv[3]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", argv[4]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", argv[5]);
+
+    result = policy_set_prefix_list_in_ovsdb (vty, AFI_IP, argv[0], argv[1],
                                           argv[2], argv[3], argv[4],
                                           argv[5]);
+    bgp_audit_log(aubuf, !result);
+    return result;
+
 }
 
 DEFUN(ip_prefix_list_seq_any,
@@ -12024,8 +12616,20 @@ DEFUN(ip_prefix_list_seq_any,
       "Specify packets to forward\n"
       "Any prefix match. Same as \"0.0.0.0/0 le 32\"\n")
 {
-     return policy_set_prefix_list_in_ovsdb (vty, AFI_IP, argv[0], argv[1],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ip-prefix-list-broadcast-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", "any");
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", NULL);
+
+    result = policy_set_prefix_list_in_ovsdb (vty, AFI_IP, argv[0], argv[1],
                                           argv[2], "any", NULL, NULL);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 
@@ -12047,8 +12651,20 @@ DEFUN(ipv6_prefix_list_seq,
       "Maximum prefix length\n")
 
 {
-     return policy_set_prefix_list_in_ovsdb (vty, AFI_IP6, argv[0], argv[1],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ipv6-prefix-list-unicast-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", argv[3]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", argv[4]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", argv[5]);
+
+     result = policy_set_prefix_list_in_ovsdb (vty, AFI_IP6, argv[0], argv[1],
                                           argv[2], argv[3], argv[4], argv[5]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(ipv6_prefix_list_seq_any,
@@ -12064,8 +12680,20 @@ DEFUN(ipv6_prefix_list_seq_any,
       "Any prefix match. Same as \"::0/0 le 128\"\n")
 
 {
-     return policy_set_prefix_list_in_ovsdb (vty, AFI_IP6, argv[0], argv[1],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ipv6-prefix-list-broadcast-create-update ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", "any");
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", NULL);
+
+    result = policy_set_prefix_list_in_ovsdb (vty, AFI_IP6, argv[0], argv[1],
                                           argv[2], "any", NULL, NULL);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -12163,7 +12791,14 @@ DEFUN(no_ip_prefix_list,
        PREFIX_LIST_STR
        "Name of a prefix list\n")
 {
-    return cli_no_ip_prefix_list_cmd_execute(argv[0],AFI_IP);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ip-prefix-list-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+
+    result = cli_no_ip_prefix_list_cmd_execute(argv[0],AFI_IP);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_ipv6_prefix_list,
@@ -12174,7 +12809,14 @@ DEFUN(no_ipv6_prefix_list,
        PREFIX_LIST_STR
        "Name of a prefix list\n")
 {
-    return cli_no_ip_prefix_list_cmd_execute(argv[0],AFI_IP6);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ipv6-prefix-list-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+
+    result = cli_no_ip_prefix_list_cmd_execute(argv[0],AFI_IP6);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -12338,8 +12980,20 @@ DEFUN(no_ip_prefix_list_seq,
 
 
 {
-    return cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP, argv[0], argv[1], argv[2],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ip-prefix-list-unicast-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", argv[3]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", argv[4]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", argv[5]);
+
+    result = cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP, argv[0], argv[1], argv[2],
                                                  argv[3], argv[4], argv[5]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_ip_prefix_list_seq_any,
@@ -12356,8 +13010,20 @@ DEFUN(no_ip_prefix_list_seq_any,
       "Any prefix match. Same as \"0.0.0.0/0 le 32\"\n")
 
 {
-    return cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP, argv[0], argv[1], argv[2],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ip-prefix-list-broadcast-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", "any");
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", NULL);
+
+    result = cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP, argv[0], argv[1], argv[2],
                                                  "any", NULL, NULL);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_ipv6_prefix_list_seq,
@@ -12379,8 +13045,20 @@ DEFUN(no_ipv6_prefix_list_seq,
       "Maximum prefix length\n")
 
 {
-    return cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP6, argv[0], argv[1], argv[2],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ipv6-prefix-list-unicast-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", argv[3]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", argv[4]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", argv[5]);
+
+    result = cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP6, argv[0], argv[1], argv[2],
                                                  argv[3], argv[4], argv[5]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 DEFUN(no_ipv6_prefix_list_seq_any,
@@ -12397,8 +13075,20 @@ DEFUN(no_ipv6_prefix_list_seq_any,
       "Any prefix match. Same as \"::0/0 le 128\"\n")
 
 {
-    return cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP6, argv[0], argv[1], argv[2],
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:bgp-ipv6-prefix-list-broadcast-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "prefix", "any");
+    bgp_audit_encode(aubuf, sizeof(aubuf), "ge", NULL);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "le", NULL);
+
+    result = cli_no_ip_prefix_list_seq_cmd_execute(AFI_IP6, argv[0], argv[1], argv[2],
                                                  "any", NULL, NULL);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 
@@ -12577,8 +13267,16 @@ DEFUN(route_map,
       "Route map permits set operations\n"
       "Sequence to insert to/delete from existing route-map entry\n")
 {
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:route-map-create-update ";
+    int result;
 
-    return policy_set_route_map_in_ovsdb (vty, argv[0], argv[1], argv[2]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[2]);
+
+    result = policy_set_route_map_in_ovsdb (vty, argv[0], argv[1], argv[2]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -12608,7 +13306,14 @@ DEFUN(no_route_map_all,
       "Create route-map or enter route-map command mode\n"
       "Route map tag\n")
 {
-    return cli_no_route_map_all_cmd_execute(argv[0]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:route-map-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+
+    result = cli_no_route_map_all_cmd_execute(argv[0]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
@@ -12658,7 +13363,16 @@ DEFUN(no_route_map,
       "Route map permits set operations\n"
       "Sequence to insert to/delete from existing route-map entry\n")
 {
-    return cli_no_route_map_cmd_execute (argv[0], argv[1], argv[2]);
+    char aubuf[BGP_CLI_AUDIT_BUFFER_SIZE] = "op=CLI:route-map-delete ";
+    int result;
+
+    bgp_audit_encode(aubuf, sizeof(aubuf), "name", argv[0]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "typestr", argv[1]);
+    bgp_audit_encode(aubuf, sizeof(aubuf), "seq", argv[2]);
+
+    result = cli_no_route_map_cmd_execute (argv[0], argv[1], argv[2]);
+    bgp_audit_log(aubuf, !result);
+    return result;
 }
 
 static int
