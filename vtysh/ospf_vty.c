@@ -2989,6 +2989,7 @@ void ospf_area_show_running(const struct ovsrec_ospf_router *router_row)
     char area_str[OSPF_SHOW_STR_LEN];
     char disp_str[OSPF_SHOW_STR_LEN];
     bool is_present = false;
+    int cost;
 
     for (i = 0; i < router_row->n_areas; i++)
     {
@@ -3011,6 +3012,14 @@ void ospf_area_show_running(const struct ovsrec_ospf_router *router_row)
                         area_str, VTY_NEWLINE);
             }
         }
+
+        /*Stub default-cost*/
+        cost = smap_get_int(&area_row->other_config,
+                             OSPF_KEY_AREA_STUB_DEFAULT_COST,
+                                atoi(OSPF_AREA_STUB_DEFAULT_COST));
+        if ((cost > 0) && (cost != atoi(OSPF_AREA_STUB_DEFAULT_COST)))
+            vty_out(vty, "%4sarea %d default-cost %d%s", "", i, cost,
+                                                          VTY_NEWLINE);
 
         /* area type */
         if (area_row->nssa_translator_role)
@@ -4053,6 +4062,91 @@ static int ospf_area_auth_cmd_execute(bool no_flag, int instance_id,
 
 }
 
+/*-----------------------------------------------------------------------------
+  | Function : ospf_area_set_cost_cmd_execute
+  | Responsibility : Used to sets the cost of default-summary LSAs announced
+  |                  to NSSA or the stub areas.
+  | Parameters :
+  |     bool set_flag                 : It has a bool value. If the set_flag is
+  |                                     false, then do validate the user-given
+  |                                     cost-value with the current cost-value.
+  |     int64_t area_id               : OSPF area identifier.
+  |     const char* cost              : Sets the cost of default-summary LSAs
+  |                                     announced to NSSA or the stub areas.
+  | Return : zero for success and non-zero for failure.
+  -----------------------------------------------------------------------------*/
+static int
+ospf_area_set_cost_cmd_execute(bool set_flag, int64_t area_id, const char* cost)
+{
+    const struct ovsrec_ospf_router *ospf_router_row = NULL;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    const struct ovsrec_ospf_area *area_row = NULL;
+    struct ovsdb_idl_txn *ospf_router_txn = NULL;
+    int64_t instance_id = 1;
+    struct smap smap;
+    int value_cost = 0;
+
+    /* Start of transaction. */
+    OSPF_START_DB_TXN(ospf_router_txn);
+
+    vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
+    if (vrf_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "VRF is not present.");
+    }
+
+    /* See if it already exists. */
+    ospf_router_row = ospf_router_lookup_by_instance_id(vrf_row,
+                                                        instance_id);
+
+    if (ospf_router_row == NULL)
+    {
+        OSPF_ERRONEOUS_DB_TXN(ospf_router_txn, "OSPF router is not present.");
+    }
+
+    if (set_flag == true) {
+        area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id);
+        if (area_row == NULL)
+        {
+            area_row = ovsrec_ospf_area_insert(ospf_router_txn);
+            if (ospf_area_insert_to_router(ospf_router_row, area_row, area_id)
+                  != CMD_SUCCESS)
+            {
+                OSPF_ERRONEOUS_DB_TXN(ospf_router_txn,
+                                "Could not update configuration.");
+            }
+        }
+        smap_clone(&smap, &area_row->other_config);
+        smap_replace(&smap, OSPF_KEY_AREA_STUB_DEFAULT_COST, cost);
+    } else {
+        area_row = ospf_area_lookup_by_area_id(ospf_router_row, area_id);
+        if (area_row == NULL)
+        {
+            OSPF_ERRONEOUS_DB_TXN(ospf_router_txn,
+                                  "Configuration is not present.");
+        }
+        smap_clone(&smap, &area_row->other_config);
+        value_cost = smap_get_int(&smap, OSPF_KEY_AREA_STUB_DEFAULT_COST,
+                                  atoi(OSPF_AREA_STUB_DEFAULT_COST));
+        if ((cost) && (value_cost != atoi(cost))) {
+            OSPF_ABORT_DB_TXN(ospf_router_txn,
+                              "Value was not configured earlier.");
+            return CMD_SUCCESS;
+         }
+         smap_replace(&smap, OSPF_KEY_AREA_STUB_DEFAULT_COST,
+                                 OSPF_AREA_STUB_DEFAULT_COST);
+    }
+
+    ovsrec_ospf_area_set_other_config(area_row, &smap);
+
+    smap_destroy(&smap);
+
+    /* End of transaction. */
+    OSPF_END_DB_TXN(ospf_router_txn);
+
+    return CMD_SUCCESS;
+}
+
 DEFUN (cli_ospf_area_auth,
           cli_ospf_area_auth_cmd,
           "area (A.B.C.D|<0-4294967295>) authentication",
@@ -4105,6 +4199,45 @@ DEFUN (cli_no_ospf_area_authentication,
     OSPF_GET_AREA_ID (area_id, argv[0]);
 
     return ospf_area_auth_cmd_execute(true, 1, area_id.s_addr, false);
+}
+
+DEFUN(cli_ospf_area_set_cost,
+      cli_ospf_area_set_cost_cmd,
+      "area (A.B.C.D|<0-4294967295>) default-cost <0-16777215>",
+      OSPF_AREA_STR
+      OSPF_AREA_IP_STR
+      OSPF_AREA_RANGE
+      "cost of the default-summary LSAs\n"
+      "range of default-cost (Default: 1)\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID (area_id, argv[0]);
+
+    return ospf_area_set_cost_cmd_execute(true, area_id.s_addr, argv[1]);
+}
+
+DEFUN(cli_ospf_no_area_set_cost,
+      cli_ospf_no_area_set_cost_cmd,
+      "no area (A.B.C.D|<0-4294967295>) default-cost [<0-16777215>]",
+      OSPF_AREA_STR
+      OSPF_AREA_IP_STR
+      OSPF_AREA_RANGE
+      "cost of the default-summary LSAs\n"
+      "range of default-cost (Default: 1)\n")
+{
+    struct in_addr area_id;
+
+    memset (&area_id, 0, sizeof (struct in_addr));
+
+    OSPF_GET_AREA_ID (area_id, argv[0]);
+
+    if (argc == 2)
+        return ospf_area_set_cost_cmd_execute(false, area_id.s_addr, argv[1]);
+    else
+        return ospf_area_set_cost_cmd_execute(false, area_id.s_addr, NULL);
 }
 
 static int
@@ -5500,6 +5633,8 @@ ospf_vty_init(void)
     install_element(OSPF_NODE, &cli_ospf_area_auth_cmd);
     install_element(OSPF_NODE, &cli_ospf_area_auth_message_digest_cmd);
     install_element(OSPF_NODE, &cli_no_ospf_area_authentication_cmd);
+    install_element(OSPF_NODE, &cli_ospf_area_set_cost_cmd);
+    install_element(OSPF_NODE, &cli_ospf_no_area_set_cost_cmd);
 
     /* Area Type */
     install_element(OSPF_NODE, &cli_ospf_area_nssa_translate_cmd);

@@ -888,6 +888,41 @@ def noRunningConfigTest(dut01):
     return True
 
 
+def setareacostTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="area 1 default-cost 1234")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to set area default-cost cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'area 0.0.0.1 default-cost 1234' in cmdOut, "Test to set area \
+                                                    default-cost failed"
+    return True
+
+
+def unsetareacostTest(dut01):
+    if (enterRouterContext(dut01) is False):
+        return False
+
+    devIntReturn = dut01.DeviceInteract(command="no area 0.0.0.1 default-cost \
+                                                                         1234")
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to unset area default-cost cmd failed"
+
+    if (exitContext(dut01) is False):
+        return False
+
+    cmdOut = dut01.cmdVtysh(command="show running")
+    assert 'no area 0.0.0.1 default-cost 1234' not in cmdOut, "Test to area \
+                                            default-cost cmd failed failed"
+    return True
+
+
 def setRouteRedistribution(dut01):
     if (enterRouterContext(dut01) is False):
         return False
@@ -1007,7 +1042,7 @@ def unsetDefaultRouteRedistribution(dut01):
     return True
 
 
-@pytest.mark.skipif(True, reason="Disabling old tests")
+#@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_ospf_configuration:
 
     def setup_class(cls):
@@ -1131,6 +1166,22 @@ class Test_ospf_configuration:
             LogOutput('info', "no form running config show - passed")
         else:
             LogOutput('error', "no form running config show - failed")
+
+    def test_setareacost(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = setareacostTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "set area default-Cost - passed")
+        else:
+            LogOutput('error', "set area default-cost - failed")
+
+    def test_unsetareacost(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = unsetareacostTest(dut01Obj)
+        if(retValue):
+            LogOutput('info', "Unset area default-Cost - passed")
+        else:
+            LogOutput('error', "Unset area default-cost - failed")
 
     def test_configure(self):
         dut01Obj = self.topoObj.deviceObjGet(device="dut01")
