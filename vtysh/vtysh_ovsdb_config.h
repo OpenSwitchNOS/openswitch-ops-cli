@@ -73,6 +73,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_ecmp,
   e_vtysh_config_context_ntp,
   e_vtysh_config_context_mstp,
+  e_vtysh_config_context_loop_protect,
   e_vtysh_config_context_syslog,
   e_vtysh_config_context_snmp,
   e_vtysh_config_context_access_list,
@@ -100,6 +101,7 @@ typedef enum vtysh_interface_context_client_idenum
   e_vtysh_interface_context_vlan,
   e_vtysh_interface_context_vrf,
   e_vtysh_interface_context_mstp,
+  e_vtysh_interface_context_loop_protect,
   e_vtysh_interface_context_ospf,
   e_vtysh_interface_context_access_list,
   e_vtysh_intf_context_client_id_max
