@@ -196,7 +196,7 @@ static int
 mask_ip4_subnet(const char* ip4)
 {
    char ipAddressString[24]="";
-   int mask_bits, addr;
+   unsigned int mask_bits, addr;
    unsigned int i = 0;
    unsigned int subnet_bits = 0;
 
@@ -205,9 +205,10 @@ mask_ip4_subnet(const char* ip4)
    strcpy(strchr(ipAddressString, '/'), "\0");
 
    inet_pton(AF_INET, ipAddressString, &addr);
+   addr = htonl(addr);
 
-   while(i < mask_bits)
-       subnet_bits |= (1 << i++);
+   subnet_bits = ((IPV4_SUBNET_MASK_FULL << (IPV4_ADDR_BIT_LENGTH - mask_bits))
+                  & IPV4_SUBNET_MASK_FULL);
 
    return (addr & subnet_bits);
 }
