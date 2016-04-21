@@ -790,6 +790,7 @@ void vtysh_router_context_ospf_area_callback(vtysh_ovsdb_cbmsg_ptr p_msg,
     const char *val = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
     char disp_str[OSPF_SHOW_STR_LEN];
+    int cost;
 
     for (i = 0; i < router_row->n_areas; i++)
     {
@@ -813,6 +814,14 @@ void vtysh_router_context_ospf_area_callback(vtysh_ovsdb_cbmsg_ptr p_msg,
                                       area_str);
             }
         }
+
+        /*Stub default-cost*/
+        cost = smap_get_int(&area_row->other_config,
+                             OSPF_KEY_AREA_STUB_DEFAULT_COST,
+                                OSPF_AREA_STUB_DEFAULT_COST_DEFAULT);
+        if ((cost > 0) && (cost != OSPF_AREA_STUB_DEFAULT_COST_DEFAULT))
+            vtysh_ovsdb_cli_print(p_msg, "%4s%s %s %s %d", "", "area", area_str,
+                                                   "default-cost", cost);
 
         /* area type */
         strncpy(disp_str, "", OSPF_SHOW_STR_LEN);
