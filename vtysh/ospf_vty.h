@@ -253,4 +253,6 @@ vtysh_init_intf_ospf_context_clients();
 #define OSPF_ROUTER_PRIORITY_DEFAULT        1
 /* TBD - To be modified when auto reference bandwidth is supported. */
 #define OSPF_DEFAULT_COST                   10
+
+#define OSPF_AREA_STUB_DEFAULT_COST_DEFAULT 1
 #endif /* _OSPF_VTY_H */
