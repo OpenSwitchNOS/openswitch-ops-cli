@@ -298,6 +298,7 @@ def LocalproxyArpOnParentInterfaceTest(dut01):
     return True
 
 
+@pytest.mark.skipif(True, reason="Defective validations lines 288")
 class Test_Local_proxy_arp_configuration:
 
     def setup_class(cls):
