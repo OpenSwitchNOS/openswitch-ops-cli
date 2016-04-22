@@ -554,7 +554,6 @@ class staticRouteConfigTest(OpsVsiTest):
 ''')
 
 
-@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_vtysh_static_routes_ct:
 
     def setup_class(cls):

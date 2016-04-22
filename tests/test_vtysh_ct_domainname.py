@@ -85,7 +85,6 @@ def config_domainname_through_cli(**kwargs):
               "domainname through CLI ###")
 
 
-@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_config_domainname_through_cli:
 
     def setup_class(cls):
