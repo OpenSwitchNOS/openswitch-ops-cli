@@ -17,6 +17,8 @@
 
 from time import sleep
 from pytest import mark
+from re import match
+from re import findall
 
 TOPOLOGY = """
 #
@@ -43,6 +45,25 @@ sw1:if04
 """
 
 @mark.skipif(True, reason="Disabling due to gate job failures")
+
+def get_vrf_uuid(switch, vrf_name, step):
+    """
+    This function takes a switch and a vrf_name as inputs and returns
+    the uuid of the vrf.
+    """
+    step("Getting uuid for the vrf {}".format(vrf_name))
+    ovsdb_command = 'list vrf {}'.format(vrf_name)
+    output = switch(ovsdb_command, shell='vsctl')
+    lines = output.splitlines()
+    vrf_uuid = None
+    for line in lines:
+        vrf_uuid = match("(.*)_uuid( +): (.*)", line)
+        if vrf_uuid is not None:
+            break
+    assert vrf_uuid is not None
+    return vrf_uuid.group(3).rstrip('\r')
+
+
 def test_static_route_config(topology, step):
     sw1 = topology.get('sw1')
     sw2 = topology.get('sw2')
@@ -315,3 +336,282 @@ def test_static_route_config(topology, step):
     out = h1('ping -c 5 192.168.3.2')
     assert "5 packets transmitted" and "5 received" and " 0% packet loss" in \
         out
+
+    step("### Verify that the static routes are retrieved in sorted order ###")
+    step("### Deleting previously configured routes ###")
+    sw1("no ip route 192.168.3.0/24 192.168.1.2")
+    sw1("no ipv6 route 2002::/120 2000::2 2")
+    sw2("no ip route 192.168.2.0/24 192.168.1.1")
+    sw2("no ipv6 route 2001::/120 2000::1 2")
+
+    step("### Adding IPv4 routes with various prefixes and nexthops ###")
+    sw1('interface {sw1p1}'.format(**locals()))
+    sw1('ip address 11.0.0.1/24')
+    sw1('ipv6 address 1001::1/120')
+    sw1('interface {sw1p2}'.format(**locals()))
+    sw1('ip address 22.0.0.1/24')
+    sw1('ipv6 address 2001::1/120')
+    sw1('interface {sw1p3}'.format(**locals()))
+    sw1('no ip address 10.0.0.5/8')
+    sw1('no ipv6 address 2003::2/120')
+    sw1('interface {sw1p3}'.format(**locals()))
+    sw1('ip address 33.0.0.1/24')
+    sw1('ipv6 address 3001::1/120')
+    sw1('interface {sw1p4}'.format(**locals()))
+    sw1('no ip address 10.0.0.7/8')
+    sw1('no ipv6 address 2004::2/120')
+    sleep(1)
+
+    sw1("ip route 20.20.20.0/24 2")
+    sw1("ip route 10.0.0.0/24 2")
+    sw1("ip route 10.0.0.0/32 1")
+    sw1("ip route 30.30.0.0/16 1")
+
+    step("### Adding IPv6 routes with various prefixes and nexthops ###")
+    sw1('ipv6 route  2001::/32 2')
+    sw1('ipv6 route  2001::/96 2')
+    sw1('ipv6 route  ::/128 1')
+    sw1('ipv6 route  1:1::/127 1')
+
+    # Get the UUID od the default vrf on the sw1
+    vrf_uuid = get_vrf_uuid(sw1, "vrf_default", step)
+
+    # Prepare string for a BGP route 40.0.0.0/16 using ovsdb-client with
+    # lower administration distance as compared with the corresponding
+    # static route.This makes the BGP route more preferable than the static
+    # route.
+    bpg_route_cmd_ipv4_route = "ovsdb-client transact \'[ \"OpenSwitch\",\
+         {\
+             \"op\" : \"insert\",\
+             \"table\" : \"Nexthop\",\
+             \"row\" : {\
+                 \"ip_address\" : \"1.1.1.1\",\
+                 \"weight\" : 3,\
+                 \"selected\": true\
+             },\
+             \"uuid-name\" : \"nh01\"\
+         },\
+        {\
+            \"op\" : \"insert\",\
+            \"table\" : \"Route\",\
+            \"row\" : {\
+                     \"prefix\":\"40.0.0.0/16\",\
+                     \"from\":\"bgp\",\
+                     \"vrf\":[\"uuid\",\"%s\"],\
+                     \"address_family\":\"ipv4\",\
+                     \"sub_address_family\":\"unicast\",\
+                     \"distance\":20,\
+                     \"nexthops\" : [\
+                     \"set\",\
+                     [\
+                         [\
+                             \"named-uuid\",\
+                             \"nh01\"\
+                         ]\
+                     ]]\
+                     }\
+        }\
+    ]\'" % vrf_uuid
+
+    # Configure the BGP route for prefix 40.0.0.0/16 using ovsdb-client
+    # interface
+    sw1(bpg_route_cmd_ipv4_route, shell='bash')
+
+    # Prepare string for a BGP route 3001::/48 using ovsdb-client with
+    # lower administration distance as compared with the corresponding
+    # static route.This makes the BGP route more preferable than the static
+    # route.
+    bpg_route_cmd_ipv6_route = "ovsdb-client transact \'[ \"OpenSwitch\",\
+         {\
+             \"op\" : \"insert\",\
+             \"table\" : \"Nexthop\",\
+             \"row\" : {\
+                 \"ip_address\" : \"1.1.1.1\",\
+                 \"weight\" : 3,\
+                 \"selected\": true\
+             },\
+             \"uuid-name\" : \"nh01\"\
+         },\
+        {\
+            \"op\" : \"insert\",\
+            \"table\" : \"Route\",\
+            \"row\" : {\
+            \"prefix\":\"3001:/48\",\
+                     \"from\":\"bgp\",\
+                     \"vrf\":[\"uuid\",\"%s\"],\
+                     \"address_family\":\"ipv6\",\
+                     \"sub_address_family\":\"unicast\",\
+                     \"distance\":20,\
+                     \"nexthops\" : [\
+                     \"set\",\
+                     [\
+                         [\
+                             \"named-uuid\",\
+                             \"nh01\"\
+                         ]\
+                     ]]\
+                     }\
+        }\
+    ]\'" % vrf_uuid
+
+    # Configure the BGP route for prefix 3001::/48 using ovsdb-client
+    # interface
+    sw1(bpg_route_cmd_ipv6_route, shell='bash')
+
+    # Prepare string for a OSPF route 20.0.0.0/32 using ovsdb-client with
+    # lower administration distance as compared with the corresponding
+    # static route.This makes the OSPF route more preferable than the static
+    # route.
+    ospf_route_cmd_ipv4_route = "ovsdb-client transact \'[ \"OpenSwitch\",\
+         {\
+             \"op\" : \"insert\",\
+             \"table\" : \"Nexthop\",\
+             \"row\" : {\
+                 \"ip_address\" : \"1.1.1.2\",\
+                 \"weight\" : 10,\
+                 \"selected\": true\
+             },\
+             \"uuid-name\" : \"nh02\"\
+         },\
+        {\
+            \"op\" : \"insert\",\
+            \"table\" : \"Route\",\
+            \"row\" : {\
+                     \"prefix\":\"40.0.0.0/32\",\
+                     \"from\":\"ospf\",\
+                     \"vrf\":[\"uuid\",\"%s\"],\
+                     \"address_family\":\"ipv4\",\
+                     \"sub_address_family\":\"unicast\",\
+                     \"distance\":110,\
+                     \"nexthops\" : [\
+                     \"set\",\
+                     [\
+                         [\
+                             \"named-uuid\",\
+                             \"nh02\"\
+                         ]\
+                     ]]\
+                     }\
+        }\
+    ]\'" % vrf_uuid
+
+    # Configure the OSPF route for prefix 40.0.0.0/32 using ovsdb-client
+    # interface
+    sw1(ospf_route_cmd_ipv4_route, shell='bash')
+
+    # Prepare string for a OSPF route 4001::/128 using ovsdb-client with
+    # lower administration distance as compared with the corresponding
+    # static route.This makes the OSPF route more preferable than the static
+    # route.
+    ospf_route_cmd_ipv6_route = "ovsdb-client transact \'[ \"OpenSwitch\",\
+         {\
+             \"op\" : \"insert\",\
+             \"table\" : \"Nexthop\",\
+             \"row\" : {\
+                 \"ip_address\" : \"1.1.1.2\",\
+                 \"weight\" : 10,\
+                 \"selected\": true\
+             },\
+             \"uuid-name\" : \"nh02\"\
+         },\
+        {\
+            \"op\" : \"insert\",\
+            \"table\" : \"Route\",\
+            \"row\" : {\
+                     \"prefix\":\"4001::/128\",\
+                     \"from\":\"ospf\",\
+                     \"vrf\":[\"uuid\",\"%s\"],\
+                     \"address_family\":\"ipv6\",\
+                     \"sub_address_family\":\"unicast\",\
+                     \"distance\":110,\
+                     \"nexthops\" : [\
+                     \"set\",\
+                     [\
+                         [\
+                             \"named-uuid\",\
+                             \"nh02\"\
+                         ]\
+                     ]]\
+                     }\
+        }\
+    ]\'" % vrf_uuid
+
+    # Configure the OSPF route for prefix 4001::/128 using ovsdb-client
+    # interface
+    sw1(ospf_route_cmd_ipv6_route, shell='bash')
+
+    # List of expected ipv4 prefixes in sorted order
+    expected_ipv4_prefixes = ['10.0.0.0/24', '10.0.0.0/32', '11.0.0.0/24',
+                              '20.20.20.0/24', '22.0.0.0/24', '30.30.0.0/16',
+                              '33.0.0.0/24']
+
+    step('### Comparing output of "show ip route" with the expected'
+         ' output ###')
+    configured_ipv4_prefixes = []
+    ret = sw1('do show ip route')
+    lines = ret.split('\n')
+
+    for line in lines:
+        prefix = match("^\d{0,9}\.\d{0,9}\.\d{0,9}\.\d{0,9}/\d{0,9}", line)
+        if prefix is not None:
+            # Populating the prefixes from the CLI output
+            configured_ipv4_prefixes.append(prefix.group(0))
+
+    # Verifying configured_ipv4_prefixes[] with the expected_ipv4_prefixes[]
+    assert expected_ipv4_prefixes == configured_ipv4_prefixes
+
+    # List of expected ipv6 prefixes in sorted order
+    expected_ipv6_prefixes = ['::/128', '1:1::/127', '1001::/120', '2001::/32',
+                              '2001::/96', '2001::/120', '3001::/120']
+
+    step('### Comparing output of "show ipv6 route" with the expected'
+         ' output ###')
+    configured_ipv6_prefixes = []
+    ret = sw1('do show ipv6 route')
+
+    configured_ipv6_prefixes = findall(r'(.*),\s*.*next-hops', ret)
+
+    # Verifying configured_ipv6_prefixes[] with the expected_ipv6_prefixes[]
+    assert expected_ipv6_prefixes == configured_ipv6_prefixes
+
+    # List of expected ipv4 and ipv6 prefixes in sorted order. The prefixes
+    # preceded with '*' are selected for forwarding and output is expected
+    # to be in sorted order with ipv4 entries preceding the ipv6 entries.
+    expected_rib_prefixes = ['*10.0.0.0/24', '*10.0.0.0/32', '*11.0.0.0/24',
+                             '*20.20.20.0/24', '*22.0.0.0/24', '*30.30.0.0/16',
+                             '*33.0.0.0/24', '40.0.0.0/16', '40.0.0.0/32',
+                             '*::/128', '*1:1::/127', '*1001::/120',
+                             '*2001::/32', '*2001::/96', '*2001::/120',
+                             '3001:/48', '*3001::/120', '4001::/128']
+
+    step('### Comparing output of "show rib" with the expected'
+         ' output ###')
+    configured_rib_prefixes = []
+    ret = sw1('do show rib')
+
+    configured_rib_prefixes = findall(r'(.*),\s*.*next-hops', ret)
+
+    # Verifying configured_rib_prefixes[] with the expected_rib_prefixes[]
+    assert expected_rib_prefixes == configured_rib_prefixes
+
+    step('### Comparing output of "show running-config" with the expected'
+         ' output ###')
+    # List of routes added expected in sorted manner
+    expected_showrun_prefixes = ['ip route 10.0.0.0/24 2',
+                                 'ip route 10.0.0.0/32 1',
+                                 'ip route 20.20.20.0/24 2',
+                                 'ip route 30.30.0.0/16 1',
+                                 'ipv6 route ::/128 1',
+                                 'ipv6 route 1:1::/127 1',
+                                 'ipv6 route 2001::/32 2',
+                                 'ipv6 route 2001::/96 2']
+    configured_showrun_prefixes = []
+    ret = sw1('do show running-config')
+    lines = ret.split('\n')
+    for line in lines:
+        if line in expected_showrun_prefixes:
+            configured_showrun_prefixes.append(line)
+
+    # Verifying configured_showrun_prefixes[] with the
+    # expected_showrun_prefixes[]
+    assert expected_showrun_prefixes == configured_showrun_prefixes
