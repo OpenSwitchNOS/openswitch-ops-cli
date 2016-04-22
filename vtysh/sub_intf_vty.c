@@ -389,6 +389,27 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
     }
 }
 
+DEFUN (cli_sub_intf_vrf_add_port,
+    cli_sub_intf_vrf_add_port_cmd,
+    "vrf attach VRF_NAME",
+    VRF_STR
+    "Attach Sub Interface to VRF\n"
+    "VRF name\n")
+{
+  return vrf_add_port((char*) vty->index, argv[0]);
+}
+
+DEFUN (cli_sub_intf_vrf_del_port,
+    cli_sub_intf_vrf_del_port_cmd,
+    "no vrf attach VRF_NAME",
+    NO_STR
+    VRF_STR
+    "Detach Sub Interface from VRF\n"
+    "VRF name\n")
+{
+  return vrf_del_port((char*) vty->index, argv[0]);
+}
+
 DEFUN (cli_sub_intf_config_ip4,
         cli_sub_intf_config_ip4_cmd,
         "ip address A.B.C.D/M",
@@ -1367,6 +1388,8 @@ sub_intf_vty_init (void)
 {
     install_element (CONFIG_NODE, &vtysh_sub_interface_cmd);
     install_element (CONFIG_NODE, &cli_del_sub_intf_cmd);
+    install_element (SUB_INTERFACE_NODE, &cli_sub_intf_vrf_add_port_cmd);
+    install_element (SUB_INTERFACE_NODE, &cli_sub_intf_vrf_del_port_cmd);
     install_element (SUB_INTERFACE_NODE, &cli_sub_intf_config_ip4_cmd);
     install_element (SUB_INTERFACE_NODE, &cli_sub_intf_del_ip4_cmd);
     install_element (SUB_INTERFACE_NODE, &cli_sub_intf_config_ipv6_cmd);

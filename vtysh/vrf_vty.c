@@ -413,7 +413,7 @@ vrf_delete (const char *vrf_name)
  * Adds an interface/port to a VRF.
  * Takes interface name and VRF name as arguments.
  */
-static int
+int
 vrf_add_port (const char *if_name, const char *vrf_name)
 {
   const struct ovsrec_vrf *vrf_row = NULL;
@@ -549,7 +549,7 @@ vrf_add_port (const char *if_name, const char *vrf_name)
 /*
  * This function is used to delete a port linked to a VRF.
  */
-static int
+int
 vrf_del_port (const char *if_name, const char *vrf_name)
 {
   const struct ovsrec_vrf *vrf_row = NULL;
