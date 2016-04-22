@@ -705,101 +705,108 @@ show_routes (struct vty *vty, char * ip_addr_family)
   int disp_flag = 1;
   char str[50];
   int i, active_route_next_hops;
+  extern struct ovsdb_idl_index_cursor route_cursor;
+  extern is_route_cursor_initialized;
 #ifdef VRF_ENABLE
   char *vrf_name = vrf;
 
   if (NULL == vrf_name)
     vrf_name = DEFAULT_VRF_NAME;
 #endif
-
-  OVSREC_ROUTE_FOR_EACH (row_route, idl)
+  if (is_route_cursor_initialized)
     {
+      OVSREC_ROUTE_FOR_EACH_BYINDEX (row_route, &route_cursor)
+        {
 #ifdef VRF_ENABLE
-      if (strncmp(row_route->vrf->name, vrf_name,OVSDB_VRF_NAME_MAXLEN))
-        continue;
+          if (strncmp(row_route->vrf->name, vrf_name,OVSDB_VRF_NAME_MAXLEN))
+            continue;
 #endif
 
-      if (strcmp (row_route->address_family, ip_addr_family))
-        continue;
+          if (strcmp (row_route->address_family, ip_addr_family))
+            continue;
 
-      if (row_route->selected == NULL || row_route->selected[0] == false)
-        continue;
+          if (row_route->selected == NULL || row_route->selected[0] == false)
+            continue;
 
-      if (!(row_route->prefix))
-        continue;
+          if (!(row_route->prefix))
+            continue;
 
-      if (disp_flag == 1)
-        {
-          flag = 1;
-          if (!strcmp ("ipv4", ip_addr_family))
+          if (disp_flag == 1)
             {
-              vty_out (vty,
-                       "\nDisplaying ipv4 routes selected for forwarding%s",
-                       VTY_NEWLINE);
-            }
-          else if (!strcmp ("ipv6", ip_addr_family))
-            {
-              vty_out (vty,
-                       "\nDisplaying ipv6 routes selected for forwarding%s",
-                       VTY_NEWLINE);
-            }
-          vty_out (vty, "\n'[x/y]' denotes [distance/metric]%s\n", VTY_NEWLINE);
-          disp_flag = 0;
-        }
-
-      memset (str, 0, sizeof(str));
-      snprintf (str, sizeof(str), "%s", row_route->prefix);
-      vty_out (vty, "%s", str);
-
-      if (row_route->n_nexthops)
-        {
-          active_route_next_hops = 0;
-          for (i = 0; i < row_route->n_nexthops; i++)
-            {
-              if (row_route->nexthops[i]->selected == NULL ||
-                  row_route->nexthops[i]->selected[0] == true)
-                active_route_next_hops++;
-            }
-          vty_out (vty, ",  %d %s next-hops %s", active_route_next_hops,
-                   row_route->sub_address_family, VTY_NEWLINE);
-        }
-
-      if (row_route->n_nexthops)
-        {
-          memset (str, 0, sizeof(str));
-
-          for (i = 0; i < row_route->n_nexthops; i++)
-            {
-              if (row_route->nexthops[i]->selected == NULL ||
-                  row_route->nexthops[i]->selected[0] == true)
+              flag = 1;
+              if (!strcmp ("ipv4", ip_addr_family))
                 {
-                  if (row_route->nexthops[i]->ip_address)
+                  vty_out (vty,
+                           "\nDisplaying ipv4 routes selected for forwarding%s",
+                           VTY_NEWLINE);
+                }
+              else if (!strcmp ("ipv6", ip_addr_family))
+                {
+                  vty_out (vty,
+                           "\nDisplaying ipv6 routes selected for forwarding%s",
+                           VTY_NEWLINE);
+                }
+              vty_out (vty, "\n'[x/y]' denotes [distance/metric]%s\n",
+                       VTY_NEWLINE);
+              disp_flag = 0;
+            }
+
+          memset (str, 0, sizeof(str));
+          snprintf (str, sizeof(str), "%s", row_route->prefix);
+          vty_out (vty, "%s", str);
+
+          if (row_route->n_nexthops)
+            {
+              active_route_next_hops = 0;
+              for (i = 0; i < row_route->n_nexthops; i++)
+                {
+                  if (row_route->nexthops[i]->selected == NULL ||
+                      row_route->nexthops[i]->selected[0] == true)
+                    active_route_next_hops++;
+                }
+              vty_out (vty, ",  %d %s next-hops %s", active_route_next_hops,
+                       row_route->sub_address_family, VTY_NEWLINE);
+            }
+
+          if (row_route->n_nexthops)
+            {
+              memset (str, 0, sizeof(str));
+
+              for (i = 0; i < row_route->n_nexthops; i++)
+                {
+                  if (row_route->nexthops[i]->selected == NULL ||
+                      row_route->nexthops[i]->selected[0] == true)
                     {
-                      snprintf (str, sizeof(str), " %s",
-                                row_route->nexthops[i]->ip_address);
-                      vty_out (vty, "\tvia %s", str);
+                      if (row_route->nexthops[i]->ip_address)
+                        {
+                          snprintf (str, sizeof(str), " %s",
+                                    row_route->nexthops[i]->ip_address);
+                          vty_out (vty, "\tvia %s", str);
+                        }
+                      else if (row_route->nexthops[i]->ports[0]->name)
+                        {
+                          snprintf (str, sizeof(str), " %s",
+                                    row_route->nexthops[i]->ports[0]->name);
+                          vty_out (vty, "\tvia %s", str);
+                        }
+
+                      vty_out (vty, ",  [%ld", *row_route->distance);
+
+                      if (row_route->metric)
+                        vty_out (vty, "/%ld]", *row_route->metric);
+                      else
+                        vty_out (vty, "/0]");
+
+                      vty_out (vty, ",  %s", row_route->from);
+
+                      vty_out (vty, VTY_NEWLINE);
                     }
-                  else if (row_route->nexthops[i]->ports[0]->name)
-                    {
-                      snprintf (str, sizeof(str), " %s",
-                                row_route->nexthops[i]->ports[0]->name);
-                      vty_out (vty, "\tvia %s", str);
-                    }
-
-                  vty_out (vty, ",  [%ld", *row_route->distance);
-
-                  if (row_route->metric)
-                    vty_out (vty, "/%ld]", *row_route->metric);
-                  else
-                    vty_out (vty, "/0]");
-
-                  vty_out (vty, ",  %s", row_route->from);
-
-                  vty_out (vty, VTY_NEWLINE);
                 }
             }
         }
     }
+  else
+    return CMD_SUCCESS;
 
   if (flag == 0)
     {
@@ -1489,97 +1496,102 @@ show_rib (struct vty *vty, char * ip_addr_family)
   int disp_flag = 1;
   char str[50];
   int i;
+  extern struct ovsdb_idl_index_cursor route_cursor;
+  extern is_route_cursor_initialized;
 #ifdef VRF_ENABLE
   char *vrf_name = vrf;
 
   if (NULL == vrf_name)
     vrf_name = DEFAULT_VRF_NAME;
 #endif
-
-  OVSREC_ROUTE_FOR_EACH (row_route, idl)
+  if (is_route_cursor_initialized)
     {
-      if (row_route->protocol_private != NULL)
+      OVSREC_ROUTE_FOR_EACH_BYINDEX (row_route, &route_cursor)
         {
-          if (row_route->protocol_private[0] == true)
-            continue;
-        }
-
+          if (row_route->protocol_private != NULL)
+            {
+              if (row_route->protocol_private[0] == true)
+                continue;
+            }
 #ifdef VRF_ENABLE
-      if (strncmp(row_route->vrf->name, vrf_name,OVSDB_VRF_NAME_MAXLEN))
-        continue;
+          if (strncmp(row_route->vrf->name, vrf_name,OVSDB_VRF_NAME_MAXLEN))
+            continue;
 #endif
 
-      if (strcmp (row_route->address_family, ip_addr_family))
-        continue;
+          if (strcmp (row_route->address_family, ip_addr_family))
+            continue;
 
-      if (disp_flag == 1)
-        {
-          flag = 1;
-          if (!strcmp ("ipv4", ip_addr_family))
+          if (disp_flag == 1)
             {
-              vty_out (vty, "\nDisplaying ipv4 rib entries %s", VTY_NEWLINE);
+              flag = 1;
+              if (!strcmp ("ipv4", ip_addr_family))
+                {
+                  vty_out (vty, "\nDisplaying ipv4 rib entries %s", VTY_NEWLINE);
+                }
+              else if (!strcmp ("ipv6", ip_addr_family))
+                {
+                  vty_out (
+                      vty,
+                      "\n\n-----------------------------------------------------%s\n",
+                      VTY_NEWLINE);
+                  vty_out (vty, "\nDisplaying ipv6 rib entries %s", VTY_NEWLINE);
+                }
+              vty_out (vty, "\n'*' denotes selected%s", VTY_NEWLINE);
+              vty_out (vty, "'[x/y]' denotes [distance/metric]%s\n", VTY_NEWLINE);
+              disp_flag = 0;
             }
-          else if (!strcmp ("ipv6", ip_addr_family))
+
+          if (row_route->prefix)
             {
-              vty_out (
-                  vty,
-                  "\n\n-----------------------------------------------------%s\n",
-                  VTY_NEWLINE);
-              vty_out (vty, "\nDisplaying ipv6 rib entries %s", VTY_NEWLINE);
+              memset (str, 0, sizeof(str));
+              snprintf (str, sizeof(str), "%s", row_route->prefix);
+              if (row_route->selected != NULL && row_route->selected[0] == true)
+                vty_out (vty, "*%s", str);
+              else
+                vty_out (vty, "%s", str);
             }
-          vty_out (vty, "\n'*' denotes selected%s", VTY_NEWLINE);
-          vty_out (vty, "'[x/y]' denotes [distance/metric]%s\n", VTY_NEWLINE);
-          disp_flag = 0;
-        }
 
-      if (row_route->prefix)
-        {
-          memset (str, 0, sizeof(str));
-          snprintf (str, sizeof(str), "%s", row_route->prefix);
-          if (row_route->selected != NULL && row_route->selected[0] == true)
-            vty_out (vty, "*%s", str);
-          else
-            vty_out (vty, "%s", str);
-        }
-
-      if (row_route->n_nexthops)
-        {
-          vty_out (vty, ",  %zd %s next-hops %s", row_route->n_nexthops,
-                   row_route->sub_address_family, VTY_NEWLINE);
-        }
-
-      if (row_route->n_nexthops)
-        {
-          memset (str, 0, sizeof(str));
-
-          for (i = 0; i < row_route->n_nexthops; i++)
+          if (row_route->n_nexthops)
             {
-              if (row_route->nexthops[i]->ip_address)
-                snprintf (str, sizeof(str), " %s",
-                          row_route->nexthops[i]->ip_address);
-              else if (row_route->nexthops[i]->ports[0]->name)
-                snprintf (str, sizeof(str), " %s",
-                          row_route->nexthops[i]->ports[0]->name);
+              vty_out (vty, ",  %zd %s next-hops %s", row_route->n_nexthops,
+                       row_route->sub_address_family, VTY_NEWLINE);
+            }
 
-              if (row_route->nexthops[i]->selected == NULL ||
-                  row_route->nexthops[i]->selected[0] == true)
-                vty_out (vty, "\t*via %s", str);
-              else
-                vty_out (vty, "\tvia %s", str);
+          if (row_route->n_nexthops)
+            {
+              memset (str, 0, sizeof(str));
 
-              vty_out (vty, ",  [%ld", *row_route->distance);
+              for (i = 0; i < row_route->n_nexthops; i++)
+                {
+                  if (row_route->nexthops[i]->ip_address)
+                    snprintf (str, sizeof(str), " %s",
+                              row_route->nexthops[i]->ip_address);
+                  else if (row_route->nexthops[i]->ports[0]->name)
+                    snprintf (str, sizeof(str), " %s",
+                              row_route->nexthops[i]->ports[0]->name);
 
-              if (row_route->metric)
-                vty_out (vty, "/%ld]", *row_route->metric);
-              else
-                vty_out (vty, "/0]");
+                  if (row_route->nexthops[i]->selected == NULL ||
+                      row_route->nexthops[i]->selected[0] == true)
+                    vty_out (vty, "\t*via %s", str);
+                  else
+                    vty_out (vty, "\tvia %s", str);
 
-              vty_out (vty, ",  %s", row_route->from);
+                  vty_out (vty, ",  [%ld", *row_route->distance);
 
-              vty_out (vty, VTY_NEWLINE);
+                  if (row_route->metric)
+                    vty_out (vty, "/%ld]", *row_route->metric);
+                  else
+                    vty_out (vty, "/0]");
+
+                  vty_out (vty, ",  %s", row_route->from);
+
+                  vty_out (vty, VTY_NEWLINE);
+                }
             }
         }
     }
+  else
+    return CMD_SUCCESS;
 
   if (flag == 0)
     {
