@@ -146,7 +146,6 @@ def loopback_cli(**kwargs):
     devIntReturn = device1.DeviceInteract(command="exit")
 
 
-@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_loopback_cli:
 
     def setup_class(cls):
