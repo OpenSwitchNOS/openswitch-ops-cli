@@ -421,9 +421,9 @@ ospf_area_remove_from_router(
     {
         SAFE_FREE(area);
         SAFE_FREE(area_list);
-        VLOG_DBG("Memory alloc failed, could not remove area from router.%s",
+        VLOG_ERR("Memory alloc failed, could not remove area from router.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0, j = 0; i < ospf_router_row->n_areas; i++) {
@@ -499,9 +499,9 @@ ospf_neighbor_remove_from_interface(const struct
 
     if (!ospf_nbr_list)
     {
-        VLOG_DBG("Memory alloc failed, could not remove nbr from interface.%s",
+        VLOG_ERR("Memory alloc failed, could not remove nbr from interface.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < interface_row->n_neighbors; i++)
@@ -546,9 +546,9 @@ ospf_router_insert_to_vrf(const struct ovsrec_vrf *vrf_row,
     {
         SAFE_FREE(instance_list);
         SAFE_FREE(ospf_routers_list);
-        VLOG_DBG("Memory alloc failed, could not insert router in VRF.%s",
+        VLOG_ERR("Memory alloc failed, could not insert router in VRF.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < vrf_row->n_ospf_routers; i++) {
@@ -719,9 +719,9 @@ ospf_router_remove_from_vrf(const struct ovsrec_vrf *vrf_row,
     {
         SAFE_FREE(instance_list);
         SAFE_FREE(ospf_routers_list);
-        VLOG_DBG("Memory alloc failed, could not remove router from VRF.%s",
+        VLOG_ERR("Memory alloc failed, could not remove router from VRF.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0, j = 0; i < vrf_row->n_ospf_routers; i++)
@@ -764,9 +764,9 @@ ospf_interface_remove_from_area(const struct ovsrec_ospf_area *area_row,
 
     if (!ospf_interface_list)
     {
-        VLOG_DBG("Memory alloc failed, could not remove interface from area.%s",
+        VLOG_ERR("Memory alloc failed, could not remove interface from area.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0, j = 0; i < area_row->n_ospf_interfaces; i++)
@@ -1019,7 +1019,7 @@ ospf_area_tbl_default_set (const struct ovsrec_ospf_area *area_row)
     {
         SAFE_FREE(key_area_statistics);
         SAFE_FREE(area_stat_value);
-        return;
+        assert(0);
     }
     key_area_statistics[OSPF_AREA_STATISTICS_SPF_CALC] =
                            OSPF_KEY_AREA_STATS_SPF_EXEC;
@@ -1058,9 +1058,9 @@ ospf_area_insert_to_router(const struct ovsrec_ospf_router *ospf_router_row,
     {
         SAFE_FREE(area);
         SAFE_FREE(area_list);
-        VLOG_DBG("Memory alloc failed, could not insert area in router.%s",
+        VLOG_ERR("Memory alloc failed, could not insert area in router.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < ospf_router_row->n_areas; i++)
@@ -1122,9 +1122,9 @@ ospf_area_set_interface(const struct ovsrec_ospf_area *area_row,
 
     if (!ospf_interface_list)
     {
-        VLOG_DBG("Memory alloc failed, could not add interface to area.%s",
+        VLOG_ERR("Memory alloc failed, could not add interface to area.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < area_row->n_ospf_interfaces; i++) {
@@ -1161,9 +1161,9 @@ ospf_network_insert_ospf_router(const struct ovsrec_ospf_router *
     {
         SAFE_FREE(network_list);
         SAFE_FREE(area_list);
-        VLOG_DBG("Memory alloc failed, could not add network to router.%s",
+        VLOG_ERR("Memory alloc failed, could not add network to router.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < ospf_router_row->n_networks; i++) {
@@ -1208,9 +1208,9 @@ ospf_network_remove_from_ospf_router(
     {
         SAFE_FREE(network_list);
         SAFE_FREE(area_list);
-        VLOG_DBG("Memory alloc failed, could not remove network from router.%s",
+        VLOG_ERR("Memory alloc failed, could not remove network from router.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0, j = 0; i < ospf_router_row->n_networks; i++)
@@ -1907,9 +1907,9 @@ ospf_add_port_intervals(const struct ovsrec_port* port_row,
     {
         SAFE_FREE(ospf_key_timers);
         SAFE_FREE(intervals_list);
-        VLOG_DBG("Memory alloc failed, could not add port intervals.%s",
+        VLOG_ERR("Memory alloc failed, could not add port intervals.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < port_row->n_ospf_intervals; i++)
@@ -4504,9 +4504,9 @@ ospf_md5_key_update_to_port(const struct ovsrec_port *port_row,
     {
         SAFE_FREE(key_id_list);
         SAFE_FREE(key_list);
-        VLOG_DBG("Memory alloc failed, could not update md5 key in port.%s",
+        VLOG_ERR("Memory alloc failed, could not update md5 key in port.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < port_row->n_ospf_auth_md5_keys; i++)
@@ -4555,9 +4555,9 @@ ospf_md5_key_remove_from_port(const struct ovsrec_port *port_row,
     {
         SAFE_FREE(key_id_list);
         SAFE_FREE(key_list);
-        VLOG_DBG("Memory alloc failed, could not update md5 key in port.%s",
+        VLOG_ERR("Memory alloc failed, could not update md5 key in port.%s",
                  VTY_NEWLINE);
-        return CMD_OVSDB_FAILURE;
+        assert(0);
     }
 
     for (i = 0; i < port_row->n_ospf_auth_md5_keys; i++)
@@ -7519,8 +7519,8 @@ DEFUN (cli_ospf_admin_distance,
         {
             SAFE_FREE(key_distance);
             SAFE_FREE(value_distance);
-            VLOG_DBG ("Memory allocation failed");
-            break;
+            VLOG_ERR ("Memory allocation failed");
+            assert(0);
         }
         OSPF_START_DB_TXN(ospf_router_txn);
         for (i = 0 ; i < ospf_router_row->n_distance;i++)
@@ -7583,8 +7583,8 @@ DEFUN (cli_no_ospf_admin_distance,
         {
             SAFE_FREE(key_distance);
             SAFE_FREE(value_distance);
-            VLOG_DBG ("Memory allocation failed");
-            break;
+            VLOG_ERR ("Memory allocation failed");
+            assert(0);
         }
         OSPF_START_DB_TXN(ospf_router_txn);
         for (i = 0 ; i < ospf_router_row->n_distance;i++)
@@ -7592,7 +7592,7 @@ DEFUN (cli_no_ospf_admin_distance,
             key_distance[i] = ospf_router_row->key_distance[i];
             if(!strcmp(ospf_router_row->key_distance[i],OVSREC_OSPF_ROUTER_DISTANCE_ALL))
             {
-                if (value_distance[i] != atoi(argv[0]))
+                if (ospf_router_row->value_distance[i] != atoi(argv[0]))
                 {
                     OSPF_ABORT_DB_TXN(ospf_router_txn,
                                       "Value was not configured earlier.");
@@ -7676,8 +7676,8 @@ DEFUN (cli_ospf_distance_ospf,
         {
             SAFE_FREE(key_distance);
             SAFE_FREE(value_distance);
-            VLOG_DBG ("Memory allocation failed");
-            break;
+            VLOG_ERR ("Memory allocation failed");
+            assert(0);
         }
         OSPF_START_DB_TXN(ospf_router_txn);
         for (i = 0 ; i < ospf_router_row->n_distance;i++)
@@ -7761,8 +7761,8 @@ DEFUN (cli_no_ospf_distance_ospf,
         {
             SAFE_FREE(key_distance);
             SAFE_FREE(value_distance);
-            VLOG_DBG ("Memory allocation failed");
-            break;
+            VLOG_ERR ("Memory allocation failed");
+            assert(0);
         }
         OSPF_START_DB_TXN(ospf_router_txn);
         distance = OSPF_ROUTER_DISTANCE_DEFAULT;
