@@ -48,6 +48,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include <termios.h>
+#include "l3routes_vty.h"
 
 
 #ifdef HAVE_GNU_REGEX
@@ -80,6 +81,178 @@ static int cur_cfg_no = 0;
 boolean exiting = false;
 volatile boolean vtysh_exit_flag = false;
 extern struct vty *vty;
+
+/* Initialize a cursor for the Route table to query the Route table index.
+ * This cursor is also extern'ed by the file l3routes_vty.c */
+struct ovsdb_idl_index_cursor route_cursor;
+bool is_route_cursor_initialized = false;
+
+/* Custom comparator for the 'address_family' column in the Route table.
+ * The function segregates the Ipv4 and Ipv6 route entries. */
+int address_family_comparator(const void *route_entry1,
+                              const void *route_entry2) {
+    struct ovsrec_route *route_row1, *route_row2;
+    route_row1 = (struct ovsrec_route *)route_entry1;
+    route_row2 = (struct ovsrec_route *)route_entry2;
+
+    return strcmp(route_row1->address_family, route_row2->address_family);
+}
+static int
+hexadecimal_cmp(const void* ptr1, const void* ptr2, size_t num)
+{
+    static int lookup[] = {
+        0,   1,  18,  35,  52,  69,  86, 103, 120, 137, 154, 171, 188, 205, 222, 239,
+        2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15,  16,  17,
+       19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  33,  34,
+       36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,
+       53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,  64,  65,  66,  67,  68,
+       70,  71,  72,  73,  74,  75,  76,  77,  78,  79,  80,  81,  82,  83,  84,  85,
+       87, 88,   89,  90,  91,  92,  93,  94,  95,  96,  97,  98,  99, 100, 101, 102,
+      104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
+      121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136,
+      138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153,
+      155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170,
+      172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187,
+      189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204,
+      206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221,
+      223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238,
+      240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255
+     };
+
+    unsigned char *p1, *p2;
+    p1 = (unsigned char*)ptr1;
+    p2 = (unsigned char*)ptr2;
+    while(num--) {
+        int a, b;
+        a = lookup[*p1++];
+        b = lookup[*p2++];
+        if (a != b) {
+            /* With our values an overflow|underflow is impossible */
+            return a - b;
+        }
+    }
+    return 0;
+}
+
+static int
+alphabetic_cmp(const void* ptr1, const void* ptr2, size_t num)
+{
+    static int lookup[] = {
+          0,   1, 112, 179, 190, 201, 212, 223, 234, 245,
+          2,  13,  24,  35,  46,  57,  68,  79,  90, 101,
+        113, 124, 135, 146, 157, 168, 175, 176, 177, 178,
+        180, 181, 182, 183, 184, 185, 186, 187, 188, 189,
+        191, 192, 193, 194, 195, 196, 197, 198, 199, 200,
+        202, 203, 204, 205, 206, 207, 208, 209, 210, 211,
+        213, 214, 215, 216, 217, 218, 219, 220, 221, 222,
+        224, 225, 226, 227, 228, 229, 230, 231, 232, 233,
+        235, 236, 237, 238, 239, 240, 241, 242, 243, 244,
+        246, 247, 248, 249, 250, 251, 252, 253, 254, 255,
+          3,   4,   5,   6,   7,   8,   9,  10,  11,  12,
+         14,  15,  16,  17,  18,  19,  20,  21,  22,  23,
+         25,  26,  27,  28,  29,  30,  31,  32,  33,  34,
+         36,  37,  38,  39,  40,  41,  42,  43,  44,  45,
+         47,  48,  49,  50,  51,  52,  53,  54,  55,  56,
+         58,  59,  60,  61,  62,  63,  64,  65,  66,  67,
+         69,  70,  71,  72,  73,  74,  75,  76,  77,  78,
+         80,  81,  82,  83,  84,  85,  86,  87,  88,  89,
+         91,  92,  93,  94,  95,  96,  97,  98,  99, 100,
+        102, 103, 104, 105, 106, 107, 108, 109, 110, 111,
+        114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+        125, 126, 127, 128, 129, 130, 131, 132, 133, 134,
+        136, 137, 138, 139, 140, 141, 142, 143, 144, 145,
+        147, 148, 149, 150, 151, 152, 153, 154, 155, 156,
+        158, 159, 160, 161, 162, 163, 164, 165, 166, 167,
+        169, 170, 171, 172, 173, 174
+    };
+
+    unsigned char *p1, *p2;
+    p1 = (unsigned char*)ptr1;
+    p2 = (unsigned char*)ptr2;
+    while(num--) {
+        int a, b;
+        a = lookup[*p1++];
+        b = lookup[*p2++];
+        if (a != b) {
+            /* With our values an overflow|underflow is impossible */
+            return a - b;
+        }
+    }
+    return 0;
+}
+
+/* Custom comparator for the 'prefix' column in the Route table.
+ * Same function takes care of both Ipv4 and Ipv6 route entries. */
+int route_prefix_comparator(const void *route_entry1,
+                            const void *route_entry2) {
+    struct ovsrec_route *route_row1, *route_row2;
+    char ipaddr1_copy[MAX_ADDRESS_LEN], ipaddr2_copy[MAX_ADDRESS_LEN];
+    char * ip1 = NULL;
+    char * ip2 = NULL;
+    char * prefixlen1 = NULL;
+    char * prefixlen2 = NULL;
+    struct in6_addr bin_ip1, bin_ip2;
+    int memcmp_result;
+
+    route_row1 = (struct ovsrec_route *)route_entry1;
+    route_row2 = (struct ovsrec_route *)route_entry2;
+
+    if (route_row1 && route_row1->prefix) {
+        strncpy(ipaddr1_copy, route_row1->prefix, sizeof(ipaddr1_copy));
+    }
+
+    if (route_row2 && route_row2->prefix) {
+        strncpy(ipaddr2_copy, route_row2->prefix, sizeof(ipaddr2_copy));
+    }
+
+    /* Separating the prefix and the prefix lengths for comparison */
+    ip1 = strtok(ipaddr1_copy, "/");
+    prefixlen1 = strtok(NULL, "/");
+
+    ip2 = strtok(ipaddr2_copy, "/");
+    prefixlen2 = strtok(NULL, "/");
+
+    int addrfamily1 = strcmp(route_row1->address_family, "ipv4")==0? AF_INET :
+                                                                     AF_INET6;
+    int addrfamily2 = strcmp(route_row2->address_family, "ipv4")==0? AF_INET :
+                                                                     AF_INET6;
+    if (inet_pton (addrfamily1, ip1, &bin_ip1) == 0) {
+        vty_out(vty, "Invalid %s address '%s'%s",
+                route_row1->address_family, ip1, VTY_NEWLINE);
+    }
+    if (inet_pton (addrfamily2, ip2, &bin_ip2) == 0) {
+        vty_out(vty, "Invalid %s address '%s'%s",
+                route_row2->address_family, ip2, VTY_NEWLINE);
+    }
+
+    /* Compare two IP addresses in its binary form */
+    if (addrfamily == AF_INET) {
+        memcmp_result = alphabetic_cmp(&bin_ip1, &bin_ip2, sizeof(struct in_addr));
+    } else {
+        memcmp_result = hexadecimal_cmp(&bin_ip1, &bin_ip2, sizeof(struct in6_addr));
+    }
+
+    /* For same prefixes but different prefix lengths, we do numerical
+     * based sorting as 10.0.0.0/8 needs to be displayed before 10.0.0.0/16.
+     * For different prefixes, memcmp takes care of lexicographic sorting */
+    if (memcmp_result == 0) {
+        return ovsdb_idl_index_intcmp (atoi(prefixlen1), atoi(prefixlen2));
+    } else {
+        return memcmp_result;
+    }
+}
+
+/* Custom comparator for the 'from' column in the Route table.
+ * The function sorts the Ipv4 and Ipv6 route entries based on the protocol
+ * (bgp, connected, ospf, static). */
+int from_protocol_comparator(const void *route_entry1,
+                             const void *route_entry2) {
+    struct ovsrec_route *route_row1, *route_row2;
+    route_row1 = (struct ovsrec_route *)route_entry1;
+    route_row2 = (struct ovsrec_route *)route_entry2;
+
+    return strcmp(route_row1->from, route_row2->from);
+}
 
 /* Function checks if timeout period has
 *  exceeded. If yes, exits cli session.
@@ -355,12 +528,9 @@ ospf_ovsdb_init()
 
 }
 
-
 static void
 l3routes_ovsdb_init()
 {
-    ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
-    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
     ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
     ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
     ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
@@ -369,6 +539,38 @@ l3routes_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
     ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
+
+    /* Creating an index for the Route table.
+     * Registering 'prefix', 'address_family' and 'from' column to the index
+     * for retrieving data lexicographically.
+     * Initially, we want to segregate the "ipv4" and "ipv6" entries, then
+     * sort the prefixes lexicographically and later sort the same prefixes
+     * for different protocols in ascending order. */
+    struct ovsdb_idl_index *route_index;
+    route_index = ovsdb_idl_create_index(idl, &ovsrec_table_route,
+                                         "route_prefix_addrfamily_from_index");
+    if (route_index) {
+        ovsdb_idl_index_add_column(route_index,
+                                   &ovsrec_route_col_address_family,
+                                   OVSDB_INDEX_ASC, address_family_comparator);
+        ovsdb_idl_index_add_column(route_index, &ovsrec_route_col_prefix,
+                                   OVSDB_INDEX_ASC, route_prefix_comparator);
+        ovsdb_idl_index_add_column(route_index, &ovsrec_route_col_from,
+                                   OVSDB_INDEX_ASC, from_protocol_comparator);
+
+        /* Create a cursor to perform queries to the index defined */
+        if (ovsdb_idl_initialize_cursor(idl, &ovsrec_table_route,
+                                        "route_prefix_addrfamily_from_index",
+                                        &route_cursor)) {
+            is_route_cursor_initialized = true;
+        } else {
+            VLOG_ERR("Failed to initialize the cursor used to query the Route "
+                     "table index");
+        }
+    } else {
+        VLOG_ERR("Failed to create an index for the Route table");
+    }
+
 }
 
 static void
@@ -580,6 +782,8 @@ ovsdb_init(const char *db_path)
 
     /* BGP tables. */
     bgp_ovsdb_init();
+
+    /* Route tables */
     l3routes_ovsdb_init();
 
     /* SFLOW tables. */
