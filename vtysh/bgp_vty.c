@@ -552,6 +552,7 @@ bgp_get_rib_path_attributes(const struct ovsrec_bgp_route *rib_row,
     return;
 }
 
+#if 0
 /*
  * This function returns BGP neighbor structure given
  * BGP neighbor IP address.
@@ -569,7 +570,7 @@ bgp_peer_lookup(const struct ovsrec_bgp_router *bgp_row, const char *peer_id)
     }
     return NULL;
 }
-
+#endif
 
 static const char*
 bgp_get_origin_long_str(const char *c)
@@ -596,6 +597,7 @@ get_bgp_neighbor_name_from_bgp_router(const struct ovsrec_bgp_router *ovs_bgpr,
     return NULL;
 }
 
+#if 0
 static int
 bgp_get_peer_weight(const struct ovsrec_bgp_router *bgp_row,
                     const struct ovsrec_bgp_route *rib_row,
@@ -622,6 +624,7 @@ bgp_get_peer_weight(const struct ovsrec_bgp_router *bgp_row,
         }
     }
 }
+#endif
 
 static int
 bgp_get_rib_count(void)
@@ -5311,18 +5314,24 @@ get_bgp_neighbor(const struct ovsdb_idl_txn *txn_a, char *vrf_name, char *ip_add
 
     vrf_row = get_ovsrec_vrf_with_name(vrf_name);
     if (vrf_row == NULL) {
-        ERRONEOUS_DB_TXN(txn, "VRF does not exist");
+        cli_do_config_abort(txn);
+        vty_out(vty, "%s%s", "VRF does not exist", VTY_NEWLINE);
+        return NULL;
     }
 
     bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
     if (!bgp_router_context) {
-        ERRONEOUS_DB_TXN(txn, "Specified BGP router not configured");
+        cli_do_config_abort(txn);
+        vty_out(vty, "%s%s", "Specified BGP router not configured", VTY_NEWLINE);
+        return NULL;
     }
 
     ovs_bgp_neighbor =
     get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, ip_addr);
     if (!ovs_bgp_neighbor) {
-        ERRONEOUS_DB_TXN(txn, "Neighbor does not exist");
+        cli_do_config_abort(txn);
+        vty_out(vty, "%s%s", "Neighbor does not exist", VTY_NEWLINE);
+        return NULL;
     }
 
     return (struct ovsrec_bgp_neighbor *)ovs_bgp_neighbor;
@@ -7408,9 +7417,9 @@ DEFUN(clear_bgp_as_soft_out,
     }
 
     if (row->bgp_peer_group) {
-        vty_out(vty, "%% Neighbor with asn %d is part of peer-group. Operation"
+        vty_out(vty, "%% Neighbor with asn %lu is part of peer-group. Operation"
                 " not permitted%s", asn, VTY_NEWLINE);
-        VLOG_DBG("Skipping clear as soft out request for neighbor with asn %d"
+        VLOG_DBG("Skipping clear as soft out request for neighbor with asn %lu"
                  "since it's part of peer group\n",
                  asn);
         cli_do_config_abort(status_txn);
@@ -8650,9 +8659,9 @@ DEFUN(clear_bgp_as_soft_in,
     }
 
     if (row->bgp_peer_group) {
-        vty_out(vty, "%% Neighbor with asn %d is part of peer-group. Operation"
+        vty_out(vty, "%% Neighbor with asn %lu is part of peer-group. Operation"
                 " not permitted%s", asn, VTY_NEWLINE);
-        VLOG_DBG("Skipping clear as soft in request for neighbor with asn %d"
+        VLOG_DBG("Skipping clear as soft in request for neighbor with asn %lu"
                  "since it's part of peer group\n",
                  asn);
         cli_do_config_abort(status_txn);
@@ -10414,7 +10423,7 @@ DEFUN(bgp_redistribute_ipv4_metric_rmap,
     return CMD_SUCCESS;
 }
 
-struct ovsrec_bgp_router*
+const struct ovsrec_bgp_router*
 get_redistribute_confg_in_ovsdb(const char *type, const char *name)
 {
     const struct ovsrec_bgp_router *bgp_router_row;
@@ -15180,7 +15189,6 @@ policy_set_route_map_set_comm_list_str_in_ovsdb(struct vty *vty,
 {
     char *argstr;
     int ret = 0;
-    struct in_addr address;
     const struct ovsrec_route_map_entry  *rt_map_entry_row =
                 policy_get_route_map_entry_in_ovsdb(rmp_context.pref,
                                                     rmp_context.name,
