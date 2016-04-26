@@ -1019,7 +1019,7 @@ DEFUN (vtysh_sub_interface,
         vtysh_sub_interface_cmd,
         "interface A.B",
         "Select an interface to configure\n"
-        "Subinterface name as physical_interface.subinterface name\n")
+        "Subinterface name as physical_interface.subinterface name <1-4294967293>\n")
 {
     return create_sub_interface(argv[0]);
 }
@@ -1260,7 +1260,7 @@ DEFUN (cli_del_sub_intf,
         "no interface A.B",
         NO_STR
         "Select a subinterface to remove\n"
-        "Subinterface name as physical_interface.subinterface name\n")
+        "Subinterface name as physical_interface.subinterface name <1-4294967293>\n")
 {
     return delete_sub_intf(argv[0]);
 }
