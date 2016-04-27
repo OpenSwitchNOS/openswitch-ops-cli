@@ -4166,6 +4166,8 @@ vtysh_init_vty ( struct passwd *pw)
     install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
   }
 
+ install_element (ENABLE_NODE, &vtysh_reboot_cmd);
+
 #ifdef ENABLE_OVSDB
   /* vtysh_cli_post_init will install all the features
    * CLI node and elements by using Libltdl-interface.
