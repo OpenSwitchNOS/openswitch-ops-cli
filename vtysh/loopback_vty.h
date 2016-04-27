@@ -40,6 +40,9 @@
 
 #define INTF_HELP_STR                 "Select loopback interface"
 
+#define IPV4_ADDR_BIT_LENGTH           32
+#define IPV4_SUBNET_MASK_FULL          0xFFFFFFFF
+
 const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                              bool attach_to_default_sub_if,
                                              struct ovsdb_idl_txn *txn);
