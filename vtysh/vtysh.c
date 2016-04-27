@@ -146,6 +146,8 @@ extern char config_default[];
  * TODO : This function should be removed once rbac repo is in place.
  */
 
+parse error
+
 bool rbac_check_user_permission(char * username, char * permission)
 {
     lt_dlhandle dhhandle = 0;
