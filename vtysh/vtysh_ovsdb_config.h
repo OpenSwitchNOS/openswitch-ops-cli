@@ -44,6 +44,7 @@ typedef enum vtysh_context_idenum
   e_vtysh_config_context = 0,
   e_vtysh_router_context,
   e_vtysh_vlan_context,
+  e_vtysh_global_vlan_context,
   e_vtysh_interface_lag_context,
   e_vtysh_interface_context,
   e_vtysh_mgmt_interface_context,
