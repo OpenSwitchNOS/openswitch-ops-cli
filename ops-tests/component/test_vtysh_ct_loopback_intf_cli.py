@@ -20,6 +20,7 @@
 OpenSwitch Test for switchd related configurations.
 """
 from pytest import mark
+import re
 
 TOPOLOGY = """
 # +-------+
@@ -29,6 +30,16 @@ TOPOLOGY = """
 # Nodes
 [type=openswitch name="OpenSwitch 1"] ops1
 """
+
+
+'''
+sort in alphanumeric order
+'''
+def alphanumeric_sort(l):
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    return sorted(l, key = alphanum_key)
+
 
 @mark.skipif(True, reason="Disabling due to random gate job failures")
 def test_vtysh_ct_loopback_intf_cli(topology, step):
@@ -84,3 +95,21 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
 
     out = ops1("no int loopback 6")
     assert "Loopback interface does not exist." in out
+
+    # verify that result of show int loopback is in sorted order
+    ops1("interface loopback 44")
+    ops1("interface loopback 4")
+    ops1("interface loopback 33")
+    ops1("interface loopback 7")
+    ops1("interface loopback 33")
+    ops1("end")
+    out = ops1("show interface loopback")
+    lines = out.split('\n')
+    interface_lines = [line for line in lines if "Interface" in line]
+
+    ''' collect interface names '''
+    interface_names = []
+    for line in interface_lines:
+       interface_names.append(line.split()[1])
+
+    assert interface_names == alphanumeric_sort(interface_names)
