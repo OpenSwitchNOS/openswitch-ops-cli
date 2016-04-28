@@ -325,7 +325,10 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
                 }
                 else
                 {
-                    vty_out(vty, "Duplicate IP Address.%s",VTY_NEWLINE);
+                    vty_out(vty, "An interface with the same IP address or "
+                            "subnet or an overlapping network%s"
+                            "%s already exists.%s",
+                            VTY_NEWLINE,ip4,VTY_NEWLINE);
                     return CMD_SUCCESS;
                 }
             }
@@ -338,7 +341,10 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
 
                 if (input_ip_subnet == port_ip_subnet)
                 {
-                    vty_out(vty, "Duplicate IP Address.%s",VTY_NEWLINE);
+                    vty_out(vty, "An interface with the same IP address or "
+                                 "subnet or an overlapping network%s"
+                                 "%s already exists.%s",
+                                 VTY_NEWLINE,ip4,VTY_NEWLINE);
                     return CMD_SUCCESS;
                 }
             }
