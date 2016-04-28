@@ -78,7 +78,8 @@
 #define OSPF_AREA_ID_FORMAT_ADDRESS         1
 #define OSPF_AREA_ID_FORMAT_DECIMAL         2
 
-#define OSPF_DEFAULT_STR            "        "
+#define OSPF_DEFAULT_STR            "0.0.0.0"
+#define OSPF_DEFAULT_NULL_STR            "        "
 #define OSPF_STRING_NULL            "null"
 #define OSPF_SHOW_STR_LEN           25
 #define OSPF_NETWORK_RANGE_LEN      25
