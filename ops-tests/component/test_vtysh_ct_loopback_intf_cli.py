@@ -81,7 +81,8 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
     ops1("ip address 192.168.1.5/24")
     ops1("int loopback 2")
     out = ops1("ip address 192.168.1.5/24")
-    assert "Duplicate IP Address." in out
+    assert "An interface with the same IP address or subnet or an overlapping"\
+           " network\n192.168.1.5/24 already exists." in out
 
     out = ops1("int loopback 21474836501")
     assert "% Unknown command." in out
