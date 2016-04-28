@@ -5354,7 +5354,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
        vty_out(vty, "  LS age: %ld%s", time_age,  VTY_NEWLINE);
    }
    else
-       vty_out(vty, "  LS age: %s%s",OSPF_DEFAULT_STR,VTY_NEWLINE);
+       vty_out(vty, "  LS age: %s%s",OSPF_DEFAULT_NULL_STR,VTY_NEWLINE);
    if(lsa_row->n_options > 0)
    {
        vty_out (vty, "  Options: %s%s",
@@ -5371,7 +5371,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
           ospf_lsa_flags_print(lsa_row),VTY_NEWLINE);
    else
    {
-       vty_out (vty, "  LS Flags: %s%s", OSPF_DEFAULT_STR,
+       vty_out (vty, "  LS Flags: %s%s", OSPF_DEFAULT_NULL_STR,
            VTY_NEWLINE);
    }
 
@@ -5387,7 +5387,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
    }
    else
    {
-       vty_out (vty, "  Link State ID: %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+       vty_out (vty, "  Link State ID: %s%s", OSPF_DEFAULT_NULL_STR, VTY_NEWLINE);
    }
 
    if(lsa_row->adv_router)
@@ -5398,7 +5398,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
    }
    else
    {
-       vty_out (vty, "  Advertising Router: %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+       vty_out (vty, "  Advertising Router: %s%s", OSPF_DEFAULT_NULL_STR, VTY_NEWLINE);
    }
    if(lsa_row->ls_seq_num)
        vty_out (vty, "  LS Seq Number: 0x%08lx%s",
@@ -5406,7 +5406,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
    else
    {
        vty_out (vty, "  LS Seq Number: %s%s",
-                       OSPF_DEFAULT_STR, VTY_NEWLINE);
+                       OSPF_DEFAULT_NULL_STR, VTY_NEWLINE);
    }
    if (lsa_row->n_chksum > 0)
        vty_out (vty, "  Checksum: 0x%04x%s",
@@ -5420,7 +5420,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
        vty_out (vty, "  Length: %d%s", lsa_row->length,VTY_NEWLINE);
    else
    {
-       vty_out (vty, "  Length: %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+       vty_out (vty, "  Length: %s%s", OSPF_DEFAULT_NULL_STR, VTY_NEWLINE);
    }
 
    for(k = 0; k < lsa_row->n_lsa_data; k++)
@@ -5808,7 +5808,7 @@ ospf_ip_maxage_detail_show()
             else
             {
                 vty_out (vty, "  Link State ID: %s%s",
-                          OSPF_DEFAULT_STR, VTY_NEWLINE);
+                          OSPF_DEFAULT_NULL_STR, VTY_NEWLINE);
             }
             if(lsa_row->adv_router)
             {
@@ -5818,7 +5818,8 @@ ospf_ip_maxage_detail_show()
             }
             else
             {
-                vty_out (vty, "   Advertising Router: %s%s", OSPF_DEFAULT_STR, VTY_NEWLINE);
+                vty_out (vty, "   Advertising Router: %s%s",
+                                        OSPF_DEFAULT_NULL_STR, VTY_NEWLINE);
             }
             vty_out(vty, "%s", VTY_NEWLINE);
         }
@@ -6579,7 +6580,7 @@ ospf_lsa_show_one_row(const struct ovsrec_ospf_lsa *lsa_row, int type)
      }
      else
      {
-         vty_out(vty, "%-15s ", OSPF_DEFAULT_STR);
+         vty_out(vty, "%-15s ", OSPF_DEFAULT_NULL_STR);
      }
      if (lsa_row->adv_router)
      {
@@ -6588,7 +6589,7 @@ ospf_lsa_show_one_row(const struct ovsrec_ospf_lsa *lsa_row, int type)
      }
      else
      {
-         vty_out(vty, "%-15s ", OSPF_DEFAULT_STR);
+         vty_out(vty, "%-15s ", OSPF_DEFAULT_NULL_STR);
      }
      if(lsa_row->ls_birth_time)
      {
@@ -6597,7 +6598,7 @@ ospf_lsa_show_one_row(const struct ovsrec_ospf_lsa *lsa_row, int type)
         vty_out(vty, "%-8ld ", time_age);
      }
      else
-         vty_out(vty, "%8s ", OSPF_DEFAULT_STR);
+         vty_out(vty, "%8s ", OSPF_DEFAULT_NULL_STR);
 
      if(lsa_row->ls_seq_num)
          vty_out (vty, " 0x%08lx", (u_long)ntohl(lsa_row->ls_seq_num));
