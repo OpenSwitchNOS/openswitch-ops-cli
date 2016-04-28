@@ -84,7 +84,8 @@ def test_subintf_cli(topology, step):
     sw1("interface 4.8")
     out = sw1("ip address 192.168.1.2/24")
     sw1('no shutdown')
-    assert "Duplicate IP Address." in out
+    assert "An interface with the same IP address or subnet or an overlapping"\
+           " network\n192.168.1.2/24 already exists." in out
 
     sw1("interface 4.8")
     sw1("no encapsulation dot1Q 100")
