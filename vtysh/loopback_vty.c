@@ -175,8 +175,7 @@ DEFUN (vtysh_loopback_interface,
         status_txn = cli_do_config_finish(txn);
         if ((status_txn != TXN_SUCCESS) && (status_txn != TXN_UNCHANGED))
         {
-            VLOG_ERR("Transaction commit failed in function=%s, line=%d.%s",
-                    __func__, __LINE__, VTY_NEWLINE);
+            VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -257,7 +256,7 @@ loopback_if_config_ip (const char *if_name, const char *ip4)
         }
         else if (port_row->ip4_address_secondary != NULL )
         {
-            port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary);
+            port_ip_subnet = mask_ip4_subnet(*port_row->ip4_address_secondary);
 
             if (input_ip_subnet == port_ip_subnet)
             {
@@ -583,7 +582,7 @@ delete_loopback_intf(const char *if_name)
     status_txn = cli_do_config_start();
     if (status_txn == NULL)
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -624,7 +623,7 @@ delete_loopback_intf(const char *if_name)
     }
     else
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__, __LINE__);
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
         return CMD_OVSDB_FAILURE;
     }
 }
@@ -681,6 +680,7 @@ DEFUN (cli_intf_show_interface_loopback_if,
         "Select a loopback interface\n")
 {
     const struct ovsrec_interface *ifrow = NULL;
+    const struct ovsrec_port *row = NULL;
     const char *cur_state = NULL;
     struct shash sorted_interfaces;
     const struct shash_node **nodes;
@@ -704,13 +704,12 @@ DEFUN (cli_intf_show_interface_loopback_if,
         /* Display the brief information. */
         vty_out(vty, "%s", VTY_NEWLINE);
         vty_out(vty, "---------------------------------------------------"
-                     "-----------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN       Type       Mode     Status  "
-                     "    Reason       Speed    Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                          "
-                     "                 (Mb/s)   Ch# %s", VTY_NEWLINE);
-        vty_out(vty, "----------------------------------------------------"
-                     "----------------------------%s", VTY_NEWLINE);
+                             "%s", VTY_NEWLINE);
+        vty_out(vty, "Loopback      IPv4 Address       Status  "
+                     "%s", VTY_NEWLINE);
+        vty_out(vty, "Interface %s", VTY_NEWLINE);
+        vty_out(vty, "---------------------------------------------------"
+                     "%s", VTY_NEWLINE);
     }
 
     vty_out (vty, "%s", VTY_NEWLINE);
@@ -736,15 +735,17 @@ DEFUN (cli_intf_show_interface_loopback_if,
         for (idx = 0; idx < count; idx++)
         {
             ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+            OVSREC_PORT_FOR_EACH(row, idl)
+            {
+                if (strcmp(row->name, ifrow->name) == 0)
+                   break;
+            }
             /* Display brief information. */
             vty_out (vty, "%-12s", ifrow->name);
-            vty_out (vty, "--    "); /*VLAN */
-            vty_out (vty, "    loopback  "); /*type */
-            vty_out (vty, "   routed "); /*mode - routed or not*/
+            vty_out (vty, "%-12s", (row && row->ip4_address) ?
+                     row->ip4_address : "--");
 
             vty_out (vty, "      up "); /*Admin status*/
-            vty_out (vty, "      auto");
-            vty_out (vty, "      -- ");  /*Port channel*/
             vty_out (vty, "%s", VTY_NEWLINE);
         }
     }
@@ -872,7 +873,7 @@ DEFUN (vtysh_del_loopback_interface,
         vtysh_del_loopback_interface_cmd,
         "no interface loopback <0-2147483647>",
         NO_STR
-        INTF_HELP_STR
+        "Select an interface to configure\n"
         "Select a loopback interface\n"
         "Virtual interface number\n")
 {

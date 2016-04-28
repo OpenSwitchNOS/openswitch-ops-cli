@@ -333,7 +333,7 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
         }
         else if (port_row->ip4_address_secondary != NULL )
         {
-            port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary);
+            port_ip_subnet = mask_ip4_subnet(*port_row->ip4_address_secondary);
 
             if (input_ip_subnet == port_ip_subnet)
             {
@@ -433,7 +433,7 @@ DEFUN (cli_sub_intf_del_ip4,
     enum ovsdb_idl_txn_status status;
     bool port_found = false;
     const char *if_name = (char*)vty->index;
-    char *ip4[IP_ADDRESS_LENGTH];
+    char ip4[IP_ADDRESS_LENGTH];
 
     if (NULL != argv[0])
     {
@@ -1241,8 +1241,7 @@ create_sub_interface(char* subifname)
         }
         else
         {
-            VLOG_ERR("Transaction commit failed in function=%s, line=%d.%s",
-                    __func__, __LINE__, VTY_NEWLINE);
+            VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -1309,7 +1308,7 @@ delete_sub_intf(const char *sub_intf_name)
     status_txn = cli_do_config_start();
     if (status_txn == NULL)
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -1336,7 +1335,7 @@ delete_sub_intf(const char *sub_intf_name)
         }
         else
         {
-            VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR, __func__, __LINE__);
+            VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -1376,7 +1375,7 @@ delete_sub_intf(const char *sub_intf_name)
     }
     else
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR, __func__, __LINE__);
+        VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
         return CMD_OVSDB_FAILURE;
     }
 
