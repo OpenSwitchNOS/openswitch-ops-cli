@@ -60,6 +60,7 @@ typedef enum vtysh_context_idenum
   e_vtysh_qos_dscp_map_context,
   e_vtysh_access_list_context,
   e_vtysh_mirror_context,
+  e_vtysh_dns_client_context,
 } vtysh_contextid;
 
 /* Config Context Client ID type */
