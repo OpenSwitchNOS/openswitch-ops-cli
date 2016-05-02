@@ -842,10 +842,10 @@ show_subinterface_status(const struct ovsrec_interface *ifrow, bool brief,
                     VTY_NEWLINE);
         }
 
-        if (ifrow->error != NULL)
+        if (if_parent_row->error != NULL)
         {
             vty_out (vty, " State information: %s%s",
-                    ifrow->error, VTY_NEWLINE);
+                    if_parent_row->error, VTY_NEWLINE);
         }
     }
 }
