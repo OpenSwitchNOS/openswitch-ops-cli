@@ -255,5 +255,6 @@ extern void set_page_height(int lines);
 /* Send a fixed-size message to all vty terminal monitors; this should be
    an async-signal-safe function. */
 extern void vty_log_fixed (char *buf, size_t len);
-
+extern void vty_interrupted_flag_set(int new_value);
+extern int vty_interrupted_flag_get(void);
 #endif /* _ZEBRA_VTY_H */
