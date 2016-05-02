@@ -605,8 +605,10 @@ vtysh_execute (const char *line)
 
 #ifdef ENABLE_OVSDB
    int retVal = CMD_SUCCESS;
+   vty_interrupted_flag_set(0);
    reset_page_height();
    retVal = vtysh_execute_func (line, 1);
+   vty_interrupted_flag_set(0);
    reset_page_height();
    return retVal;
 #else

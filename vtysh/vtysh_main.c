@@ -96,6 +96,8 @@ sigtstp (int sig)
 {
 
 #ifdef ENABLE_OVSDB
+  /* Tell any executing command to stop */
+  vty_interrupted_flag_set(1);
   /* Reset the page_break settings to default */
   reset_page_break_on_interrupt();
 #endif //ENABLE_OVSDB
@@ -123,6 +125,8 @@ sigint (int sig)
 {
 
 #ifdef ENABLE_OVSDB
+  /* Tell any executing command to stop */
+  vty_interrupted_flag_set(1);
   /* Reset the page_break settings to default */
   reset_page_break_on_interrupt();
 #endif //ENABLE_OVSDB
