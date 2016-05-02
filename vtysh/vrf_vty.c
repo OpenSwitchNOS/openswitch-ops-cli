@@ -784,7 +784,6 @@ vrf_no_routing (const char *if_name)
   int64_t* tag = NULL;
   int tag_count = 0;
   size_t i;
-  struct smap smap_other_config;
 
   status_txn = cli_do_config_start ();
 
@@ -870,18 +869,6 @@ vrf_no_routing (const char *if_name)
                 }
             }
         }
-
-      /* Cache the current state of 'other-config' column for this port record */
-      smap_clone(&smap_other_config, &port_row->other_config);
-
-      /* Disable proxy-arp on the port */
-      smap_remove(&smap_other_config,
-              PORT_OTHER_CONFIG_MAP_PROXY_ARP_ENABLED);
-
-     /* Disable local-proxy-arp on the port */
-     smap_remove(&smap_other_config,
-                 PORT_OTHER_CONFIG_MAP_LOCAL_PROXY_ARP_ENABLED);
-
      vrf_ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
       for (i = n = 0; i < vrf_row->n_ports; i++)
         {
