@@ -101,6 +101,22 @@ int cur_page_height = 0;
 boolean skip_more_output = 0;
 extern pthread_mutex_t vtysh_ovsdb_mutex;
 
+/* Used to signal to a running command to stop waiting, looping, etc. */
+static int vty_interrupted_flag = 0;
+
+/* Signal handlers and execution loops will set/reset flag */
+void
+vty_interrupted_flag_set(int new_flag)
+{
+    vty_interrupted_flag = new_flag;
+}
+
+/* Commands with waits or loops will get flag */
+int
+vty_interrupted_flag_get(void)
+{
+    return vty_interrupted_flag;
+}
 
 /* Cleanup function to be called from interrupt signal handler, to release the
    lock, reset the terminal settings etc. */
