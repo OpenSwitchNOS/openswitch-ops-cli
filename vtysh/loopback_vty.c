@@ -680,6 +680,7 @@ DEFUN (cli_intf_show_interface_loopback_if,
         "Select a loopback interface\n")
 {
     const struct ovsrec_interface *ifrow = NULL;
+    const struct ovsrec_port *row = NULL;
     const char *cur_state = NULL;
     struct shash sorted_interfaces;
     const struct shash_node **nodes;
@@ -703,13 +704,12 @@ DEFUN (cli_intf_show_interface_loopback_if,
         /* Display the brief information. */
         vty_out(vty, "%s", VTY_NEWLINE);
         vty_out(vty, "---------------------------------------------------"
-                     "-----------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN       Type       Mode     Status  "
-                     "    Reason       Speed    Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                          "
-                     "                 (Mb/s)   Ch# %s", VTY_NEWLINE);
-        vty_out(vty, "----------------------------------------------------"
-                     "----------------------------%s", VTY_NEWLINE);
+                     "%s", VTY_NEWLINE);
+        vty_out(vty, "Loopback      IPv4 Address       Status  "
+                     "%s", VTY_NEWLINE);
+	vty_out(vty, "Interface %s", VTY_NEWLINE);
+        vty_out(vty, "---------------------------------------------------"
+                     "%s", VTY_NEWLINE);
     }
 
     vty_out (vty, "%s", VTY_NEWLINE);
@@ -735,15 +735,16 @@ DEFUN (cli_intf_show_interface_loopback_if,
         for (idx = 0; idx < count; idx++)
         {
             ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+	    OVSREC_PORT_FOR_EACH(row, idl)
+	    {
+	       if (strcmp(row->name, ifrow->name) == 0)
+	       break;
+	    }
             /* Display brief information. */
             vty_out (vty, "%-12s", ifrow->name);
-            vty_out (vty, "--    "); /*VLAN */
-            vty_out (vty, "    loopback  "); /*type */
-            vty_out (vty, "   routed "); /*mode - routed or not*/
-
-            vty_out (vty, "      up "); /*Admin status*/
-            vty_out (vty, "      auto");
-            vty_out (vty, "      -- ");  /*Port channel*/
+            vty_out (vty, "%-12s", (row && row->ip4_address) ?
+                     row->ip4_address : "--");
+            vty_out (vty, "  %-12s", "\tup");
             vty_out (vty, "%s", VTY_NEWLINE);
         }
     }
