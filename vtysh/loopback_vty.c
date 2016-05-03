@@ -175,8 +175,7 @@ DEFUN (vtysh_loopback_interface,
         status_txn = cli_do_config_finish(txn);
         if ((status_txn != TXN_SUCCESS) && (status_txn != TXN_UNCHANGED))
         {
-            VLOG_ERR("Transaction commit failed in function=%s, line=%d.%s",
-                    __func__, __LINE__, VTY_NEWLINE);
+            VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -254,15 +253,18 @@ loopback_if_config_ip (const char *if_name, const char *ip4)
                 }
             }
         }
-        else if (port_row->ip4_address_secondary != NULL )
+        else if (port_row->n_ip4_address_secondary)
         {
-            port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary);
+            int i = 0;
+            for (i = 0; i < port_row->n_ip4_address_secondary; i++){
+                port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary[i]);
 
-            if (input_ip_subnet == port_ip_subnet)
-            {
-                vty_out(vty, "Duplicate IP Address.%s",VTY_NEWLINE);
-                return CMD_SUCCESS;
-            }
+                if (input_ip_subnet == port_ip_subnet)
+                {
+                    vty_out(vty, "Duplicate IP Address.%s",VTY_NEWLINE);
+                    return CMD_SUCCESS;
+                }
+           }
         }
     }
 
@@ -582,7 +584,7 @@ delete_loopback_intf(const char *if_name)
     status_txn = cli_do_config_start();
     if (status_txn == NULL)
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR, __func__, __LINE__);
+        VLOG_ERR (OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -623,7 +625,7 @@ delete_loopback_intf(const char *if_name)
     }
     else
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR,__func__, __LINE__);
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
         return CMD_OVSDB_FAILURE;
     }
 }
@@ -872,7 +874,7 @@ DEFUN (vtysh_del_loopback_interface,
         vtysh_del_loopback_interface_cmd,
         "no interface loopback <0-2147483647>",
         NO_STR
-        INTF_HELP_STR
+        "Delete a pseudo interface's configuration\n"
         "Select a loopback interface\n"
         "Virtual interface number\n")
 {
