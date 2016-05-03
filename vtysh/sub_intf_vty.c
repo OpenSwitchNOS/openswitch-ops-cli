@@ -331,14 +331,17 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
                 }
             }
         }
-        else if (port_row->ip4_address_secondary != NULL )
+        else if (port_row->n_ip4_address_secondary)
         {
-            port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary);
+            int i = 0;
+            for (i = 0; i < port_row->n_ip4_address_secondary; i++){
+                port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary);
 
-            if (input_ip_subnet == port_ip_subnet)
-            {
-                vty_out(vty, "Duplicate IP Address.%s",VTY_NEWLINE);
-                return CMD_SUCCESS;
+                if (input_ip_subnet == port_ip_subnet)
+                {
+                    vty_out(vty, "Duplicate IP Address.%s",VTY_NEWLINE);
+                    return CMD_SUCCESS;
+                }
             }
         }
     }
@@ -433,7 +436,7 @@ DEFUN (cli_sub_intf_del_ip4,
     enum ovsdb_idl_txn_status status;
     bool port_found = false;
     const char *if_name = (char*)vty->index;
-    char *ip4[IP_ADDRESS_LENGTH];
+    char ip4[IP_ADDRESS_LENGTH];
 
     if (NULL != argv[0])
     {
@@ -1241,8 +1244,7 @@ create_sub_interface(char* subifname)
         }
         else
         {
-            VLOG_ERR("Transaction commit failed in function=%s, line=%d.%s",
-                    __func__, __LINE__, VTY_NEWLINE);
+            VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -1259,7 +1261,7 @@ DEFUN (cli_del_sub_intf,
         cli_del_sub_intf_cmd,
         "no interface A.B",
         NO_STR
-        "Select a subinterface to remove\n"
+        INTERFACE_NO_STR
         "Subinterface name as physical_interface.subinterface name <1-4294967293>\n")
 {
     return delete_sub_intf(argv[0]);
@@ -1309,7 +1311,7 @@ delete_sub_intf(const char *sub_intf_name)
     status_txn = cli_do_config_start();
     if (status_txn == NULL)
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_CREATE_ERROR,__func__,__LINE__);
+        VLOG_ERR(OVSDB_TXN_CREATE_ERROR);
         cli_do_config_abort(status_txn);
         return CMD_OVSDB_FAILURE;
     }
@@ -1332,11 +1334,12 @@ delete_sub_intf(const char *sub_intf_name)
 
         if (status == TXN_SUCCESS || status == TXN_UNCHANGED)
         {
+            VLOG_ERR (OVSDB_TXN_COMMIT_ERROR);
             return CMD_SUCCESS;
         }
         else
         {
-            VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR, __func__, __LINE__);
+            VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
             return CMD_OVSDB_FAILURE;
         }
     }
@@ -1376,7 +1379,7 @@ delete_sub_intf(const char *sub_intf_name)
     }
     else
     {
-        VLOG_ERR(SUB_IF_OVSDB_TXN_COMMIT_ERROR, __func__, __LINE__);
+        VLOG_ERR(OVSDB_TXN_COMMIT_ERROR);
         return CMD_OVSDB_FAILURE;
     }
 
