@@ -33,13 +33,6 @@
 #define MAX_LOOPBACK_INTF_RANGE         2147483647
 #define MAX_LOOPBACK_INTF_COUNT         1024
 
-#define SUB_IF_OVSDB_TXN_COMMIT_ERROR  "Committing transaction to DB failed."\
-                                       "Function=%s Line=%d"
-#define SUB_IF_OVSDB_TXN_CREATE_ERROR  "Couldn't create the OVSDB transaction."\
-                                       "Function=%s Line=%d"
-
-#define INTF_HELP_STR                 "Select loopback interface"
-
 #define IPV4_ADDR_BIT_LENGTH           32
 #define IPV4_SUBNET_MASK_FULL          0xFFFFFFFF
 
