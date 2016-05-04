@@ -155,12 +155,12 @@ static int set_logrotate_target(const char *uri)
         {
         if(strlen(uri) <= 7)
             {
-            VLOG_ERR("URI not valid\n");
+            vty_out(vty, "URI not valid %s", VTY_NEWLINE);
             return CMD_ERR_NOTHING_TODO;
             }
         if(strncmp(uri,"tftp://",7))
             {
-            VLOG_ERR("Only tftp protocol is supported\n");
+            vty_out(vty, "Only tftp protocol is supported %s", VTY_NEWLINE);
             return CMD_ERR_NOTHING_TODO;
             }
 
