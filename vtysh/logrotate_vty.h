@@ -36,7 +36,7 @@
 
 # define LOGROTATE_HELP_STR_PERIOD      "Rotates, compresses, and transfers system logs \n" \
                                         "Logrotation period \n" \
-                                        "(Default) \n" \
+                                        "Rotates log files every day (Default) \n" \
                                         "Rotates log files every hour \n" \
                                         "Rotates log files every week \n" \
                                         "Rotates log files every month \n"
