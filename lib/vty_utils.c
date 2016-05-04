@@ -48,9 +48,7 @@ void utils_format_parser_read_word(struct format_parser_state *state)
 {
   format_parser_read_word(state);
 
-  static char *noHelpString = "This is the no help string for hostname";
   const char *noStr = "no";
-  const char *hostnameStr = "hostname";
   struct cmd_token *token;
   int width = 0,j=0,i;
 
@@ -82,13 +80,6 @@ void utils_format_parser_read_word(struct format_parser_state *state)
         if(token->cmd != NULL && strstr(token->cmd, noStr) != NULL)
         {
           j = 1;
-        }
-        if (token->cmd != NULL && strstr((token->cmd), hostnameStr) != NULL)
-        {
-          if (token->desc && j == 1)
-          {
-            token->desc = noHelpString;
-          }
         }
       }
   }

@@ -578,6 +578,7 @@ struct dyn_cb_func
 #define V4NOTATION_STR "specify by IPv4 address notation(e.g. 0.0.0.0)\n"
 #define OSPF6_NUMBER_STR "Specify by number\n"
 #define INTERFACE_STR "Interface infomation\n"
+#define INTERFACE_NO_STR "Delete a non-physical interface's configuration\n"
 #define IFNAME_STR  "Interface name(e.g. ep0)\n"
 #define IP6_STR     "IPv6 Information\n"
 #define OSPF6_STR   "Open Shortest Path First (OSPF) for IPv6\n"

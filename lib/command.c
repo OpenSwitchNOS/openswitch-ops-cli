@@ -4148,7 +4148,7 @@ DEFUN (config_no_hostname,
        no_hostname_cmd,
        "no hostname [HOSTNAME]",
        NO_STR
-       "Reset system's network name\n"
+       HOSTNAME_NO_STR
        "Host name of this router\n")
 {
   if (host.name)

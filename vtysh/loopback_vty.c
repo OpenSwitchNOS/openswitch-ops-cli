@@ -871,7 +871,7 @@ DEFUN (vtysh_del_loopback_interface,
         vtysh_del_loopback_interface_cmd,
         "no interface loopback <0-2147483647>",
         NO_STR
-        INTF_HELP_STR
+        INTERFACE_NO_STR
         "Select a loopback interface\n"
         "Virtual interface number\n")
 {
