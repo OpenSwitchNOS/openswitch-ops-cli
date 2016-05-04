@@ -153,18 +153,14 @@ static int set_logrotate_target(const char *uri)
 
     if(strncmp(uri,SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
         {
-        if(strlen(uri) <= 7)
-            {
-            VLOG_ERR("URI not valid\n");
-            return CMD_ERR_NOTHING_TODO;
-            }
-        if(strncmp(uri,"tftp://",7))
-            {
-            VLOG_ERR("Only tftp protocol is supported\n");
-            return CMD_ERR_NOTHING_TODO;
-            }
 
         ip_value = uri+7;
+
+        if ((strlen(uri) <= 7) || (strncmp(uri,"tftp://",7)) || !is_valid_ip_address(ip_value))
+        {
+            vty_out(vty, "Invalid parameter. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X'. %s", VTY_NEWLINE);
+            return CMD_ERR_NOTHING_TODO;
+        }
 
         if(inet_pton(AF_INET, ip_value,&addr) <= 0)
             {
