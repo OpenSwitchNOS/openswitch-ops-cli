@@ -36,6 +36,9 @@
 #define MAX_SUB_INTF_RANGE              4294967293
 #define MAX_SUB_INTF_COUNT              1024
 
+#define IPV4_ADDR_BIT_LENGTH           32
+#define IPV4_SUBNET_MASK_FULL          0xFFFFFFFF
+
 void sub_if_vty_init(void);
 void sub_intf_vty_init (void);
 void encapsulation_vty_init(void);
