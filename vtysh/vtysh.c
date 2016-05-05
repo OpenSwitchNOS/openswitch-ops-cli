@@ -3054,20 +3054,26 @@ static int
 set_user_passwd(void)
 {
     int ret;
-    char *username = NULL;
     char *passwd = NULL;
     char *oldpassword = NULL;
     char *cp = NULL;
+    struct passwd *pw = NULL;
 
-    username = getlogin();
-    if (username==NULL)
+    pw = getpwuid(geteuid());
+    if (pw->pw_name == NULL)
     {
-        vty_out(vty,"Could not look up user.%s", VTY_NEWLINE);
+        vty_out(vty, "Could not look up user.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    if (geteuid() == 0)
+    {
+        vty_out(vty, "Cannot change password of root user!%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
     /* User must be in ovsdb-client group to change password */
-    ret = check_user_group(username, OVSDB_GROUP);
+    ret = check_user_group(pw->pw_name, OVSDB_GROUP);
     if (ret!=1)
     {
         vty_out(vty, "User does not belong to group ovsdb-client.%s",
@@ -3075,7 +3081,7 @@ set_user_passwd(void)
         return CMD_SUCCESS;
     }
 
-    vty_out(vty,"Changing password for user %s %s", username, VTY_NEWLINE);
+    vty_out(vty,"Changing password for user %s %s", pw->pw_name, VTY_NEWLINE);
     oldpassword = get_password("Enter old password: ");
     vty_out(vty, "%s", VTY_NEWLINE);
 
@@ -3098,9 +3104,8 @@ set_user_passwd(void)
         goto cleanup;
     }
     else {
-        send_credential_to_passwd_server(username, oldpassword, passwd,
+        send_credential_to_passwd_server(pw->pw_name, oldpassword, passwd,
                 PASSWD_MSG_CHG_PASSWORD);
-
     }
 
 cleanup:
