@@ -206,7 +206,7 @@ class Test_logrotate:
         self.test.LogrotateCliTargetTest()
 
     def test_LogrotateDBConfig(self):
-        if self.test.testLogrotateConfig('hourly'):
+        if self.test.testLogrotateConfig('daily'):
             info("### Test config file generation from DB: passed ###\n")
 
 
