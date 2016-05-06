@@ -50,7 +50,7 @@ void utils_format_parser_read_word(struct format_parser_state *state)
 
   const char *noStr = "no";
   struct cmd_token *token;
-  int width = 0,j=0,i;
+  int width = 0,i;
 
   for (i = 0; i < vector_active (state->curvect); i++)
   {
@@ -69,18 +69,6 @@ void utils_format_parser_read_word(struct format_parser_state *state)
 
         if (width < len)
           width = len;
-      }
-  }
-  for (i = 0; i < vector_active (state->curvect); i++)
-  {
-    if ((token = vector_slot (state->curvect, i)) != NULL)
-      {
-        if (token->cmd == NULL || token->cmd[0] == '\0')
-          continue;
-        if(token->cmd != NULL && strstr(token->cmd, noStr) != NULL)
-        {
-          j = 1;
-        }
       }
   }
 }
