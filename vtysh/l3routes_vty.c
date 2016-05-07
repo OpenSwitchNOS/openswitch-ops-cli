@@ -591,7 +591,7 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
                       break;
                     }
                 }
-              else if (row->nexthops[i]->ports[0]->name != NULL)
+              else if (row->nexthops[i]->ports != NULL && row->nexthops[i]->ports[0]->name != NULL)
                 {
                   if (!strcmp (row->nexthops[i]->ports[0]->name, argv[1]))
                     {
@@ -1575,6 +1575,20 @@ show_rib (struct vty *vty, char * ip_addr_family)
                     vty_out (vty, "\t*via %s", str);
                   else
                     vty_out (vty, "\tvia %s", str);
+          for (i = 0; i < row_route->n_nexthops; i++)
+            {
+              if (row_route->nexthops[i]->ip_address)
+                snprintf (str, sizeof(str), " %s",
+                          row_route->nexthops[i]->ip_address);
+              else if (row_route->nexthops[i]->ports != NULL && row_route->nexthops[i]->ports[0]->name)
+                snprintf (str, sizeof(str), " %s",
+                          row_route->nexthops[i]->ports[0]->name);
+
+              if (row_route->nexthops[i]->selected == NULL ||
+                  row_route->nexthops[i]->selected[0] == true)
+                vty_out (vty, "\t*via %s", str);
+              else
+                vty_out (vty, "\tvia %s", str);
 
                   vty_out (vty, ",  [%ld", *row_route->distance);
 
