@@ -591,7 +591,7 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
                       break;
                     }
                 }
-              else if (row->nexthops[i]->ports[0]->name != NULL)
+              else if (row_route->nexthops[i]->ports != NULL && row->nexthops[i]->ports[0]->name != NULL)
                 {
                   if (!strcmp (row->nexthops[i]->ports[0]->name, argv[1]))
                     {
@@ -779,7 +779,7 @@ show_routes (struct vty *vty, char * ip_addr_family)
                                 row_route->nexthops[i]->ip_address);
                       vty_out (vty, "\tvia %s", str);
                     }
-                  else if (row_route->nexthops[i]->ports[0]->name)
+                  else if (row_route->nexthops[i]->ports != NULL && row_route->nexthops[i]->ports[0]->name)
                     {
                       snprintf (str, sizeof(str), " %s",
                                 row_route->nexthops[i]->ports[0]->name);
@@ -958,7 +958,7 @@ no_ip_route_common (struct vty *vty, char **argv, char *distance)
                   for (i = n = 0; i < row_route->n_nexthops; i++)
                     {
                       if ((row_route->nexthops[i]->ip_address) ||
-                          (row_route->nexthops[i]->ports[0]->name))
+                          (row_route->nexthops[i]->ports != NULL && row_route->nexthops[i]->ports[0]->name))
                         {
                           if (row_route->nexthops[i]->ip_address != NULL)
                             {
@@ -975,7 +975,7 @@ no_ip_route_common (struct vty *vty, char **argv, char *distance)
                               else
                                 nexthops[n++] = row_route->nexthops[i];
                             }
-                          else if (row_route->nexthops[i]->ports[0]->name
+                          else if (row_route->nexthops[i]->ports != NULL &&  row_route->nexthops[i]->ports[0]->name
                               != NULL)
                             {
                               if (0 == strcmp (argv[1],
@@ -1201,7 +1201,7 @@ ipv6_route_common (struct vty *vty, char **argv, char *distance)
                       break;
                     }
                 }
-              else if (row->nexthops[i]->ports[0]->name != NULL)
+              else if (row_route->nexthops[i]->ports != NULL && row->nexthops[i]->ports[0]->name != NULL)
                 {
                   if (!strcmp (row->nexthops[i]->ports[0]->name, argv[1]))
                     {
@@ -1382,7 +1382,7 @@ no_ipv6_route_common (struct vty *vty, char **argv, char *distance)
                   for (i = n = 0; i < row_route->n_nexthops; i++)
                     {
                       if ((row_route->nexthops[i]->ip_address) ||
-                          (row_route->nexthops[i]->ports[0]->name))
+                          (row_route->nexthops[i]->ports != NULL && row_route->nexthops[i]->ports[0]->name))
                         {
                           if (row_route->nexthops[i]->ip_address != NULL)
                             {
@@ -1399,7 +1399,7 @@ no_ipv6_route_common (struct vty *vty, char **argv, char *distance)
                               else
                                 nexthops[n++] = row_route->nexthops[i];
                             }
-                          else if (row_route->nexthops[i]->ports[0]->name
+                          else if (row_route->nexthops[i]->ports != NULL && row_route->nexthops[i]->ports[0]->name
                               != NULL)
                             {
                               if (0 == strcmp (argv[1],
@@ -1557,7 +1557,7 @@ show_rib (struct vty *vty, char * ip_addr_family)
               if (row_route->nexthops[i]->ip_address)
                 snprintf (str, sizeof(str), " %s",
                           row_route->nexthops[i]->ip_address);
-              else if (row_route->nexthops[i]->ports[0]->name)
+              else if (row_route->nexthops[i]->ports != NULL && row_route->nexthops[i]->ports[0]->name)
                 snprintf (str, sizeof(str), " %s",
                           row_route->nexthops[i]->ports[0]->name);
 
