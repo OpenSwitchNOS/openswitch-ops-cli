@@ -798,9 +798,9 @@ show_subinterface_status(const struct ovsrec_interface *ifrow, bool brief,
                         OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
                 ((ifrow->admin_state != NULL) &&
                  (strcmp(ifrow->admin_state,
-                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN)))) ?
-                ifrow->link_state :
-                if_parent_row->link_state);
+                  OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0))) ?
+                OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP:
+                OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN);
 
         if ((NULL != ifrow->admin_state) &&
                 (strcmp(ifrow->admin_state,
