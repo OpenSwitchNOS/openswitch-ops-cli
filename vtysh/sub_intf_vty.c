@@ -914,6 +914,21 @@ sort_sub_interfaces (const struct shash *sh)
     }
 }
 
+/* Display the subinterface brief header*/
+void
+display_subinterface_brief_header()
+{
+    vty_out(vty, "%s", VTY_NEWLINE);
+    vty_out(vty, "---------------------------------------------------"
+                 "-----------------------------%s", VTY_NEWLINE);
+    vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason   "
+                 "                Speed    Port%s", VTY_NEWLINE);
+    vty_out(vty, "Interface                                          "
+                 "                (Mb/s)   Ch# %s", VTY_NEWLINE);
+    vty_out(vty, "----------------------------------------------------"
+                 "----------------------------%s", VTY_NEWLINE);
+}
+
 DEFUN (cli_intf_show_subintferface_ifname,
         cli_intf_show_subintferface_ifname_cmd,
         "show interface A.B {brief}",
@@ -924,20 +939,11 @@ DEFUN (cli_intf_show_subintferface_ifname,
 {
     const struct ovsrec_interface *ifrow = NULL;
     bool brief = false;
+    bool known_intf = false;
 
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;
-        /* Display the brief information. */
-        vty_out(vty, "%s", VTY_NEWLINE);
-        vty_out(vty, "---------------------------------------------------"
-                     "-----------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason   "
-                     "                Speed    Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                          "
-                     "                (Mb/s)   Ch# %s", VTY_NEWLINE);
-        vty_out(vty, "----------------------------------------------------"
-                     "----------------------------%s", VTY_NEWLINE);
     }
 
     OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
@@ -950,7 +956,16 @@ DEFUN (cli_intf_show_subintferface_ifname,
         {
             continue;
         }
+        if (!known_intf && brief)
+        {
+            display_subinterface_brief_header();
+        }
         cli_show_subinterface_row(ifrow, brief);
+        known_intf = true;
+    }
+    if (!known_intf && argv[0])
+    {
+        vty_out(vty,"%% Unknown interface%s", VTY_NEWLINE);
     }
 }
 
@@ -969,6 +984,7 @@ DEFUN (cli_intf_show_subintferface_if_all,
     bool brief = false;
     const struct shash_node **nodes;
     int idx, count;
+    bool known_intf = false;
 
     if ((argv[0] != NULL) && (strchr(argv[0], '.'))){
          return CMD_ERR_NO_MATCH;
@@ -976,16 +992,6 @@ DEFUN (cli_intf_show_subintferface_if_all,
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;
-        /* Display the brief information. */
-        vty_out(vty, "%s", VTY_NEWLINE);
-        vty_out(vty, "---------------------------------------------------"
-                     "-----------------------------%s", VTY_NEWLINE);
-        vty_out(vty, "Ethernet      VLAN    Type Mode   Status  Reason   "
-                     "                Speed    Port%s", VTY_NEWLINE);
-        vty_out(vty, "Interface                                          "
-                     "                (Mb/s)   Ch# %s", VTY_NEWLINE);
-        vty_out(vty, "----------------------------------------------------"
-                     "----------------------------%s", VTY_NEWLINE);
     }
 
     if (NULL != argv[0])
@@ -1016,7 +1022,17 @@ DEFUN (cli_intf_show_subintferface_if_all,
         {
             continue;
         }
+        if (!known_intf && brief)
+        {
+            display_subinterface_brief_header();
+        }
+
         cli_show_subinterface_row(ifrow, brief);
+        known_intf = true;
+    }
+    if (!known_intf && argv[0])
+    {
+        vty_out(vty,"%% Unknown interface%s", VTY_NEWLINE);
     }
 
     shash_destroy(&sorted_interfaces);
