@@ -153,38 +153,13 @@ static int set_logrotate_target(const char *uri)
 
     if(strncmp(uri,SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
         {
-        if(strlen(uri) <= 7)
-            {
-            VLOG_ERR("URI not valid\n");
-            return CMD_ERR_NOTHING_TODO;
-            }
-        if(strncmp(uri,"tftp://",7))
-            {
-            VLOG_ERR("Only tftp protocol is supported\n");
-            return CMD_ERR_NOTHING_TODO;
-            }
-
         ip_value = uri+7;
 
-        if(inet_pton(AF_INET, ip_value,&addr) <= 0)
+        if ((strlen(uri) <= 7) || (strncmp(uri,"tftp://",7)) ||
+                                                !is_valid_ip_address(ip_value))
             {
-            if(inet_pton(AF_INET6, ip_value, &addrv6) <= 0)
-                {
-                VLOG_ERR("Invalid IPv4 or IPv6 address\n");
-                return CMD_ERR_NOTHING_TODO;
-                }
-            is_ipv4 = FALSE;
-            }
-
-        if(is_ipv4 && (!IS_VALID_IPV4(htonl(addr.s_addr))))
-            {
-            VLOG_ERR("IPv4 :Broadcast, multicast and loopback addresses are not allowed\n");
-            return CMD_ERR_NOTHING_TODO;
-            }
-
-        if((!is_ipv4) && (!IS_VALID_IPV6(&addrv6)))
-            {
-            VLOG_ERR("IPv6 :Multicast and loopback addresses are not allowed\n");
+            vty_out(vty, "Invalid parameter. Supported values "
+                     ":'tftp://A.B.C.D' or 'tftp://X:X::X:X'. %s", VTY_NEWLINE);
             return CMD_ERR_NOTHING_TODO;
             }
         }
