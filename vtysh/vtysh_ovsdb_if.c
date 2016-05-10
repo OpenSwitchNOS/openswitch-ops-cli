@@ -1390,7 +1390,38 @@ check_iface_in_lag(const char *if_name)
     return false;
 }
 
+/*
+ * This functions is used to check if a given port has any acl
+ * configuration i.e. acl applied in hw or acl configured by
+ * user.
+ *
+ * @param port_name name of the port that needs to be checked
+ *                  for acl configuration.
+ *
+ * @return true if acl configuration is detected, otherwise
+ *              returns false.
+ */
+bool
+check_acl_configuration(const char *port_name)
+{
+    const struct ovsrec_port *port_row = NULL;
+    ovs_assert(port_name);
 
+    OVSREC_PORT_FOR_EACH (port_row, idl)
+    {
+        if (strcmp (port_row->name, port_name) == 0) {
+
+            /* Check all acl columns,
+             * aclv4_in_applied - indicates currently applied acls
+             * aclv4_in_cfg - indicates acl configuration requested by user
+             */
+            if (port_row->aclv4_in_applied || port_row->aclv4_in_cfg) {
+              return true;
+            }
+        }
+    }
+    return false;
+}
 /*
  * This functions is used to check if port row exists.
  *
