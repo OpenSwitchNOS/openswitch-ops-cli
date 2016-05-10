@@ -93,4 +93,5 @@ void vtysh_ovsdb_show_version_detail_ops(void);
 
 bool vtysh_chk_for_system_configured_db_is_ready(void);
 
+bool check_acl_configuration(const char *port_name);
 #endif /* VTYSH_OVSDB_IF_H */
