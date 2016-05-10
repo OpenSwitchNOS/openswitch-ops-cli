@@ -2194,7 +2194,7 @@ ospf_router_default_metric_cmd_exec (bool set_flag, const char * metric)
     smap_clone(&smap, &ospf_router_row->other_config);
     if (set_flag == false) {
         value_metric = smap_get_int(&smap, OSPF_KEY_ROUTER_DEFAULT_METRIC,
-                                           OSPF_DEFAULT_METRIC_DEFAULT);
+                                           atoi(OSPF_DEFAULT_METRIC_DEFAULT));
         if (value_metric != atoi(metric)) {
             OSPF_ABORT_DB_TXN(ospf_router_txn,
                            "Value was not configured earlier.");
@@ -7837,7 +7837,7 @@ DEFUN (cli_ospf_redistribute_source,
         OSPF_START_DB_TXN(ospf_router_txn);
         for (i = 0 ; i < ospf_router_row->n_redistribute ; i++)
             redistribute[i] = ospf_router_row->redistribute[i];
-        redistribute[ospf_router_row->n_redistribute] = argv[0];
+        redistribute[ospf_router_row->n_redistribute] = (char *)argv[0];
         ovsrec_ospf_router_set_redistribute(ospf_router_row,redistribute,ospf_router_row->n_redistribute+1);
         OSPF_END_DB_TXN(ospf_router_txn);
         SAFE_FREE(redistribute);
