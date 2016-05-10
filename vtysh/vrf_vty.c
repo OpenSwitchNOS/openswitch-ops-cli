@@ -703,6 +703,22 @@ vrf_routing (const char *if_name)
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
+
+  /* Check for acl configuration only if we are changing the port from non-vrf
+   * to vrf
+   */
+  if (!check_iface_in_vrf(if_name) && check_acl_configuration (if_name))
+    {
+      vty_out(vty, "acl is configured on the interface %s,"
+        "Please remove the acl configuration before enabling routing.%s",
+        if_name, VTY_NEWLINE);
+      VLOG_DBG("%s acl is configured on the interface %s,"
+        "Please remove the acl configuration before enabling routing.",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+    }
+
   port_row = port_check_and_add (if_name, false, false, status_txn);
   if (!port_row)
     {
@@ -809,6 +825,23 @@ vrf_no_routing (const char *if_name)
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
+
+  /* Check for acl configuration only if we are changing the port from
+   * non-bridge to bridge
+   */
+  if (!check_iface_in_bridge(if_name) && check_acl_configuration (if_name))
+    {
+      vty_out(vty, "acl is configured on the interface %s,"
+        "Please remove the acl configuration before disbling routing.%s",
+        if_name, VTY_NEWLINE);
+      VLOG_DBG("%s acl is configured on the interface %s,"
+        "Please remove the acl configuration before disabling routing.",
+                __func__, if_name);
+      cli_do_config_abort(status_txn);
+      return CMD_SUCCESS;
+    }
+
+
   port_row = port_check_and_add (if_name, true, false, status_txn);
   if (check_iface_in_bridge (if_name))
     {
