@@ -120,8 +120,8 @@ def subintf_cli(**kwargs):
                                   addr="192.168.1.2", mask=24, config=True)
 
     retCode = retStruct.buffer()
-    assert "An interface with the same IP address or subnet or an overlapping"\
-           " network\r\r\n192.168.1.2/24 already exists." in retCode, \
+    assert "Overlapping networks observed for \"192.168.1.2/24\". "\
+           "Please configure non overlapping networks." in retCode, \
            'Test to verify sub-interface configuration clis - FAILED!'
 
     retStruct = Dot1qEncapsulation(deviceObj=device1, subInterface="4.8",

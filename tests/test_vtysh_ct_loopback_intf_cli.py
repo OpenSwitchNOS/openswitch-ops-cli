@@ -118,8 +118,8 @@ def loopback_cli(**kwargs):
     devIntReturn = device1.DeviceInteract(command="int loopback 2")
     devIntReturn = device1.DeviceInteract(command="ip address 192.168.1.5/24")
     retCode = devIntReturn.get('buffer')
-    assert "An interface with the same IP address or subnet or an overlapping"\
-           " network\r\r\n192.168.1.5/24 already exists." in retCode, \
+    assert "Overlapping networks observed for \"192.168.1.5/24\". "\
+           "Please configure non overlapping networks." in retCode, \
            'Test to verify Loopback-interface configuration clis - FAILED!'
 # assigning out of range
     devIntReturn = device1.DeviceInteract(command="int loopback 21474836501")
