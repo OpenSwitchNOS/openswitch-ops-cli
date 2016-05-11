@@ -27,8 +27,6 @@
 #define _VTY_SUB_INTF_H
 
 #define SUB_IF_NAME_MAX_LENGTH          32
-#define IP_ADDRESS_LENGTH               18
-#define IPV6_ADDRESS_LENGTH             49
 
 #define MIN_PHY_INTF                    1
 #define MAX_PHY_INTF                    24
