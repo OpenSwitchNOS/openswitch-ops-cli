@@ -49,6 +49,7 @@
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh/vtysh_ovsdb_vrf_context.h"
 #include "vtysh/utils/vrf_vtysh_utils.h"
+#include "vtysh/utils/l3_vtysh_utils.h"
 #include "vrf-utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_vrf_cli);
@@ -125,51 +126,6 @@ check_split_iface_conditions (const char *ifname)
     }
 
   return allowed;
-}
-
-/*
- * This function will check if a given IPv4/IPv6 address
- * is already present as a primary or secondary IPv4/IPv6 address.
- */
-bool
-check_ip_addr_duplicate (const char *ip_address,
-                         const struct ovsrec_port *port_row, bool ipv6,
-                         bool *secondary)
-{
-  size_t i;
-  if (ipv6)
-    {
-      if (port_row->ip6_address && !strcmp (port_row->ip6_address, ip_address))
-        {
-          *secondary = false;
-          return true;
-        }
-      for (i = 0; i < port_row->n_ip6_address_secondary; i++)
-        {
-          if (!strcmp (port_row->ip6_address_secondary[i], ip_address))
-            {
-              *secondary = true;
-              return true;
-            }
-        }
-    }
-  else
-    {
-      if (port_row->ip4_address && !strcmp (port_row->ip4_address, ip_address))
-        {
-          *secondary = false;
-          return true;
-        }
-      for (i = 0; i < port_row->n_ip4_address_secondary; i++)
-        {
-          if (!strcmp (port_row->ip4_address_secondary[i], ip_address))
-            {
-              *secondary = true;
-              return true;
-            }
-        }
-    }
-  return false;
 }
 
 /*
@@ -953,7 +909,6 @@ vrf_config_ip (const char *if_name, const char *ip4, bool secondary)
   enum ovsdb_idl_txn_status status;
   char **secondary_ip4_addresses;
   size_t i;
-  bool is_secondary;
 
   if (!is_valid_ip_address(ip4)) {
       vty_out(vty, "  %s %s", OVSDB_INVALID_IPV4_IPV6_ERROR, VTY_NEWLINE);
@@ -985,14 +940,13 @@ vrf_config_ip (const char *if_name, const char *ip4, bool secondary)
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
-  if (check_ip_addr_duplicate (ip4, port_row, false, &is_secondary))
+
+  if (is_ip_configurable(vty, ip4, if_name, false, secondary))
     {
-      vty_out (vty, "IP address is already assigned to interface %s"
-               " as %s.%s",
-               if_name, is_secondary ? "secondary" : "primary", VTY_NEWLINE);
-      VLOG_DBG ("%s Interface \"%s\" already has the IP address \"%s\""
-                " assigned to it as \"%s\".",
-                __func__, if_name, ip4, is_secondary ? "secondary" : "primary");
+      VLOG_DBG("%s  An interface with the same IP address or "
+               "subnet or an overlapping network%s"
+               "%s already exists.",
+               __func__, VTY_NEWLINE, ip4);
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
@@ -1194,7 +1148,6 @@ vrf_config_ipv6 (const char *if_name, const char *ipv6, bool secondary)
   enum ovsdb_idl_txn_status status;
   char **secondary_ipv6_addresses;
   size_t i;
-  bool is_secondary;
 
   if (!is_valid_ip_address(ipv6)) {
       vty_out(vty, "  %s %s", OVSDB_INVALID_IPV4_IPV6_ERROR, VTY_NEWLINE);
@@ -1228,15 +1181,12 @@ vrf_config_ipv6 (const char *if_name, const char *ipv6, bool secondary)
       return CMD_SUCCESS;
     }
 
-  if (check_ip_addr_duplicate (ipv6, port_row, true, &is_secondary))
+  if (is_ip_configurable(vty, ipv6, if_name, true, secondary))
     {
-      vty_out (vty, "IP address is already assigned to interface %s"
-               " as %s.%s",
-               if_name, is_secondary ? "secondary" : "primary", VTY_NEWLINE);
-      VLOG_DBG ("%s Interface \"%s\" already has the IP address \"%s\""
-                " assigned to it as \"%s\".",
-                __func__, if_name, ipv6,
-                is_secondary ? "secondary" : "primary");
+      VLOG_DBG("%s  An interface with the same IP address or "
+               "subnet or an overlapping network%s"
+               "%s already exists.",
+               __func__, VTY_NEWLINE, ipv6);
       cli_do_config_abort (status_txn);
       return CMD_SUCCESS;
     }
