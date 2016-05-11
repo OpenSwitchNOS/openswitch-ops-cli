@@ -27,17 +27,12 @@
 #define _VTY_SUB_INTF_H
 
 #define SUB_IF_NAME_MAX_LENGTH          32
-#define IP_ADDRESS_LENGTH               18
-#define IPV6_ADDRESS_LENGTH             49
 
 #define MIN_PHY_INTF                    1
 #define MAX_PHY_INTF                    24
 #define MIN_SUB_INTF_RANGE              1
 #define MAX_SUB_INTF_RANGE              4294967293
 #define MAX_SUB_INTF_COUNT              1024
-
-#define IPV4_ADDR_BIT_LENGTH           32
-#define IPV4_SUBNET_MASK_FULL          0xFFFFFFFF
 
 void sub_if_vty_init(void);
 void sub_intf_vty_init (void);
