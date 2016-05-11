@@ -26,15 +26,16 @@
 #ifndef _VTY_LOOPBACK_INTF_H
 #define _VTY_LOOPBACK_INTF_H
 
-#define IP_ADDRESS_LENGTH               18
-#define IPV6_ADDRESS_LENGTH             49
-
 #define MIN_LOOPBACK_INTF_RANGE         0
 #define MAX_LOOPBACK_INTF_RANGE         2147483647
 #define MAX_LOOPBACK_INTF_COUNT         1024
 
-#define IPV4_ADDR_BIT_LENGTH           32
-#define IPV4_SUBNET_MASK_FULL          0xFFFFFFFF
+#define SUB_IF_OVSDB_TXN_COMMIT_ERROR  "Committing transaction to DB failed."\
+                                       "Function=%s Line=%d"
+#define SUB_IF_OVSDB_TXN_CREATE_ERROR  "Couldn't create the OVSDB transaction."\
+                                       "Function=%s Line=%d"
+
+#define INTF_HELP_STR                 "Select loopback interface"
 
 const struct ovsrec_port* port_check_and_add(const char *port_name, bool create,
                                              bool attach_to_default_sub_if,

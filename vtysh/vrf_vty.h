@@ -27,8 +27,6 @@
 #define _VRF_VTY_H
 
 #define VRF_NAME_MAX_LENGTH 32
-#define IP_ADDRESS_LENGTH 18
-#define IPV6_ADDRESS_LENGTH 49
 
 void
 vrf_vty_init(void);
