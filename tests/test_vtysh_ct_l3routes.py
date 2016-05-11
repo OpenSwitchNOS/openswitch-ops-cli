@@ -191,16 +191,16 @@ class staticRouteConfigTest(OpsVsiTest):
 ### Verify if nexthop is not assigned locally to an interface as a '''
              '''secondary ip address ###\n''')
         s1.cmdCLI('interface 1')
-        s1.cmdCLI('ip address 192.168.2.2/24 secondary')
+        s1.cmdCLI('ip address 192.168.4.2/24 secondary')
         s1.cmdCLI('exit')
-        s1.cmdCLI('ip route 192.168.3.0/24 192.168.2.2')
+        s1.cmdCLI('ip route 192.168.3.0/24 192.168.4.2')
         ret = s1.cmdCLI('do show running-config')
-        assert not 'ip route 192.168.3.0/24 192.168.2.2'in ret, \
+        assert not 'ip route 192.168.3.0/24 192.168.4.2'in ret, \
             'Secondary ip address check for nexthop failed'
         info('### Nexthop ip address verification successful against local '
              'secondary address ###\n')
         s1.cmdCLI('interface 1')
-        s1.cmdCLI('no ip address 192.168.2.2/24 secondary')
+        s1.cmdCLI('no ip address 192.168.4.2/24 secondary')
         s1.cmdCLI('exit')
 
         info('''
@@ -392,16 +392,16 @@ class staticRouteConfigTest(OpsVsiTest):
 ### Verify if nexthop is not assigned locally to an interface as a '''
              '''secondary ipv6 address ###\n''')
         s1.cmdCLI('interface 1')
-        s1.cmdCLI('ipv6 address 2000::3/120 secondary')
+        s1.cmdCLI('ipv6 address 2005::3/120 secondary')
         s1.cmdCLI('exit')
-        s1.cmdCLI('ipv6 route 2002::/120 2000::3')
+        s1.cmdCLI('ipv6 route 2002::/120 2005::3')
         ret = s1.cmdCLI('do show running-config')
-        assert not 'ipv6 route 2002::/120 2000::3' in ret, \
+        assert not 'ipv6 route 2002::/120 2005::3' in ret, \
             'Secondary ipv6 address check for nexthop failed'
         info('### Nexthop ipv6 address verification successful against local '
              'secondary address ###\n')
         s1.cmdCLI('interface 1')
-        s1.cmdCLI('no ipv6 address 2000::2/120 secondary')
+        s1.cmdCLI('no ipv6 address 2005::2/120 secondary')
         s1.cmdCLI('exit')
 
         info('''
