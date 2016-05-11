@@ -52,35 +52,10 @@
 #include "vtysh/vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh/utils/intf_vtysh_utils.h"
+#include "vtysh/utils/l3_vtysh_utils.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_sub_intf_cli);
 extern struct ovsdb_idl *idl;
-
-
-/*
- * This function mask subnet from the entered IP address
- * using subnet bits.
- * Parameter 1 : IPv4 address
- * Return      : subnet_mask for the ip4 address
- */
-static int
-mask_ip4_subnet(const char* ip4)
-{
-   char ipAddressString[24]="";
-   unsigned int mask_bits = 0, addr = 0;
-   unsigned int subnet_bits = 0;
-
-   mask_bits = atoi(strchr(ip4,'/') + 1);
-   strcpy(ipAddressString, ip4);
-   strcpy(strchr(ipAddressString, '/'), "\0");
-
-   inet_pton(AF_INET, ipAddressString, &addr);
-   addr = htonl(addr);
-
-   subnet_bits = (IPV4_SUBNET_MASK_FULL << (IPV4_ADDR_BIT_LENGTH - mask_bits));
-
-   return (addr & subnet_bits);
-}
 
 /*
  * CLI "shutdown"
@@ -309,7 +284,7 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     bool port_found;
-    int input_ip_subnet, port_ip_subnet;
+    bool secondary = false;
 
     if (!is_valid_ip_address(ip4))
     {
@@ -317,45 +292,13 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
         return CMD_SUCCESS;
     }
 
-    input_ip_subnet = mask_ip4_subnet(ip4);
-    OVSREC_PORT_FOR_EACH(port_row, idl)
+    if (is_ip_configurable(vty, ip4, if_name, AF_INET, secondary))
     {
-        if (port_row->ip4_address != NULL )
-        {
-            port_ip_subnet = mask_ip4_subnet(port_row->ip4_address);
-
-            if (input_ip_subnet == port_ip_subnet)
-            {
-                if (strcmp(port_row->name, if_name) == 0)
-                {
-                    break;
-                }
-                else
-                {
-                    vty_out(vty, "An interface with the same IP address or "
-                            "subnet or an overlapping network%s"
-                            "%s already exists.%s",
-                            VTY_NEWLINE,ip4,VTY_NEWLINE);
-                    return CMD_SUCCESS;
-                }
-            }
-        }
-        else if (port_row->n_ip4_address_secondary)
-        {
-            int i = 0;
-            for (i = 0; i < port_row->n_ip4_address_secondary; i++){
-                port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary[i]);
-
-                if (input_ip_subnet == port_ip_subnet)
-                {
-                    vty_out(vty, "An interface with the same IP address or "
-                                 "subnet or an overlapping network%s"
-                                 "%s already exists.%s",
-                                 VTY_NEWLINE,ip4,VTY_NEWLINE);
-                    return CMD_SUCCESS;
-                }
-            }
-        }
+        VLOG_DBG("%s  An interface with the same IP address or "
+                 "subnet or an overlapping network%s"
+                 "%s already exists.",
+                 __func__, VTY_NEWLINE, ip4);
+        return CMD_SUCCESS;
     }
 
     OVSREC_PORT_FOR_EACH(port_row, idl)
@@ -520,7 +463,7 @@ DEFUN (cli_sub_intf_config_ipv6,
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    bool is_secondary = false;
+    bool secondary = false;
 
     const char *if_name = (char*) vty->index;
     const char *ipv6 = argv[0];
@@ -547,15 +490,12 @@ DEFUN (cli_sub_intf_config_ipv6,
         return CMD_SUCCESS;
     }
 
-    if (check_ip_addr_duplicate (ipv6, port_row, true, &is_secondary))
+    if (is_ip_configurable(vty, ipv6, if_name, AF_INET6, secondary))
     {
-        vty_out (vty, "IPv6 address is already assigned to interface %s"
-                " as %s.%s",
-                if_name, is_secondary ? "secondary" : "primary", VTY_NEWLINE);
-        VLOG_DBG ("%s Interface \"%s\" already has the IP address \"%s\""
-                " assigned to it as \"%s\".%s",
-                __func__, if_name, ipv6,
-                is_secondary ? "secondary" : "primary", VTY_NEWLINE);
+        VLOG_DBG("%s  An interface with the same IP address or "
+                 "subnet or an overlapping network%s"
+                 "%s already exists.",
+                 __func__, VTY_NEWLINE, ipv6);
         cli_do_config_abort (status_txn);
         return CMD_SUCCESS;
     }
