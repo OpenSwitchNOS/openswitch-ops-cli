@@ -587,7 +587,7 @@ DEFUN_NOSH (no_interface,
            no_interface_cmd,
            "no interface IFNAME",
            NO_STR
-           "Delete a pseudo interface's configuration\n"
+           INTERFACE_NO_STR
            "Interface's name\n")
 {
   // deleting interface

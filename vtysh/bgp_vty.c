@@ -12170,7 +12170,7 @@ DEFUN(no_ipv6_prefix_list_line,
       no_ipv6_prefix_list_line_cmd,
       "no ipv6 prefix-list WORD description .LINE",
       NO_STR
-      IP_STR
+      IPV6_STR
       PREFIX_LIST_STR
       "Name of a prefix list\n"
       "Prefix-list specific description\n"

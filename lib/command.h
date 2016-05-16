@@ -579,6 +579,7 @@ struct dyn_cb_func
 #define OSPF6_NUMBER_STR "Specify by number\n"
 #define INTERFACE_STR "Interface infomation\n"
 #define IFNAME_STR  "Interface name(e.g. ep0)\n"
+#define INTERFACE_NO_STR "Delete a non-physical interface's configuration\n"
 #define IP6_STR     "IPv6 Information\n"
 #define OSPF6_STR   "Open Shortest Path First (OSPF) for IPv6\n"
 #define OSPF6_ROUTER_STR "Enable a routing process\n"
