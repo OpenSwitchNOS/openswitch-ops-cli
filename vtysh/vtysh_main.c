@@ -55,6 +55,9 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
 #endif
 
+#define DB_READY     1
+#define SYS_CFG_READY 2
+
 extern int64_t timeout_start;
 extern struct termios tp;
 
@@ -272,6 +275,7 @@ static void log_it(const char *line)
   fprintf(logfile, "%s:%s %s\n", tod, user, line);
 }
 
+
 /* VTY shell main routine. */
 int
 main (int argc, char **argv, char **env)
@@ -296,6 +300,8 @@ main (int argc, char **argv, char **env)
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
   struct passwd *pw = NULL;
+  int64_t db_sys_cfg_ready = 0;
+  int count_wait = 5;
 
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
@@ -560,20 +566,43 @@ main (int argc, char **argv, char **env)
 
 #ifdef ENABLE_OVSDB
   /*
-   * Wait for  ovsdb to be loaded. If ovsdb is not ready and user tries to configure,
+   * Wait for ovsdb to be loaded and system current configuration is ready.
+   * If ovsdb and system current configuration is not ready and user tries to configure,
    * commands will fail to execute. So, wait for idl sequence number to change which
-   * indicates OVSDB is ready for transactions.
+   * indicates OVSDB is ready for transactions and wait for 'cur_cfg' is set to 1 until
+   * 5 sec with 5 iteration.
+   * If OVSDB and system current configuration is not ready within 25 sec, asserting the
+   * vtysh with error log.
    */
-  counter = 0;
   do
   {
-    if (vtysh_ovsdb_is_loaded())
-    {
-        break;
-    }
-    usleep(500000); //sleep for 500 msec
-    counter++;
-  } while (counter < MAX_TIMEOUT_FOR_IDL_CHANGE);
+      counter = 0;
+      db_sys_cfg_ready = 0;
+      do
+      {
+        if ((db_sys_cfg_ready == DB_READY) || vtysh_ovsdb_is_loaded())
+        {
+            db_sys_cfg_ready = DB_READY;
+            if (vtysh_chk_for_system_configured()== true) {
+                db_sys_cfg_ready = SYS_CFG_READY;
+                break;
+            }
+        }
+        usleep(500000); //sleep for 500 msec
+        counter++;
+      } while (counter < MAX_TIMEOUT_FOR_IDL_CHANGE);
+
+     count_wait--;
+   } while (count_wait != 0);
+
+   if ((db_sys_cfg_ready != SYS_CFG_READY) &&(db_sys_cfg_ready == DB_READY)) {
+       fprintf (stderr,"System current configuration is not ready.\n");
+       assert(0);
+   } else if ((db_sys_cfg_ready != DB_READY) && (db_sys_cfg_ready != SYS_CFG_READY)) {
+       fprintf (stderr,"OVSDB is not ready for user configuration.\n");
+       assert(0);
+   }
+
 #endif
 
   ospf_area_vlink_init();

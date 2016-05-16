@@ -1069,6 +1069,30 @@ vtysh_ovsdb_is_loaded()
    return (ovsdb_idl_has_ever_connected(idl));
 }
 
+/*
+ * FUNCTION : Checks the system initialization completed System:cur_cfg
+ * RETURNS  : Configuration completed: return True
+ *            else: return False
+ */
+
+bool
+vtysh_chk_for_system_configured(void)
+{
+    const struct ovsrec_system *ovs_vsw = NULL;
+
+    VTYSH_OVSDB_LOCK;
+    ovs_vsw = ovsrec_system_first(idl);
+
+    if (ovs_vsw && (ovs_vsw->cur_cfg > (int64_t) 0)) {
+        VLOG_DBG("System is now configured (cur_cfg=%d).",
+                (int)ovs_vsw->cur_cfg);
+        VTYSH_OVSDB_UNLOCK;
+        return true;
+    }
+    VTYSH_OVSDB_UNLOCK;
+    return false;
+}
+
 
 /* When exiting vtysh destroy the idl cache. */
 
