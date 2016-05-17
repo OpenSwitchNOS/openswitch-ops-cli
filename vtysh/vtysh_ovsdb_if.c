@@ -734,6 +734,34 @@ vtysh_ovsdb_switch_version_get(void)
 }
 
 /*
+ * FUNCTION : Checks the system initialization completed and
+ *            Checks ovsdb is ready for system configuration.
+ * RETURNS  : Configuration completed: return True
+ *            else: return False
+ */
+bool
+vtysh_chk_for_system_configured_db_is_ready(void)
+{
+    const struct ovsrec_system *ovs_vsw = NULL;
+    static bool ready = false;
+
+    if (ready == true) {
+        return true;
+    }
+
+    if ( vtysh_ovsdb_is_loaded()) {
+        ovs_vsw = ovsrec_system_first(idl);
+        if (ovs_vsw && (ovs_vsw->cur_cfg > (int64_t) 0)) {
+            VLOG_DBG("System is now configured (cur_cfg=%d).",
+                    (int)ovs_vsw->cur_cfg);
+            ready = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
  * The set command to set the hostname column in the
  * system table from the set-hotname command.
  */
