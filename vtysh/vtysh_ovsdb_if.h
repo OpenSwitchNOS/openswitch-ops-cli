@@ -92,4 +92,6 @@ void vtysh_ovsdb_show_version_detail(void);
 
 void vtysh_ovsdb_show_version_detail_ops(void);
 
+bool vtysh_chk_for_system_configured_db_is_ready(void);
+
 #endif /* VTYSH_OVSDB_IF_H */
