@@ -95,4 +95,7 @@ void vtysh_ovsdb_show_version_detail_ops(void);
 void ospf_area_vlink_init(void);
 
 bool check_acl_configuration(const char *port_name);
+
+bool vtysh_chk_for_system_configured_db_is_ready(void);
+
 #endif /* VTYSH_OVSDB_IF_H */

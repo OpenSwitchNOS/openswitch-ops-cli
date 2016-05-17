@@ -3370,7 +3370,11 @@ cmd_execute_command_real (vector vline,
               VTYSH_OVSDB_LOCK;
               strcpy(ifnumber, temp->value);
               vty->index = ifnumber;
-              ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              if (vtysh_chk_for_system_configured_db_is_ready() == true) {
+                  ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              } else {
+                  vty_out(vty, "System is not ready. Please retry after few seconds..%s", VTY_NEWLINE);
+              }
               AUDIT_LOG_USER_MSG(vty, cfgdata, ret);
               temp = temp->link;
               VTYSH_OVSDB_UNLOCK;
@@ -3381,7 +3385,11 @@ cmd_execute_command_real (vector vline,
       else
       {
           VTYSH_OVSDB_LOCK;
-          ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+          if (vtysh_chk_for_system_configured_db_is_ready() == true) {
+              ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+          } else {
+              vty_out(vty, "System is not ready. Please retry after few seconds..%s", VTY_NEWLINE);
+          }
           AUDIT_LOG_USER_MSG(vty, cfgdata, ret);
           VTYSH_OVSDB_UNLOCK;
       }
@@ -3390,13 +3398,22 @@ cmd_execute_command_real (vector vline,
   {
       struct range_list *temp = vty->index_list;
       static char ifnumber[MAX_IFNAME_LENGTH];
+      bool ready = false;
       if (temp != NULL)
       {
           while (temp != NULL)
           {
               strcpy(ifnumber, temp->value);
               vty->index = ifnumber;
-              ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              VTYSH_OVSDB_LOCK;
+              ready = vtysh_chk_for_system_configured_db_is_ready();
+              VTYSH_OVSDB_UNLOCK;
+
+              if (ready  == true) {
+                  ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+              } else {
+                  vty_out(vty, "System is not ready. Please retry after few seconds..%s", VTY_NEWLINE);
+              }
               AUDIT_LOG_USER_MSG(vty, cfgdata, ret);
               temp = temp->link;
               if (vty->index == NULL)
@@ -3405,7 +3422,15 @@ cmd_execute_command_real (vector vline,
       }
       else
       {
-          ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+          VTYSH_OVSDB_LOCK;
+          ready = vtysh_chk_for_system_configured_db_is_ready();
+          VTYSH_OVSDB_UNLOCK;
+
+          if (ready  == true) {
+              ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
+          } else {
+              vty_out(vty, "System is not ready. Please retry after few seconds..%s", VTY_NEWLINE);
+          }
           AUDIT_LOG_USER_MSG(vty, cfgdata, ret);
       }
   }
