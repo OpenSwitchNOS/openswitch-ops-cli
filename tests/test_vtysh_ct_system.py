@@ -20,6 +20,7 @@
 from time import sleep
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
+from pytest import mark
 
 
 class PlatformSystemTests(OpsVsiTest):
@@ -156,7 +157,7 @@ class PlatformSystemTests(OpsVsiTest):
             'Test to verify \'show system\' command - FAILED!'
         return True
 
-
+@mark.skipif(True, reason="Re-enabling modular framework tests")
 class Test_sys:
 
     def setup(self):

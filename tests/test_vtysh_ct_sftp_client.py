@@ -15,7 +15,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pytest
+from pytest import mark
 import re
 from opstestfw import *
 from opstestfw.switch.CLI import *
@@ -91,7 +91,6 @@ def sftpclient_host_limit(dut01):
 
     return True
 
-
 def sftpclient_non_admin_user(dut01):
     if (enterConfigShell(dut01) is False):
         return False
@@ -142,6 +141,7 @@ def sftpclient_non_admin_user(dut01):
     return True
 
 
+@mark.skipif(True, reason="Re-enabling modular framework tests")
 class Test_sftpclient_configuration:
     def setup_class(cls):
         # Test object will parse command line and formulate the env

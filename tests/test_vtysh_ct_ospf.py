@@ -1571,7 +1571,7 @@ def unsetVirtualLinkMsgDigestKeyTest(dut01, area, virtualLink, key):
     return True
 
 
-#@pytest.mark.skipif(True, reason="Disabling old tests")
+@pytest.mark.skipif(True, reason="Disabling old tests")
 class Test_ospf_configuration:
 
     def setup_class(cls):

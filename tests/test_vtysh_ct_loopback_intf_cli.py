@@ -18,7 +18,7 @@
 # 02111-1307, USA.
 
 import time
-import pytest
+from pytest import mark
 import re
 from opstestfw import *
 from opstestfw.switch.CLI import *
@@ -146,7 +146,7 @@ def loopback_cli(**kwargs):
     devIntReturn = device1.DeviceInteract(command="exit")
     devIntReturn = device1.DeviceInteract(command="exit")
 
-
+@mark.skipif(True, reason="Re-enabling modular framework tests")
 class Test_loopback_cli:
 
     def setup_class(cls):

@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from pytest import mark
 
 TOPOLOGY = """
 #
@@ -28,7 +27,7 @@ TOPOLOGY = """
 [type=openswitch name="Switch 1"] sw1
 """
 
-@mark.skipif(True, reason="Disabling due to random gate job failures")
+
 def test_sftp_client_configuration(topology, step):
     sw1 = topology.get('sw1')
 

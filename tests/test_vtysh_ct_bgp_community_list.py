@@ -21,6 +21,7 @@
 
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
+from pytest import mark
 
 class bgp_communitylistCLItest(OpsVsiTest):
 
@@ -181,7 +182,7 @@ class bgp_communitylistCLItest(OpsVsiTest):
             'extcommunity configuration failed '
          return True
 
-
+@mark.skipif(True, reason="Re-enabling modular framework tests")
 class Test_vtysh_bgp_community:
 
     def setup_class(cls):

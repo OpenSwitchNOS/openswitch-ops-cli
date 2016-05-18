@@ -21,6 +21,7 @@
 
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
+from pytest import mark
 
 class bgp_prefixCLItest(OpsVsiTest):
 
@@ -849,6 +850,7 @@ class bgp_prefixCLItest(OpsVsiTest):
             ' longer configuration failed '
          return True
 
+@mark.skipif(True, reason="Re-enabling modular framework tests")
 class Test_vtysh_bgp_prefix:
 
     def setup_class(cls):

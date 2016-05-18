@@ -20,7 +20,7 @@
 import os
 import sys
 from time import sleep
-import pytest
+from pytest import mark
 import subprocess
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
@@ -74,7 +74,7 @@ class VtyshInfraCommandsTests(OpsVsiTest):
             return False
         return True
 
-
+@mark.skipif(True, reason="Re-enabling modular framework tests")
 class Test_vtyshInfraCommands:
 
     def setup(self):

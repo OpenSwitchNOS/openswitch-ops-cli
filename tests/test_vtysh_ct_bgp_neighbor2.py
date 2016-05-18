@@ -15,7 +15,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pytest
+from pytest import mark
 from opsvsiutils.vtyshutils import *
 from opsvsiutils.bgpconfig import *
 from opsvsi.docker import *
@@ -910,7 +910,7 @@ class bgpTest(OpsVsiTest):
 
         return True
 
-
+@mark.skipif(True, reason="Re-enabling modular framework tests")
 class Test_bgpd_neighbor_cmds:
     def setup(self):
         pass
