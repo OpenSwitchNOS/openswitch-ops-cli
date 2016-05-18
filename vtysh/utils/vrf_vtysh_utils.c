@@ -55,7 +55,7 @@ port_vrf_lookup (const struct ovsrec_port *port_row)
 |         bigger than second, -1 if the first element is smaller than second
 -----------------------------------------------------------------------------*/
 int
-compare_nodes_vrf(const void *a_, const void *b_)
+compare_nodes_vrf(void *a_, void *b_)
 {
     struct shash_node **a = a_;
     struct shash_node **b = b_;

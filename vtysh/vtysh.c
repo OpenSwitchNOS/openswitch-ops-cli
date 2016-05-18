@@ -131,6 +131,8 @@ int vtysh_writeconfig_integrated = 0;
 
 extern char config_default[];
 
+void ospf_vty_init(void);
+
 /*
  * Function : rbac_check_user_permission.
  * Responsibility : routine to check if a user has a particular permission.This
@@ -2663,41 +2665,6 @@ DEFUN (vtysh_start_bash,
   return CMD_SUCCESS;
 }
 
-/*Function to get the number of users under given group*/
-static int
-get_group_user_count(const char *group_name)
-{
-     FILE *group, *passwd;
-     char groupLine[256] = {0};
-     char passwdLine[256] = {0};
-     char * pch;
-     int i = 0,count = 0;
-
-     group = fopen("/etc/group", "r");
-     passwd = fopen("/etc/passwd", "r");
-
-     while (fgets(groupLine, sizeof(groupLine), group) != NULL) {
-         if((strstr(groupLine, group_name)) != NULL)
-             break;
-     }
-
-     pch = strtok (groupLine,":");
-     while (pch != NULL) {
-         pch = strtok (NULL, ":");
-         if (i++ == 1)
-             break;
-     }
-
-     while (fgets(passwdLine, sizeof(passwdLine), passwd) != NULL) {
-          if((strstr(passwdLine, pch)) != NULL)
-             count ++;
-     }
-
-     fclose(group);
-     fclose(passwd);
-     return count;
-}
-
 /*Function to check whether user is member of the given group*/
 static int
 check_user_group( const char *user, const char *group_name)
@@ -2892,7 +2859,6 @@ send_credential_to_passwd_server(const char* username, const char* oldpass,
     passwd_srv_msg_t msg;
     unsigned char *enc_msg;
     int error_code = 0;
-    FILE *fp = NULL;
     char *op = NULL, *socket_path = NULL;
 
     if (NULL == username)
@@ -3020,7 +2986,7 @@ send_credential_to_passwd_server(const char* username, const char* oldpass,
     memset(&msg, 0, sizeof(msg));
 
     /* waiting to receive message */
-    if (0 > recv(sockfd, &error_code, &msg_len, MSG_PEEK))
+    if (0 > recv(sockfd, &error_code, msg_len, MSG_PEEK))
     {
         VLOG_ERR("Failed to receive a status from the password server");
         vty_out(vty, "%s could be not executed successfully.%s", op, VTY_NEWLINE);
@@ -3151,17 +3117,17 @@ set_user_passwd(void)
 cleanup:
     if (oldpassword!=NULL)
     {
-        memset(oldpassword, 0, sizeof(oldpassword));
+        memset(oldpassword, 0, strlen(oldpassword));
         free(oldpassword);
     }
     if (passwd!=NULL)
     {
-        memset(passwd, 0, sizeof(passwd));
+        memset(passwd, 0, strlen(passwd));
         free(passwd);
     }
     if (cp!=NULL)
     {
-        memset(cp, 0, sizeof(cp));
+        memset(cp, 0, strlen(cp));
         free(cp);
     }
 
@@ -3357,39 +3323,6 @@ vtysh_prompt (void)
 
 #ifdef ENABLE_OVSDB
 
-/* Function to validate user.*/
-static int
-validate_user(const char *user)
-{
-
-    /* User names must match [a-z_][a-z0-9_-]*[$] */
-    if (('\0' == *user) ||
-         !((('a' <= *user) && ('z' >= *user)) || ('_' == *user)))
-    {
-        return false;
-    }
-
-    /* Maximum allowed length of user name is 32 character.*/
-    if (strlen (user) > USER_NAME_MAX_LENGTH)
-    {
-        return false;
-    }
-
-    while ('\0' != *++user)
-    {
-        if (!(( ('a' <= *user) && ('z' >= *user)) ||
-            ( ('0' <= *user) && ('9' >= *user) ) ||
-            ('_' == *user) ||
-            ('-' == *user) ||
-            ( ('$' == *user) && ('\0' == *(user + 1)) )
-            ))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
 
 /* Function to create new user with password and add it to the ovsdb-cliet group*/
 static int
@@ -3397,7 +3330,6 @@ create_new_vtysh_user(const char *user)
 {
     struct crypt_data data;
     data.initialized = 0;
-    int ret = 0, cmd_ret = 0;
     char *password = NULL;
     char *passwd = NULL;
     char *cp = NULL;
@@ -3439,7 +3371,7 @@ create_new_vtysh_user(const char *user)
     password = crypt_r(passwd,"ab",&data);
     if (!password)
     {
-        vty_out(vty,"Failed to create new user", VTY_NEWLINE);
+        vty_out(vty,"Failed to create new user.%s", VTY_NEWLINE);
         free(cp);
         free(passwd);
         return CMD_ERR_NOTHING_TODO;
@@ -4137,6 +4069,7 @@ DEFUN (vtysh_page_cli,
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
     vtysh_page_height = w.ws_row;
+    return CMD_SUCCESS;
 }
 
 
@@ -4148,6 +4081,7 @@ DEFUN (vtysh_page_val_cli,
       "current terminal height is set)\n")
 {
     vtysh_page_height = atoi(argv[0]);
+    return CMD_SUCCESS;
 }
 
 
@@ -4158,6 +4092,7 @@ DEFUN (vtysh_no_page_cli,
       "Enable page break\n")
 {
     vtysh_page_height = 0;
+    return CMD_SUCCESS;
 }
 #endif
 

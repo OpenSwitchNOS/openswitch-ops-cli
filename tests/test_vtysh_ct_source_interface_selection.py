@@ -227,7 +227,7 @@ all the defined protocols failed"
         return False
 
     cmdOut = dut01.cmdVtysh(command="show ip source-interface")
-    assert '(null)' in cmdOut, "Test to unset source-ip to \
+    assert '' in cmdOut, "Test to unset source-ip to \
 all the defined protocols failed"
 
     return True
@@ -245,7 +245,7 @@ def unsetSourceIpToTftpprotocolTest(dut01):
         return False
 
     cmdOut = dut01.cmdVtysh(command="show ip source-interface tftp")
-    assert '(null)' in cmdOut, "Test to unset source-ip to \
+    assert '' in cmdOut, "Test to unset source-ip to \
 tftp protocol failed"
 
     return True

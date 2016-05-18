@@ -172,7 +172,7 @@ show_l3_interface_rx_stats(struct vty *vty, const struct ovsdb_datum *datum)
     union ovsdb_atom atom;
     unsigned int index;
 
-    const char *if_l3_rx_stat_keys [] = {
+    char *if_l3_rx_stat_keys [] = {
         "l3_uc_rx_packets",
         "l3_uc_rx_bytes",
         "l3_mc_rx_packets",
@@ -215,7 +215,7 @@ show_l3_interface_tx_stats(struct vty *vty, const struct ovsdb_datum *datum)
     union ovsdb_atom atom;
     unsigned int index;
 
-    const char *if_l3_rx_stat_keys [] = {
+    char *if_l3_rx_stat_keys [] = {
         "l3_uc_tx_packets",
         "l3_uc_tx_bytes",
         "l3_mc_tx_packets",
