@@ -17,7 +17,6 @@
 # Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-import pytest
 
 TOPOLOGY = """
 # +-------+
@@ -97,7 +96,6 @@ def proxy_arp_on_parent_int(sw1):
     assert 'This interface has been split. Operation not allowed' in output
 
 
-@pytest.mark.skipif(True, reason="Feature disabled")
 def test_vtysh_ct_proxy_arp(topology, step):
     sw1 = topology.get("sw1")
     assert sw1 is not None
