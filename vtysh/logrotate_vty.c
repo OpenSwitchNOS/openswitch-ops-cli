@@ -147,9 +147,6 @@ static int set_logrotate_target(const char *uri)
     enum ovsdb_idl_txn_status txn_status;
     struct ovsdb_idl_txn *txn;
     const char *ip_value;
-    struct in_addr addr;
-    struct in6_addr addrv6;
-    boolean is_ipv4 = TRUE;
 
     if(strncmp(uri,SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
         {
