@@ -208,4 +208,5 @@ vtysh_ret_val install_show_run_config_subcontext(vtysh_contextid index,
                           vtysh_ret_val (*funcptr) (void* p_private),
                           struct feature_sorted_list * (*init_funcptr) (void* p_private),
                           void (*exit_funcptr) (struct feature_sorted_list * head));
+void vtysh_ovsdb_init_clients(void);
 #endif /* VTYSH_OVSDB_CONFIG_H */

@@ -37,7 +37,7 @@
 #include "privs.h"
 #include "network.h"
 #include <termios.h>
-
+#include <pthread.h>
 #include <arpa/telnet.h>
 
 /* Vty events */

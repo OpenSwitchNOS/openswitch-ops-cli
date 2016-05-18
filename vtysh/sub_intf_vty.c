@@ -337,7 +337,7 @@ sub_intf_config_ip (const char *if_name, const char *ip4)
         {
             int i = 0;
             for (i = 0; i < port_row->n_ip4_address_secondary; i++){
-                port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary);
+                port_ip_subnet = mask_ip4_subnet(port_row->ip4_address_secondary[i]);
 
                 if (input_ip_subnet == port_ip_subnet)
                 {
@@ -653,9 +653,7 @@ cli_show_subinterface_row(const struct ovsrec_interface *ifrow, bool brief)
     const struct ovsrec_interface *if_parent_row = NULL;
     const struct ovsdb_datum *datum;
 
-    unsigned int index;
     int64_t intVal = 0;
-    union ovsdb_atom atom;
     int64_t key_subintf_parent = 0;
 
     if ((NULL == ifrow) ||
@@ -952,6 +950,7 @@ DEFUN (cli_intf_show_subintferface_ifname,
         }
         cli_show_subinterface_row(ifrow, brief);
     }
+    return CMD_SUCCESS;
 }
 
 DEFUN (cli_intf_show_subintferface_if_all,
@@ -1021,6 +1020,7 @@ DEFUN (cli_intf_show_subintferface_if_all,
 
     shash_destroy(&sorted_interfaces);
     free(nodes);
+    return CMD_SUCCESS;
 }
 
 DEFUN (vtysh_sub_interface,
@@ -1040,7 +1040,7 @@ DEFUN (vtysh_sub_interface,
  *                On Failure it returns CMD_OVSDB_FAILURE
  */
 int
-create_sub_interface(char* subifname)
+create_sub_interface(const char* subifname)
 {
     const struct ovsrec_port *port_row = NULL;
     const struct ovsrec_interface *intf_row, *parent_intf_row = NULL;
@@ -1085,14 +1085,14 @@ create_sub_interface(char* subifname)
         }
     }
 
-    sprintf(sub_intf, "%s.%lu", phy_intf, sub_intf_number);
+    sprintf(sub_intf, "%s.%lld", phy_intf, sub_intf_number);
     if (strcmp(sub_intf, subifname) != 0)
     {
         vty_out (vty, "Invalid input.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
-    sprintf(sub_intf, "%lu", sub_intf_number);
+    sprintf(sub_intf, "%lld", sub_intf_number);
 
     OVSREC_PORT_FOR_EACH(port_row, idl)
     {

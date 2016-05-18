@@ -2540,7 +2540,7 @@ ospf_router_default_metric_cmd_exec (bool set_flag, const char * metric)
     smap_clone(&smap, &ospf_router_row->other_config);
     if (set_flag == false) {
         value_metric = smap_get_int(&smap, OSPF_KEY_ROUTER_DEFAULT_METRIC,
-                                           OSPF_DEFAULT_METRIC_DEFAULT);
+                                          atoi(OSPF_DEFAULT_METRIC_DEFAULT));
         if (value_metric != atoi(metric)) {
             OSPF_ABORT_DB_TXN(ospf_router_txn,
                            "Value was not configured earlier.");
@@ -3614,7 +3614,6 @@ void ospf_area_show_running(const struct ovsrec_ospf_router *router_row)
 {
     const struct ovsrec_ospf_area *area_row = NULL;
     int i = 0;
-    const char *val = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
     char disp_str[OSPF_SHOW_STR_LEN];
     bool is_present = false;
@@ -3773,7 +3772,7 @@ ospf_running_config_show()
                                          OVSREC_OSPF_ROUTER_DISTANCE_ALL);
             if (distance > 0 && (distance != OSPF_ROUTER_DISTANCE_DEFAULT))
             {
-                vty_out(vty, "%4s%s %d%s", "", "distance", distance, VTY_NEWLINE);
+                vty_out(vty, "%4s%s %ld%s", "", "distance", distance, VTY_NEWLINE);
             }
 
             /*Compatible rfc1583*/
@@ -4263,7 +4262,7 @@ DEFUN(cli_ospf_router_no_max_metric,
 {
     if(argv[0])
     {
-        ospf_max_metric_startup_cmd_execute(true, DEFAULT_VRF_NAME, 1, 0);
+        return ospf_max_metric_startup_cmd_execute(true, DEFAULT_VRF_NAME, 1, 0);
     }
     else
     {
@@ -4660,7 +4659,6 @@ static int ospf_area_auth_cmd_execute(bool no_flag, int instance_id,
     const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_ospf_area *area_row = NULL;
     struct ovsdb_idl_txn *ospf_router_txn=NULL;
-    int i = 0;
 
     /* Start of transaction. */
     OSPF_START_DB_TXN(ospf_router_txn);
@@ -5815,9 +5813,6 @@ void
 ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
 {
 
-   char timebuf[OSPF_TIME_SIZE];
-   char *val = NULL;
-   int64_t int_val = 0;
    char area_str[OSPF_SHOW_STR_LEN];
    int k ;
 
@@ -5891,7 +5886,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
 
 
    if(lsa_row->n_length > 0)
-       vty_out (vty, "  Length: %d%s", lsa_row->length,VTY_NEWLINE);
+       vty_out (vty, "  Length: %ld%s", *lsa_row->length,VTY_NEWLINE);
    else
    {
        vty_out (vty, "  Length: %s%s", OSPF_DEFAULT_NULL_STR, VTY_NEWLINE);
@@ -5939,7 +5934,6 @@ ospf_lsa_database_detail_show(int type, const char* link_id)
 
    const struct ovsrec_ospf_router *router_row = NULL;
    const struct ovsrec_ospf_area *area_row = NULL;
-   const struct ovsrec_ospf_lsa  *lsa_row = NULL;
    const struct ovsrec_vrf *vrf_row = NULL;
    char area_str[OSPF_SHOW_STR_LEN];
    const char *val = NULL;
@@ -6341,7 +6335,7 @@ DEFUN(cli_ip_ospf_database,
     else if(argv[0] && !strcmp(argv[0] , "max-age" ))
         ospf_ip_maxage_detail_show();
     else
-        return ;
+        return CMD_SUCCESS;
 
     return CMD_SUCCESS;
 }
@@ -6385,7 +6379,7 @@ DEFUN(cli_ip_ospf_database_id,
         ospf_lsa_database_detail_show
             (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA, argv[1]);
      else
-          return ;
+          return CMD_SUCCESS;
      return CMD_SUCCESS;
 }
 
@@ -6399,7 +6393,6 @@ ospf_print_self_originate_link_states(int type)
 
    const struct ovsrec_ospf_router *router_row = NULL;
    const struct ovsrec_ospf_area *area_row = NULL;
-   const struct ovsrec_ospf_lsa  *lsa_row = NULL;
    const struct ovsrec_vrf *vrf_row = NULL;
    char area_str[OSPF_SHOW_STR_LEN];
    const char *val = NULL;
@@ -6694,7 +6687,7 @@ DEFUN(cli_ip_ospf_database_self_originate,
         ospf_print_self_originate_link_states
             (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA);
      else
-          return ;
+          return CMD_SUCCESS;
      return CMD_SUCCESS;
 }
 
@@ -6708,7 +6701,6 @@ ospf_print_self_originate_match_link_id(int type, const char* link_id)
 
    const struct ovsrec_ospf_router *router_row = NULL;
    const struct ovsrec_ospf_area *area_row = NULL;
-   const struct ovsrec_ospf_lsa  *lsa_row = NULL;
    const struct ovsrec_vrf *vrf_row = NULL;
    char area_str[OSPF_SHOW_STR_LEN];
    const char *val = NULL;
@@ -7032,7 +7024,7 @@ DEFUN (cli_show_ip_ospf_database_self,
          ospf_print_self_originate_match_link_id
                     (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA, argv[1]);
      else
-         return ;
+         return CMD_SUCCESS;
      return CMD_SUCCESS;
     }
 
@@ -7043,10 +7035,8 @@ type being passed
 void
 ospf_lsa_show_one_row(const struct ovsrec_ospf_lsa *lsa_row, int type)
 {
-     int64_t int_val = 0;
      char area_str[OSPF_SHOW_STR_LEN];
-     char timebuf[OSPF_TIME_SIZE];
-     char val;
+
      if (lsa_row->ls_id)
      {
          OSPF_IP_STRING_CONVERT(area_str, ntohl(lsa_row->ls_id));
@@ -7080,7 +7070,7 @@ ospf_lsa_show_one_row(const struct ovsrec_ospf_lsa *lsa_row, int type)
          vty_out(vty, "%s", OSPF_DEFAULT_HEXA_VALUE);
 
      if (lsa_row->n_chksum > 0)
-          vty_out (vty, " 0x%08lx", ntohs (*lsa_row->chksum));
+          vty_out (vty, " 0x%08lx", (u_long)ntohs (*lsa_row->chksum));
      else
           vty_out(vty, "%s", OSPF_DEFAULT_HEXA_VALUE);
      switch(type)
@@ -7100,7 +7090,7 @@ ospf_lsa_show_one_row(const struct ovsrec_ospf_lsa *lsa_row, int type)
          case OSPF_LSA_LSA_TYPE_TYPE5_AS_EXTERNAL_LSA:
          case OSPF_LSA_LSA_TYPE_TYPE7_NSSA_LSA:
              if (lsa_row->prefix)
-                 vty_out (vty, " %s %s", lsa_row->prefix, lsa_row->lsa_data);
+                 vty_out (vty, " %s %s", lsa_row->prefix, *lsa_row->lsa_data);
              break;
 
           case OSPF_LSA_LSA_TYPE_TYPE2_NETWORK_LSA:
@@ -7124,12 +7114,9 @@ ospf_area_lsa_show_self_originate(const struct
                      ovsrec_ospf_router *ospf_router_row, const char* value)
 {
      int i, j, type = 0;
-     int64_t int_val = 0;
      char area_str[OSPF_SHOW_STR_LEN];
      char router_str[OSPF_SHOW_STR_LEN];
-     char timebuf[OSPF_TIME_SIZE];
      const struct ovsrec_ospf_area *ospf_area_row = NULL;
-     const struct ovsrec_ospf_lsa  *lsa_row = NULL;
 
      for(i = 0; i < ospf_router_row->n_areas; i++)
      {
@@ -7369,8 +7356,6 @@ ospf_ip_database_show_self_originate()
      const struct ovsrec_vrf *vrf_row = NULL;
      const char *val = NULL;
      int64_t instance_tag = 1;
-     int64_t int_val = 0;
-     int i;
 
      vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
 
@@ -7421,7 +7406,6 @@ ospf_adv_router_display(int type, const char* adv_router)
 {
     const struct ovsrec_ospf_router *router_row = NULL;
     const struct ovsrec_ospf_area *area_row = NULL;
-    const struct ovsrec_ospf_lsa  *lsa_row = NULL;
     const struct ovsrec_vrf *vrf_row = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
     const char *val = NULL;
@@ -7683,7 +7667,7 @@ DEFUN(show_ip_ospf_database,
         ospf_adv_router_display
             (OSPF_LSA_LSA_TYPE_TYPE11_OPAQUE_AS_LSA, argv[1]);
     else
-        return ;
+        return CMD_SUCCESS;
     return CMD_SUCCESS;
 }
 
@@ -7694,12 +7678,8 @@ void
 ospf_area_lsa_show(const struct ovsrec_ospf_router *ospf_router_row)
 {
      int i, j, type = 0;
-     int64_t int_val = 0;
      char area_str[OSPF_SHOW_STR_LEN];
-     char timebuf[OSPF_TIME_SIZE];
-     char val;
      const struct ovsrec_ospf_area *ospf_area_row = NULL;
-     const struct ovsrec_ospf_lsa  *lsa_row = NULL;
 
      for(i = 0; i < ospf_router_row->n_areas; i++)
      {
@@ -7866,8 +7846,6 @@ ospf_ip_database_show()
      const struct ovsrec_vrf *vrf_row = NULL;
      const char *val = NULL;
      int64_t instance_tag = 1;
-     int64_t int_val = 0;
-     int i;
 
      vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
 
@@ -8095,7 +8073,6 @@ DEFUN (cli_ospf_admin_distance,
     unsigned char distance = 0;
     int instance_id = 1;
     int i = 0;
-    bool key_found = false;
 
     do {
         vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
@@ -8164,7 +8141,6 @@ DEFUN (cli_no_ospf_admin_distance,
     unsigned char distance = 0;
     int instance_id = 1;
     int i = 0;
-    bool key_found = false;
 
     do {
         vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
@@ -8241,7 +8217,6 @@ DEFUN (cli_ospf_distance_ospf,
     unsigned char distance_intra = 0,distance_inter = 0,distance_external = 0;
     int instance_id = 1;
     int i = 0;
-    bool key_found = false;
 
   if (argc < 3) /* should not happen */
     return CMD_WARNING;
@@ -8332,7 +8307,6 @@ DEFUN (cli_no_ospf_distance_ospf,
     unsigned char distance = 0;
     int instance_id = 1;
     int i = 0;
-    bool key_found = false;
 
   if (argc < 3) /* should not happen */
     return CMD_WARNING;
@@ -8445,7 +8419,7 @@ DEFUN (cli_ospf_redistribute_source,
         OSPF_START_DB_TXN(ospf_router_txn);
         for (i = 0 ; i < ospf_router_row->n_redistribute ; i++)
             redistribute[i] = ospf_router_row->redistribute[i];
-        redistribute[ospf_router_row->n_redistribute] = argv[0];
+        redistribute[ospf_router_row->n_redistribute] = (char*)argv[0];
         ovsrec_ospf_router_set_redistribute(ospf_router_row,redistribute,ospf_router_row->n_redistribute+1);
         OSPF_END_DB_TXN(ospf_router_txn);
         SAFE_FREE(redistribute);
@@ -8526,11 +8500,9 @@ DEFUN (cli_ospf_default_information_originate,
     const struct ovsrec_vrf *vrf_row = NULL;
     struct ovsdb_idl_txn *ospf_router_txn=NULL;
     struct smap def_redist_smap;
-    char** redistribute = NULL;
     int instance_id = OSPF_DEFAULT_INSTANCE_ID;
     bool redist_default = false;
     bool redist_default_always = false;
-    int i = 0, j = 0;
 
     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     if (vrf_row == NULL)
@@ -8583,7 +8555,6 @@ DEFUN (cli_no_ospf_default_information_originate,
     struct ovsdb_idl_txn *ospf_router_txn=NULL;
     struct smap def_redist_smap;
     int instance_id = OSPF_DEFAULT_INSTANCE_ID;
-    int i = 0, j = 0;
 
     vrf_row = ospf_get_vrf_by_name(DEFAULT_VRF_NAME);
     if (vrf_row == NULL)
@@ -8617,7 +8588,7 @@ ospf_vlink_set_other_config(const struct ovsrec_ospf_vlink *vlink_row,
 {
     struct smap smap;
 
-    const char temp[10];
+    char temp[10];
 
     smap_clone(&smap, &(vlink_row->other_config));
     switch(argv[2][0])
@@ -8727,10 +8698,9 @@ void
 ospf_vlink_set_authentication_key(const struct ovsrec_ospf_vlink *vlink_row,
                                          int argc, const char **argv)
 {
-    char* auth_text = NULL;
+    const char* auth_text = NULL;
     int64_t key_id = 0;
     int result;
-    int i = 0;
 
     if (3 == argc) /* Simple auth key */
     {
@@ -8746,11 +8716,11 @@ ospf_vlink_set_authentication_key(const struct ovsrec_ospf_vlink *vlink_row,
         result = ospf_md5_key_update_to_vl(vlink_row, key_id, auth_text);
         if ( result == CMD_ERR_AMBIGUOUS)
         {
-            vty_out(vty,"MD5 key is already present%s",VTY_NEWLINE);
+            vty_out(vty,"MD5 key is already present.%s",VTY_NEWLINE);
         }
         else if ( result != CMD_SUCCESS)
         {
-            vty_out(vty,"MD5 key updation failed.%",VTY_NEWLINE);
+            vty_out(vty,"MD5 key updation failed.%s",VTY_NEWLINE);
         }
     }
 }
@@ -8759,10 +8729,8 @@ void
 ospf_vlink_unset_authentication_key (const struct ovsrec_ospf_vlink *vlink_row,
                                                      int argc, const char **argv)
 {
-    char* auth_text = NULL;
     int64_t key_id = 0;
     int result;
-    int i = 0;
 
     if (2 == argc) /* Simple auth key */
     {
@@ -8776,11 +8744,11 @@ ospf_vlink_unset_authentication_key (const struct ovsrec_ospf_vlink *vlink_row,
         result = ospf_md5_key_remove_from_vl(vlink_row, key_id);
         if ( result == CMD_ERR_NO_MATCH)
         {
-            vty_out(vty,"MD5 key not present.",VTY_NEWLINE);
+            vty_out(vty,"MD5 key not present.%s",VTY_NEWLINE);
         }
         else if ( result != CMD_SUCCESS)
         {
-            vty_out(vty,"MD5 key deletion failed.",VTY_NEWLINE);
+            vty_out(vty,"MD5 key deletion failed.%s",VTY_NEWLINE);
         }
     }
 }
@@ -8794,7 +8762,6 @@ DEFUN (cli_ospf_area_vlink,
        "Configure a virtual link\n"
        "Router ID of the remote ABR\n")
 {
-    struct smap smap;
     struct in_addr area_id;
     struct in_addr peer_router_id;
 
@@ -8928,7 +8895,7 @@ DEFUN (cli_ospf_area_vlink,
             }
         }
 
-        ospf_vlink[area_row->n_ospf_vlinks] = vlink_row;
+        ospf_vlink[area_row->n_ospf_vlinks] = (struct ovsrec_ospf_vlink*)vlink_row;
         key_ospf_vlink[area_row->n_ospf_vlinks] = vlink_row->peer_router_id;
         ovsrec_ospf_area_set_ospf_vlinks(area_row, key_ospf_vlink, ospf_vlink,
                                          area_row->n_ospf_vlinks + 1);
@@ -8956,7 +8923,6 @@ DEFUN (cli_ospf_area_vlink_auth,
        "Router ID of the remote ABR\n"
        "Enable authentication on this virtual link\n")
 {
-    struct smap smap;
     struct in_addr area_id;
     struct in_addr peer_router_id;
 
@@ -9064,7 +9030,7 @@ DEFUN (cli_ospf_area_vlink_auth,
 
         ospf_vlink_set_authentication (vlink_row, argc, argv,false);
 
-        ospf_vlink[area_row->n_ospf_vlinks] = vlink_row;
+        ospf_vlink[area_row->n_ospf_vlinks] = (struct ovsrec_ospf_vlink*)vlink_row;
         key_ospf_vlink[area_row->n_ospf_vlinks] = vlink_row->peer_router_id;
         ovsrec_ospf_area_set_ospf_vlinks(area_row, key_ospf_vlink, ospf_vlink,
                                          area_row->n_ospf_vlinks + 1);
@@ -9094,7 +9060,6 @@ DEFUN (cli_no_ospf_area_vlink,
        "Configure a virtual link\n"
        "Router ID of the remote ABR\n")
 {
-    struct smap smap;
     struct in_addr area_id;
     struct in_addr peer_router_id;
 
@@ -9211,20 +9176,17 @@ DEFUN (cli_no_ospf_area_vlink_auth,
        "Router ID of the remote ABR\n"
        "Enable authentication on this virtual link\n")
 {
-    struct smap smap;
     struct in_addr area_id;
     struct in_addr peer_router_id;
 
     struct ovsdb_idl_txn *ospf_router_txn = NULL;
-    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
     const struct ovsrec_ospf_vlink *vlink_row = NULL;
     const struct ovsrec_ospf_router *ospf_router_row = NULL;
     const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_ospf_area *area_row = NULL;
 
-    int64_t* key_ospf_vlink = NULL;
     int instance_id = 1;
-    int i = 0, n = 0;
+    int n = 0;
 
     bool found = 0;
 
@@ -9299,7 +9261,6 @@ DEFUN (cli_ospf_area_vlink_auth_key,
        "Authentication password (key)\n"
        "The OSPF password (key)\n")
 {
-    struct smap smap;
     struct in_addr area_id;
     struct in_addr peer_router_id;
 
@@ -9407,7 +9368,7 @@ DEFUN (cli_ospf_area_vlink_auth_key,
 
         ospf_vlink_set_authentication_key (vlink_row, argc, argv);
 
-        ospf_vlink[area_row->n_ospf_vlinks] = vlink_row;
+        ospf_vlink[area_row->n_ospf_vlinks] = (struct ovsrec_ospf_vlink*)vlink_row;
         key_ospf_vlink[area_row->n_ospf_vlinks] = vlink_row->peer_router_id;
         ovsrec_ospf_area_set_ospf_vlinks(area_row, key_ospf_vlink, ospf_vlink,
                                          area_row->n_ospf_vlinks + 1);
@@ -9439,20 +9400,17 @@ DEFUN (cli_no_ospf_area_vlink_auth_key,
        "Router ID of the remote ABR\n"
        "Authentication password (key)\n")
 {
-    struct smap smap;
     struct in_addr area_id;
     struct in_addr peer_router_id;
 
     struct ovsdb_idl_txn *ospf_router_txn = NULL;
-    struct ovsrec_ospf_vlink** ospf_vlink = NULL;
     const struct ovsrec_ospf_vlink *vlink_row = NULL;
     const struct ovsrec_ospf_router *ospf_router_row = NULL;
     const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_ospf_area *area_row = NULL;
 
-    int64_t* key_ospf_vlink = NULL;
     int instance_id = 1;
-    int i = 0, n = 0;
+    int n = 0;
 
     bool found = 0;
 

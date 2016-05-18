@@ -179,7 +179,7 @@ sftp_client_copy (sftpClient *sc)
 
         /* If no destination location is mentioned then
          * DEFAULT_DST is the destination. */
-        if (sc->dstFile != "")
+        if (strcmp(sc->dstFile, "") != 0)
         {
             dest = sc->dstFile;
         }

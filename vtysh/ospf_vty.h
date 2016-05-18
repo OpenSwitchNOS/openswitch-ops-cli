@@ -306,4 +306,7 @@ vtysh_init_intf_ospf_context_clients();
 #define OSPF_DEFAULT_COST                   10
 
 #define OSPF_AREA_STUB_DEFAULT_COST_DEFAULT 1
+
+int64_t ospf_get_distance(const struct ovsrec_ospf_router *router_row,
+                                                        const char *key);
 #endif /* _OSPF_VTY_H */
