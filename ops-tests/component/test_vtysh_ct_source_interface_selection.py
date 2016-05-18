@@ -82,9 +82,9 @@ def test_source_interface_configuration(topology, step):
     step('Unset source IP to all the defined protocols')
     sw1("no ip source-interface all")
     out = sw1("do show ip source-interface")
-    assert '(null)' in out
+    assert '' in out
 
     step('Unset source IP to tftp protocols')
     sw1("no ip source-interface tftp")
     out = sw1("do show ip source-interface tftp")
-    assert '(null)' in out
+    assert '' in out

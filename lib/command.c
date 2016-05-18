@@ -39,7 +39,9 @@ Boston, MA 02111-1307, USA.  */
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
 #include "vtysh/utils/audit_log_utils.h"
-
+#include "ovsdb-idl.h"
+#include "vtysh/utils/vlan_vtysh_utils.h"
+#include <latch.h>
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
 
@@ -53,7 +55,7 @@ vector cmdvec = NULL;
     if (vty->node >= CONFIG_NODE){ \
        const char *hostname = vtysh_ovsdb_hostname_get(); \
        strcat(strcpy(op, "op=CLI:command"), " "); \
-       audit_log_user_msg(op, cfgdata, hostname, ret); \
+       audit_log_user_msg(op, cfgdata, (char*)hostname, ret); \
     }
 
 struct cmd_token token_cr;
@@ -162,6 +164,9 @@ static const struct facility_map {
     { LOG_LOCAL7, "local7", 6 },
     { 0, NULL, 0 },
   };
+
+int get_list_value(const char *str, unsigned long *num_range);
+void cmd_free_memory_str(char *str);
 
 static const char *
 facility_name(int facility)
@@ -553,7 +558,7 @@ void
 format_parser_read_word(struct format_parser_state *state)
 {
   const char *start;
-  int len, i;
+  int len;
   char *cmd;
   struct cmd_token *token;
   struct dyn_cb_func * dyn_cb_temp;
@@ -1331,7 +1336,7 @@ cmd_ifname_match (const char *str)
     return 1;
 
   /* check for vlan interfaces */
-  if(verify_ifname(str)) {
+  if(verify_ifname((char*)str)) {
     return 0;
   }
 
@@ -1942,7 +1947,6 @@ cmd_matcher_build_keyword_args(struct cmd_matcher *matcher,
   struct cmd_token *word_token;
   const char *arg = NULL;
   enum matcher_rv rv;
-  enum match_type match_type = no_match;
 
   rv = MATCHER_OK;
 
@@ -2257,7 +2261,6 @@ is_cmd_ambiguous (vector cmd_vector,
   const char *matched = NULL;
   vector match_vector;
   struct cmd_token *cmd_token;
-  char *buf = NULL;
 
   if (command == NULL)
     command = "";
@@ -3132,12 +3135,12 @@ node_parent ( enum node_type node )
  *           This function returns  "ip address 1.2.3.1/24"
 */
 static char *
-autocomplete_command_tokens(struct cmd_element *matched_element, vector vline)
+autocomplete_command_tokens(struct cmd_element *matched_element, vector vline,
+                            char *cmd_string)
 {
-  char cmd_string[MAX_CFGDATA_LEN] = "";
-  char *cmd_token = NULL,*usr_token = NULL;
+  char *cmd_token = NULL;
+  const char *usr_token = NULL;
   struct cmd_matcher matcher;
-  enum match_type *match_type;
   unsigned int token_index=0;
   int flag;
   unsigned int i;
@@ -3257,6 +3260,7 @@ cmd_execute_command_real (vector vline,
   vector matches;
   char op[MAX_OP_DESC_LEN];
   char *cfgdata;
+  char cmd_string[MAX_CFGDATA_LEN] = "";
 
   /* Make copy of command elements. */
   cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
@@ -3342,7 +3346,7 @@ cmd_execute_command_real (vector vline,
 
   /* Complete the command tokens when command match is OK.*/
   if (vty->node >= CONFIG_NODE && ret == CMD_SUCCESS)
-    cfgdata = autocomplete_command_tokens(matched_element, vline);
+    cfgdata = autocomplete_command_tokens(matched_element, vline, cmd_string);
 
   /* For vtysh execution. */
   if (cmd)
@@ -3350,7 +3354,7 @@ cmd_execute_command_real (vector vline,
 
   if (matched_element->daemon)
     return CMD_SUCCESS_DAEMON;
-  vty->buf = matched_element->string;
+  vty->buf = (char*)matched_element->string;
   vty->length = strlen(matched_element->string);
   /* Execute matched command. */
   if(((matched_element->attr) & CMD_ATTR_NOLOCK) == 0)
@@ -3548,10 +3552,7 @@ int cmd_try_execute_command (struct vty *vty, char *buf)
   unsigned int index;
   vector cmd_vector;
   struct cmd_element *cmd_element;
-  struct cmd_element *matched_element;
   unsigned int matched_count, incomplete_count;
-  int argc;
-  const char *argv[CMD_ARGC_MAX];
   enum match_type match = 0;
   char *command;
   vector matches;
@@ -3603,7 +3604,6 @@ int cmd_try_execute_command (struct vty *vty, char *buf)
   }
 
   /* Check matched count. */
-  matched_element = NULL;
   matched_count = 0;
   incomplete_count = 0;
 
@@ -3617,7 +3617,6 @@ int cmd_try_execute_command (struct vty *vty, char *buf)
         ret = cmd_is_complete(cmd_element, vline);
         if (MATCHER_COMPLETE == ret)
         {
-           matched_element = cmd_element;
            matched_count++;
         }
         else if (MATCHER_INCOMPLETE == ret)
@@ -4161,10 +4160,8 @@ DEFUN (config_no_hostname,
 #define MAX_DOMAINNAME_LEN 32
 extern char *temp_prompt;
 extern void  vtysh_ovsdb_hostname_set(const char * in);
-extern int vtysh_ovsdb_hostname_reset(char *hostname_arg);
 extern const char* vtysh_ovsdb_hostname_get();
 extern void  vtysh_ovsdb_domainname_set(const char * in);
-extern int vtysh_ovsdb_domainname_reset(char *domainname_arg);
 extern const char* vtysh_ovsdb_domainname_get();
 
 /* CLI for hostname configuration */
@@ -5455,7 +5452,7 @@ get_list_value(const char *str, unsigned long *num_range)
 int
 cmd_input_comma_str_is_valid(const char *str, enum cli_int_type type)
 {
-    char *p = str;
+    const char *p = str;
 
     if (str == NULL)
         return COMMA_ERR;
@@ -5599,7 +5596,7 @@ cmd_free_memory_range_list(struct range_list *list)
  * Return : struct range_list * : list generated by adding the str.
  */
 struct range_list*
-cmd_insert_value_list(struct range_list *node, char *str)
+cmd_insert_value_list(struct range_list *node, const char *str)
 {
     struct range_list *temp = NULL;
     if (node == NULL)
@@ -5636,7 +5633,7 @@ struct range_list*
 cmd_get_list_from_range_str (const char *str_ptr, int flag_intf)
 {
     unsigned long i;
-    char *tmp = NULL;
+    const char *tmp = NULL;
     unsigned long num[2];
     struct range_list *node = NULL;
     char buf[DECIMAL_STRLEN_MAX + 1];
@@ -5677,10 +5674,8 @@ cmd_get_range_value (const char *value, int flag_intf)
 {
     struct range_list *node = NULL;
     struct range_list *temp, *temp_node = NULL;
-    char *str_ptr = value;
+    char *str_ptr = (char*)value;
     char *tmp = NULL;
-    unsigned long i = 0;
-    char *endptr = NULL;
     if (strchr (str_ptr, ','))
     {
         tmp = strtok (str_ptr, ",");

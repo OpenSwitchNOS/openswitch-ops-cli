@@ -710,7 +710,7 @@ vrf_routing (const char *if_name)
   if (!check_iface_in_vrf(if_name) && check_acl_configuration (if_name))
     {
       vty_out(vty, "acl is configured on the interface %s,"
-        "Please remove the acl configuration before enabling routing.",
+        "Please remove the acl configuration before enabling routing.%s",
         if_name, VTY_NEWLINE);
       VLOG_DBG("%s acl is configured on the interface %s,"
         "Please remove the acl configuration before enabling routing.",
@@ -831,7 +831,7 @@ vrf_no_routing (const char *if_name)
   if (!check_iface_in_bridge(if_name) && check_acl_configuration (if_name))
     {
       vty_out(vty, "acl is configured on the interface %s,"
-        "Please remove the acl configuration before disbling routing.",
+        "Please remove the acl configuration before disbling routing.%s",
         if_name, VTY_NEWLINE);
       VLOG_DBG("%s acl is configured on the interface %s,"
         "Please remove the acl configuration before disabling routing.",

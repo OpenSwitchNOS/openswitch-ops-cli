@@ -566,7 +566,7 @@ vtysh_config_context_staticroute_clientcallback(void *p_private)
   char str[50];
   int i;
   extern struct ovsdb_idl_index_cursor route_cursor;
-  extern is_route_cursor_initialized;
+  extern bool is_route_cursor_initialized;
 
   vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
                            "vtysh_config_context_staticroute_clientcallback entered");
@@ -823,7 +823,7 @@ vtysh_config_context_sflow_clientcallback(void *p_private)
         }
   return e_vtysh_ok;
   }
-
+  return e_vtysh_ok;
 }
 
 /*-----------------------------------------------------------------------------

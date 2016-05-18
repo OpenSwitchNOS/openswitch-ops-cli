@@ -46,6 +46,7 @@
 #include "vtysh/vtysh_utils.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh/utils/intf_vtysh_utils.h"
+#include "vrf_vty.h"
 
 VLOG_DEFINE_THIS_MODULE (vtysh_loopback_if_cli);
 extern struct ovsdb_idl *idl;
@@ -110,7 +111,7 @@ DEFUN (vtysh_loopback_interface,
         txn = cli_do_config_start();
         if (txn == NULL)
         {
-            VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d",
+            VLOG_DBG("Transaction creation failed by %s. Function=%s, Line=%d"
                     " cli_do_config_start()", __FILE__, __func__, __LINE__);
             cli_do_config_abort(txn);
             return CMD_OVSDB_FAILURE;
@@ -220,7 +221,6 @@ loopback_if_config_ip (const char *if_name, const char *ip4)
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i;
     bool port_found;
     int input_ip_subnet, port_ip_subnet;
 
@@ -333,7 +333,6 @@ loopback_if_del_ip4 (const char *if_name, const char *ip4)
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    int i, n;
     bool port_found = false;
 
     status_txn = cli_do_config_start ();
@@ -397,7 +396,6 @@ loopback_if_config_ipv6 (const char *if_name, const char *ipv6)
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i;
     bool is_secondary = false;
 
 
@@ -478,7 +476,6 @@ loopback_if_del_ipv6 (const char *if_name, const char *ipv6)
     const struct ovsrec_port *port_row = NULL;
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    size_t i, n;
 
     status_txn = cli_do_config_start ();
 
@@ -546,9 +543,7 @@ loopback_if_del_ipv6 (const char *if_name, const char *ipv6)
 int
 delete_loopback_intf(const char *if_name)
 {
-    const struct ovsrec_interface *row = NULL;
     const struct ovsrec_interface *interface_row = NULL;
-    const struct ovsrec_interface *if_row = NULL;
 
     const struct ovsrec_vrf *vrf_row = NULL;
     const struct ovsrec_port *loopback_row = NULL;
@@ -556,9 +551,7 @@ delete_loopback_intf(const char *if_name)
 
     struct ovsdb_idl_txn* status_txn = NULL;
     enum ovsdb_idl_txn_status status;
-    char loopback_if_name[8] = {0};
     bool port_found = false;
-    struct ovsrec_interface **interfaces;
     const struct ovsrec_port *loopback_if_port = NULL;
     int i=0, n=0, k=0;
     bool interface_found = false;
@@ -689,17 +682,12 @@ DEFUN (cli_intf_show_interface_loopback_if,
 {
     const struct ovsrec_interface *ifrow = NULL;
     const struct ovsrec_port *row = NULL;
-    const char *cur_state = NULL;
     struct shash sorted_interfaces;
     const struct shash_node **nodes;
     int idx, count;
     char loopbackintf[MAX_IFNAME_LENGTH] = {0};
     bool filter_intf = false;
     bool brief = false;
-    const struct ovsdb_datum *datum;
-
-    unsigned int index;
-    int64_t intVal = 0;
 
     if ((argc > 0) && (NULL != argv[0]))
     {
@@ -760,7 +748,6 @@ DEFUN (cli_intf_show_interface_loopback_if,
     {
         for (idx = 0; idx < count; idx++)
         {
-            union ovsdb_atom atom;
 
             ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
 
@@ -785,14 +772,6 @@ DEFUN (cli_intf_show_interface_loopback_if,
             /* Displaying IPv4 and IPv6 primary and secondary addresses.*/
             show_ip_addresses(ifrow->name, vty);
 
-            datum = ovsrec_interface_get_mtu(ifrow, OVSDB_TYPE_INTEGER);
-            if ((NULL!=datum) && (datum->n >0))
-            {
-                intVal = datum->keys[0].integer;
-            }
-
-            datum = ovsrec_interface_get_statistics(ifrow,
-                    OVSDB_TYPE_STRING, OVSDB_TYPE_INTEGER);
         }
     }
     shash_destroy(&sorted_interfaces);

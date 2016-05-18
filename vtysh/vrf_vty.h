@@ -45,4 +45,10 @@ vrf_add_port (const char *if_name, const char *vrf_name);
 int
 vrf_del_port (const char *if_name, const char *vrf_name);
 
+bool check_ip_addr_duplicate (const char *ip_address,
+                              const struct ovsrec_port *port_row, bool ipv6,
+                              bool *secondary);
+
+bool check_split_iface_conditions (const char *ifname);
+
 #endif /* _VRF_VTY_H */
