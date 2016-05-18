@@ -81,6 +81,7 @@
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
 #ifdef ENABLE_OVSDB
+char *temp_prompt = NULL;
 int enable_mininet_test_prompt = 0;
 extern struct ovsdb_idl *idl;
 int vtysh_show_startup = 0;
@@ -1060,6 +1061,40 @@ vtysh_end (void)
    return CMD_SUCCESS;
 }
 
+DEFUN_HIDDEN (vtysh_set_prompt,
+    vtysh_set_prompt_cmd,
+    "set prompt WORD",
+    "Configure temporary prompt name\n"
+    "Prompt Name\n"
+    "Promptname string(Max Length 32), first letter must be alphabet\n")
+{
+    if(strlen (argv[0]) > MAX_HOSTNAME_LEN)
+    {
+        vty_out (vty, "Specify string of max %d character.\n", MAX_HOSTNAME_LEN);
+        return CMD_SUCCESS;
+    }
+    if (!isalpha((int) *argv[0]))
+    {
+        vty_out (vty, "Please specify string starting with alphabet.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+    temp_prompt = XSTRDUP (MTYPE_HOST, argv[0]);
+    return CMD_SUCCESS;
+}
+
+DEFUN_HIDDEN (vtysh_reset_prompt,
+    vtysh_reset_prompt_cmd,
+    "reset prompt",
+    "Configure temporary prompt name\n"
+    "Prompt Name\n")
+{
+    if (temp_prompt != NULL)
+        XFREE(MTYPE_HOST, temp_prompt);
+    temp_prompt = NULL;
+
+    return CMD_SUCCESS;
+}
+
 DEFUNSH (VTYSH_ALL,
       vtysh_end_all,
       vtysh_end_all_cmd,
@@ -1333,6 +1368,11 @@ vtysh_exit (struct vty *vty)
     {
     case VIEW_NODE:
     case ENABLE_NODE:
+      if (temp_prompt != NULL)
+      {
+          XFREE(MTYPE_HOST, temp_prompt);
+          temp_prompt = NULL;
+      }
       exit (0);
       break;
     case CONFIG_NODE:
@@ -3271,9 +3311,13 @@ vtysh_prompt (void)
    const char *val;
    ovs = ovsrec_system_first(idl);
 
-   if(ovs)
+   if (ovs)
    {
-      val = smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_HOSTNAME);
+      if (temp_prompt != NULL)
+          val = temp_prompt;
+      else
+          val = smap_get(&ovs->mgmt_intf_status, SYSTEM_MGMT_INTF_MAP_HOSTNAME);
+
       if (val != NULL)
       {
          if (host.name)
@@ -4501,6 +4545,8 @@ vtysh_init_vty ( struct passwd *pw)
   }
 
  install_element (ENABLE_NODE, &vtysh_reboot_cmd);
+ install_element (ENABLE_NODE, &vtysh_set_prompt_cmd);
+ install_element (ENABLE_NODE, &vtysh_reset_prompt_cmd);
 
 #ifdef ENABLE_OVSDB
   /* vtysh_cli_post_init will install all the features

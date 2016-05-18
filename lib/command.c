@@ -4159,6 +4159,7 @@ DEFUN (config_no_hostname,
 #else
 #define MAX_HOSTNAME_LEN 32
 #define MAX_DOMAINNAME_LEN 32
+extern char *temp_prompt;
 extern void  vtysh_ovsdb_hostname_set(const char * in);
 extern int vtysh_ovsdb_hostname_reset(char *hostname_arg);
 extern const char* vtysh_ovsdb_hostname_get();
@@ -4184,6 +4185,7 @@ DEFUN (config_hostname,
         return CMD_SUCCESS;
     }
     vtysh_ovsdb_hostname_set(argv[0]);
+    temp_prompt = NULL;
     return CMD_SUCCESS;
 }
 
@@ -4215,6 +4217,7 @@ DEFUN (config_no_hostname,
        HOSTNAME_NO_STR)
 {
     vtysh_ovsdb_hostname_set("");
+    temp_prompt = NULL;
     return CMD_SUCCESS;
 }
 
@@ -4226,6 +4229,7 @@ DEFUN (config_no_hostname_arg,
        HOSTNAME_NO_STR
        "Hostname string(Max Length 32), first letter must be alphabet\n")
 {
+    temp_prompt = NULL;
     return vtysh_ovsdb_hostname_reset(argv[0]);
 }
 
