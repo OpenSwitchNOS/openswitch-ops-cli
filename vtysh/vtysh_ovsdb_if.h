@@ -37,13 +37,13 @@ const char *vtysh_ovsdb_switch_version_get(void);
 
 void vtysh_ovsdb_domainname_set(const char * in);
 
-int vtysh_ovsdb_domainname_reset(char *domainname_arg);
+int vtysh_ovsdb_domainname_reset(const char *domainname_arg);
 
 const char* vtysh_ovsdb_domainname_get(void);
 
 void vtysh_ovsdb_hostname_set(const char * in);
 
-int vtysh_ovsdb_hostname_reset(char *hostname_arg);
+int vtysh_ovsdb_hostname_reset(const char *hostname_arg);
 
 const char* vtysh_ovsdb_hostname_get(void);
 
@@ -92,4 +92,7 @@ void vtysh_ovsdb_show_version_detail(void);
 
 void vtysh_ovsdb_show_version_detail_ops(void);
 
+void ospf_area_vlink_init(void);
+
+bool check_acl_configuration(const char *port_name);
 #endif /* VTYSH_OVSDB_IF_H */

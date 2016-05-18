@@ -48,7 +48,6 @@ void utils_format_parser_read_word(struct format_parser_state *state)
 {
   format_parser_read_word(state);
 
-  const char *noStr = "no";
   struct cmd_token *token;
   int width = 0,i;
 

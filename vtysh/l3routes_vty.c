@@ -444,8 +444,6 @@ ip_route_common (struct vty *vty, char **argv, char *distance)
   enum ovsdb_idl_txn_status status;
   struct ovsdb_idl_txn *status_txn = NULL;
   char prefix_str[MAX_ADDRESS_LEN];
-  char prefix_str_copy[MAX_ADDRESS_LEN];
-  char *prefix = NULL;
   bool prefix_match = false;
   bool nh_match = false;
   bool static_match = false;
@@ -707,7 +705,7 @@ show_routes (struct vty *vty, char * ip_addr_family)
   char str[50];
   int i, active_route_next_hops;
   extern struct ovsdb_idl_index_cursor route_cursor;
-  extern is_route_cursor_initialized;
+  extern bool is_route_cursor_initialized;
 #ifdef VRF_ENABLE
   char *vrf_name = vrf;
 
@@ -1504,7 +1502,7 @@ show_rib (struct vty *vty, char * ip_addr_family)
   char str[50];
   int i;
   extern struct ovsdb_idl_index_cursor route_cursor;
-  extern is_route_cursor_initialized;
+  extern bool is_route_cursor_initialized;
 #ifdef VRF_ENABLE
   char *vrf_name = vrf;
 
