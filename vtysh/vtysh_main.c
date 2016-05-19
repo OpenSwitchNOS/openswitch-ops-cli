@@ -50,6 +50,8 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include "openvswitch/vlog.h"
+#include "lib/cli_plugins.h"
+#include "vtysh/utils/passwd_srv_utils.h"
 
 #define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);

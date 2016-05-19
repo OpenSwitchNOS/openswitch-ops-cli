@@ -712,5 +712,7 @@ enum cli_int_type
 struct range_list* cmd_get_range_value(const char *, int);
 int cmd_input_comma_str_is_valid(const char *, enum cli_int_type);
 int cmd_input_range_match(const char *, const char *, enum cli_int_type);
-
+int cmd_range_comma_cli_parser_validate(const char* src, const char* dst,
+                                        enum cli_int_type type,
+                                        const char **matched, int *match);
 #endif /* _ZEBRA_COMMAND_H */

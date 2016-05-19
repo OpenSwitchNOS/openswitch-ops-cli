@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <libaudit.h>
+#include "openvswitch/vlog.h"
 #include "audit_log_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(audit_log_utils);
