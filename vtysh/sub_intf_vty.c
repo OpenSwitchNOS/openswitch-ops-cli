@@ -234,15 +234,19 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
         }
     }
 
-
     if (vty_flags & CMD_FLAG_NO_CMD)
     {
-        enc_vlan = 0;
+        if (row->key_subintf_parent[0] == atoi(argv[0])) {
+            enc_vlan = 0;
+        }
+        else {
+            vty_out(vty, "Encapsulation -%d not configured on interface %s. %s",
+                          atoi(argv[0]),row->name, VTY_NEWLINE);
+            cli_do_config_abort(status_txn);
+            return CMD_SUCCESS;
+        }
     }
-    else
-    {
-        enc_vlan = atoi(argv[0]);
-    }
+
     if (row->n_subintf_parent > 0)
     {
         parent_intf_row = row->value_subintf_parent[0];
