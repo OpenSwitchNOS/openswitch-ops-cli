@@ -306,7 +306,6 @@ vtysh_ret_val
 vtysh_router_context_bgp_ip_prefix_clientcallback(void *p_private)
 {
     const struct ovsrec_prefix_list *ovs_prefix_list = NULL;
-    const struct ovsrec_prefix_list_entry *ovs_prefix_list_entry = NULL;
     struct in6_addr addrv6;
     int j = 0;
     char *temp_prefix;
@@ -707,7 +706,6 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
 {
     const struct ovsrec_vrf *ovs_vrf = NULL;
     int i = 0, j = 0, k = 0;
-    const struct ovsrec_bgp_router *bgp_router_row = NULL;
 
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
@@ -787,7 +785,6 @@ void vtysh_router_context_ospf_area_callback(vtysh_ovsdb_cbmsg_ptr p_msg,
 {
     const struct ovsrec_ospf_area *area_row = NULL;
     int i = 0;
-    const char *val = NULL;
     char area_str[OSPF_SHOW_STR_LEN];
     char disp_str[OSPF_SHOW_STR_LEN];
 

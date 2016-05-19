@@ -145,7 +145,7 @@ int route_prefix_comparator(const void *route_entry1,
     struct in6_addr ipv6_str2;
     bool is_ipv6_prefix1_valid = false;
     bool is_ipv6_prefix2_valid = false;
-    int strcmp_result;
+    int strcmp_result  = 1; /*initialize strcmp_result is not equal*/
 
     route_row1 = (struct ovsrec_route *)route_entry1;
     route_row2 = (struct ovsrec_route *)route_entry2;
@@ -811,7 +811,7 @@ vtysh_ovsdb_domainname_set(const char* domainname)
  * Return : CMD_SUCCESS for success, CMD_OVSDB_FAILURE for failure.
  */
 int
-vtysh_ovsdb_domainname_reset(char *domainname_arg)
+vtysh_ovsdb_domainname_reset(const char *domainname_arg)
 {
     const struct ovsrec_system *row = NULL;
     const struct ovsdb_datum *data = NULL;
@@ -934,7 +934,7 @@ vtysh_ovsdb_hostname_set(const char* in)
  * Return : CMD_SUCCESS for success, CMD_OVSDB_FAILURE for failure
  */
 int
-vtysh_ovsdb_hostname_reset(char *hostname_arg)
+vtysh_ovsdb_hostname_reset(const char *hostname_arg)
 {
     const struct ovsrec_system *row = NULL;
     const struct ovsdb_datum *data = NULL;

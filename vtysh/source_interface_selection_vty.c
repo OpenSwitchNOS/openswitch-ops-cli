@@ -87,7 +87,7 @@ show_source_interface_selection(source_interface_protocol type)
             buff = (char *)smap_get(&row->other_config,
                                     SYSTEM_OTHER_CONFIG_MAP_PROTOCOLS_SOURCE);
             if (buff == NULL) {
-                vty_out(vty, " %-15s %-6s ", "tftp", NULL);
+                vty_out(vty, " %-15s %-6s ", "tftp", "");
             } else {
                 vty_out(vty, " %-15s %-46s ", "tftp", buff);
             }
@@ -103,7 +103,7 @@ show_source_interface_selection(source_interface_protocol type)
         buff = (char *)smap_get(&row->other_config,
                                 SYSTEM_OTHER_CONFIG_MAP_TFTP_SOURCE);
         if (buff == NULL) {
-            vty_out(vty, " %-15s %-6s ","tftp", NULL);
+            vty_out(vty, " %-15s %-6s ","tftp", "");
             vty_out(vty, "%s", VTY_NEWLINE);
         } else {
             vty_out(vty, " %-15s %-46s", "tftp", buff);
@@ -229,11 +229,12 @@ DEFUN(ip_source_interface,
       INTERFACE_STR
       IFNAME_STR)
 {
-    if (strcmp(TFTP, (char*)argv[0]) == NULL) {
+    if (strcmp(TFTP, (char*)argv[0]) == 0) {
         return source_interface_selection(argv[1], TFTP_PROTOCOL, 1);
-    } else if (strcmp(ALL, (char*)argv[0]) == NULL){
+    } else if (strcmp(ALL, (char*)argv[0]) == 0){
         return source_interface_selection(argv[1], ALL_PROTOCOL, 1);
     }
+    return CMD_SUCCESS;
 }
 
 /*-----------------------------------------------------------------------------
@@ -260,11 +261,12 @@ DEFUN(ip_source_address,
         return CMD_SUCCESS;
     }
 
-    if (strcmp(TFTP, (char*)argv[0]) == NULL) {
+    if (strcmp(TFTP, (char*)argv[0]) == 0) {
         return source_interface_selection(argv[1], TFTP_PROTOCOL, 1);
-    } else if (strcmp(ALL, (char*)argv[0]) == NULL) {
+    } else if (strcmp(ALL, (char*)argv[0]) == 0) {
         return source_interface_selection(argv[1], ALL_PROTOCOL, 1);
     }
+    return CMD_SUCCESS;
 }
 
 /*-----------------------------------------------------------------------------
@@ -280,11 +282,12 @@ DEFUN(no_ip_source_interface,
       TFTP_STRING
       ALL_STRING)
 {
-    if (strcmp(TFTP, (char*)argv[0]) == NULL) {
+    if (strcmp(TFTP, (char*)argv[0]) == 0) {
         return source_interface_selection(NULL, TFTP_PROTOCOL, 0);
-    } else if (strcmp(ALL, (char*)argv[0]) == NULL) {
+    } else if (strcmp(ALL, (char*)argv[0]) == 0) {
         return source_interface_selection(NULL, ALL_PROTOCOL, 0);
     }
+    return CMD_SUCCESS;
 }
 
 /*-----------------------------------------------------------------------------
@@ -300,7 +303,7 @@ DEFUN(show_source_interface,
       TFTP_STRING)
 {
     if(argv[0]) {
-        if (strcmp(TFTP, (char*)argv[0]) == NULL) {
+        if (strcmp(TFTP, (char*)argv[0]) == 0) {
             return show_source_interface_selection(TFTP_PROTOCOL);
         }
     }

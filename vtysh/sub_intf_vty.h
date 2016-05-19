@@ -53,4 +53,6 @@ const struct ovsrec_sub_if* sub_if_lookup(const char *sub_if_name);
 
 const struct shash_node **sort_sub_interfaces(const struct shash *sh);
 
+int create_sub_interface(const char* subifname);
+
 #endif /* _VTY_SUB_INTF_H */
