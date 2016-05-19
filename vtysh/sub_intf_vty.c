@@ -240,8 +240,8 @@ DEFUN  (cli_encapsulation_dot1Q_vlan,
             enc_vlan = 0;
         }
         else {
-             vty_out(vty, "Encapsulation not configured on interface %s %s",
-                          row->name, VTY_NEWLINE);
+             vty_out(vty, "Encapsulation-%d not configured on interface %s. %s",
+                           atoi(argv[0]), row->name, VTY_NEWLINE);
              cli_do_config_abort(status_txn);
              return CMD_SUCCESS;
         }
