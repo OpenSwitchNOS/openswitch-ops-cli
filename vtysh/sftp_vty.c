@@ -31,6 +31,34 @@ extern struct ovsdb_idl *idl;
 VLOG_DEFINE_THIS_MODULE(vtysh_sftp_cli);
 
 /*-----------------------------------------------------------------------------
+| Function : validate_user_privilege
+| Responsibility : To validate the user logged in device and to verify
+|                  if the user has the permissions.
+| Return : true, if the user has the permissions
+|          false, if the user do not have the required permissions
+-----------------------------------------------------------------------------*/
+static bool
+validate_user_privilege (void)
+{
+    struct passwd *pw = NULL;
+
+    pw = getpwuid( getuid());
+    if (pw == NULL)
+    {
+        VLOG_ERR("ERROR: Unknown User.\n");
+        return false;
+    }
+
+    /* The only allowed valid user is an admin user */
+    if (!(rbac_check_user_permission(pw->pw_name, RBAC_SYS_MGMT)))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : show_sftp_server
 | Responsibility : To show the current SFTP server status.
 | Return : On success returns CMD_SUCCESS,
@@ -245,6 +273,14 @@ DEFUN ( cli_sftp_interactive,
     sftpClient sclient;
     memset(&sclient, 0, sizeof(sftpClient));
 
+    /* Validate the permission of the user accessing the device */
+    if (!validate_user_privilege())
+    {
+        VLOG_ERR("ERROR: Permission denied for this user.\n");
+        vty_out(vty, "Permission denied for this user.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
     /* Validation of input params. */
     if (strlen((char*)argv[0]) > MAX_USERNAME_LEN)
     {
@@ -297,6 +333,14 @@ DEFUN ( cli_sftp_non_interactive_copy,
 {
     sftpClient sclient;
     memset(&sclient, 0, sizeof(sftpClient));
+
+    /* Validate the permission of the user accessing the device */
+    if (!validate_user_privilege())
+    {
+        VLOG_ERR("ERROR: Permission denied for this user.\n");
+        vty_out(vty, "Permission denied for this user.%s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
 
     /* Validation of input params. */
     if (strlen((char*)argv[0]) > MAX_USERNAME_LEN)
