@@ -1091,7 +1091,7 @@ create_sub_interface(const char* subifname)
     }
     memcpy(ifnumber, subifname, MAX_IFNAME_LENGTH);
 
-    sub_intf_number = (long long int)atoi(strchr(subifname, '.') + 1);
+    sub_intf_number = atol(strchr(subifname, '.') + 1);
 
     if ((sub_intf_number < MIN_SUB_INTF_RANGE) ||
             (sub_intf_number > MAX_SUB_INTF_RANGE)){
