@@ -4440,7 +4440,7 @@ DEFUN (cli_ospf_interface_auth,
        cli_ospf_interface_auth_cmd,
        "ip ospf authentication",
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_AUTH_ENABLE)
 {
     return ospf_interface_auth_cmd_execute(vty->index,
@@ -4451,7 +4451,7 @@ DEFUN (cli_ospf_interface_auth_message_digest,
        cli_ospf_interface_auth_message_digest_cmd,
        "ip ospf authentication message-digest",
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_AUTH_ENABLE
        OSPF_AUTH_MD5)
 {
@@ -4463,7 +4463,7 @@ DEFUN (cli_ospf_interface_auth_null,
        cli_ospf_interface_auth_null_cmd,
        "ip ospf authentication null",
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_AUTH_ENABLE
        OSPF_AUTH_NULL_STR)
 {
@@ -4477,7 +4477,7 @@ DEFUN (cli_no_ospf_interface_auth,
        "no ip ospf authentication",
        NO_STR
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_AUTH_ENABLE)
 {
          return ospf_interface_auth_cmd_execute(vty->index, NULL);
@@ -4670,7 +4670,7 @@ DEFUN (cli_ospf_interface_auth_key,
        cli_ospf_interface_auth_key_cmd,
        "ip ospf authentication-key AUTH_KEY",
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_AUTH_KEY
        OSPF_AUTH_KEY_VAL)
 {
@@ -4683,7 +4683,7 @@ DEFUN (cli_no_ospf_interface_auth_key,
        "no ip ospf authentication-key",
        NO_STR
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_AUTH_KEY)
 {
         return ospf_interface_auth_key_cmd_execute(vty->index, true,
@@ -4696,7 +4696,7 @@ DEFUN (cli_ip_ospf_message_digest_key,
        cli_ip_ospf_message_digest_key_cmd,
        "ip ospf message-digest-key <1-255> md5 KEY",
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_MD5_KEY
        OSPF_MD5_KEY_ID
        OSPF_MD5
@@ -4712,7 +4712,7 @@ DEFUN (cli_no_ip_ospf_message_digest_key,
        "no ip ospf message-digest-key <1-255>",
        NO_STR
        IP_STR
-       OSPF_CONF_STR
+       OSPF_INTERFACE_OSPF
        OSPF_MD5_KEY
        OSPF_MD5_KEY_ID)
 {
