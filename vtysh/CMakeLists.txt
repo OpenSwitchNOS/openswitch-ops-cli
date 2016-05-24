@@ -36,7 +36,7 @@ pkg_check_modules(OPSUTILS REQUIRED opsutils)
 
 add_definitions(-DHAVE_CONFIG_H -DSYSCONFDIR="${CMAKE_INSTALL_SYSCONFDIR}")
 
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror -DFTR_PROXY_ARP -DFTR_LOCAL_PROXY_ARP")
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -DFTR_PROXY_ARP -DFTR_LOCAL_PROXY_ARP")
 
 include_directories(
   ${CMAKE_SOURCE_DIR}

@@ -24,6 +24,7 @@
 #define VTYSH_H
 #include <stdbool.h>
 
+#define VRF_ENABLE 1
 #define VTYSH_ZEBRA  0x01
 #define VTYSH_RIPD   0x02
 #define VTYSH_RIPNGD 0x04
