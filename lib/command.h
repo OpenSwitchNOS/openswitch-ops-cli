@@ -179,6 +179,7 @@ struct cmd_node
 #define CMD_ATTR_NOT_ENABLED 4  /* command is listed, but not calling action routine */
 #define CMD_ATTR_DISABLED    (CMD_ATTR_HIDDEN | CMD_ATTR_NOT_ENABLED)
 #define CMD_ATTR_NOLOCK      8  /* command doesn't take the OVSDB lock */
+#define CMD_ATTR_NON_IDL_CMD 16 /* command is not checking system configuration status,ovsdb status */
 
 #define CMD_FLAG_NO_CMD      1
 
@@ -467,6 +468,14 @@ struct dyn_cb_func
 #define DEFUN_HIDDEN(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_HIDDEN)
 
+/*
+ * DEFUN_NON_IDL used for execute the CLI command action routine which
+ * is not relavent to OVSDB IDL.
+ */
+#define DEFUN_NON_IDL(funcname, cmdname, cmdstr, helpstr) \
+  DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_NON_IDL_CMD)
+
+
 #define DEFUN_NOLOCK(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_ATTR (funcname, cmdname, cmdstr, helpstr, CMD_ATTR_NOLOCK)
 
@@ -486,6 +495,13 @@ struct dyn_cb_func
   DEFUN_CMD_FUNC_DECL(funcname) \
   DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, daemon, NULL) \
   DEFUN_CMD_FUNC_TEXT(funcname)
+
+/*
+ * DEFUNSH_NON_IDL used for execute the CLI command action routine which
+ * is not relavent to OVSDB IDL.
+ */
+#define DEFUNSH_NON_IDL(daemon, funcname, cmdname, cmdstr, helpstr) \
+  DEFUNSH_ATTR (daemon, funcname, cmdname, cmdstr, helpstr, CMD_ATTR_NON_IDL_CMD) \
 
 /* DEFUN + DEFSH with attributes */
 #define DEFUNSH_ATTR(daemon, funcname, cmdname, cmdstr, helpstr, attr) \

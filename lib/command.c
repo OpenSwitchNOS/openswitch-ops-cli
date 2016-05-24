@@ -3370,7 +3370,8 @@ cmd_execute_command_real (vector vline,
               VTYSH_OVSDB_LOCK;
               strcpy(ifnumber, temp->value);
               vty->index = ifnumber;
-              if (vtysh_chk_for_system_configured_db_is_ready() == true) {
+              if ((((matched_element->attr) & CMD_ATTR_NON_IDL_CMD) == CMD_ATTR_NON_IDL_CMD)
+                     || (vtysh_chk_for_system_configured_db_is_ready() == true)) {
                   ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
               } else {
                   vty_out(vty, "System is not ready. Please retry after few seconds..%s", VTY_NEWLINE);
@@ -3385,7 +3386,8 @@ cmd_execute_command_real (vector vline,
       else
       {
           VTYSH_OVSDB_LOCK;
-          if (vtysh_chk_for_system_configured_db_is_ready() == true) {
+          if ((((matched_element->attr) & CMD_ATTR_NON_IDL_CMD) == CMD_ATTR_NON_IDL_CMD)
+                  || (vtysh_chk_for_system_configured_db_is_ready() == true)) {
               ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
           } else {
               vty_out(vty, "System is not ready. Please retry after few seconds..%s", VTY_NEWLINE);
@@ -3406,9 +3408,13 @@ cmd_execute_command_real (vector vline,
           {
               strcpy(ifnumber, temp->value);
               vty->index = ifnumber;
-              VTYSH_OVSDB_LOCK;
-              ready = vtysh_chk_for_system_configured_db_is_ready();
-              VTYSH_OVSDB_UNLOCK;
+              if (((matched_element->attr) & CMD_ATTR_NON_IDL_CMD) == CMD_ATTR_NON_IDL_CMD) {
+                  ready = true;
+              } else {
+                  VTYSH_OVSDB_LOCK;
+                  ready = vtysh_chk_for_system_configured_db_is_ready();
+                  VTYSH_OVSDB_UNLOCK;
+             }
 
               if (ready == true) {
                   ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
@@ -3423,9 +3429,13 @@ cmd_execute_command_real (vector vline,
       }
       else
       {
-          VTYSH_OVSDB_LOCK;
-          ready = vtysh_chk_for_system_configured_db_is_ready();
-          VTYSH_OVSDB_UNLOCK;
+          if (((matched_element->attr) & CMD_ATTR_NON_IDL_CMD) == CMD_ATTR_NON_IDL_CMD) {
+              ready = true;
+          } else {
+              VTYSH_OVSDB_LOCK;
+              ready = vtysh_chk_for_system_configured_db_is_ready();
+              VTYSH_OVSDB_UNLOCK;
+          }
           if (ready == true) {
               ret = (*matched_element->func) (matched_element, vty, 0, argc, argv);
           } else {
@@ -3669,10 +3679,6 @@ int cmd_try_execute_command (struct vty *vty, char *buf)
 }
 
 
-
-
-
-
 /* Configration from terminal */
 DEFUN (config_terminal,
        config_terminal_cmd,
@@ -3718,10 +3724,10 @@ DEFUN (disable,
 }
 
 /* Down vty node level. */
-DEFUN (config_exit,
-       config_exit_cmd,
-       "exit",
-       "Exit current mode and down to previous mode\n")
+DEFUN_NON_IDL (config_exit,
+               config_exit_cmd,
+               "exit",
+               "Exit current mode and down to previous mode\n")
 {
   switch (vty->node)
     {
@@ -3791,10 +3797,10 @@ ALIAS (config_exit,
        "Exit current mode and down to previous mode\n")
 
 /* End of configuration. */
-DEFUN (config_end,
-       config_end_cmd,
-       "end",
-       "End current mode and change to enable mode.")
+DEFUN_NON_IDL (config_end,
+               config_end_cmd,
+               "end",
+               "End current mode and change to enable mode.")
 {
   switch (vty->node)
     {
