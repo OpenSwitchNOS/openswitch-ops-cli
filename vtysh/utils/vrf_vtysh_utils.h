@@ -24,7 +24,6 @@
 #define _VRF_VTY_UTILS_H
 
 #include "ops-utils.h"
-#define VRF_VLAN_INTF_ID_OFFSET 4
 
 const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 
