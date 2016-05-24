@@ -1097,11 +1097,11 @@ DEFUN_HIDDEN (vtysh_reset_prompt,
     return CMD_SUCCESS;
 }
 
-DEFUNSH (VTYSH_ALL,
-      vtysh_end_all,
-      vtysh_end_all_cmd,
-      "end",
-      "End current mode and change to enable mode\n")
+DEFUNSH_NON_IDL (VTYSH_ALL,
+                 vtysh_end_all,
+                 vtysh_end_all_cmd,
+                 "end",
+                 "End current mode and change to enable mode\n")
 {
    return vtysh_end ();
 }
@@ -1428,11 +1428,11 @@ vtysh_exit (struct vty *vty)
   return CMD_SUCCESS;
 }
 
-DEFUNSH (VTYSH_ALL,
-      vtysh_exit_all,
-      vtysh_exit_all_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_ALL,
+                 vtysh_exit_all,
+                 vtysh_exit_all_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1444,11 +1444,11 @@ ALIAS (vtysh_exit_all,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_BGPD,
-      exit_address_family,
-      exit_address_family_cmd,
-      "exit-address-family",
-      "Exit from Address family configuration mode\n")
+DEFUNSH_NON_IDL (VTYSH_BGPD,
+                 exit_address_family,
+                 exit_address_family_cmd,
+                 "exit-address-family",
+                 "Exit from Address Family configuration mode\n")
 {
    if (vty->node == BGP_IPV4_NODE
          || vty->node == BGP_IPV4M_NODE
@@ -1459,11 +1459,11 @@ DEFUNSH (VTYSH_BGPD,
    return CMD_SUCCESS;
 }
 
-DEFUNSH (VTYSH_ZEBRA,
-      vtysh_exit_zebra,
-      vtysh_exit_zebra_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_ZEBRA,
+                 vtysh_exit_zebra,
+                 vtysh_exit_zebra_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1475,11 +1475,11 @@ ALIAS (vtysh_exit_zebra,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_RIPD,
-      vtysh_exit_ripd,
-      vtysh_exit_ripd_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_RIPD,
+                 vtysh_exit_ripd,
+                 vtysh_exit_ripd_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1490,11 +1490,11 @@ ALIAS (vtysh_exit_ripd,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_RIPNGD,
-      vtysh_exit_ripngd,
-      vtysh_exit_ripngd_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_RIPNGD,
+                 vtysh_exit_ripngd,
+                 vtysh_exit_ripngd_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1505,11 +1505,11 @@ ALIAS (vtysh_exit_ripngd,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_RMAP,
-      vtysh_exit_rmap,
-      vtysh_exit_rmap_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_RMAP,
+                 vtysh_exit_rmap,
+                 vtysh_exit_rmap_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1521,11 +1521,11 @@ ALIAS (vtysh_exit_rmap,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_BGPD,
-      vtysh_exit_bgpd,
-      vtysh_exit_bgpd_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_BGPD,
+                 vtysh_exit_bgpd,
+                 vtysh_exit_bgpd_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1537,11 +1537,11 @@ ALIAS (vtysh_exit_bgpd,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_OSPFD,
-      vtysh_exit_ospfd,
-      vtysh_exit_ospfd_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_OSPFD,
+                 vtysh_exit_ospfd,
+                 vtysh_exit_ospfd_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1551,11 +1551,11 @@ ALIAS (vtysh_exit_ospfd,
       "quit",
       "Exit current mode and down to previous mode\n")
 
-DEFUNSH (VTYSH_OSPF6D,
-      vtysh_exit_ospf6d,
-      vtysh_exit_ospf6d_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_OSPF6D,
+                 vtysh_exit_ospf6d,
+                 vtysh_exit_ospf6d_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1567,11 +1567,11 @@ ALIAS (vtysh_exit_ospf6d,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_ISISD,
-      vtysh_exit_isisd,
-      vtysh_exit_isisd_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_ISISD,
+                 vtysh_exit_isisd,
+                 vtysh_exit_isisd_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1583,11 +1583,11 @@ ALIAS (vtysh_exit_isisd,
       "Exit current mode and down to previous mode\n")
 #endif
 
-DEFUNSH (VTYSH_ALL,
-      vtysh_exit_line_vty,
-      vtysh_exit_line_vty_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_ALL,
+                 vtysh_exit_line_vty,
+                 vtysh_exit_line_vty_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1623,11 +1623,11 @@ DEFSH (VTYSH_ZEBRA|VTYSH_RIPD|VTYSH_OSPFD,
       "Interface specific description\n")
 #endif
 
-DEFUNSH (VTYSH_INTERFACE,
-      vtysh_exit_loopback_interface,
-      vtysh_exit_loopback_interface_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_INTERFACE,
+                 vtysh_exit_loopback_interface,
+                 vtysh_exit_loopback_interface_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1637,11 +1637,11 @@ ALIAS (vtysh_exit_loopback_interface,
       "quit",
       "Exit current mode and down to previous mode\n")
 
-DEFUNSH (VTYSH_INTERFACE,
-      vtysh_exit_sub_interface,
-      vtysh_exit_sub_interface_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_INTERFACE,
+                 vtysh_exit_sub_interface,
+                 vtysh_exit_sub_interface_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -1651,11 +1651,11 @@ ALIAS (vtysh_exit_sub_interface,
       "quit",
       "Exit current mode and down to previous mode\n")
 
-DEFUNSH (VTYSH_INTERFACE,
-      vtysh_exit_interface,
-      vtysh_exit_interface_cmd,
-      "exit",
-      "Exit current mode and down to previous mode\n")
+DEFUNSH_NON_IDL (VTYSH_INTERFACE,
+                 vtysh_exit_interface,
+                 vtysh_exit_interface_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
 {
    return vtysh_exit (vty);
 }
@@ -3432,10 +3432,10 @@ DEFUN(vtysh_user_del,
 /*
  * TODO: THis command maybe re used later once RBAC CLI infra comes up
  */
-DEFUN(vtysh_reboot,
-      vtysh_reboot_cmd,
-      "reboot",
-      "Reload the switch\n")
+DEFUN_NON_IDL (vtysh_reboot,
+               vtysh_reboot_cmd,
+               "reboot",
+               "Reload the switch\n")
 {
     char flag = '0';
     static struct termios oldt, newt;
