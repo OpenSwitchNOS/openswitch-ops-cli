@@ -602,6 +602,7 @@ struct dyn_cb_func
 #define ISIS_STR    "IS-IS information\n"
 #define AREA_TAG_STR "[area tag]\n"
 #define RIB_STR    "Routing Information Base\n"
+#define APPLY_STR "Apply a configuration record\n"
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
