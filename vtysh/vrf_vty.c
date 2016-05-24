@@ -1478,6 +1478,11 @@ show_vrf_info ()
   uint16_t count;
   size_t i;
 
+#ifndef VRF_ENABLE
+  vty_out (vty, "Command not supported.%s", VTY_NEWLINE);
+  return CMD_SUCCESS;
+#endif
+
   vrf_row = ovsrec_vrf_first (idl);
   if (!vrf_row)
     {
@@ -1832,6 +1837,7 @@ DEFUN (cli_vrf_show,
 {
   return show_vrf_info();
 }
+
 #ifdef FTR_PROXY_ARP
   DEFUN (cli_vrf_proxy_arp_enable,
          cli_vrf_proxy_arp_enable_cmd,
