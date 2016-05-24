@@ -563,7 +563,7 @@ struct dyn_cb_func
 #define REDIST_STR  "Redistribute information from another routing protocol\n"
 #define CLEAR_STR   "Reset functions\n"
 #define RIP_STR     "RIP information\n"
-#define BGP_STR     "BGP information\n"
+#define BGP_STR     "BGP specific commands\n"
 #define OSPF_STR    "OSPF information\n"
 #define NEIGHBOR_STR "Specify neighbor router\n"
 #define DEBUG_STR   "Debugging functions (see also 'undebug')\n"

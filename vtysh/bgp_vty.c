@@ -1525,7 +1525,7 @@ ALIAS(no_bgp_cluster_id,
 DEFUN(bgp_confederation_identifier,
       bgp_confederation_identifier_cmd,
       "bgp confederation identifier " CMD_AS_RANGE,
-      "BGP specific commands\n"
+      BGP_STR
       "AS confederation parameters\n"
       "AS number\n"
       "Set routing domain confederation AS\n")
@@ -1538,7 +1538,7 @@ DEFUN(no_bgp_confederation_identifier,
       no_bgp_confederation_identifier_cmd,
       "no bgp confederation identifier",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "AS confederation parameters\n"
       "AS number\n")
 {
@@ -1550,7 +1550,7 @@ ALIAS(no_bgp_confederation_identifier,
       no_bgp_confederation_identifier_arg_cmd,
       "no bgp confederation identifier " CMD_AS_RANGE,
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "AS confederation parameters\n"
       "AS number\n"
       "Set routing domain confederation AS\n")
@@ -1558,7 +1558,7 @@ ALIAS(no_bgp_confederation_identifier,
 DEFUN(bgp_confederation_peers,
       bgp_confederation_peers_cmd,
       "bgp confederation peers ." CMD_AS_RANGE,
-      "BGP specific commands\n"
+      BGP_STR
       "AS confederation parameters\n"
       "Peer ASs in BGP confederation\n"
       AS_STR)
@@ -1571,7 +1571,7 @@ DEFUN(no_bgp_confederation_peers,
       no_bgp_confederation_peers_cmd,
       "no bgp confederation peers ." CMD_AS_RANGE,
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "AS confederation parameters\n"
       "Peer ASs in BGP confederation\n"
       AS_STR)
@@ -1806,7 +1806,7 @@ ALIAS(no_bgp_timers,
 DEFUN(bgp_client_to_client_reflection,
       bgp_client_to_client_reflection_cmd,
       "bgp client-to-client reflection",
-      "BGP specific commands\n"
+      BGP_STR
       "Configure client to client route reflection\n"
       "reflection of routes allowed\n")
 {
@@ -1818,7 +1818,7 @@ DEFUN(no_bgp_client_to_client_reflection,
       no_bgp_client_to_client_reflection_cmd,
       "no bgp client-to-client reflection",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Configure client to client route reflection\n"
       "reflection of routes allowed\n")
 {
@@ -1830,7 +1830,7 @@ DEFUN(no_bgp_client_to_client_reflection,
 DEFUN(bgp_always_compare_med,
       bgp_always_compare_med_cmd,
       "bgp always-compare-med",
-      "BGP specific commands\n"
+      BGP_STR
       "Allow comparing MED from different neighbors\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -1841,7 +1841,7 @@ DEFUN(no_bgp_always_compare_med,
       no_bgp_always_compare_med_cmd,
       "no bgp always-compare-med",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Allow comparing MED from different neighbors\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -1852,7 +1852,7 @@ DEFUN(no_bgp_always_compare_med,
 DEFUN(bgp_deterministic_med,
       bgp_deterministic_med_cmd,
       "bgp deterministic-med",
-      "BGP specific commands\n"
+      BGP_STR
       "Pick the best-MED path among paths advertised "
       "from the neighboring AS\n")
 {
@@ -1864,7 +1864,7 @@ DEFUN(no_bgp_deterministic_med,
       no_bgp_deterministic_med_cmd,
       "no bgp deterministic-med",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Pick the best-MED path among paths advertised "
       "from the neighboring AS\n")
 {
@@ -1876,7 +1876,7 @@ DEFUN(no_bgp_deterministic_med,
 DEFUN(bgp_graceful_restart,
       bgp_graceful_restart_cmd,
       "bgp graceful-restart",
-      "BGP specific commands\n"
+      BGP_STR
       "Graceful restart capability parameters\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -1887,7 +1887,7 @@ DEFUN(no_bgp_graceful_restart,
       no_bgp_graceful_restart_cmd,
       "no bgp graceful-restart",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Graceful restart capability parameters\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -1897,7 +1897,7 @@ DEFUN(no_bgp_graceful_restart,
 DEFUN(bgp_graceful_restart_stalepath_time,
       bgp_graceful_restart_stalepath_time_cmd,
       "bgp graceful-restart stalepath-time <1-3600>",
-      "BGP specific commands\n"
+      BGP_STR
       "Graceful restart capability parameters\n"
       "Set the max time to hold onto restarting peer's stale paths\n"
       "Delay value (seconds)\n")
@@ -1910,7 +1910,7 @@ DEFUN(no_bgp_graceful_restart_stalepath_time,
       no_bgp_graceful_restart_stalepath_time_cmd,
       "no bgp graceful-restart stalepath-time",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Graceful restart capability parameters\n"
       "Set the max time to hold onto restarting peer's stale paths\n")
 {
@@ -1922,7 +1922,7 @@ ALIAS(no_bgp_graceful_restart_stalepath_time,
       no_bgp_graceful_restart_stalepath_time_val_cmd,
       "no bgp graceful-restart stalepath-time <1-3600>",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Graceful restart capability parameters\n"
       "Set the max time to hold onto restarting peer's stale paths\n"
       "Delay value (seconds)\n")
@@ -2039,7 +2039,7 @@ DEFUN(no_bgp_enforce_first_as,
 DEFUN(bgp_bestpath_compare_router_id,
       bgp_bestpath_compare_router_id_cmd,
       "bgp bestpath compare-routerid",
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "Compare router-id for identical EBGP paths\n")
 {
@@ -2051,7 +2051,7 @@ DEFUN(no_bgp_bestpath_compare_router_id,
       no_bgp_bestpath_compare_router_id_cmd,
       "no bgp bestpath compare-routerid",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "Compare router-id for identical EBGP paths\n")
 {
@@ -2063,7 +2063,7 @@ DEFUN(no_bgp_bestpath_compare_router_id,
 DEFUN(bgp_bestpath_aspath_ignore,
       bgp_bestpath_aspath_ignore_cmd,
       "bgp bestpath as-path ignore",
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "AS-path attribute\n"
       "Ignore as-path length in selecting a route\n")
@@ -2076,7 +2076,7 @@ DEFUN(no_bgp_bestpath_aspath_ignore,
       no_bgp_bestpath_aspath_ignore_cmd,
       "no bgp bestpath as-path ignore",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "AS-path attribute\n"
       "Ignore as-path length in selecting a route\n")
@@ -2089,7 +2089,7 @@ DEFUN(no_bgp_bestpath_aspath_ignore,
 DEFUN(bgp_bestpath_aspath_confed,
       bgp_bestpath_aspath_confed_cmd,
       "bgp bestpath as-path confed",
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "AS-path attribute\n"
       "Compare path lengths including confederation sets & "
@@ -2103,7 +2103,7 @@ DEFUN(no_bgp_bestpath_aspath_confed,
       no_bgp_bestpath_aspath_confed_cmd,
       "no bgp bestpath as-path confed",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "AS-path attribute\n"
       "Compare path lengths including confederation sets & "
@@ -2117,7 +2117,7 @@ DEFUN(no_bgp_bestpath_aspath_confed,
 DEFUN(bgp_bestpath_aspath_multipath_relax,
       bgp_bestpath_aspath_multipath_relax_cmd,
       "bgp bestpath as-path multipath-relax",
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "AS-path attribute\n"
       "Allow load sharing across routes that have different AS paths "
@@ -2131,7 +2131,7 @@ DEFUN(no_bgp_bestpath_aspath_multipath_relax,
       no_bgp_bestpath_aspath_multipath_relax_cmd,
       "no bgp bestpath as-path multipath-relax",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "AS-path attribute\n"
       "Allow load sharing across routes that have different AS paths "
@@ -2177,7 +2177,7 @@ cli_bgp_log_neighbor_changes_cmd_execute (char *vrf_name)
 DEFUN(bgp_log_neighbor_changes,
       bgp_log_neighbor_changes_cmd,
       "bgp log-neighbor-changes",
-      "BGP specific commands\n"
+      BGP_STR
       "Log neighbor up/down and reset reason\n")
 {
     return cli_bgp_log_neighbor_changes_cmd_execute(NULL);
@@ -2218,7 +2218,7 @@ DEFUN(no_bgp_log_neighbor_changes,
       no_bgp_log_neighbor_changes_cmd,
       "no bgp log-neighbor-changes",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Log neighbor up/down and reset reason\n")
 {
     return cli_no_bgp_log_neighbor_changes_cmd_execute(NULL);
@@ -2228,7 +2228,7 @@ DEFUN(no_bgp_log_neighbor_changes,
 DEFUN(bgp_bestpath_med,
       bgp_bestpath_med_cmd,
       "bgp bestpath med (confed|missing-as-worst)",
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "MED attribute\n"
       "Compare MED among confederation paths\n"
@@ -2241,7 +2241,7 @@ DEFUN(bgp_bestpath_med,
 DEFUN(bgp_bestpath_med2,
       bgp_bestpath_med2_cmd,
       "bgp bestpath med confed missing-as-worst",
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "MED attribute\n"
       "Compare MED among confederation paths\n"
@@ -2254,7 +2254,7 @@ DEFUN(bgp_bestpath_med2,
 ALIAS(bgp_bestpath_med2,
       bgp_bestpath_med3_cmd,
       "bgp bestpath med missing-as-worst confed",
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "MED attribute\n"
       "Treat missing MED as the least preferred one\n"
@@ -2264,7 +2264,7 @@ DEFUN(no_bgp_bestpath_med,
       no_bgp_bestpath_med_cmd,
       "no bgp bestpath med (confed|missing-as-worst)",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "MED attribute\n"
       "Compare MED among confederation paths\n"
@@ -2278,7 +2278,7 @@ DEFUN(no_bgp_bestpath_med2,
       no_bgp_bestpath_med2_cmd,
       "no bgp bestpath med confed missing-as-worst",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "MED attribute\n"
       "Compare MED among confederation paths\n"
@@ -2292,7 +2292,7 @@ ALIAS(no_bgp_bestpath_med2,
       no_bgp_bestpath_med3_cmd,
       "no bgp bestpath med missing-as-worst confed",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Change the default bestpath selection\n"
       "MED attribute\n"
       "Treat missing MED as the least preferred one\n"
@@ -2303,7 +2303,7 @@ DEFUN(no_bgp_default_ipv4_unicast,
       no_bgp_default_ipv4_unicast_cmd,
       "no bgp default ipv4-unicast",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Configure BGP defaults\n"
       "Activate ipv4-unicast for a peer by default\n")
 {
@@ -2314,7 +2314,7 @@ DEFUN(no_bgp_default_ipv4_unicast,
 DEFUN(bgp_default_ipv4_unicast,
       bgp_default_ipv4_unicast_cmd,
       "bgp default ipv4-unicast",
-      "BGP specific commands\n"
+      BGP_STR
       "Configure BGP defaults\n"
       "Activate ipv4-unicast for a peer by default\n")
 {
@@ -2504,7 +2504,7 @@ DEFUN(no_ipv6_bgp_network,
 DEFUN(bgp_network_import_check,
       bgp_network_import_check_cmd,
       "bgp network import-check",
-      "BGP specific commands\n"
+      BGP_STR
       "BGP network command\n"
       "Check BGP network route exists in IGP\n")
 {
@@ -2516,7 +2516,7 @@ DEFUN(no_bgp_network_import_check,
       no_bgp_network_import_check_cmd,
       "no bgp network import-check",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "BGP network command\n"
       "Check BGP network route exists in IGP\n")
 {
@@ -2527,7 +2527,7 @@ DEFUN(no_bgp_network_import_check,
 DEFUN(bgp_default_local_preference,
       bgp_default_local_preference_cmd,
       "bgp default local-preference <0-4294967295>",
-      "BGP specific commands\n"
+      BGP_STR
       "Configure BGP defaults\n"
       "local preference (higher=more preferred)\n"
       "Configure default local preference value\n")
@@ -2540,7 +2540,7 @@ DEFUN(no_bgp_default_local_preference,
       no_bgp_default_local_preference_cmd,
       "no bgp default local-preference",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Configure BGP defaults\n"
       "local preference (higher=more preferred)\n")
 {
@@ -2552,7 +2552,7 @@ ALIAS(no_bgp_default_local_preference,
       no_bgp_default_local_preference_val_cmd,
       "no bgp default local-preference <0-4294967295>",
       NO_STR
-      "BGP specific commands\n"
+      BGP_STR
       "Configure BGP defaults\n"
       "local preference (higher=more preferred)\n"
       "Configure default local preference value\n")
@@ -6008,7 +6008,7 @@ ALIAS(no_neighbor_maximum_prefix,
       NEIGHBOR_ADDR_STR2
       "Maximum number of prefix accept from this peer\n"
       "maximum no. of prefix limit\n"
-      "Threshold value (%) at which to generate a warning msg\n")
+      "Only give warning message when limit is exceeded\n")
 
 ALIAS(no_neighbor_maximum_prefix,
       no_neighbor_maximum_prefix_warning_cmd,
@@ -6284,8 +6284,8 @@ DEFUN(address_family_ipv4_safi,
       "address-family ipv4 (unicast|multicast)",
       "Enter Address Family command mode\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n")
+      "Address family modifier\n"
+      "Address family modifier\n")
 {
     report_unimplemented_command(vty, argc, argv);
     return CMD_SUCCESS;
@@ -6296,8 +6296,8 @@ DEFUN(address_family_ipv6_safi,
       "address-family ipv6 (unicast|multicast)",
       "Enter Address Family command mode\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n")
+      "Address family modifier\n"
+      "Address family modifier\n")
 {
     report_unimplemented_command(vty, argc, argv);
     return CMD_SUCCESS;
@@ -6507,8 +6507,8 @@ DEFUN(clear_ip_bgp_all_ipv4_soft_out,
       BGP_STR
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
@@ -6524,8 +6524,8 @@ ALIAS(clear_ip_bgp_all_ipv4_soft_out,
       BGP_STR
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig outbound update\n")
 
 DEFUN(clear_ip_bgp_instance_all_ipv4_soft_out,
@@ -6538,8 +6538,8 @@ DEFUN(clear_ip_bgp_instance_all_ipv4_soft_out,
       "view name\n"
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig outbound update\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -6777,8 +6777,8 @@ DEFUN(clear_ip_bgp_peer_ipv4_soft_out,
       BGP_STR
       "BGP neighbor address to clear\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
@@ -6794,8 +6794,8 @@ ALIAS(clear_ip_bgp_peer_ipv4_soft_out,
       BGP_STR
       "BGP neighbor address to clear\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig outbound update\n")
 
 DEFUN(clear_ip_bgp_peer_vpnv4_soft_out,
@@ -6995,8 +6995,8 @@ DEFUN(clear_ip_bgp_peer_group_ipv4_soft_out,
       "Clear all members of peer-group\n"
       "BGP peer-group name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
@@ -7013,8 +7013,8 @@ ALIAS(clear_ip_bgp_peer_group_ipv4_soft_out,
       "Clear all members of peer-group\n"
       "BGP peer-group name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig outbound update\n")
 
 DEFUN(clear_bgp_peer_group_soft_out,
@@ -7177,8 +7177,8 @@ DEFUN(clear_ip_bgp_external_ipv4_soft_out,
       BGP_STR
       "Clear all external peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
@@ -7194,8 +7194,8 @@ ALIAS(clear_ip_bgp_external_ipv4_soft_out,
       BGP_STR
       "Clear all external peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig outbound update\n")
 
 DEFUN(clear_bgp_external_soft_out,
@@ -7269,8 +7269,8 @@ DEFUN(clear_ip_bgp_as_ipv4_soft_out,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
@@ -7286,8 +7286,8 @@ ALIAS(clear_ip_bgp_as_ipv4_soft_out,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig outbound update\n")
 
 DEFUN(clear_ip_bgp_as_vpnv4_soft_out,
@@ -7298,7 +7298,7 @@ DEFUN(clear_ip_bgp_as_vpnv4_soft_out,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig outbound update\n")
 {
@@ -7314,7 +7314,7 @@ ALIAS(clear_ip_bgp_as_vpnv4_soft_out,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig outbound update\n")
 
 DEFUN(clear_bgp_as_soft_out,
@@ -7523,8 +7523,8 @@ DEFUN(clear_ip_bgp_all_ipv4_soft_in,
       BGP_STR
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -7540,8 +7540,8 @@ ALIAS(clear_ip_bgp_all_ipv4_soft_in,
       BGP_STR
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n")
 
 DEFUN(clear_ip_bgp_instance_all_ipv4_soft_in,
@@ -7554,8 +7554,8 @@ DEFUN(clear_ip_bgp_instance_all_ipv4_soft_in,
       "view name\n"
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -7571,8 +7571,8 @@ DEFUN(clear_ip_bgp_all_ipv4_in_prefix_filter,
       BGP_STR
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n"
       "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
@@ -7588,8 +7588,8 @@ DEFUN(clear_ip_bgp_instance_all_ipv4_in_prefix_filter,
       BGP_STR
       "Clear all peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n"
       "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
@@ -7834,8 +7834,8 @@ DEFUN(clear_ip_bgp_peer_ipv4_soft_in,
       BGP_STR
       "BGP neighbor address to clear\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -7851,8 +7851,8 @@ ALIAS(clear_ip_bgp_peer_ipv4_soft_in,
       BGP_STR
       "BGP neighbor address to clear\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n")
 
 DEFUN(clear_ip_bgp_peer_ipv4_in_prefix_filter,
@@ -7863,8 +7863,8 @@ DEFUN(clear_ip_bgp_peer_ipv4_in_prefix_filter,
       BGP_STR
       "BGP neighbor address to clear\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n"
       "Push out the existing ORF prefix-list\n")
 {
@@ -8110,8 +8110,8 @@ DEFUN(clear_ip_bgp_peer_group_ipv4_soft_in,
       "Clear all members of peer-group\n"
       "BGP peer-group name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -8128,8 +8128,8 @@ ALIAS(clear_ip_bgp_peer_group_ipv4_soft_in,
       "Clear all members of peer-group\n"
       "BGP peer-group name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n")
 
 DEFUN(clear_ip_bgp_peer_group_ipv4_in_prefix_filter,
@@ -8141,8 +8141,8 @@ DEFUN(clear_ip_bgp_peer_group_ipv4_in_prefix_filter,
       "Clear all members of peer-group\n"
       "BGP peer-group name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n"
       "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
@@ -8349,8 +8349,8 @@ DEFUN(clear_ip_bgp_external_ipv4_soft_in,
       BGP_STR
       "Clear all external peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -8366,8 +8366,8 @@ ALIAS(clear_ip_bgp_external_ipv4_soft_in,
       BGP_STR
       "Clear all external peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n")
 
 DEFUN(clear_ip_bgp_external_ipv4_in_prefix_filter,
@@ -8378,8 +8378,8 @@ DEFUN(clear_ip_bgp_external_ipv4_in_prefix_filter,
       BGP_STR
       "Clear all external peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n"
       "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
@@ -8495,8 +8495,8 @@ DEFUN(clear_ip_bgp_as_ipv4_soft_in,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -8512,8 +8512,8 @@ ALIAS(clear_ip_bgp_as_ipv4_soft_in,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n")
 
 DEFUN(clear_ip_bgp_as_ipv4_in_prefix_filter,
@@ -8524,8 +8524,8 @@ DEFUN(clear_ip_bgp_as_ipv4_in_prefix_filter,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n"
       "Push out prefix-list ORF and do inbound soft reconfig\n")
 {
@@ -8541,7 +8541,7 @@ DEFUN(clear_ip_bgp_as_vpnv4_soft_in,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n"
       "Soft reconfig inbound update\n")
 {
@@ -8557,7 +8557,7 @@ ALIAS(clear_ip_bgp_as_vpnv4_soft_in,
       BGP_STR
       "Clear peers with the AS number\n"
       "Address family\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig inbound update\n")
 
 DEFUN(clear_bgp_as_soft_in,
@@ -8913,8 +8913,8 @@ DEFUN(clear_ip_bgp_peer_group_ipv4_soft,
       "Clear all members of peer-group\n"
       "BGP peer-group name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -8965,8 +8965,8 @@ DEFUN(clear_ip_bgp_external_ipv4_soft,
       BGP_STR
       "Clear all external peers\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Soft reconfig\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -9438,8 +9438,8 @@ DEFUN(show_ip_bgp_ipv4_summary,
       IP_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Summary of BGP neighbor status\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -9452,8 +9452,8 @@ ALIAS(show_ip_bgp_ipv4_summary,
       SHOW_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Summary of BGP neighbor status\n")
 
 DEFUN(show_ip_bgp_instance_ipv4_summary,
@@ -9465,8 +9465,8 @@ DEFUN(show_ip_bgp_instance_ipv4_summary,
       "BGP view\n"
       "View name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Summary of BGP neighbor status\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -9481,8 +9481,8 @@ ALIAS(show_ip_bgp_instance_ipv4_summary,
       "BGP view\n"
       "View name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Summary of BGP neighbor status\n")
 
 DEFUN(show_ip_bgp_vpnv4_all_summary,
@@ -9563,8 +9563,8 @@ DEFUN(show_bgp_ipv6_safi_summary,
       SHOW_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Summary of BGP neighbor status\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -9579,8 +9579,8 @@ DEFUN(show_bgp_instance_ipv6_safi_summary,
       "BGP view\n"
       "View name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Summary of BGP neighbor status\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -9813,8 +9813,8 @@ ALIAS(show_ip_bgp_neighbors,
       IP_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Detailed information on TCP and BGP neighbor connections\n")
 
 ALIAS(show_ip_bgp_neighbors,
@@ -9874,8 +9874,8 @@ ALIAS(show_ip_bgp_neighbors_peer,
       IP_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Detailed information on TCP and BGP neighbor connections\n"
       "Neighbor to display information about\n"
       "Neighbor to display information about\n")
@@ -10016,8 +10016,8 @@ DEFUN(show_ip_bgp_ipv4_paths,
       IP_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Path information\n")
 {
     report_unimplemented_command(vty, argc, argv);
@@ -10085,8 +10085,8 @@ DEFUN(show_ip_bgp_ipv4_rsclient_summary,
       IP_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Information about Route Server Clients\n"
       "Summary of all Route Server Clients\n")
 {
@@ -10103,8 +10103,8 @@ DEFUN(show_ip_bgp_instance_ipv4_rsclient_summary,
       "BGP view\n"
       "View name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Information about Route Server Clients\n"
       "Summary of all Route Server Clients\n")
 {
@@ -10120,8 +10120,8 @@ DEFUN(show_bgp_instance_ipv4_safi_rsclient_summary,
       "BGP view\n"
       "View name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Information about Route Server Clients\n"
       "Summary of all Route Server Clients\n")
 {
@@ -10135,8 +10135,8 @@ ALIAS(show_bgp_instance_ipv4_safi_rsclient_summary,
       SHOW_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Information about Route Server Clients\n"
       "Summary of all Route Server Clients\n")
 
@@ -10195,8 +10195,8 @@ DEFUN(show_bgp_instance_ipv6_safi_rsclient_summary,
       "BGP view\n"
       "View name\n"
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Information about Route Server Clients\n"
       "Summary of all Route Server Clients\n")
 {
@@ -10210,8 +10210,8 @@ ALIAS(show_bgp_instance_ipv6_safi_rsclient_summary,
       SHOW_STR
       BGP_STR
       "Address family\n"
-      "Address Family modifier\n"
-      "Address Family modifier\n"
+      "Address family modifier\n"
+      "Address family modifier\n"
       "Information about Route Server Clients\n"
       "Summary of all Route Server Clients\n")
 
