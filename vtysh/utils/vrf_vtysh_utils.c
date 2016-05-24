@@ -19,6 +19,8 @@
  * Responsibility : Definition of common vrf CLI function.
  */
 
+#include <ctype.h>
+
 #include "ovsdb-idl.h"
 #include "vswitch-idl.h"
 #include "vrf_vtysh_utils.h"
@@ -61,13 +63,20 @@ compare_nodes_vrf(void *a_, void *b_)
     struct shash_node **b = b_;
     uint i1 = 0, i2 = 0;
 
-    sscanf(((*a)->name + VRF_VLAN_INTF_ID_OFFSET), "%d", &i1);
-    sscanf(((*b)->name + VRF_VLAN_INTF_ID_OFFSET), "%d", &i2);
+    if (isdigit(*(*a)->name) && isdigit(*(*b)->name))
+    {
+        sscanf(((*a)->name), "%d", &i1);
+        sscanf(((*b)->name), "%d", &i2);
 
-    if (i1 == i2)
-        return 0;
-    else if (i1 < i2)
-        return -1;
+        if (i1 == i2)
+            return 0;
+        else if (i1 < i2)
+            return -1;
+        else
+            return 1;
+    }
     else
-        return 1;
+    {
+        return strcmp((*a)->name, (*b)->name);
+    }
 }
