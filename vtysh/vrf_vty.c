@@ -1468,6 +1468,7 @@ vrf_del_ipv6 (const char *if_name, const char *ipv6, bool secondary)
  * This function is used to show the VRF information.
  * Currently, it shows the interfaces attached to each VRF.
  */
+#ifdef VRF_ENABLE
 static int
 show_vrf_info ()
 {
@@ -1541,6 +1542,7 @@ show_vrf_info ()
     }
   return CMD_SUCCESS;
 }
+#endif
 
 /*-----------------------------------------------------------------------------
  | Function :vrf_proxy_arp_toggle_state
@@ -1824,6 +1826,7 @@ DEFUN (cli_vrf_del_ipv6,
       (argv[1] != NULL) ? true : false);
 }
 
+#ifdef VRF_ENABLE
 DEFUN (cli_vrf_show,
     cli_vrf_show_cmd,
     "show vrf",
@@ -1832,6 +1835,8 @@ DEFUN (cli_vrf_show,
 {
   return show_vrf_info();
 }
+#endif
+
 #ifdef FTR_PROXY_ARP
   DEFUN (cli_vrf_proxy_arp_enable,
          cli_vrf_proxy_arp_enable_cmd,
@@ -1902,7 +1907,9 @@ vrf_vty_init (void)
   install_element (INTERFACE_NODE, &cli_vrf_local_proxy_arp_disable_cmd);
 #endif /* FTR_LOCAL_PROXY_ARP */
 
+#ifdef VRF_ENABLE
   install_element (ENABLE_NODE, &cli_vrf_show_cmd);
+#endif
 
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_add_port_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_port_cmd);
