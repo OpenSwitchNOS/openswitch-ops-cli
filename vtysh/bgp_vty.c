@@ -9341,6 +9341,20 @@ bgp_get_peer_count(const struct ovsrec_bgp_router *bgp_router_context)
     return peer_count;
 }
 
+unsigned long
+bgp_get_peer_group_count(const struct ovsrec_bgp_router *bgp_router_context)
+{
+    int i = 0;
+    unsigned long peer_group_count = 0;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor = NULL;
+    for (i = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
+        ovs_bgp_neighbor = bgp_router_context->value_bgp_neighbors[i];
+        if (object_is_peer_group(ovs_bgp_neighbor))
+            peer_group_count++;
+    }
+    return peer_group_count;
+}
+
 static int
 cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
 {
@@ -9401,6 +9415,93 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
         vty_out(vty, "%12s\n", smap_get(&ovs_bgp_neighbor->status,
                 BGP_PEER_STATE));
     }
+
+    END_DB_TXN(txn);
+    return CMD_SUCCESS;
+}
+
+static int
+cli_show_bgp_summary_vty_execute(struct vty *vty, int afi, int safi)
+{
+    const struct ovsrec_vrf *ovs_vrf = NULL;
+    const struct ovsrec_bgp_router *bgp_router_context = NULL;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor = NULL;
+    struct ovsdb_idl_txn *txn;
+    int i = 0, len = 0;
+    char timebuf[BGP_UPTIME_LEN];
+    static char header[] =
+                "Neighbor             AS MsgRcvd MsgSent Up/Down  State";
+
+    /* Start of transaction. */
+    START_DB_TXN(txn);
+
+    ovs_vrf = ovsrec_vrf_first(idl);
+    if (ovs_vrf->n_bgp_routers == 0)
+      {
+        vty_out(vty, "No bgp router configured.%s", VTY_NEWLINE);
+        END_DB_TXN(txn);
+        return CMD_SUCCESS;
+      }
+    bgp_router_context = ovs_vrf->value_bgp_routers[0];
+
+    vty_out(vty, "BGP router identifier %s, local AS number %ld%s",
+            bgp_router_context->router_id,
+            ovs_vrf->key_bgp_routers[0], VTY_NEWLINE);
+
+    vty_out(vty, "RIB entries %d%s", bgp_get_rib_count(),
+            VTY_NEWLINE);
+
+    vty_out (vty, "Peers %d%s", bgp_get_peer_count(bgp_router_context),
+             VTY_NEWLINE);
+
+    vty_out (vty, "Peer groups %ld%s",
+             bgp_get_peer_group_count(bgp_router_context),
+             VTY_NEWLINE);
+
+    if (bgp_router_context->n_bgp_neighbors > 0)
+      {
+        vty_out (vty, "%s", VTY_NEWLINE);
+        vty_out (vty, "%s%s", header, VTY_NEWLINE);
+      }
+
+    /* TODO Make 'show ip/ipv6 bgp summary' call this API */
+    for (i = 0; i < bgp_router_context->n_bgp_neighbors; i++) {
+        ovs_bgp_neighbor = bgp_router_context->value_bgp_neighbors[i];
+
+        if (object_is_peer_group(ovs_bgp_neighbor))
+            continue;
+
+        vty_out(vty, "%s", bgp_router_context->key_bgp_neighbors[i]);
+        len = strlen(bgp_router_context->key_bgp_neighbors[i]);
+        len = 16 - len;
+        if (len < 1)
+            vty_out (vty, "%s%*s", VTY_NEWLINE, 16, " ");
+        else
+            vty_out (vty, "%*s", len, " ");
+
+        vty_out(vty, "%7ld", *ovs_bgp_neighbor->remote_as);
+
+        vty_out(vty, " %7d", calc_msg_recvd_count(ovs_bgp_neighbor));
+
+        vty_out(vty, " %7d", calc_msg_sent_count(ovs_bgp_neighbor));
+
+        vty_out(vty, " %7s", neighbor_uptime
+            (get_statistics_from_neighbor(ovs_bgp_neighbor,
+             BGP_PEER_UPTIME), timebuf, BGP_UPTIME_LEN));
+
+        vty_out(vty, " %-11s", smap_get(&ovs_bgp_neighbor->status,
+                BGP_PEER_STATE));
+        vty_out (vty, "%s", VTY_NEWLINE);
+    }
+
+    if (i > 0)
+        vty_out (vty, "%sTotal number of neighbors %d%s", VTY_NEWLINE,
+                 i, VTY_NEWLINE);
+    else if (afi != 0)
+        vty_out (vty, "No %s neighbor is configured%s",
+                 afi == AFI_IP ? "IPv4" : "IPv6", VTY_NEWLINE);
+    else
+        vty_out (vty, "No neighbor is configured%s", VTY_NEWLINE);
 
     END_DB_TXN(txn);
     return CMD_SUCCESS;
@@ -9522,8 +9623,7 @@ DEFUN(show_bgp_summary,
       BGP_STR
       "Summary of BGP neighbor status\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_show_bgp_summary_vty_execute(vty, 0, 0);
 }
 
 DEFUN(show_bgp_instance_summary,
