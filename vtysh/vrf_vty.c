@@ -303,8 +303,10 @@ vrf_delete (const char *vrf_name)
   const struct ovsrec_vrf *vrf_row = NULL;
   struct ovsdb_idl_txn *status_txn = NULL;
   const struct ovsrec_system *ovs_row = NULL;
+  const struct ovsrec_port *port_row = NULL;
+  struct ovsrec_port **ports;
   enum ovsdb_idl_txn_status status;
-  size_t i;
+  size_t i, n;
   char *port_name;
 
   status_txn = cli_do_config_start ();
@@ -350,11 +352,20 @@ vrf_delete (const char *vrf_name)
     }
 #endif
 
-  for (i = 0; i < vrf_row->n_ports; i++)
+  while (vrf_row->n_ports > 0)
     {
-      port_name = xstrdup (vrf_row->ports[i]->name);
-      ovsrec_port_delete (vrf_row->ports[i]);
+      port_name = xstrdup (vrf_row->ports[0]->name);
+      port_row = port_check_and_add (port_name, false, false, status_txn);
+      ports = xmalloc (sizeof *vrf_row->ports * (vrf_row->n_ports - 1));
+      for (i = n = 0; i < vrf_row->n_ports; i++)
+      {
+          if (vrf_row->ports[i] != port_row)
+              ports[n++] = vrf_row->ports[i];
+      }
+      ovsrec_vrf_set_ports (vrf_row, ports, n);
+      ovsrec_port_delete (port_row);
       port_check_and_add (port_name, true, true, status_txn);
+      free (ports);
       free (port_name);
     }
 
@@ -373,12 +384,11 @@ vrf_delete (const char *vrf_name)
   /* OPS_TODO: In case multiple vrfs. */
 #ifdef VRF_ENABLE
   struct ovsrec_vrf **vrfs;
-  int n;
   vrfs = xmalloc(sizeof *ovs_row->vrfs * (ovs_row->n_vrfs - 1));
   for (i = n = 0; i < ovs_row->n_vrfs; i++)
     {
       if (strcmp(ovs_row->vrfs[i]->name,vrf_name) != 0)
-      vrfs[n++] = ovs_row->vrfs[i];
+          vrfs[n++] = ovs_row->vrfs[i];
     }
   ovsrec_system_set_vrfs(ovs_row, vrfs, n);
   free(vrfs);
@@ -386,7 +396,6 @@ vrf_delete (const char *vrf_name)
   ovsrec_system_set_vrfs (ovs_row, NULL, 0);
 #endif
 
-  ovsrec_vrf_delete (vrf_row);
   status = cli_do_config_finish (status_txn);
 
   if (status == TXN_SUCCESS)
