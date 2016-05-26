@@ -1079,7 +1079,9 @@ vtysh_ovsdb_is_loaded()
 void
 vtysh_ovsdb_exit(void)
 {
+    VTYSH_OVSDB_LOCK;
     ovsdb_idl_destroy(idl);
+    VTYSH_OVSDB_UNLOCK;
 }
 
 /* Check whether config is initialized by subsystem. */
