@@ -394,6 +394,7 @@ bool
 verify_ifname(char *str)
 {
     uint16_t vlanid = 0;
+    uint16_t count = 0;
     char *endptr = NULL;
 
     if (VERIFY_VLAN_IFNAME(str) != 0) {
@@ -407,11 +408,16 @@ verify_ifname(char *str)
 
     while(*str) {
         if (isdigit(*str)) {
+            if (count != 4 || *str == '0') {
+                vty_out (vty, "Invalid vlan input.%s", VTY_NEWLINE);
+                return 0;
+            }
             vlanid = strtol(str, &endptr, 10);
             VLOG_DBG("%s vlanid = %d, str = %s\n", __func__, vlanid, str);
             break;
         } else {
             str++;
+            count++;
             if (*str == '\0') {
                 vty_out (vty, "Invalid vlan input%s", VTY_NEWLINE);
                 return 0;
