@@ -18,7 +18,7 @@
 # 02111-1307, USA.
 
 import time
-import pytest
+from pytest import mark
 from opsvsi.docker import *
 from opsvsi.opsvsitest import *
 
@@ -162,7 +162,7 @@ class LogrotateTests(OpsVsiTest):
         self.testLogrotation()
         switch.cmd('date --set=' + '"' + now + '"')
 
-
+@mark.skipif(True, reason="Disabling test as modular FW test is enabled")
 class Test_logrotate:
 
     def setup(self):

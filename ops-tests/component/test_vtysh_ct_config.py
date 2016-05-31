@@ -20,8 +20,6 @@
 OpenSwitch Test for switchd related configurations.
 """
 
-import pytest
-# from time import sleep
 
 TOPOLOGY = """
 # +-------+
@@ -73,7 +71,7 @@ def disablelldptxdirtest(dut, step):
     dut('end')
     lines = out.splitlines()
     for line in lines:
-        if 'no lldp transmission' in line:
+        if 'no lldp transmit' in line:
             lldp_txrx_disabled = True
     assert lldp_txrx_disabled is True
 
@@ -285,7 +283,6 @@ def restoreconfigfromrunningconfig(dut, step):
     dut('end')
 
 
-@pytest.mark.skipif(True, reason="Defective validation line 76")
 def test_vtysh_ct_config(topology, step):
     ops1 = topology.get('ops1')
     assert ops1 is not None

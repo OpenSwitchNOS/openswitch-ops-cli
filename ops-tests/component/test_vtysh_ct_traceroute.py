@@ -20,8 +20,6 @@
 OpenSwitch Test for switchd related configurations.
 """
 
-# from pytest import set_trace
-# from time import sleep
 
 TOPOLOGY = """
 # +-------+
