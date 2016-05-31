@@ -17,7 +17,6 @@
 # Software Foundation, Inc., 59 Temple Place - Suite 330, BoTeston, MA
 # 02111-1307, USA.
 
-from pytest import mark
 
 TOPOLOGY = """
 # +-------+
@@ -118,7 +117,7 @@ def log_rotation_period(sw1):
     log_rotation()
     sw1('date --set=' + '"' + now + '"', shell='bash')
 
-@mark.skipif(True, reason="Disabling due to gate job failures")
+
 def test_vtysh_ct_logrotate(topology, step):
     sw1 = topology.get("sw1")
     assert sw1 is not None

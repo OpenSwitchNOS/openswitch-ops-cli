@@ -19,6 +19,7 @@
 """
 OpenSwitch Test for switchd related configurations.
 """
+
 from pytest import mark
 
 

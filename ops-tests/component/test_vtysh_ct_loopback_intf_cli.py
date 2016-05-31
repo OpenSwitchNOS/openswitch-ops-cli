@@ -19,7 +19,7 @@
 """
 OpenSwitch Test for switchd related configurations.
 """
-from pytest import mark
+
 import re
 
 TOPOLOGY = """
@@ -41,7 +41,7 @@ def alphanumeric_sort(l):
     return sorted(l, key = alphanum_key)
 
 
-@mark.skipif(True, reason="Disabling due to random gate job failures")
+
 def test_vtysh_ct_loopback_intf_cli(topology, step):
     ops1 = topology.get('ops1')
     assert ops1 is not None
