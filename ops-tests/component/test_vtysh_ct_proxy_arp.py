@@ -17,7 +17,6 @@
 # Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-import pytest
 
 TOPOLOGY = """
 # +-------+
@@ -64,7 +63,20 @@ def proxy_arp_on_l3_vlan_int(sw1):
 
 def proxy_arp_on_split_child_int(sw1):
     sw1("interface 50")
-    sw1("split \n y")
+
+    sw1._shells['vtysh']._prompt = (
+        '.*Do you want to continue [y/n]?'
+    )
+
+    sw1("split")
+
+    sw1._shells['vtysh']._prompt = (
+        '(^|\n)switch(\\([\\-a-zA-Z0-9]*\\))?#'
+    )
+
+    sw1('y')
+    sw1(' ')
+
     sw1("interface 50-1")
     sw1("ip proxy-arp")
     output = sw1("do show interface 50-1")
@@ -74,7 +86,20 @@ def proxy_arp_on_split_child_int(sw1):
     assert 'ip proxy-arp' not in output
     sw1("ip proxy-arp")
     sw1("interface 50")
-    sw1("no split \n y")
+
+    sw1._shells['vtysh']._prompt = (
+        '.*Do you want to continue [y/n]?'
+    )
+
+    sw1("no split")
+
+    sw1._shells['vtysh']._prompt = (
+        '(^|\n)switch(\\([\\-a-zA-Z0-9]*\\))?#'
+    )
+
+    sw1('y')
+    sw1(' ')
+
     output = sw1("do show running-config")
     assert 'ip proxy-arp' not in output
     sw1("interface 51-1")
@@ -92,12 +117,24 @@ def proxy_arp_on_parent_int(sw1):
     sw1("no ip proxy-arp")
     output = sw1("do show running-config")
     assert 'ip proxy-arp' not in output
-    sw1("split \n yes")
+
+    sw1._shells['vtysh']._prompt = (
+        '.*Do you want to continue [y/n]?'
+    )
+
+    sw1("split")
+
+    sw1._shells['vtysh']._prompt = (
+        '(^|\n)switch(\\([\\-a-zA-Z0-9]*\\))?#'
+    )
+
+    sw1('y')
+    sw1(' ')
+
     output = sw1("ip proxy-arp")
     assert 'This interface has been split. Operation not allowed' in output
 
 
-@pytest.mark.skipif(True, reason="Feature disabled")
 def test_vtysh_ct_proxy_arp(topology, step):
     sw1 = topology.get("sw1")
     assert sw1 is not None
