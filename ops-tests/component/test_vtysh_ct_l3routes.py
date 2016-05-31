@@ -18,6 +18,7 @@
 from time import sleep
 from re import match
 from re import findall
+from pytest import mark
 
 TOPOLOGY = """
 #
@@ -43,7 +44,7 @@ sw1:if04
 
 """
 
-
+@mark.skipif(True, reason="Unstable test case")
 def get_vrf_uuid(switch, vrf_name, step):
     """
     This function takes a switch and a vrf_name as inputs and returns
