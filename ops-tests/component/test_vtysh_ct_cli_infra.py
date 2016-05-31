@@ -16,7 +16,6 @@
 # under the License.
 
 from time import sleep
-from pytest import mark
 
 TOPOLOGY = """
 #
@@ -29,7 +28,7 @@ TOPOLOGY = """
 [type=openswitch name="Switch 1"] sw1
 """
 
-@mark.skipif(True, reason="Disabling tests due to gate job failures")
+
 def test_alias_cli_command(topology, step):
     step("***           Test to verify alias clis               ***")
     sw1 = topology.get('sw1')
@@ -56,9 +55,9 @@ def test_alias_cli_command(topology, step):
     sw1('alias llht lldp holdtime $1; hostname $2'.format(**locals()))
     sw1('llht 6 TestHName'.format(**locals()))
 
-    # sw1._shells['vtysh']._prompt = (
-    #     '(^|\n)TestHName(\\([\\-a-zA-Z0-9]*\\))?#'
-    # )
+    sw1._shells['vtysh']._prompt = (
+        '(^|\n)TestHName(\\([\\-a-zA-Z0-9]*\\))?#'
+    )
     sw1(' ')
 
     out = sw1('do show running'.format(**locals()))
@@ -69,9 +68,9 @@ def test_alias_cli_command(topology, step):
 
     sw1('no hostname'.format(**locals()))
 
-    # sw1._shells['vtysh']._prompt = (
-    #     '(^|\n)switch(\\([\\-a-zA-Z0-9]*\\))?#'
-    # )
+    sw1._shells['vtysh']._prompt = (
+        '(^|\n)switch(\\([\\-a-zA-Z0-9]*\\))?#'
+    )
     sw1(' ')
 
     sw1('no lldp holdtime'.format(**locals()))
