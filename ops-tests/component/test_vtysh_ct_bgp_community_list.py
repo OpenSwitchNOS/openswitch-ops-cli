@@ -20,9 +20,6 @@
 OpenSwitch Test for switchd related configurations.
 """
 
-# from pytest import set_trace
-# from time import sleep
-from pytest import mark
 
 TOPOLOGY = """
 # +-------+
@@ -148,7 +145,7 @@ def delete_bgp_extcommunity_list(dut, step):
             community_deleted = False
     assert community_deleted is True
 
-@mark.skipif(True, reason="Disabling tests due to gate job failures")
+
 def test_vtysh_ct_bgp_community_list(topology, step):
     ops1 = topology.get("ops1")
     assert ops1 is not None
