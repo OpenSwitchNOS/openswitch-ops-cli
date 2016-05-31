@@ -15,7 +15,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pytest
+from pytest import mark
 import re
 from opstestfw import *
 from opstestfw.switch.CLI import *
@@ -91,7 +91,57 @@ def sftpclient_host_limit(dut01):
 
     return True
 
+def sftpclient_non_admin_user(dut01):
+    if (enterConfigShell(dut01) is False):
+        return False
 
+    LogOutput('info', "Test SFTP client for a netop user")
+    hostname = ' 127.0.0.1'
+    username = "root"
+    srcpath = ' /etc/ssh/sshd_config'
+    dstpath = ' /home/'
+    copy = "copy sftp "
+
+    # Login to the device as a netop user
+    cmd = "start-shell"
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Failed to enter the bash shell"
+
+    cmd = "su - netop"
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Failed to enter vtysh as a netop user"
+
+    # non-interactive sftp client
+    cmd = copy+username+hostname+srcpath+dstpath
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to check the non-admin user failed"
+
+    cmdOut = dut01.cmdVtysh(command=cmd)
+    assert 'ERROR :This user has no authorisation to ' \
+           'execute this command' \
+           in cmdOut, "Test to verify sftp client with non-admin user failed"
+
+    # interactive sftp client
+    cmd = copy+username+hostname
+    devIntReturn = dut01.DeviceInteract(command=cmd)
+    retCode = devIntReturn.get('returnCode')
+    assert retCode == 0, "Test to check the non-admin user failed"
+
+    cmdOut = dut01.cmdVtysh(command=cmd)
+    assert 'ERROR :This user has no authorisation to ' \
+           'execute this command' \
+           in cmdOut, "Test to verify sftp client with non-admin user failed"
+
+    dut01.cmdVtysh(command="exit")
+    dut01.cmdVtysh(command="exit")
+
+    return True
+
+
+@mark.skipif(True, reason="Disabling test as modular FW test is enabled")
 class Test_sftpclient_configuration:
     def setup_class(cls):
         # Test object will parse command line and formulate the env
@@ -119,3 +169,13 @@ class Test_sftpclient_configuration:
             LogOutput('info', "Test SFTP client hostname max limit - passed")
         else:
             LogOutput('error', "Test SFTP client hostname max limit - failed")
+
+    def test_sftpclient_non_admin_user(self):
+        dut01Obj = self.topoObj.deviceObjGet(device="dut01")
+        retValue = sftpclient_non_admin_user(dut01Obj)
+        if(retValue):
+            LogOutput('info',
+                      "Test SFTP client for a non-admin user - passed")
+        else:
+            LogOutput('error',
+                      "Test SFTP client for a non-admin user - failed")

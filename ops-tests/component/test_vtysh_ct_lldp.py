@@ -18,7 +18,7 @@
 # 02111-1307, USA.
 
 from time import sleep
-import pytest
+from pytest import mark
 
 TOPOLOGY = """
 # +-------+
@@ -363,8 +363,7 @@ def lldp_show_local_device_test(sw1):
             counter += 1
     assert counter is 3
 
-
-@pytest.mark.skipif(True, reason="Problematic validation line 362")
+@mark.skipif(True, reason="Unstable test case")
 def test_vtysh_ct_lldp(topology, step):
     sw1 = topology.get("sw1")
     step('Test to enable LLDP feature')
