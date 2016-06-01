@@ -149,6 +149,8 @@ enum node_type
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
   SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
   LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
+  IPSEC_IKE_NODE,                   /* IPsec policy node */
+  IPSEC_IKE_ISAKMP_NODE,            /* IPsec ISAKMP node */
 #endif
   VTY_NODE,			/* Vty node. */
 };
