@@ -5879,7 +5879,7 @@ ospf_lsa_detail_show(const struct ovsrec_ospf_lsa  *lsa_row)
    }
    if (lsa_row->n_chksum > 0)
        vty_out (vty, "  Checksum: 0x%04x%s",
-                        ntohs(lsa_row->chksum),VTY_NEWLINE);
+                        ntohs(*(lsa_row->chksum)),VTY_NEWLINE);
    else
         vty_out(vty, "  Checksum: %s%s",
                        OSPF_DEFAULT_HEXA_VALUE,VTY_NEWLINE);
@@ -7903,87 +7903,155 @@ DEFUN (cli_ip_ospf_interface_show,
 }
 
 
-DEFUN (cli_ip_ospf_neighbor_show,
-       cli_ip_ospf_neighbor_show_cmd,
-       "show ip ospf neighbor {all}",
+DEFUN (cli_ip_ospf_neighbor_all_show,
+       cli_ip_ospf_neighbor_all_show_cmd,
+       "show ip ospf neighbor all",
        SHOW_STR
        IP_STR
        OSPF_STR
        OSPF_NEIGHBOR_SHOW_STR
        ALL_STR)
 {
-    if (argv[0])
-        ospf_ip_router_neighbor_show(NULL, 0, true);
-    else
-        ospf_ip_router_neighbor_show(NULL, 0, false);
+    ospf_ip_router_neighbor_show(NULL, 0, true);
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_ip_ospf_neighbor_show,
+       cli_ip_ospf_neighbor_show_cmd,
+       "show ip ospf neighbor",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       OSPF_NEIGHBOR_SHOW_STR)
+{
+    ospf_ip_router_neighbor_show(NULL, 0, false);
+    return CMD_SUCCESS;
+}
+
+
+DEFUN (cli_ip_ospf_neighbor_detail_all_show,
+       cli_ip_ospf_neighbor_detail_all_show_cmd,
+       "show ip ospf neighbor detail all",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       OSPF_NEIGHBOR_SHOW_STR
+       DETAIL_STR
+       ALL_STR)
+{
+    ospf_ip_router_neighbor_detail_show(NULL, 0, true);
     return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_neighbor_detail_show,
        cli_ip_ospf_neighbor_detail_show_cmd,
-       "show ip ospf neighbor detail {all}",
+       "show ip ospf neighbor detail",
        SHOW_STR
        IP_STR
        OSPF_STR
        OSPF_NEIGHBOR_SHOW_STR
-       DETAIL_STR
+       DETAIL_STR)
+{
+    ospf_ip_router_neighbor_detail_show(NULL, 0, false);
+    return CMD_SUCCESS;
+}
+
+
+DEFUN (cli_ip_ospf_neighbor_ifname_all_show,
+       cli_ip_ospf_neighbor_ifname_all_show_cmd,
+       "show ip ospf neighbor IFNAME all",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       OSPF_NEIGHBOR_SHOW_STR
+       IFNAME_STR
        ALL_STR)
 {
-    if (argv[0])
-        ospf_ip_router_neighbor_detail_show(NULL, 0, true);
-    else
-        ospf_ip_router_neighbor_detail_show(NULL, 0, false);
+    ospf_ip_router_neighbor_show(argv[0], 0, true);
     return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_neighbor_ifname_show,
        cli_ip_ospf_neighbor_ifname_show_cmd,
-       "show ip ospf neighbor IFNAME {all}",
+       "show ip ospf neighbor IFNAME",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       OSPF_NEIGHBOR_SHOW_STR
+       IFNAME_STR)
+{
+    ospf_ip_router_neighbor_show(argv[0], 0, false);
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_ip_ospf_nbr_ifname_detail_all_show,
+       cli_ip_ospf_nbr_ifname_detail_all_show_cmd,
+       "show ip ospf neighbor IFNAME detail all",
        SHOW_STR
        IP_STR
        OSPF_STR
        OSPF_NEIGHBOR_SHOW_STR
        IFNAME_STR
+       DETAIL_STR
        ALL_STR)
 {
-    if (argv[1])
-        ospf_ip_router_neighbor_show(argv[0], 0, true);
-    else
-        ospf_ip_router_neighbor_show(argv[0], 0, false);
+    ospf_ip_router_neighbor_detail_show(argv[0], 0, true);
     return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_nbr_ifname_detail_show,
        cli_ip_ospf_nbr_ifname_detail_show_cmd,
-       "show ip ospf neighbor IFNAME detail {all}",
+       "show ip ospf neighbor IFNAME detail",
        SHOW_STR
        IP_STR
        OSPF_STR
        OSPF_NEIGHBOR_SHOW_STR
        IFNAME_STR
-       DETAIL_STR
+       DETAIL_STR)
+{
+    ospf_ip_router_neighbor_detail_show(argv[0], 0, false);
+    return CMD_SUCCESS;
+}
+
+
+DEFUN (cli_ip_ospf_neighbor_nbrid_all_show,
+       cli_ip_ospf_neighbor_nbrid_all_show_cmd,
+       "show ip ospf neighbor A.B.C.D all",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       OSPF_NEIGHBOR_SHOW_STR
+       OSPF_NEIGHBOR_ID_STR
        ALL_STR)
 {
-    if (argv[1])
-        ospf_ip_router_neighbor_detail_show(argv[0], 0, true);
-    else
-        ospf_ip_router_neighbor_detail_show(argv[0], 0, false);
+    struct in_addr id;
+    int ret;
+
+    memset (&id, 0, sizeof (struct in_addr));
+    if(ospf_string_is_an_ip_addr(argv[0]))
+    {
+        ret = inet_aton (argv[0], &id);
+        if (!ret || (id.s_addr == 0))
+        {
+            vty_out (vty, "Malformed neighbor identifier.%s", VTY_NEWLINE);
+            return CMD_WARNING;
+        }
+    }
+    ospf_ip_router_neighbor_show(NULL, id.s_addr, true);
     return CMD_SUCCESS;
 }
 
 DEFUN (cli_ip_ospf_neighbor_nbrid_show,
        cli_ip_ospf_neighbor_nbrid_show_cmd,
-       "show ip ospf neighbor A.B.C.D {all}",
+       "show ip ospf neighbor A.B.C.D",
        SHOW_STR
        IP_STR
        OSPF_STR
        OSPF_NEIGHBOR_SHOW_STR
-       OSPF_NEIGHBOR_ID_STR
-       ALL_STR)
+       OSPF_NEIGHBOR_ID_STR)
 {
     struct in_addr id;
     int ret;
-
     memset (&id, 0, sizeof (struct in_addr));
     if(ospf_string_is_an_ip_addr(argv[0]))
     {
@@ -7994,17 +8062,14 @@ DEFUN (cli_ip_ospf_neighbor_nbrid_show,
             return CMD_WARNING;
         }
     }
-
-    if (argv[1])
-        ospf_ip_router_neighbor_show(NULL, id.s_addr, true);
-    else
-        ospf_ip_router_neighbor_show(NULL, id.s_addr, false);
+    ospf_ip_router_neighbor_show(NULL, id.s_addr, false);
     return CMD_SUCCESS;
 }
 
-DEFUN (cli_ip_ospf_nbr_nbrid_detail_show,
-       cli_ip_ospf_nbr_nbrid_detail_show_cmd,
-       "show ip ospf neighbor A.B.C.D detail {all}",
+
+DEFUN (cli_ip_ospf_nbr_nbrid_detail_all_show,
+       cli_ip_ospf_nbr_nbrid_detail_all_show_cmd,
+       "show ip ospf neighbor A.B.C.D detail all",
        SHOW_STR
        IP_STR
        OSPF_STR
@@ -8027,10 +8092,34 @@ DEFUN (cli_ip_ospf_nbr_nbrid_detail_show,
         }
     }
 
-    if (argv[1])
-        ospf_ip_router_neighbor_detail_show(NULL, id.s_addr, true);
-    else
-        ospf_ip_router_neighbor_detail_show(NULL, id.s_addr, false);
+    ospf_ip_router_neighbor_detail_show(NULL, id.s_addr, true);
+    return CMD_SUCCESS;
+}
+
+DEFUN (cli_ip_ospf_nbr_nbrid_detail_show,
+       cli_ip_ospf_nbr_nbrid_detail_show_cmd,
+       "show ip ospf neighbor A.B.C.D detail",
+       SHOW_STR
+       IP_STR
+       OSPF_STR
+       OSPF_NEIGHBOR_SHOW_STR
+       OSPF_NEIGHBOR_ID_STR
+       DETAIL_STR)
+{
+    struct in_addr id;
+    int ret;
+
+    memset (&id, 0, sizeof (struct in_addr));
+    if(ospf_string_is_an_ip_addr(argv[0]))
+    {
+        ret = inet_aton (argv[0], &id);
+        if (!ret || (id.s_addr == 0))
+        {
+            vty_out (vty, "Malformed neighbor identifier.%s", VTY_NEWLINE);
+            return CMD_WARNING;
+        }
+    }
+    ospf_ip_router_neighbor_detail_show(NULL, id.s_addr, false);
     return CMD_SUCCESS;
 }
 
@@ -9645,11 +9734,17 @@ ospf_vty_init(void)
     /* Show commands */
     install_element(ENABLE_NODE, &cli_ip_ospf_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_interface_show_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_all_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_show_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_detail_all_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_detail_show_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_ifname_all_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_ifname_show_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_nbr_ifname_detail_all_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_nbr_ifname_detail_show_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_nbrid_all_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_neighbor_nbrid_show_cmd);
+    install_element(ENABLE_NODE, &cli_ip_ospf_nbr_nbrid_detail_all_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_nbr_nbrid_detail_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_route_show_cmd);
     install_element(ENABLE_NODE, &cli_ip_ospf_database_type_id_cmd);
