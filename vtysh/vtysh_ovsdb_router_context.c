@@ -742,24 +742,27 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
                                       value_timers[1], ovs_vrf->
                                       value_bgp_routers[j]->value_timers[0]);
 
-            if (ovs_vrf->value_bgp_routers[j]->n_redistribute > 0) {
-                for (k = 0; k < ovs_vrf->value_bgp_routers[j]->n_redistribute;
+            if (ovs_vrf->value_bgp_routers[j]->n_redistribute_protocol > 0) {
+                for (k = 0; k < ovs_vrf->value_bgp_routers[j]->n_redistribute_protocol;
                      k++) {
-                        if (strlen(ovs_vrf->value_bgp_routers[j]->
-                            value_redistribute[k]->name) == 0)
                             vtysh_ovsdb_cli_print(p_msg,"%4s %s %s","",
                                                   "redistribute",
                                                   ovs_vrf->value_bgp_routers[j]
-                                                  ->key_redistribute[k]);
-                        else
-                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s","",
-                                                  "redistribute",
-                                                  ovs_vrf->value_bgp_routers[j]
-                                                  ->key_redistribute[k],
-                                                  "route-map",
-                                                  ovs_vrf->value_bgp_routers[j]
-                                                  ->value_redistribute[k]
-                                                  ->name);
+                                                  ->redistribute_protocol[k]);
+                }
+            }
+
+            if (ovs_vrf->value_bgp_routers[j]->n_redistribute > 0) {
+                for (k = 0; k < ovs_vrf->value_bgp_routers[j]->n_redistribute;
+                     k++) {
+                        vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s","",
+                                              "redistribute",
+                                              ovs_vrf->value_bgp_routers[j]
+                                              ->key_redistribute[k],
+                                              "route-map",
+                                              ovs_vrf->value_bgp_routers[j]
+                                              ->value_redistribute[k]
+                                              ->name);
                 }
             }
             if (ovs_vrf->value_bgp_routers[j]->n_fast_external_failover)

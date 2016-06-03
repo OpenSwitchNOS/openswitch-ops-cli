@@ -184,6 +184,10 @@ static const struct lookup_entry set_table[] = {
     {NULL, NULL},
 };
 
+static int
+cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
+                                  const char *name);
+
 /********************** Simple error handling ***********************/
 
 static void
@@ -10021,6 +10025,132 @@ policy_get_route_map_in_ovsdb(const char * name)
     return NULL;
 }
 
+const struct ovsrec_bgp_router*
+get_redistribute_confg_in_ovsdb(const char *type, const char *name)
+{
+    const struct ovsrec_bgp_router *bgp_router_row;
+    int i = 0;
+    const struct ovsrec_route_map *rt_map_row;
+    OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_row,idl) {
+        for(i = 0; i <bgp_router_row->n_redistribute; i++) {
+            if (!strcmp(bgp_router_row->key_redistribute[i], type)) {
+                if (name == NULL){
+                    return bgp_router_row;
+                }
+                rt_map_row = bgp_router_row->value_redistribute[i];
+                if(rt_map_row->name &&
+                    !strcmp(rt_map_row->name,name)) {
+                    return (struct ovsrec_bgp_router *)bgp_router_row;
+                }
+            }
+        }
+    }
+    return  NULL;
+}
+
+bool
+redistribute_protocol_cfg_exists (const struct ovsrec_bgp_router *bgp_router_row,
+                                  const char *type)
+{
+    int i;
+    if (!type || !bgp_router_row) {
+        return false;
+    }
+
+    for (i=0; i < bgp_router_row->n_redistribute_protocol; i++) {
+        if(!strcmp(type, bgp_router_row->redistribute_protocol[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+char *
+redistribute_rmap_cfg_exists (const struct ovsrec_bgp_router *bgp_router_row,
+                                  const char *type)
+{
+    int i;
+    if (!type || !bgp_router_row) {
+        return false;
+    }
+
+    for (i=0; i < bgp_router_row->n_redistribute; i++) {
+        if(!strcmp(type, bgp_router_row->key_redistribute[i])) {
+            return ((char *)(bgp_router_row->value_redistribute[i]->name));
+        }
+    }
+
+    return NULL;
+}
+
+
+static int
+bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
+                                  const char *name)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    struct ovsrec_route_map **rt_maps;
+    char  **redist ;
+    int i, j, new_size;
+    /* Start of transaction. */
+
+    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
+    if (vrf_row == NULL) {
+        return -1;
+    }
+    /* See if it already exists. */
+
+
+    if (name) {
+        bgp_router_row = get_redistribute_confg_in_ovsdb(type,name);
+        if (bgp_router_row->n_redistribute ==  1) {
+             ovsrec_bgp_router_set_redistribute(bgp_router_row, NULL,
+                                      NULL, 0);
+             return 0;
+        }
+
+        new_size = bgp_router_row->n_redistribute - 1;
+        redist = xmalloc(sizeof(char *) * new_size);
+        rt_maps = xmalloc(sizeof *bgp_router_row->
+                          value_redistribute * new_size);
+        for (i = 0, j = 0; i < bgp_router_row->
+                           n_redistribute; i++) {
+            if(strcmp(bgp_router_row->key_redistribute[i], type)) {
+                redist[j] = bgp_router_row->key_redistribute[i];
+                rt_maps[j] = bgp_router_row->value_redistribute[i];
+                j++;
+            }
+        }
+        ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
+                                      rt_maps, new_size);
+        free(redist);
+        free(rt_maps);
+    } else {
+        bgp_router_row = ovsrec_bgp_router_first(idl);
+        if (bgp_router_row->n_redistribute_protocol ==  1) {
+             ovsrec_bgp_router_set_redistribute_protocol(bgp_router_row, NULL,
+                                       0);
+             return 0;
+        }
+
+        new_size = bgp_router_row->n_redistribute_protocol - 1;
+        redist = xmalloc(sizeof(char *) * new_size);
+        for (i = 0, j = 0; i < bgp_router_row->
+                           n_redistribute_protocol; i++) {
+            if(strcmp(bgp_router_row->redistribute_protocol[i], type)) {
+                redist[j] = bgp_router_row->redistribute_protocol[i];
+                j++;
+            }
+        }
+        ovsrec_bgp_router_set_redistribute_protocol(bgp_router_row, redist,
+                                      new_size);
+        free(redist);
+    }
+    return 0;
+}
+
 static int
 cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
                                   const char *name)
@@ -10032,6 +10162,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
     struct ovsdb_idl_txn *bgp_router_txn = NULL;
     char  **redist ;
     int i, new_size;
+    char *rmap_name;
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
 
@@ -10048,6 +10179,16 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
     } else {
 
         if (name) {
+            if (redistribute_rmap_cfg_exists(bgp_router_row, type)) {
+                ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute rmap config exists");
+            }
+            if (redistribute_protocol_cfg_exists(bgp_router_row, type)) {
+                if (-1 == bgp_no_redistribute_cmd_execute(NULL, type, NULL)) {
+                    ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute protocol config unset"
+                        "failed");
+                }
+            }
+
             rt_map_row = policy_get_route_map_in_ovsdb(name);
             if (!rt_map_row) {
                 ERRONEOUS_DB_TXN(bgp_router_txn, "Route Map not found");
@@ -10071,6 +10212,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
             free(rt_maps);
 
         } else {
+#if 0
             new_size = bgp_router_row->n_redistribute + 1;
             redist = xmalloc(sizeof (char *) * new_size);
             rt_map_row = policy_get_route_map_in_ovsdb("");
@@ -10091,6 +10233,26 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
                              rt_maps, new_size);
             free(redist);
             free(rt_maps);
+#endif
+            if (redistribute_protocol_cfg_exists(bgp_router_row, type)) {
+                ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute protocol config exists");
+            }
+            rmap_name = redistribute_rmap_cfg_exists(bgp_router_row, type);
+            if (NULL != rmap_name) {
+                 if (-1 == bgp_no_redistribute_cmd_execute(NULL, type, rmap_name)) {
+                    ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute rmap config unset"
+                        "failed");
+                }
+            }
+            new_size = bgp_router_row->n_redistribute_protocol + 1;
+            redist = xmalloc(sizeof (char *) * new_size);
+            for (i=0; i < bgp_router_row->n_redistribute_protocol; i++) {
+                redist[i] = bgp_router_row->redistribute_protocol[i];
+            }
+            redist[bgp_router_row->n_redistribute_protocol] = (char *)type;
+            ovsrec_bgp_router_set_redistribute_protocol(bgp_router_row, redist,
+                             new_size);
+            free(redist);
        }
     }
     /* End of transaction. */
@@ -10167,29 +10329,6 @@ DEFUN(bgp_redistribute_ipv4_metric_rmap,
     return CMD_SUCCESS;
 }
 
-const struct ovsrec_bgp_router*
-get_redistribute_confg_in_ovsdb(const char *type, const char *name)
-{
-    const struct ovsrec_bgp_router *bgp_router_row;
-    int i = 0;
-    const struct ovsrec_route_map *rt_map_row;
-    OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_row,idl) {
-        for(i = 0; i <bgp_router_row->n_redistribute; i++) {
-            if (!strcmp(bgp_router_row->key_redistribute[i], type)) {
-                if (name == NULL){
-                    return bgp_router_row;
-                }
-                rt_map_row = bgp_router_row->value_redistribute[i];
-                if(rt_map_row->name &&
-                    !strcmp(rt_map_row->name,name)) {
-                    return (struct ovsrec_bgp_router *)bgp_router_row;
-                }
-            }
-        }
-    }
-    return  NULL;
-}
-
 static int
 cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
                                   const char *name)
@@ -10212,13 +10351,21 @@ cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
 
     if (name) {
         bgp_router_row = get_redistribute_confg_in_ovsdb(type,name);
-    } else {
-        bgp_router_row = get_redistribute_confg_in_ovsdb(type,"");
-    }
-    if (bgp_router_row == NULL) {
-        ERRONEOUS_DB_TXN(bgp_router_txn,
-                         "redistribute configuration not found");
-    } else {
+        if (!bgp_router_row->n_redistribute) {
+             END_DB_TXN(bgp_router_txn);
+        }
+        if (bgp_router_row->n_redistribute ==  1) {
+            if((!strcmp(bgp_router_row->key_redistribute[0],
+                 type)) &&
+               (!strcmp(bgp_router_row->value_redistribute[0]->name,
+                 name))) {
+                 ovsrec_bgp_router_set_redistribute(bgp_router_row, NULL,
+                                       NULL, 0);
+                 END_DB_TXN(bgp_router_txn);
+            } else {
+                 END_DB_TXN(bgp_router_txn);
+            }
+        }
 
         new_size = bgp_router_row->n_redistribute - 1;
         redist = xmalloc(sizeof(char *) * new_size);
@@ -10236,6 +10383,34 @@ cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
                                       rt_maps, new_size);
         free(redist);
         free(rt_maps);
+    } else {
+        bgp_router_row = ovsrec_bgp_router_first(idl);
+        if (!bgp_router_row->n_redistribute_protocol) {
+             END_DB_TXN(bgp_router_txn);
+        }
+        if (bgp_router_row->n_redistribute_protocol ==  1) {
+             if(!strcmp(bgp_router_row->redistribute_protocol[0],
+                  type)) {
+                 ovsrec_bgp_router_set_redistribute_protocol(bgp_router_row, NULL,
+                                       0);
+                 END_DB_TXN(bgp_router_txn);
+            } else {
+                 END_DB_TXN(bgp_router_txn);
+            }
+        }
+
+        new_size = bgp_router_row->n_redistribute_protocol - 1;
+        redist = xmalloc(sizeof(char *) * new_size);
+        for (i = 0, j = 0; i < bgp_router_row->
+                           n_redistribute_protocol; i++) {
+            if(strcmp(bgp_router_row->redistribute_protocol[i], type)) {
+                redist[j] = bgp_router_row->redistribute_protocol[i];
+                j++;
+            }
+        }
+        ovsrec_bgp_router_set_redistribute_protocol(bgp_router_row, redist,
+                                      new_size);
+        free(redist);
     }
     /* End of transaction. */
     END_DB_TXN(bgp_router_txn);
