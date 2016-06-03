@@ -270,6 +270,7 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_maximum_paths);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_timers);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_redistribute);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_redistribute_route_map);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_always_compare_med);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_deterministic_med);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_router_col_gr_stale_timer);
