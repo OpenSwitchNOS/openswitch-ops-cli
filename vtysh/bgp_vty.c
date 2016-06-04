@@ -9954,60 +9954,6 @@ DEFUN(show_ip_bgp_attr_info,
     return CMD_SUCCESS;
 }
 
-/* 'Show bgp rsclient' commands. */
-DEFUN(show_ip_bgp_rsclient_summary,
-      show_ip_bgp_rsclient_summary_cmd,
-      "show ip bgp rsclient summary",
-      SHOW_STR
-      IP_STR
-      BGP_STR
-      "Information about Route Server Clients\n"
-      "Summary of all Route Server Clients\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(show_ip_bgp_ipv4_rsclient_summary,
-      show_ip_bgp_ipv4_rsclient_summary_cmd,
-      "show ip bgp ipv4 (unicast|multicast) rsclient summary",
-      SHOW_STR
-      IP_STR
-      BGP_STR
-      "Address family\n"
-      "Address family modifier\n"
-      "Address family modifier\n"
-      "Information about Route Server Clients\n"
-      "Summary of all Route Server Clients\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-#ifdef HAVE_IPV6
-DEFUN(show_bgp_rsclient_summary,
-      show_bgp_rsclient_summary_cmd,
-      "show bgp rsclient summary",
-      SHOW_STR
-      BGP_STR
-      "Information about Route Server Clients\n"
-      "Summary of all Route Server Clients\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-ALIAS(show_bgp_rsclient_summary,
-      show_bgp_ipv6_rsclient_summary_cmd,
-      "show bgp ipv6 rsclient summary",
-      SHOW_STR
-      BGP_STR
-      "Address family\n"
-      "Information about Route Server Clients\n"
-      "Summary of all Route Server Clients\n")
-
-#endif /* HAVE IPV6 */
-
 const struct ovsrec_route_map *
 policy_get_route_map_in_ovsdb(const char * name)
 {
@@ -11336,23 +11282,6 @@ bgp_vty_init(void)
     install_element(ENABLE_NODE, &show_ipv6_bgp_summary_cmd);
     install_element(ENABLE_NODE, &show_ipv6_mbgp_summary_cmd);
     install_element(ENABLE_NODE, &show_ipv6_bgp_cmd);
-#endif /* HAVE_IPV6 */
-
-    /* "Show ip bgp rsclient" commands. */
-    install_element(VIEW_NODE, &show_ip_bgp_rsclient_summary_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_rsclient_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_rsclient_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
-
-#ifdef HAVE_IPV6
-    install_element(VIEW_NODE, &show_bgp_rsclient_summary_cmd);
-    install_element(VIEW_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_bgp_rsclient_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
-    install_element(ENABLE_NODE, &show_bgp_rsclient_summary_cmd);
-    install_element(ENABLE_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
 #endif /* HAVE_IPV6 */
 
     /* "Show ip bgp paths" commands. */
