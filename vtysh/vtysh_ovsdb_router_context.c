@@ -705,7 +705,7 @@ vtysh_ret_val
 vtysh_router_context_bgp_clientcallback(void *p_private)
 {
     const struct ovsrec_vrf *ovs_vrf = NULL;
-    int i = 0, j = 0, k = 0;
+    int i = 0, j = 0;
 
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
@@ -742,26 +742,6 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
                                       value_timers[1], ovs_vrf->
                                       value_bgp_routers[j]->value_timers[0]);
 
-            if (ovs_vrf->value_bgp_routers[j]->n_redistribute > 0) {
-                for (k = 0; k < ovs_vrf->value_bgp_routers[j]->n_redistribute;
-                     k++) {
-                        if (strlen(ovs_vrf->value_bgp_routers[j]->
-                            value_redistribute[k]->name) == 0)
-                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s","",
-                                                  "redistribute",
-                                                  ovs_vrf->value_bgp_routers[j]
-                                                  ->key_redistribute[k]);
-                        else
-                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s","",
-                                                  "redistribute",
-                                                  ovs_vrf->value_bgp_routers[j]
-                                                  ->key_redistribute[k],
-                                                  "route-map",
-                                                  ovs_vrf->value_bgp_routers[j]
-                                                  ->value_redistribute[k]
-                                                  ->name);
-                }
-            }
             if (ovs_vrf->value_bgp_routers[j]->n_fast_external_failover)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s", "", "bgp fast-external-failover");
 
