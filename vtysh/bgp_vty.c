@@ -9967,82 +9967,6 @@ policy_get_route_map_in_ovsdb(const char * name)
     return NULL;
 }
 
-static int
-cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
-                                  const char *name)
-{
-    const struct ovsrec_vrf *vrf_row;
-    const struct ovsrec_bgp_router *bgp_router_row;
-    const struct ovsrec_route_map *rt_map_row;
-    struct ovsrec_route_map **rt_maps;
-    struct ovsdb_idl_txn *bgp_router_txn = NULL;
-    char  **redist ;
-    int i, new_size;
-    /* Start of transaction. */
-    START_DB_TXN(bgp_router_txn);
-
-    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
-    if (vrf_row == NULL) {
-        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
-    }
-    /* See if it already exists. */
-    bgp_router_row = get_ovsrec_bgp_router_with_asn((struct ovsrec_vrf *)vrf_row,
-                                                    (int64_t)vty->index);
-    /* If does not exist, nothing to modify. */
-    if (bgp_router_row == NULL) {
-        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
-    } else {
-
-        if (name) {
-            rt_map_row = policy_get_route_map_in_ovsdb(name);
-            if (!rt_map_row) {
-                ERRONEOUS_DB_TXN(bgp_router_txn, "Route Map not found");
-            }
-
-            new_size = bgp_router_row->n_redistribute + 1;
-            redist = xmalloc(sizeof (char *) * new_size);
-            rt_maps = xmalloc(sizeof * bgp_router_row->value_redistribute *
-                                new_size);
-
-            for (i=0; i < bgp_router_row->n_redistribute; i++) {
-                redist[i] = bgp_router_row->key_redistribute[i];
-                rt_maps[i] = bgp_router_row->value_redistribute[i];
-            }
-            redist[bgp_router_row->n_redistribute] = (char *)type;
-            rt_maps[bgp_router_row->n_redistribute] =
-                   CONST_CAST(struct ovsrec_route_map *, rt_map_row);
-            ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
-                                      rt_maps, new_size);
-            free(redist);
-            free(rt_maps);
-
-        } else {
-            new_size = bgp_router_row->n_redistribute + 1;
-            redist = xmalloc(sizeof (char *) * new_size);
-            rt_map_row = policy_get_route_map_in_ovsdb("");
-            if (!rt_map_row) {
-               rt_map_row = ovsrec_route_map_insert(bgp_router_txn);
-            }
-            rt_maps = xmalloc(sizeof * bgp_router_row->value_redistribute *
-                                new_size);
-
-            for (i=0; i < bgp_router_row->n_redistribute; i++) {
-                redist[i] = bgp_router_row->key_redistribute[i];
-                rt_maps[i] = bgp_router_row->value_redistribute[i];
-            }
-            rt_maps[bgp_router_row->n_redistribute] =
-                         CONST_CAST(struct ovsrec_route_map *, rt_map_row);
-            redist[bgp_router_row->n_redistribute] = (char *)type;
-            ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
-                             rt_maps, new_size);
-            free(redist);
-            free(rt_maps);
-       }
-    }
-    /* End of transaction. */
-    END_DB_TXN(bgp_router_txn);
-
-}
 
 /* Redistribute VTY commands.  */
 DEFUN(bgp_redistribute_ipv4,
@@ -10053,7 +9977,6 @@ DEFUN(bgp_redistribute_ipv4,
       "Statically configured routes\n"
       "Open Shortest Path First (OSPFv2)\n")
 {
-    cli_bgp_redistribute_cmd_execute(NULL,argv[0],NULL);
     return CMD_SUCCESS;
 }
 
@@ -10067,7 +9990,6 @@ DEFUN(bgp_redistribute_ipv4_rmap,
       "Route map reference\n"
       "Pointer to route-map entries\n")
 {
-    cli_bgp_redistribute_cmd_execute(NULL,argv[0],argv[1]);
     return CMD_SUCCESS;
 }
 
@@ -10113,81 +10035,6 @@ DEFUN(bgp_redistribute_ipv4_metric_rmap,
     return CMD_SUCCESS;
 }
 
-const struct ovsrec_bgp_router*
-get_redistribute_confg_in_ovsdb(const char *type, const char *name)
-{
-    const struct ovsrec_bgp_router *bgp_router_row;
-    int i = 0;
-    const struct ovsrec_route_map *rt_map_row;
-    OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_row,idl) {
-        for(i = 0; i <bgp_router_row->n_redistribute; i++) {
-            if (!strcmp(bgp_router_row->key_redistribute[i], type)) {
-                if (name == NULL){
-                    return bgp_router_row;
-                }
-                rt_map_row = bgp_router_row->value_redistribute[i];
-                if(rt_map_row->name &&
-                    !strcmp(rt_map_row->name,name)) {
-                    return (struct ovsrec_bgp_router *)bgp_router_row;
-                }
-            }
-        }
-    }
-    return  NULL;
-}
-
-static int
-cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
-                                  const char *name)
-{
-    const struct ovsrec_vrf *vrf_row;
-    const struct ovsrec_bgp_router *bgp_router_row;
-    struct ovsrec_route_map **rt_maps;
-    struct ovsdb_idl_txn *bgp_router_txn = NULL;
-    char  **redist ;
-    int i, j, new_size;
-    /* Start of transaction. */
-    START_DB_TXN(bgp_router_txn);
-
-    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
-    if (vrf_row == NULL) {
-        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
-    }
-    /* See if it already exists. */
-
-
-    if (name) {
-        bgp_router_row = get_redistribute_confg_in_ovsdb(type,name);
-    } else {
-        bgp_router_row = get_redistribute_confg_in_ovsdb(type,"");
-    }
-    if (bgp_router_row == NULL) {
-        ERRONEOUS_DB_TXN(bgp_router_txn,
-                         "redistribute configuration not found");
-    } else {
-
-        new_size = bgp_router_row->n_redistribute - 1;
-        redist = xmalloc(sizeof(char *) * new_size);
-        rt_maps = xmalloc(sizeof *bgp_router_row->
-                          value_redistribute * new_size);
-        for (i = 0, j = 0; i < bgp_router_row->
-                           n_redistribute; i++) {
-            if(strcmp(bgp_router_row->key_redistribute[i], type)) {
-                redist[j] = bgp_router_row->key_redistribute[i];
-                rt_maps[j] = bgp_router_row->value_redistribute[i];
-                j++;
-            }
-        }
-        ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
-                                      rt_maps, new_size);
-        free(redist);
-        free(rt_maps);
-    }
-    /* End of transaction. */
-    END_DB_TXN(bgp_router_txn);
-
-}
-
 DEFUN(no_bgp_redistribute_ipv4,
       no_bgp_redistribute_ipv4_cmd,
       "no redistribute (connected | static | ospf)",
@@ -10197,7 +10044,6 @@ DEFUN(no_bgp_redistribute_ipv4,
       "Statically configured routes\n"
       "Open Shortest Path First (OSPFv2)\n")
 {
-    cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],NULL);
     return CMD_SUCCESS;
 }
 
@@ -10212,7 +10058,6 @@ DEFUN(no_bgp_redistribute_ipv4_rmap,
       "Route map reference\n"
       "Pointer to route-map entries\n")
 {
-    cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],argv[1]);
     return CMD_SUCCESS;
 }
 
