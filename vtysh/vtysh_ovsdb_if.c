@@ -556,6 +556,7 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_bgp_routers);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_ospf_routers);
+    ovsdb_idl_add_column(idl, &ovsrec_vrf_col_active_router_id);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_ports);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_name);
     ovsdb_idl_add_column(idl, &ovsrec_bridge_col_vlans);
