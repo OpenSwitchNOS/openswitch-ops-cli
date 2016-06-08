@@ -810,24 +810,23 @@ compare_nodes_by_subintf_id (const void *a_, const void *b_)
     const struct shash_node *const *a = a_;
     const struct shash_node *const *b = b_;
     unsigned int id_intf1 = 0, id_intf2 = 0;
+    unsigned int split_id = 0;
     unsigned long tag_sub_intf1 = 0, tag_sub_intf2 = 0;
 
     /* Extract the interface and sub-interface id */
-    sscanf((*a)->name, "%u.%lu", &id_intf1, &tag_sub_intf1);
-    sscanf((*b)->name, "%u.%lu", &id_intf2, &tag_sub_intf2);
-
-    if(id_intf1 == id_intf2) {
-        if (tag_sub_intf1 == tag_sub_intf2) {
-            return 0;
-        }
-        else if (tag_sub_intf1 < tag_sub_intf2) {
-            return -1;
-        }
-         else {
-            return 1;
-        }
+    if (strchr((*a)->name, '-') || strchr((*b)->name, '-'))  {
+        sscanf((*a)->name, "%u-%u.%lu", &id_intf1, &split_id, &tag_sub_intf1);
+        sscanf((*b)->name, "%u-%u.%lu", &id_intf2, &split_id, &tag_sub_intf2);
     }
-    else if (id_intf1 < id_intf2) {
+    else {
+        sscanf((*a)->name, "%u.%lu", &id_intf1, &tag_sub_intf1);
+        sscanf((*b)->name, "%u.%lu", &id_intf2, &tag_sub_intf2);
+    }
+
+    if (tag_sub_intf1 == tag_sub_intf2) {
+        return 0;
+    }
+    else if (tag_sub_intf1 < tag_sub_intf2) {
         return -1;
     }
     else {
@@ -925,64 +924,73 @@ DEFUN (cli_intf_show_subintferface_if_all,
         "Show brief info of interface\n")
 {
     const struct ovsrec_interface *ifrow = NULL;
-    char subif_prefix[MAX_IFNAME_LENGTH] = {0}, *subif_ptr = NULL;
+    char intf_name[MAX_IFNAME_LENGTH] = {0};
+    char *subif_prefix = NULL;
     struct shash sorted_interfaces;
     bool brief = false;
     const struct shash_node **nodes;
     int idx, count;
-    bool known_intf = false;
+    const char *parent_intf = NULL;
 
-    if ((argv[0] != NULL) && (strchr(argv[0], '.'))){
-         return CMD_ERR_NO_MATCH;
+    if (argv[0] != NULL) {
+        /* handle invalid arguments like vlan12, bridge_normal, 15.1 */
+        if (!atoi(argv[0]) || strchr(argv[0], '.')) {
+            return CMD_ERR_NO_MATCH;
+        }
+        parent_intf = argv[0];
     }
+
     if ((NULL != argv[1]) && (strcmp(argv[1], "brief") == 0))
     {
         brief = true;
     }
 
-    if (NULL != argv[0])
-    {
-        strcpy(subif_prefix, argv[0]);
-        subif_ptr = strtok(subif_prefix, ".");
-    }
-
     shash_init(&sorted_interfaces);
 
+    /* Only collect sub-interfaces of the parent interface specified
+     * by argv[0] */
+    memset(intf_name, '\0', sizeof(intf_name));
     OVSREC_INTERFACE_FOR_EACH(ifrow, idl)
     {
-        shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
-    }
-
-    nodes = sort_sub_interfaces(&sorted_interfaces);
-    count = shash_count(&sorted_interfaces);
-
-    for (idx = 0; idx < count; idx++)
-    {
-        ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
-
         if (strcmp(ifrow->type, OVSREC_INTERFACE_TYPE_VLANSUBINT) != 0)
         {
             continue;
         }
-        if (strncmp(ifrow->name,subif_ptr, strlen(subif_ptr)) != 0)
+
+        /* extract the parent interface from sub-interface name */
+        strncpy(intf_name, ifrow->name, sizeof(intf_name)-1);
+        subif_prefix = strtok(intf_name, ".");
+        if (strcmp(subif_prefix,parent_intf) != 0)
         {
             continue;
         }
-        if (!known_intf && brief)
-        {
-            display_subinterface_brief_header();
-        }
 
-        cli_show_subinterface_row(ifrow, brief);
-        known_intf = true;
+        shash_add(&sorted_interfaces, ifrow->name, (void *)ifrow);
     }
-    if (!known_intf && argv[0])
+
+
+    nodes = sort_sub_interfaces(&sorted_interfaces);
+    count = shash_count(&sorted_interfaces);
+
+    if (count <= 0) {
+        vty_out (vty, "No sub-interfaces configured for interface %s%s",
+                parent_intf, VTY_NEWLINE);
+        return CMD_ERR_NOTHING_TODO;
+    }
+
+    if (brief) {
+        display_subinterface_brief_header();
+    }
+
+    for (idx = 0; idx < count; idx++)
     {
-        vty_out(vty,"%% Unknown interface%s", VTY_NEWLINE);
+        ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+        cli_show_subinterface_row(ifrow, brief);
     }
 
     shash_destroy(&sorted_interfaces);
     free(nodes);
+
     return CMD_SUCCESS;
 }
 
