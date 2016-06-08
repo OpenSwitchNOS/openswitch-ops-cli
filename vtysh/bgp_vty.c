@@ -9218,17 +9218,6 @@ ALIAS(clear_ip_bgp_peer_rsclient,
       "BGP IPv6 neighbor to clear\n"
       "Soft reconfig for rsclient RIB\n")
 
-DEFUN(show_bgp_memory,
-      show_bgp_memory_cmd,
-      "show bgp memory",
-      SHOW_STR
-      BGP_STR
-      "Global BGP memory statistics\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
 /* 'Show ip bgp summary' commands. */
 
 /*Funtion to get the statistics from neighbor table. */
@@ -11287,11 +11276,6 @@ bgp_vty_init(void)
     /* Ttl_security commands. */
     install_element(BGP_NODE, &neighbor_ttl_security_cmd);
     install_element(BGP_NODE, &no_neighbor_ttl_security_cmd);
-
-    /* "Show bgp memory" commands. */
-    install_element(VIEW_NODE, &show_bgp_memory_cmd);
-    install_element(RESTRICTED_NODE, &show_bgp_memory_cmd);
-    install_element(ENABLE_NODE, &show_bgp_memory_cmd);
 }
 
 /*
