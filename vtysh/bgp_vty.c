@@ -842,6 +842,31 @@ DEFUN(vtysh_show_ip_bgp_route_map,
 }
 
 
+/*
+ * Function to get BGP router-id: if router-id is configured at BGP
+ * router level then it returns that otherwise it returns active
+ * router-id from the VRF table.
+ */
+char *
+get_bgp_router_id(const struct ovsrec_bgp_router *bgp_row)
+{
+    const struct ovsrec_vrf *ovs_vrf = NULL;
+    char *router_id = NULL;
+
+    /* Currently we only support one VRF, get the first VRF
+     * TODO expand this for multiple VRF's */
+    ovs_vrf = ovsrec_vrf_first(idl);
+
+    router_id = bgp_row->router_id;
+    if (router_id == NULL && ovs_vrf != NULL) {
+        /* use VRF table active_router_id */
+        router_id = ovs_vrf->active_router_id;
+    }
+
+    return router_id;
+}
+
+
 DEFUN(vtysh_show_ip_bgp,
       vtysh_show_ip_bgp_cmd,
       "show ip bgp",
@@ -861,7 +886,7 @@ DEFUN(vtysh_show_ip_bgp,
     }
 
     /* TODO: Need to update this when multiple BGP routers are supported. */
-    char *id = bgp_row->router_id;
+    char *id = get_bgp_router_id(bgp_row);
     if (id) {
         vty_out (vty, "Local router-id %s\n", id);
     } else {
@@ -957,7 +982,7 @@ show_route_detail(struct vty *vty,
     if (strncmp(rib_row->peer, "Static", 6) == 0) {
         vty_out (vty, " from %s ",
                  p.family == AF_INET ? "0.0.0.0" : "::");
-        vty_out (vty, "(%s)", bgp_row->router_id);
+        vty_out (vty, "(%s)", get_bgp_router_id(bgp_row));
         static_route = 1;
     } else {
         if (!(ppsd->flags & BGP_INFO_VALID))
@@ -9351,7 +9376,7 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
 
     if (bgp_router_context)
         vty_out(vty, "BGP router identifier %s, local AS number %ld\n",
-                bgp_router_context->router_id,
+                get_bgp_router_id(bgp_router_context),
                 ovs_vrf->key_bgp_routers[0]);
 
     vty_out(vty, "RIB entries %d\n", bgp_get_rib_count());
@@ -9415,7 +9440,7 @@ cli_show_bgp_summary_vty_execute(struct vty *vty, int afi, int safi)
     bgp_router_context = ovs_vrf->value_bgp_routers[0];
 
     vty_out(vty, "BGP router identifier %s, local AS number %ld%s",
-            bgp_router_context->router_id,
+            get_bgp_router_id(bgp_router_context),
             ovs_vrf->key_bgp_routers[0], VTY_NEWLINE);
 
     vty_out(vty, "RIB entries %d%s", bgp_get_rib_count(),
@@ -9620,7 +9645,7 @@ DEFUN(show_ipv6_bgp,
     }
 
     /* TODO: Need to update this when multiple BGP routers are supported. */
-    char *id = bgp_row->router_id;
+    char *id = get_bgp_router_id(bgp_row);
     if (id) {
         vty_out (vty, "Local router-id %s\n", id);
     } else {
