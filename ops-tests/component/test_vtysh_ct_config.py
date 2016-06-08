@@ -283,6 +283,22 @@ def restoreconfigfromrunningconfig(dut, step):
     dut('end')
 
 
+def createAdminLoginTest(dut, step):
+    step("Test to verify admin login  "
+         "in Vtysh shell. ")
+    output = dut("su - admin -c vtysh", shell="bash")
+    cstr = 'admin does not have the required permissions to access Vtysh.'
+    assert cstr in output
+
+
+def createNetopLoginTest(dut, step):
+    step("Test to verify netop login  "
+         "in Vtysh shell. ")
+    output = dut("su - netop -c 'show hostname'", shell="bash")
+    cstr = 'switch'
+    assert cstr in output
+
+
 def test_vtysh_ct_config(topology, step):
     ops1 = topology.get('ops1')
     assert ops1 is not None
@@ -308,3 +324,7 @@ def test_vtysh_ct_config(topology, step):
     setdefaultsessiontimeouttest(ops1, step)
 
     createlacptest(ops1, step)
+
+    createAdminLoginTest(ops1, step)
+
+    createNetopLoginTest(ops1, step)
