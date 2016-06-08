@@ -9350,9 +9350,16 @@ cli_bgp_show_summary_vty_execute(struct vty *vty, int afi, int safi)
     bgp_router_context = ovs_vrf->value_bgp_routers[0];
 
     if (bgp_router_context)
-        vty_out(vty, "BGP router identifier %s, local AS number %ld\n",
+      {
+        if (bgp_router_context->router_id != NULL)
+          vty_out(vty, "BGP router identifier %s, local AS number %ld\n",
                 bgp_router_context->router_id,
                 ovs_vrf->key_bgp_routers[0]);
+        else
+          vty_out(vty, "BGP router identifier %s, local AS number %ld\n",
+                ovs_vrf->active_router_id,
+                ovs_vrf->key_bgp_routers[0]);
+      }
 
     vty_out(vty, "RIB entries %d\n", bgp_get_rib_count());
 
@@ -9414,9 +9421,14 @@ cli_show_bgp_summary_vty_execute(struct vty *vty, int afi, int safi)
       }
     bgp_router_context = ovs_vrf->value_bgp_routers[0];
 
-    vty_out(vty, "BGP router identifier %s, local AS number %ld%s",
-            bgp_router_context->router_id,
-            ovs_vrf->key_bgp_routers[0], VTY_NEWLINE);
+    if (bgp_router_context->router_id != NULL)
+        vty_out(vty, "BGP router identifier %s, local AS number %ld%s",
+                bgp_router_context->router_id,
+                ovs_vrf->key_bgp_routers[0], VTY_NEWLINE);
+    else
+        vty_out(vty, "BGP router identifier %s, local AS number %ld%s",
+                ovs_vrf->active_router_id,
+                ovs_vrf->key_bgp_routers[0], VTY_NEWLINE);
 
     vty_out(vty, "RIB entries %d%s", bgp_get_rib_count(),
             VTY_NEWLINE);
