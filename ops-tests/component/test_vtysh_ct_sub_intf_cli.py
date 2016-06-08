@@ -114,3 +114,15 @@ def test_subintf_cli(topology, step):
 
     out = sw1("ovs-vsctl get interface 4.2 name", shell='bash')
     assert "no row \"4.2\" in table Interface" in out
+
+    out = sw1("do show interface bridge_normal subinterface brief")
+    assert "Unknown command" in out
+
+    out = sw1("do show interface vlan12 subinterface brief")
+    assert "Unknown command" in out
+
+    out = sw1("do show interface 4.8 subinterface")
+    assert "Unknown command" in out
+
+    out = sw1("do show interface 44 subinterface")
+    assert "No sub-interfaces configured for interface 44" in out
