@@ -42,6 +42,7 @@
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
 
 #define MAX_WAIT_LOOPCNT 1000
+#define CONF_DEFAULT_VER  "0.0.0"
 extern struct ovsdb_idl *idl;
 static vtysh_contextlist * show_run_contextlist = NULL;
 
@@ -63,6 +64,7 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     struct feature_sorted_list *list = NULL;
     const struct shash_node **nodes;
     int idx, count;
+    const char *db_ver = NULL;
 
     VLOG_DBG("readconfig:before- idl 0x%p seq no %d", idl,
              ovsdb_idl_get_seqno(idl));
@@ -73,6 +75,8 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
     VLOG_DBG("readconfig:after idl 0x%p seq no %d", idl,
              ovsdb_idl_get_seqno(idl));
     fprintf(fp, "!\n");
+    db_ver = ovsrec_get_db_version();
+    fprintf(fp, "Version %s \n", db_ver ? db_ver : CONF_DEFAULT_VER );
 
     while (current != NULL)
     {
