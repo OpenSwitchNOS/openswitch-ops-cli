@@ -184,6 +184,7 @@ static const struct lookup_entry set_table[] = {
     {NULL, NULL},
 };
 
+
 /********************** Simple error handling ***********************/
 
 static void
@@ -468,6 +469,67 @@ get_bgp_neighbor_with_bgp_router_and_asn(const struct ovsrec_bgp_router *
             }
         }
     }
+    return NULL;
+}
+
+/*****************************************************************************/
+
+const struct ovsrec_bgp_router*
+get_redistribute_config_in_ovsdb(const char *type, const char *name)
+{
+    const struct ovsrec_bgp_router *bgp_router_row;
+    int i = 0;
+    const struct ovsrec_route_map *rt_map_row;
+    OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_row,idl) {
+        for(i = 0; i <bgp_router_row->n_redistribute_route_map; i++) {
+            if (!strcmp(bgp_router_row->key_redistribute_route_map[i], type)) {
+                if (name == NULL){
+                    return bgp_router_row;
+                }
+                rt_map_row = bgp_router_row->value_redistribute_route_map[i];
+                if(rt_map_row->name &&
+                    !strcmp(rt_map_row->name,name)) {
+                    return bgp_router_row;
+                }
+            }
+        }
+    }
+    return  NULL;
+}
+
+bool
+redistribute_protocol_config_exists (const struct ovsrec_bgp_router *bgp_router_row,
+                                  const char *type)
+{
+    int i;
+    if (!type || !bgp_router_row) {
+        return false;
+    }
+
+    for (i=0; i < bgp_router_row->n_redistribute; i++) {
+        if(!strcmp(type, bgp_router_row->redistribute[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+char *
+redistribute_rmap_cfg_exists (const struct ovsrec_bgp_router *bgp_router_row,
+                              const char *type)
+{
+    int i;
+    if (!type || !bgp_router_row) {
+        return NULL;
+    }
+
+    for (i=0; i < bgp_router_row->n_redistribute_route_map; i++) {
+        if(!strcmp(type, bgp_router_row->key_redistribute_route_map[i])) {
+            return ((char *)(bgp_router_row->value_redistribute_route_map[i]->name));
+        }
+    }
+
     return NULL;
 }
 
@@ -9967,7 +10029,200 @@ policy_get_route_map_in_ovsdb(const char * name)
     return NULL;
 }
 
+static int
+cli_bgp_no_redistribute_cmd_execute(const char *vrf_name, const char *type,
+                                    const char *name, bool transaction)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    struct ovsrec_route_map **rt_maps;
+    struct ovsdb_idl_txn *bgp_router_txn = NULL;
+    char  **redist ;
+    int i, j, new_size;
+    /* If transaction is required ,start the transaction. */
+    if (transaction) {
+        START_DB_TXN(bgp_router_txn);
+    }
+    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
+    if (vrf_row == NULL) {
+        if (transaction) {
+            ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+        } else {
+            return -1;
+        }
+    }
 
+    if (name) {
+        bgp_router_row = get_redistribute_config_in_ovsdb(type,name);
+        if (bgp_router_row == NULL) {
+            if (transaction) {
+                END_DB_TXN(bgp_router_txn);
+            } else {
+                return -1;
+            }
+        }
+        /* Check if the entry is the last entry.
+         * If true, clear it and end the transaction, else continue */
+        if (bgp_router_row->n_redistribute_route_map ==  1) {
+            if((!strcmp(bgp_router_row->key_redistribute_route_map[0], type)) &&
+               (!strcmp(bgp_router_row->value_redistribute_route_map[0]->name,
+               name))) {
+                ovsrec_bgp_router_set_redistribute_route_map(bgp_router_row, NULL,
+                                                             NULL, 0);
+                if (!transaction) {
+                    return 0;
+                }
+            }
+            if (transaction) {
+                END_DB_TXN(bgp_router_txn);
+            }
+        }
+
+        new_size = bgp_router_row->n_redistribute_route_map - 1;
+        redist = xmalloc(sizeof(char *) * new_size);
+        rt_maps = xmalloc(sizeof *bgp_router_row->
+                          value_redistribute_route_map * new_size);
+        for (i = 0, j = 0; i < bgp_router_row->n_redistribute_route_map; i++) {
+            if(strcmp(bgp_router_row->key_redistribute_route_map[i], type)) {
+                redist[j] = bgp_router_row->key_redistribute_route_map[i];
+                rt_maps[j] = bgp_router_row->value_redistribute_route_map[i];
+                j++;
+            }
+        }
+        ovsrec_bgp_router_set_redistribute_route_map(bgp_router_row, redist,
+                                                     rt_maps, new_size);
+        free(redist);
+        free(rt_maps);
+    } else {
+        bgp_router_row = ovsrec_bgp_router_first(idl);
+        if (transaction) {
+            if (!redistribute_protocol_config_exists(bgp_router_row,type)) {
+                END_DB_TXN(bgp_router_txn);
+            }
+        }
+
+        /* Checking if the entry is the last entry.
+         * If true clear it and end the transaction, else continue */
+        if (bgp_router_row->n_redistribute ==  1) {
+             if(!strcmp(bgp_router_row->redistribute[0],type)) {
+                 ovsrec_bgp_router_set_redistribute(bgp_router_row, NULL,0);
+                if (!transaction) {
+                    return 0;
+                }
+            }
+            if (transaction) {
+                END_DB_TXN(bgp_router_txn);
+            }
+        }
+
+        new_size = bgp_router_row->n_redistribute - 1;
+        redist = xmalloc(sizeof(char *) * new_size);
+        for (i = 0, j = 0; i < bgp_router_row->n_redistribute; i++) {
+            if(strcmp(bgp_router_row->redistribute[i], type)) {
+                redist[j] = bgp_router_row->redistribute[i];
+                j++;
+            }
+        }
+        ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
+                                      new_size);
+        free(redist);
+    }
+    /* End of transaction. */
+    if (transaction) {
+        END_DB_TXN(bgp_router_txn);
+    } else {
+        return 0;
+    }
+
+}
+
+static int
+cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
+                                 const char *name)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    const struct ovsrec_route_map *rt_map_row;
+    struct ovsrec_route_map **rt_maps;
+    struct ovsdb_idl_txn *bgp_router_txn = NULL;
+    char  **redist ;
+    int i, new_size;
+    char *rmap_name;
+    bool transaction = false;
+    /* Start of transaction. */
+    START_DB_TXN(bgp_router_txn);
+
+    vrf_row = get_ovsrec_vrf_with_name((char *)vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no vrf found");
+    }
+    /* See if it already exists. */
+    bgp_router_row = get_ovsrec_bgp_router_with_asn((struct ovsrec_vrf *)vrf_row,
+                                                    (int64_t)vty->index);
+    /* If does not exist, nothing to modify. */
+    if (bgp_router_row == NULL) {
+        ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
+    } else {
+
+        if (name) {
+            if (redistribute_rmap_cfg_exists(bgp_router_row, type)) {
+                ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute rmap config exists");
+            }
+            if (redistribute_protocol_config_exists(bgp_router_row, type)) {
+                if (-1 == cli_bgp_no_redistribute_cmd_execute(NULL, type, NULL,transaction)) {
+                    ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute protocol config unset"
+                                     "failed");
+                }
+            }
+
+            rt_map_row = policy_get_route_map_in_ovsdb(name);
+            if (!rt_map_row) {
+                ERRONEOUS_DB_TXN(bgp_router_txn, "Route Map not found");
+            }
+
+            new_size = bgp_router_row->n_redistribute_route_map + 1;
+            redist = xmalloc(sizeof (char *) * new_size);
+            rt_maps = xmalloc(sizeof * bgp_router_row->value_redistribute_route_map *
+                              new_size);
+
+            for (i=0; i < bgp_router_row->n_redistribute_route_map; i++) {
+                redist[i] = bgp_router_row->key_redistribute_route_map[i];
+                rt_maps[i] = bgp_router_row->value_redistribute_route_map[i];
+            }
+            redist[bgp_router_row->n_redistribute_route_map] = (char *)type;
+            rt_maps[bgp_router_row->n_redistribute_route_map] =
+                   CONST_CAST(struct ovsrec_route_map *, rt_map_row);
+            ovsrec_bgp_router_set_redistribute_route_map(bgp_router_row, redist,
+                                                         rt_maps, new_size);
+            free(redist);
+            free(rt_maps);
+
+        } else {
+            if (redistribute_protocol_config_exists(bgp_router_row, type)) {
+                ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute protocol config exists");
+            }
+            rmap_name = redistribute_rmap_cfg_exists(bgp_router_row, type);
+            if (NULL != rmap_name) {
+                 if (-1 == cli_bgp_no_redistribute_cmd_execute(NULL, type, rmap_name,transaction)) {
+                    ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute rmap config unset"
+                                     "failed");
+                }
+            }
+            new_size = bgp_router_row->n_redistribute + 1;
+            redist = xmalloc(sizeof (char *) * new_size);
+            for (i=0; i < bgp_router_row->n_redistribute; i++) {
+                redist[i] = bgp_router_row->redistribute[i];
+            }
+            redist[bgp_router_row->n_redistribute] = (char *)type;
+            ovsrec_bgp_router_set_redistribute(bgp_router_row, redist,
+                                               new_size);
+            free(redist);
+       }
+    }
+    /* End of transaction. */
+    END_DB_TXN(bgp_router_txn);
+
+}
 /* Redistribute VTY commands.  */
 DEFUN(bgp_redistribute_ipv4,
       bgp_redistribute_ipv4_cmd,
@@ -9977,6 +10232,7 @@ DEFUN(bgp_redistribute_ipv4,
       "Statically configured routes\n"
       "Open Shortest Path First (OSPFv2)\n")
 {
+    cli_bgp_redistribute_cmd_execute(NULL,argv[0],NULL);
     return CMD_SUCCESS;
 }
 
@@ -9990,50 +10246,10 @@ DEFUN(bgp_redistribute_ipv4_rmap,
       "Route map reference\n"
       "Pointer to route-map entries\n")
 {
+    cli_bgp_redistribute_cmd_execute(NULL,argv[0],argv[1]);
     return CMD_SUCCESS;
 }
 
-DEFUN(bgp_redistribute_ipv4_metric,
-      bgp_redistribute_ipv4_metric_cmd,
-      "redistribute " QUAGGA_IP_REDIST_STR_BGPD " metric <0-4294967295>",
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(bgp_redistribute_ipv4_rmap_metric,
-      bgp_redistribute_ipv4_rmap_metric_cmd,
-      "redistribute " QUAGGA_IP_REDIST_STR_BGPD
-      " route-map WORD metric <0-4294967295>",
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP_REDIST_HELP_STR_BGPD
-      "Route map reference\n"
-      "Pointer to route-map entries\n"
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(bgp_redistribute_ipv4_metric_rmap,
-      bgp_redistribute_ipv4_metric_rmap_cmd,
-      "redistribute " QUAGGA_IP_REDIST_STR_BGPD
-      " metric <0-4294967295> route-map WORD",
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n"
-      "Route map reference\n"
-      "Pointer to route-map entries\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
 
 DEFUN(no_bgp_redistribute_ipv4,
       no_bgp_redistribute_ipv4_cmd,
@@ -10044,6 +10260,8 @@ DEFUN(no_bgp_redistribute_ipv4,
       "Statically configured routes\n"
       "Open Shortest Path First (OSPFv2)\n")
 {
+    bool transaction = true;
+    cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],NULL,transaction);
     return CMD_SUCCESS;
 }
 
@@ -10058,180 +10276,11 @@ DEFUN(no_bgp_redistribute_ipv4_rmap,
       "Route map reference\n"
       "Pointer to route-map entries\n")
 {
+    bool transaction = true;
+    cli_bgp_no_redistribute_cmd_execute(NULL, argv[0],argv[1],transaction);
     return CMD_SUCCESS;
 }
 
-DEFUN(no_bgp_redistribute_ipv4_metric,
-      no_bgp_redistribute_ipv4_metric_cmd,
-      "no redistribute " QUAGGA_IP_REDIST_STR_BGPD " metric <0-4294967295>",
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(no_bgp_redistribute_ipv4_rmap_metric,
-      no_bgp_redistribute_ipv4_rmap_metric_cmd,
-      "no redistribute " QUAGGA_IP_REDIST_STR_BGPD
-      " route-map WORD metric <0-4294967295>",
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP_REDIST_HELP_STR_BGPD
-      "Route map reference\n"
-      "Pointer to route-map entries\n"
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-ALIAS(no_bgp_redistribute_ipv4_rmap_metric,
-      no_bgp_redistribute_ipv4_metric_rmap_cmd,
-      "no redistribute " QUAGGA_IP_REDIST_STR_BGPD
-      " metric <0-4294967295> route-map WORD",
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n"
-      "Route map reference\n"
-      "Pointer to route-map entries\n")
-
-#ifdef HAVE_IPV6
-DEFUN(bgp_redistribute_ipv6,
-      bgp_redistribute_ipv6_cmd,
-      "redistribute " QUAGGA_IP6_REDIST_STR_BGPD,
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD)
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(bgp_redistribute_ipv6_rmap,
-      bgp_redistribute_ipv6_rmap_cmd,
-      "redistribute " QUAGGA_IP6_REDIST_STR_BGPD " route-map WORD",
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Route map reference\n"
-      "Pointer to route-map entries\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(bgp_redistribute_ipv6_metric,
-      bgp_redistribute_ipv6_metric_cmd,
-      "redistribute " QUAGGA_IP6_REDIST_STR_BGPD " metric <0-4294967295>",
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(bgp_redistribute_ipv6_rmap_metric,
-      bgp_redistribute_ipv6_rmap_metric_cmd,
-      "redistribute " QUAGGA_IP6_REDIST_STR_BGPD
-      " route-map WORD metric <0-4294967295>",
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Route map reference\n"
-      "Pointer to route-map entries\n"
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(bgp_redistribute_ipv6_metric_rmap,
-      bgp_redistribute_ipv6_metric_rmap_cmd,
-      "redistribute " QUAGGA_IP6_REDIST_STR_BGPD
-      " metric <0-4294967295> route-map WORD",
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n"
-      "Route map reference\n"
-      "Pointer to route-map entries\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(no_bgp_redistribute_ipv6,
-      no_bgp_redistribute_ipv6_cmd,
-      "no redistribute " QUAGGA_IP6_REDIST_STR_BGPD,
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD)
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(no_bgp_redistribute_ipv6_rmap,
-      no_bgp_redistribute_ipv6_rmap_cmd,
-      "no redistribute " QUAGGA_IP6_REDIST_STR_BGPD " route-map WORD",
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Route map reference\n"
-      "Pointer to route-map entries\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(no_bgp_redistribute_ipv6_metric,
-      no_bgp_redistribute_ipv6_metric_cmd,
-      "no redistribute " QUAGGA_IP6_REDIST_STR_BGPD " metric <0-4294967295>",
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-DEFUN(no_bgp_redistribute_ipv6_rmap_metric,
-      no_bgp_redistribute_ipv6_rmap_metric_cmd,
-      "no redistribute " QUAGGA_IP6_REDIST_STR_BGPD
-      " route-map WORD metric <0-4294967295>",
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Route map reference\n"
-      "Pointer to route-map entries\n"
-      "Metric for redistributed routes\n"
-      "Default metric\n")
-{
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
-}
-
-ALIAS(no_bgp_redistribute_ipv6_rmap_metric,
-      no_bgp_redistribute_ipv6_metric_rmap_cmd,
-      "no redistribute " QUAGGA_IP6_REDIST_STR_BGPD
-      " metric <0-4294967295> route-map WORD",
-      NO_STR
-      "Redistribute information from another routing protocol\n"
-      QUAGGA_IP6_REDIST_HELP_STR_BGPD
-      "Metric for redistributed routes\n"
-      "Default metric\n"
-      "Route map reference\n"
-      "Pointer to route-map entries\n")
-#endif /* HAVE_IPV6 */
 #ifndef ENABLE_OVSDB
 /* BGP node structure. */
 static struct cmd_node bgp_node =
@@ -11148,24 +11197,6 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &no_bgp_redistribute_ipv4_cmd);
     install_element(BGP_NODE, &bgp_redistribute_ipv4_rmap_cmd);
     install_element(BGP_NODE, &no_bgp_redistribute_ipv4_rmap_cmd);
-    install_element(BGP_NODE, &bgp_redistribute_ipv4_metric_cmd);
-    install_element(BGP_NODE, &no_bgp_redistribute_ipv4_metric_cmd);
-    install_element(BGP_NODE, &bgp_redistribute_ipv4_rmap_metric_cmd);
-    install_element(BGP_NODE, &bgp_redistribute_ipv4_metric_rmap_cmd);
-    install_element(BGP_NODE, &no_bgp_redistribute_ipv4_rmap_metric_cmd);
-    install_element(BGP_NODE, &no_bgp_redistribute_ipv4_metric_rmap_cmd);
-#ifdef HAVE_IPV6
-    install_element(BGP_IPV6_NODE, &bgp_redistribute_ipv6_cmd);
-    install_element(BGP_IPV6_NODE, &no_bgp_redistribute_ipv6_cmd);
-    install_element(BGP_IPV6_NODE, &bgp_redistribute_ipv6_rmap_cmd);
-    install_element(BGP_IPV6_NODE, &no_bgp_redistribute_ipv6_rmap_cmd);
-    install_element(BGP_IPV6_NODE, &bgp_redistribute_ipv6_metric_cmd);
-    install_element(BGP_IPV6_NODE, &no_bgp_redistribute_ipv6_metric_cmd);
-    install_element(BGP_IPV6_NODE, &bgp_redistribute_ipv6_rmap_metric_cmd);
-    install_element(BGP_IPV6_NODE, &bgp_redistribute_ipv6_metric_rmap_cmd);
-    install_element(BGP_IPV6_NODE, &no_bgp_redistribute_ipv6_rmap_metric_cmd);
-    install_element(BGP_IPV6_NODE, &no_bgp_redistribute_ipv6_metric_rmap_cmd);
-#endif /* HAVE_IPV6 */
 
     /* Ttl_security commands. */
     install_element(BGP_NODE, &neighbor_ttl_security_cmd);
