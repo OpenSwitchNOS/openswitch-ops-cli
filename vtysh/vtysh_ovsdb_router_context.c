@@ -705,7 +705,8 @@ vtysh_ret_val
 vtysh_router_context_bgp_clientcallback(void *p_private)
 {
     const struct ovsrec_vrf *ovs_vrf = NULL;
-    int i = 0, j = 0;
+    const struct ovsrec_bgp_router *bgp_router_row =  NULL;
+    int i = 0, j = 0, k = 0;
 
     vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
 
@@ -715,38 +716,61 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
     OVSREC_VRF_FOR_EACH(ovs_vrf, p_msg->idl)
     {
         for (j = 0; j < ovs_vrf->n_bgp_routers; j++) {
+            bgp_router_row = ovs_vrf->value_bgp_routers[j];
             vtysh_ovsdb_cli_print(p_msg, "%s %lu", "router bgp",
                                   ovs_vrf->key_bgp_routers[j]);
 
-            if (ovs_vrf->value_bgp_routers[j]->router_id)
+            if (bgp_router_row->router_id)
                 if(strcmp(ovs_vrf->value_bgp_routers[j]->router_id,"0.0.0.0"))
                     vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "",
-                                          "bgp router-id", ovs_vrf->
-                                          value_bgp_routers[j]->router_id);
+                                          "bgp router-id",
+                                          bgp_router_row->router_id);
 
-            while (i < ovs_vrf->value_bgp_routers[j]->n_networks) {
+            while (i < bgp_router_row->n_networks) {
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s", "", "network",
-                                      ovs_vrf->value_bgp_routers[j]->
-                                      networks[i]);
+                                      bgp_router_row->networks[i]);
                 i++;
             }
 
-            if (ovs_vrf->value_bgp_routers[j]->n_maximum_paths)
+            if (bgp_router_row->n_maximum_paths)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %d", "", "maximum-paths",
-                                      *(ovs_vrf->value_bgp_routers[j]->
-                                        maximum_paths));
+                                      *(bgp_router_row->maximum_paths));
 
-            if (ovs_vrf->value_bgp_routers[j]->n_timers > 0)
+            if (bgp_router_row->n_timers > 0)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %d %d", "", "timers bgp",
-                                      ovs_vrf->value_bgp_routers[j]->
-                                      value_timers[1], ovs_vrf->
-                                      value_bgp_routers[j]->value_timers[0]);
+                                      bgp_router_row->
+                                      value_timers[1],
+                                      bgp_router_row->value_timers[0]);
 
-            if (ovs_vrf->value_bgp_routers[j]->n_fast_external_failover)
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s", "", "bgp fast-external-failover");
+            if (bgp_router_row->n_fast_external_failover)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s", "",
+                                      "bgp fast-external-failover");
 
-            if (ovs_vrf->value_bgp_routers[j]->n_log_neighbor_changes)
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s", "", "bgp log-neighbor-changes");
+            if (bgp_router_row->n_log_neighbor_changes)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s", "",
+                                      "bgp log-neighbor-changes");
+
+            if (bgp_router_row->n_redistribute > 0) {
+                for (k = 0; k < bgp_router_row->n_redistribute;
+                     k++) {
+                            vtysh_ovsdb_cli_print(p_msg,"%4s %s %s","",
+                                                  "redistribute",
+                                                  bgp_router_row->redistribute[k]);
+                }
+            }
+            if (bgp_router_row->n_redistribute_route_map > 0) {
+                for (k = 0; k < bgp_router_row->n_redistribute_route_map;
+                     k++) {
+                        vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s","",
+                                              "redistribute",
+                                              bgp_router_row->
+                                              key_redistribute_route_map[k],
+                                              "route-map",
+                                              bgp_router_row->
+                                              value_redistribute_route_map[k]->
+                                              name);
+                }
+            }
         }
     }
     vtysh_router_context_bgp_neighbor_callback(p_msg);
