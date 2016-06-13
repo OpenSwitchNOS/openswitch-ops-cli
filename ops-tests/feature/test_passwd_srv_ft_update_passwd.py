@@ -158,6 +158,10 @@ def test_invalid_old_password(topology):
     assert bash_shell.send_command(conn, matches=['password:']) is 0
     assert bash_shell.send_command(old_password, matches=['switch#']) is 0
 
+    assert bash_shell.send_command("\n", matches=['switch#']) is 0
+    assert bash_shell.send_command("\n", matches=['switch#']) is 0
+    assert bash_shell.send_command("\n", matches=['switch#']) is 0
+
     # change password
     matches = ['old password:']
     print("Execute password command")
