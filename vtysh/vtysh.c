@@ -3103,8 +3103,7 @@ set_user_passwd(void)
     vty_out(vty, "%s", VTY_NEWLINE);
     if (strcmp(passwd,cp) != 0)
     {
-        vty_out(vty, "%s", VTY_NEWLINE);
-        vty_out(vty,"Passwords do not match. Password unchanged.%s",
+        vty_out(vty,"Passwords did not match. Password unchanged.%s",
                 VTY_NEWLINE);
         goto cleanup;
     }
