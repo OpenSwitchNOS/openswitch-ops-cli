@@ -16,18 +16,23 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 /****************************************************************************
- * @ingroup cli
+ * @ingroup quagga
  *
- * @file vtysh_ovsdb_config_context.h
- * Source for registering client callback with config context.
+ * @file l3routes_vty.h
+ * Source for config l3 static routes into ovsdb tables.
  *
  ***************************************************************************/
 
-#ifndef VTYSH_OVSDB_CONFIG_CONTEXT_H
-#define VTYSH_OVSDB_CONFIG_CONTEXT_H
+#ifndef _L3ROUTES_VTY_H
+#define _L3ROUTES_VTY_H
 
-int vtysh_init_config_context_clients();
-vtysh_ret_val vtysh_config_context_global_clientcallback(void *p_private);
-vtysh_ret_val vtysh_config_context_staticroute_clientcallback(void *p_private);
+void
+l3routes_vty_init (void);
 
-#endif /* VTYSH_OVSDB_CONFIG_CONTEXT_H */
+#define DEFAULT_DISTANCE  1
+#define MAX_ADDRESS_LEN   256
+/* Loopback range lies from 127.0.0.0 - 127.255.255.255
+ * Thus, not using the macro 'IS_LOOPBACK_IPV4(i)' defined in vtysh.h */
+#define  IS_LOOPBACK_IPV4_ADDRESS(ipv4_addr)  (((long)(ipv4_addr) & 0xff000000) == 0x7f000000)
+
+#endif /* _L3ROUTES_VTY_H */
