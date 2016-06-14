@@ -570,6 +570,8 @@ static void
 bgp_get_rib_path_attributes(const struct ovsrec_bgp_route *rib_row,
                             route_psd_bgp_t *data)
 {
+    const char *value;
+
     assert(data);
     memset(data, 0, sizeof(*data));
 
@@ -594,21 +596,26 @@ bgp_get_rib_path_attributes(const struct ovsrec_bgp_route *rib_row,
     data->ecommunity = smap_get(&rib_row->path_attributes,
                                 OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_ECOMMUNITY);
 
-    const char *value;
     value = smap_get(&rib_row->path_attributes,
                      OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_INTERNAL);
-    if (!strcmp(value, "true")) {
-        data->internal = 1;
-    } else {
-        data->internal = 0;
+    if (value) {
+        if (!strcmp(value, "true")) {
+            data->internal = 1;
+        } else {
+            data->internal = 0;
+        }
     }
+
     value = smap_get(&rib_row->path_attributes,
                      OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_IBGP);
-    if (!strcmp(value, "true")) {
-        data->ibgp = 1;
-    } else {
-        data->ibgp = 0;
+    if (value) {
+        if (!strcmp(value, "true")) {
+            data->ibgp = 1;
+        } else {
+            data->ibgp = 0;
+        }
     }
+
     data->uptime = smap_get(&rib_row->path_attributes,
                             OVSDB_BGP_ROUTE_PATH_ATTRIBUTES_UPTIME);
     return;
