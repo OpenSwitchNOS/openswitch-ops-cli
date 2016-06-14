@@ -48,6 +48,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include <termios.h>
+#include "l3routes_vty.h"
 
 
 #ifdef HAVE_GNU_REGEX
@@ -81,6 +82,140 @@ static int cur_cfg_no = 0;
 boolean exiting = false;
 volatile boolean vtysh_exit_flag = false;
 extern struct vty *vty;
+
+/* Initialize a cursor for the Route table to query the Route table index.
+ * This cursor is also extern'ed by the file l3routes_vty.c */
+struct ovsdb_idl_index_cursor route_cursor;
+bool is_route_cursor_initialized = false;
+
+/* Custom comparator for the 'address_family' column in the Route table.
+ * The function segregates the Ipv4 and Ipv6 route entries. */
+int address_family_comparator(const void *route_entry1,
+                              const void *route_entry2) {
+    struct ovsrec_route *route_row1, *route_row2;
+    route_row1 = (struct ovsrec_route *)route_entry1;
+    route_row2 = (struct ovsrec_route *)route_entry2;
+
+    return strcmp(route_row1->address_family, route_row2->address_family);
+}
+
+/* This function expands the compressed IPv6 addresses and compares them.
+   Eg: '1::1' is expanded to '0001:0000:0000:0000:0000:0000:0000:0001' */
+int ipv6_prefix_compare(const struct in6_addr * addr1,
+                          const struct in6_addr * addr2)
+{
+    char ipv6_addr_str1[MAX_ADDRESS_LEN], ipv6_addr_str2[MAX_ADDRESS_LEN];
+    memset(ipv6_addr_str1, 0, sizeof(ipv6_addr_str1));
+    memset(ipv6_addr_str2, 0, sizeof(ipv6_addr_str2));
+
+    snprintf(ipv6_addr_str1, MAX_ADDRESS_LEN,
+            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+            (int)addr1->s6_addr[0], (int)addr1->s6_addr[1],
+            (int)addr1->s6_addr[2], (int)addr1->s6_addr[3],
+            (int)addr1->s6_addr[4], (int)addr1->s6_addr[5],
+            (int)addr1->s6_addr[6], (int)addr1->s6_addr[7],
+            (int)addr1->s6_addr[8], (int)addr1->s6_addr[9],
+            (int)addr1->s6_addr[10], (int)addr1->s6_addr[11],
+            (int)addr1->s6_addr[12], (int)addr1->s6_addr[13],
+            (int)addr1->s6_addr[14], (int)addr1->s6_addr[15]);
+    snprintf(ipv6_addr_str2, MAX_ADDRESS_LEN,
+            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+            (int)addr2->s6_addr[0], (int)addr2->s6_addr[1],
+            (int)addr2->s6_addr[2], (int)addr2->s6_addr[3],
+            (int)addr2->s6_addr[4], (int)addr2->s6_addr[5],
+            (int)addr2->s6_addr[6], (int)addr2->s6_addr[7],
+            (int)addr2->s6_addr[8], (int)addr2->s6_addr[9],
+            (int)addr2->s6_addr[10], (int)addr2->s6_addr[11],
+            (int)addr2->s6_addr[12], (int)addr2->s6_addr[13],
+            (int)addr2->s6_addr[14], (int)addr2->s6_addr[15]);
+    return strcmp(ipv6_addr_str1, ipv6_addr_str2);
+}
+
+
+/* Custom comparator for the 'prefix' column in the Route table.
+ * Same function takes care of both Ipv4 and Ipv6 route entries. */
+int route_prefix_comparator(const void *route_entry1,
+                            const void *route_entry2) {
+    struct ovsrec_route *route_row1, *route_row2;
+    char ipaddr1_copy[MAX_ADDRESS_LEN], ipaddr2_copy[MAX_ADDRESS_LEN];
+    char * ip1 = NULL;
+    char * ip2 = NULL;
+    char * prefixlen1 = NULL;
+    char * prefixlen2 = NULL;
+    struct in6_addr ipv6_str1;
+    struct in6_addr ipv6_str2;
+    bool is_ipv6_prefix1_valid = false;
+    bool is_ipv6_prefix2_valid = false;
+    int strcmp_result = 1; /*initialize strcmp_result is not equal*/
+
+    route_row1 = (struct ovsrec_route *)route_entry1;
+    route_row2 = (struct ovsrec_route *)route_entry2;
+
+    memset(ipaddr1_copy, 0, sizeof(ipaddr1_copy));
+    memset(ipaddr2_copy, 0, sizeof(ipaddr2_copy));
+    if (route_row1 && route_row1->prefix) {
+        strncpy(ipaddr1_copy, route_row1->prefix, sizeof(ipaddr1_copy));
+    }
+
+    if (route_row2 && route_row2->prefix) {
+        strncpy(ipaddr2_copy, route_row2->prefix, sizeof(ipaddr2_copy));
+    }
+
+    /* Separating the prefix and the prefix lengths for comparison */
+    ip1 = strtok(ipaddr1_copy, "/");
+    prefixlen1 = strtok(NULL, "/");
+
+    ip2 = strtok(ipaddr2_copy, "/");
+    prefixlen2 = strtok(NULL, "/");
+
+    /* Handle the specific case of IPv6 prefixes in compressed form.
+     * As ASCII value of ':' succeeds ASCII values of numbers(0-9) and preceeds
+     * lower case letters (a-f), we cannot compare IPv6 addresses in compressed
+     * form as the result in ambiguous. Thus, we expand the addresses by
+     * filling necessary '0s' to the prefix so as to get
+     * lexicographic sorting preference for prefixes like "::/128" over
+     * "1::/128" in the ipv6_prefix_compare() function. Internally '::/128' is
+     * represented as '0:0:0:0:0:0:0:0' which should appear before '1::/128 in
+     * the 'show commands' */
+    if (inet_pton (AF_INET6, ip1, &ipv6_str1)) {
+        is_ipv6_prefix1_valid = true;
+    }
+
+    if (inet_pton (AF_INET6, ip2, &ipv6_str2)) {
+        is_ipv6_prefix2_valid = true;
+    }
+
+    /* Caching the strcmp result */
+    if (ip1 && ip2) {
+        if (is_ipv6_prefix1_valid && is_ipv6_prefix2_valid) {
+            strcmp_result = ipv6_prefix_compare(&ipv6_str1, &ipv6_str2);
+        } else {
+            strcmp_result = strcmp(ip1, ip2);
+        }
+    }
+
+    /* For same prefixes but different prefix lengths, we do numerical
+     * based sorting as 10.0.0.0/8 needs to be displayed before 10.0.0.0/16. */
+    if (!strcmp_result) {
+        return ovsdb_idl_index_intcmp (atoi(prefixlen1), atoi(prefixlen2));
+    }
+
+    /* For different prefixes, strcmp takes care of lexicographic sorting
+     * implemented internally */
+    return strcmp_result;
+}
+
+/* Custom comparator for the 'from' column in the Route table.
+ * The function sorts the Ipv4 and Ipv6 route entries based on the protocol
+ * (bgp, connected, ospf, static). */
+int from_protocol_comparator(const void *route_entry1,
+                             const void *route_entry2) {
+    struct ovsrec_route *route_row1, *route_row2;
+    route_row1 = (struct ovsrec_route *)route_entry1;
+    route_row2 = (struct ovsrec_route *)route_entry2;
+
+    return strcmp(route_row1->from, route_row2->from);
+}
 
 /* Function checks if timeout period has
 *  exceeded. If yes, exits cli session.
@@ -357,6 +492,51 @@ ospf_ovsdb_init()
 }
 
 static void
+l3routes_ovsdb_init()
+{
+    ovsdb_idl_add_table(idl, &ovsrec_table_nexthop);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ip_address);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_selected);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_ports);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_weight);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_status);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_other_config);
+    ovsdb_idl_add_column(idl, &ovsrec_nexthop_col_external_ids);
+
+    /* Creating an index for the Route table.
+     * Registering 'prefix', 'address_family' and 'from' column to the index
+     * for retrieving data lexicographically.
+     * Initially, we want to segregate the "ipv4" and "ipv6" entries, then
+     * sort the prefixes lexicographically and later sort the same prefixes
+     * for different protocols in ascending order. */
+    struct ovsdb_idl_index *route_index;
+    route_index = ovsdb_idl_create_index(idl, &ovsrec_table_route,
+                                         "route_prefix_addrfamily_from_index");
+    if (route_index) {
+        ovsdb_idl_index_add_column(route_index,
+                                   &ovsrec_route_col_address_family,
+                                   OVSDB_INDEX_ASC, address_family_comparator);
+        ovsdb_idl_index_add_column(route_index, &ovsrec_route_col_prefix,
+                                   OVSDB_INDEX_ASC, route_prefix_comparator);
+        ovsdb_idl_index_add_column(route_index, &ovsrec_route_col_from,
+                                   OVSDB_INDEX_ASC, from_protocol_comparator);
+
+        /* Create a cursor to perform queries to the index defined */
+        if (ovsdb_idl_initialize_cursor(idl, &ovsrec_table_route,
+                                        "route_prefix_addrfamily_from_index",
+                                        &route_cursor)) {
+            is_route_cursor_initialized = true;
+        } else {
+            VLOG_ERR("Failed to initialize the cursor used to query the Route "
+                     "table index");
+        }
+    } else {
+        VLOG_ERR("Failed to create an index for the Route table");
+    }
+
+}
+
+static void
 vrf_ovsdb_init()
 {
     ovsdb_idl_add_table(idl, &ovsrec_table_vrf);
@@ -510,6 +690,9 @@ ovsdb_init(const char *db_path)
 
     /* BGP tables. */
     bgp_ovsdb_init();
+
+    /* Route tables */
+    l3routes_ovsdb_init();
 
     /* OSPF tables */
     ospf_ovsdb_init();
