@@ -3518,11 +3518,45 @@ ospf_ip_router_neighbor_detail_show(const char* ifname,
                                              bool all_flag)
 {
     const struct ovsrec_ospf_neighbor *ospf_nbr_row = NULL;
+    const struct ovsrec_ospf_interface *ospf_interface_row = NULL;
 
-    /* Print all the rows */
-    OVSREC_OSPF_NEIGHBOR_FOR_EACH(ospf_nbr_row, idl)
+    if (ifname != NULL)
     {
-        ospf_neighbor_one_row_detail_print(ospf_nbr_row, all_flag);
+        /* Print neighbor details for the interface name passed. */
+        OVSREC_OSPF_INTERFACE_FOR_EACH(ospf_interface_row, idl)
+        {
+            if (strcmp(ospf_interface_row->name, ifname) == 0)
+            {
+                for(int i = 0; i < ospf_interface_row->n_neighbors; i++)
+                {
+                    ospf_nbr_row = ospf_interface_row->neighbors[i];
+                    ospf_neighbor_one_row_detail_print(ospf_nbr_row, all_flag);
+                }
+            }
+        }
+    }
+    else if (nbr_id != 0)
+    {
+        /* Print all the neighbor entries matching the nbr id present */
+        OVSREC_OSPF_NEIGHBOR_FOR_EACH(ospf_nbr_row, idl)
+        {
+            for (int i = 0; i < ospf_nbr_row->n_nbr_router_id; i++)
+            {
+                if (ospf_nbr_row->nbr_router_id[i] == nbr_id)
+                {
+                    ospf_neighbor_one_row_detail_print(ospf_nbr_row, all_flag);
+                }
+            }
+        }
+    }
+    else
+    {
+        /* Print all the rows */
+        OVSREC_OSPF_NEIGHBOR_FOR_EACH(ospf_nbr_row, idl)
+        {
+            ospf_neighbor_one_row_detail_print(ospf_nbr_row, all_flag);
+        }
+
     }
 }
 
