@@ -218,7 +218,7 @@ create_vlan_interface(const char *vlan_if)
     port_row = ovsrec_port_insert(status_txn);
     ovsrec_port_set_name(port_row, vlan_if);
     ovsrec_port_set_interfaces(port_row, iface_list, 1);
-    ovsrec_port_set_tag(port_row, &tag, 1);
+    ops_port_set_tag((int)tag, port_row, idl);
     ovsrec_port_set_vlan_mode(port_row, 0 /*PORT_VLAN_ACCESS*/);
 
     /* Add the port to vrf port list */
