@@ -516,7 +516,7 @@ redistribute_protocol_config_exists (const struct ovsrec_bgp_router *bgp_router_
 }
 
 char *
-redistribute_rmap_cfg_exists (const struct ovsrec_bgp_router *bgp_router_row,
+redistribute_rmap_config_exists (const struct ovsrec_bgp_router *bgp_router_row,
                               const char *type)
 {
     int i;
@@ -10193,7 +10193,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
     } else {
 
         if (name) {
-            if (redistribute_rmap_cfg_exists(bgp_router_row, type)) {
+            if (redistribute_rmap_config_exists(bgp_router_row, type)) {
                 ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute rmap config exists");
             }
             if (redistribute_protocol_config_exists(bgp_router_row, type)) {
@@ -10229,7 +10229,7 @@ cli_bgp_redistribute_cmd_execute(const char *vrf_name, const char *type,
             if (redistribute_protocol_config_exists(bgp_router_row, type)) {
                 ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute protocol config exists");
             }
-            rmap_name = redistribute_rmap_cfg_exists(bgp_router_row, type);
+            rmap_name = redistribute_rmap_config_exists(bgp_router_row, type);
             if (NULL != rmap_name) {
                  if (-1 == cli_bgp_no_redistribute_cmd_execute(NULL, type, rmap_name,transaction)) {
                     ERRONEOUS_DB_TXN(bgp_router_txn, "Redistribute rmap config unset"
