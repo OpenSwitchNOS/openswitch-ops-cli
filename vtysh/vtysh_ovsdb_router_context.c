@@ -51,6 +51,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
     const struct ovsrec_bgp_router *bgp_router_context=NULL;
     int i = 0, n_neighbors = 0, k = 0;
     const struct ovsrec_bgp_neighbor *nbr_table=NULL;
+    char *neighbor = NULL;
   /* To consider all router entries. */
     OVSREC_BGP_ROUTER_FOR_EACH(bgp_router_context, p_msg->idl)
     {
@@ -64,67 +65,58 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       key_bgp_neighbors[n_neighbors],
                                       "peer-group");
         }
-
         for (n_neighbors = 0; n_neighbors<bgp_router_context->n_bgp_neighbors;
              n_neighbors++) {
             nbr_table =  bgp_router_context->value_bgp_neighbors[n_neighbors];
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
-                n_remote_as)
+            neighbor =   (char *)malloc(strlen(bgp_router_context->
+                                    key_bgp_neighbors[n_neighbors]));
+            strcpy(neighbor,bgp_router_context->key_bgp_neighbors[n_neighbors]);
+            if (nbr_table->n_remote_as)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %lu", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
-                                      "remote-as", *(bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      neighbor,
+                                      "remote-as", *(nbr_table->
                                       remote_as));
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 description)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
-                                      "description", bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      neighbor,
+                                      "description", nbr_table->
                                       description);
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->password)
+            if (nbr_table->password)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
-                                      "password", bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      neighbor,
+                                      "password", nbr_table->
                                       password);
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->shutdown)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "neighbor",
+                                      neighbor,"shutdown");
+
+            if (nbr_table->
                 n_advertisement_interval)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %d", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
-                                      "advertisement-interval", *(bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      neighbor,
+                                      "advertisement-interval", *(nbr_table->
                                       advertisement_interval));
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 n_timers > 0)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d %d","","neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors], "timers",
-                                      bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
-                                      value_timers[1], bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      neighbor, "timers",
+                                      nbr_table->
+                                      value_timers[1], nbr_table->
                                       value_timers[0]);
 
             i=0;
-            while (i < bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            while (i < nbr_table->
                    n_route_maps) {
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
-                                      "neighbor", bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
-                                      "route-map", bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      "neighbor", neighbor,
+                                      "route-map", nbr_table->
                                       value_route_maps[i]->name,
-                                      bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      nbr_table->
                                       key_route_maps[i]);
                 i++;
             }
@@ -132,8 +124,7 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
             i=0;
             while (i < nbr_table->n_prefix_lists) {
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
-                                      "neighbor", bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
+                                      "neighbor", neighbor,
                                       "prefix-list", nbr_table->value_prefix_lists[i]->name,
                                       nbr_table->key_prefix_lists[i]);
                 i++;
@@ -142,79 +133,68 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
             i=0;
             while (i < nbr_table->n_aspath_filters) {
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
-                                      "neighbor", bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
+                                      "neighbor", neighbor,
                                       "filter-list", nbr_table->value_aspath_filters[i]->name,
                                       nbr_table->key_aspath_filters[i]);
                 i++;
             }
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 n_allow_as_in)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %d", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
+                                      neighbor,
                                       "allowas-in",
-                                      *(bgp_router_context->
-                                        value_bgp_neighbors[n_neighbors]->
+                                      *(nbr_table->
                                         allow_as_in));
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 n_remove_private_as)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
+                                      neighbor,
                                       "remove-private-AS");
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 n_inbound_soft_reconfiguration)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
+                                      neighbor,
                                       "soft-reconfiguration inbound");
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 n_ebgp_multihop)
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s", "", "neighbor",
-                                      bgp_router_context->
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s", "", "neighbor",bgp_router_context->
                                       key_bgp_neighbors[n_neighbors],
                                       "ebgp-multihop");
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 n_ttl_security_hops)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %d", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
+                                      neighbor,
                                       "ttl-security hops",
-                                      *(bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      *(nbr_table->
                                       ttl_security_hops));
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 update_source)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s %s %s", "", "neighbor",
-                                      bgp_router_context->
-                                      key_bgp_neighbors[n_neighbors],
+                                      neighbor,
                                       "update-source",
-                                      (bgp_router_context->
-                                      value_bgp_neighbors[n_neighbors]->
+                                      (nbr_table->
                                       update_source));
 
-            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+            if (nbr_table->
                 bgp_peer_group) {
                 for (k = 0; k < bgp_router_context->n_bgp_neighbors; k++) {
-                    if (bgp_router_context->value_bgp_neighbors[n_neighbors]->
+                    if (nbr_table->
                         bgp_peer_group == bgp_router_context->
                         value_bgp_neighbors[k])
                         vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s", "",
                                               "neighbor",
-                                              bgp_router_context->
-                                              key_bgp_neighbors[n_neighbors],
+                                              neighbor,
                                               "peer-group",
-                                              bgp_router_context->
-                                              key_bgp_neighbors[k]);
+                                              bgp_router_context->key_bgp_neighbors[k]);
                 }
             }
+            free(neighbor);
         }
         vtysh_ovsdb_cli_print(p_msg,"!");
     }
