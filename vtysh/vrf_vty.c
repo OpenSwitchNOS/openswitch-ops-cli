@@ -753,8 +753,6 @@ vrf_no_routing (const char *if_name)
   struct ovsrec_port **bridge_ports;
   int64_t* trunks = NULL;
   int trunk_count = 0;
-  int64_t* tag = NULL;
-  int tag_count = 0;
   size_t i;
   struct smap smap_other_config;
 
@@ -884,14 +882,8 @@ vrf_no_routing (const char *if_name)
     }
 
   ovsrec_port_set_vlan_mode(port_row, OVSREC_PORT_VLAN_MODE_ACCESS);
-
-  ovsrec_port_set_trunks(port_row, trunks, trunk_count);
-
-  tag = xmalloc(sizeof *port_row->tag);
-  tag_count = 1;
-  tag[0] = DEFAULT_VLAN;
-
-  ovsrec_port_set_tag(port_row, tag, tag_count);
+  ops_port_set_tag(DEFAULT_VLAN, port_row, idl);
+  ops_port_set_trunks(trunks, trunk_count, port_row, idl);
 
   default_bridge_row = ovsrec_bridge_first (idl);
   bridge_ports = xmalloc (
@@ -905,7 +897,6 @@ vrf_no_routing (const char *if_name)
   ovsrec_bridge_set_ports (default_bridge_row, bridge_ports,
                            default_bridge_row->n_ports + 1);
   free (bridge_ports);
-  free(tag);
 
   status = cli_do_config_finish (status_txn);
   if (status == TXN_SUCCESS)
