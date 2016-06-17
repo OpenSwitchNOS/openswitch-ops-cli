@@ -57,13 +57,10 @@ class ecmpCLITest(OpsVsiTest):
 
         # Verify ecmp disable operation, multiple hash disable/enable
         s1.cmdCLI("configure terminal")
-        s1.cmdCLI("ip ecmp disable")
         # Disable hash function dst-ip and src-ip
         s1.cmdCLI("ip ecmp load-balance dst-ip disable")
         s1.cmdCLI("ip ecmp load-balance src-port disable")
         ret = s1.cmdCLI("do show ip ecmp")
-        assert 'ECMP Status        : Disabled' in ret, \
-            'ECMP is enabled even after disabling it'
         assert 'Source IP          : Enabled' in ret, \
             'Hashing using source ip disabled unexpectedly'
         assert 'Destination IP     : Disabled' in ret, \
@@ -87,8 +84,7 @@ class ecmpCLITest(OpsVsiTest):
         # Modifying interface data to test show running-config
         ret = s1.cmdCLI("show running-config")
         # CLI(self.net)
-        assert 'ip ecmp disable' in ret and \
-               'ip ecmp load-balance src-port disable' in ret and \
+        assert 'ip ecmp load-balance src-port disable' in ret and \
                'ip ecmp load-balance dst-ip disable' in ret, \
                'show running-config does not show ecmp configuration'
         info('### ECMP configuration validation in '
@@ -98,48 +94,14 @@ class ecmpCLITest(OpsVsiTest):
         '''
             Test ECMP feature enable/disable and show running-config output
             1. Check that the feature is enabled by default
-            2. Disable the feature
-            3. Check that it appears as disabled in the 'show' output
-            4. Check that it appears in 'show running-config' output
-            5. Re-enable the feature
-            6. Check that it appears as enabled in the 'show' output
-            7. Check that it does not appear in 'show running-config' output
         '''
         s1 = self.net.switches[0]
 
-        # 1. Check that the feature is enabled by default
+        # Check that the feature is enabled by default
         ret = s1.cmdCLI("show ip ecmp")
         assert ("%s: Enabled" % show_string) in ret, \
             ('%sis not enabled by default' % show_string)
 
-        # 2. Disable the feature
-        s1.cmdCLI("configure terminal")
-        s1.cmdCLI("ip ecmp %s disable" % sub_cmd)
-
-        # 3. Check that it appears as disabled in the 'show' output
-        ret = s1.cmdCLI("do show ip ecmp")
-        assert ("%s: Disabled" % show_string) in ret, \
-            ("%s is enabled even after disabling it" % show_string)
-
-        # 4. Check that it appears in 'show running-config' output
-        ret = s1.cmdCLI("do show running-config")
-        assert ("ip ecmp %sdisable" % sub_cmd) in ret, \
-            ("show running-config does not show ecmp %s configuration" %
-                sub_cmd)
-
-        # 5. Re-enable the feature
-        s1.cmdCLI("no ip ecmp %s disable" % sub_cmd)
-
-        # 6. Check that it appears as enabled in the 'show' output
-        ret = s1.cmdCLI("do show ip ecmp")
-        assert ("%s: Enabled" % show_string) in ret, \
-            ("%s is disabled even after enabling it" % show_string)
-
-        # 7. Check that it does not appear in 'show running-config' output
-        ret = s1.cmdCLI("do show running-config")
-        assert ("ip ecmp %sdisable" % sub_cmd) not in ret, \
-            ("show running-config shows ecmp %s configuration when enabled" %
-                sub_cmd)
         # Cleanup
         s1.cmdCLI("exit")
 
