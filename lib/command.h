@@ -151,6 +151,7 @@ enum node_type
   LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
   IPSEC_IKE_NODE,                   /* IPsec policy node */
   IPSEC_IKE_ISAKMP_NODE,            /* IPsec ISAKMP node */
+  VRRP_IF_NODE,                /* VRRP interface node */
 #endif
   VTY_NODE,			/* Vty node. */
 };
