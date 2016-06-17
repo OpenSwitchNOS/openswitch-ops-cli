@@ -571,10 +571,6 @@ vtysh_config_context_ecmp_clientcallback(void *p_private)
         return e_vtysh_error;
     }
 
-    if (!GET_ECMP_CONFIG_STATUS(ovs_row))
-    {
-        vtysh_ovsdb_cli_print(p_msg, "ip ecmp disable");
-    }
     if (!GET_ECMP_CONFIG_HASH_SRC_IP_STATUS(ovs_row))
     {
         vtysh_ovsdb_cli_print(p_msg, "ip ecmp load-balance src-ip disable");

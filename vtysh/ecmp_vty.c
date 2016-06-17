@@ -107,17 +107,6 @@ ecmp_config_set_status (bool status, const char * field)
     }
 }
 
-DEFUN (ip_ecmp_status,
-    ip_ecmp_status_cmd,
-    "ip ecmp disable",
-    IP_STR
-    ECMP_STR
-    ECMP_CONFIG_DISABLE_STR)
-{
-  VLOG_DBG("Setting status of the ecmp.");
-  return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_STATUS);
-}
-
 DEFUN (ip_ecmp_load_balance_src_ip,
     ip_ecmp_load_balance_src_ip_cmd,
     "ip ecmp load-balance src-ip disable",
@@ -181,18 +170,6 @@ DEFUN (ip_ecmp_load_balance_resilient,
 {
   VLOG_DBG("Add hash option Resilient.");
   return ecmp_config_set_status(false, SYSTEM_ECMP_CONFIG_HASH_RESILIENT);
-}
-
-DEFUN (no_ip_ecmp_status,
-    no_ip_ecmp_status_cmd,
-    "no ip ecmp disable",
-    NO_STR
-    IP_STR
-    ECMP_STR
-    ECMP_CONFIG_DISABLE_STR)
-{
-  VLOG_DBG("Setting the ecmp state.");
-  return ecmp_config_set_status(true, SYSTEM_ECMP_CONFIG_STATUS);
 }
 
 DEFUN (no_ip_ecmp_load_balance_src_ip,
@@ -312,14 +289,12 @@ void
 ecmp_vty_init (void)
 {
 
-  install_element (CONFIG_NODE, &ip_ecmp_status_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_src_ip_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_src_port_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_dst_ip_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_dst_port_cmd);
   install_element (CONFIG_NODE, &ip_ecmp_load_balance_resilient_cmd);
   install_element (ENABLE_NODE, &show_ip_ecmp_cmd);
-  install_element (CONFIG_NODE, &no_ip_ecmp_status_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_src_ip_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_src_port_cmd);
   install_element (CONFIG_NODE, &no_ip_ecmp_load_balance_dst_ip_cmd);
