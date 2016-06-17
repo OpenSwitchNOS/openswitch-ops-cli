@@ -46,12 +46,10 @@ def test_vtysh_ct_ecmp_cli(topology, step):
     step("2-ECMP disabled validations")
     # Verify ecmp disable operation, multiple hash disable/enable
     sw1("configure terminal")
-    sw1("ip ecmp disable")
     # Disable hash function dst-ip and src-ip
     sw1("ip ecmp load-balance dst-ip disable")
     sw1("ip ecmp load-balance src-port disable")
     return_ = sw1("do show ip ecmp")
-    assert search('(ECMP\sStatus\s*:\sDisabled)', return_) is not None
     assert search('(Source\sIP\s*:\sEnabled)', return_) is not None
     assert search('(Destination\sIP\s*:\sDisabled)', return_) is not None
     assert search('(Source\sPort\s*:\sDisabled)', return_) is not None
@@ -59,6 +57,5 @@ def test_vtysh_ct_ecmp_cli(topology, step):
     sw1("exit")
     step("3-Show running config for ECMP changes")
     return_ = sw1("show running-config")
-    assert 'ip ecmp disable' in return_ and \
-           'ip ecmp load-balance src-port disable' in return_ and \
+    assert 'ip ecmp load-balance src-port disable' in return_ and \
            'load-balance dst-ip disable' in return_
