@@ -1420,6 +1420,9 @@ vtysh_exit (struct vty *vty)
     case KEYCHAIN_KEY_NODE:
       vty->node = KEYCHAIN_NODE;
       break;
+    case VRRP_IF_NODE:
+      vty->node = INTERFACE_NODE;
+      break;
     default:
       break;
     }
