@@ -369,10 +369,8 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_ip6_address_secondary);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_vlan_mode);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_trunks);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_vlan_trunks);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_admin);
-    ovsdb_idl_add_column(idl, &ovsrec_port_col_tag);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_vlan_tag);
     ovsdb_idl_add_column(idl, &ovsrec_port_col_status);
     ovsdb_idl_add_column(idl, &ovsrec_vrf_col_name);
