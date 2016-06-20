@@ -3650,6 +3650,7 @@ DEFUN (vtysh_alias_cli,
       "Extra arguments are appended at the end. (Max length 400 characters)\n")
 {
    int i = 0, ret_val = 0;
+   char *str;
    char alias_list_str[VTYSH_MAX_ALIAS_LIST_LEN] = {0};
 
    if (argc == 0) return CMD_WARNING;
@@ -3696,6 +3697,14 @@ DEFUN (vtysh_alias_cli,
    if (strlen(argv[0]) > VTYSH_MAX_ALIAS_DEF_LEN)
    {
       vty_out(vty, VTYSH_ERROR_MAX_ALIAS_LEN_EXCEEDED);
+      return CMD_SUCCESS;
+   }
+
+   /* check if alias name has capital letter*/
+   str = CONST_CAST(char*,argv[0]);
+   if (((str[0]) >= 'A' && (str[0]) <= 'Z'))
+   {
+      vty_out(vty, VTYSH_ERROR_ALIAS_NOT_ALLOW_CAPITAL);
       return CMD_SUCCESS;
    }
 

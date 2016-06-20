@@ -63,6 +63,7 @@ struct vtysh_alias_data {
 #define VTYSH_ERROR_ALIAS_NAME_ALREADY_EXISTS "Alias command name can not be same as an already existing token\n"
 #define VTYSH_ERROR_ALIAS_NOT_FOUND           "Alias (%s) not configured\n"
 #define VTYSH_ERROR_ALIAS_LOOP_ALIAS          "Alias name can not be part of its own definition\n"
+#define VTYSH_ERROR_ALIAS_NOT_ALLOW_CAPITAL   "Alias name cannot start with capital letter\n"
 
 #define VTYSH_CONSOLE_LENGTH 80
 
