@@ -94,7 +94,7 @@ int vtysh_show_startup = 0;
 #define MAX_DEFAULT_SESSION_TIMEOUT_LEN 10
 
 static int passwd_srv_pubkey_len;
-
+extern int skip_further_execution;
 /* Struct VTY. */
 struct vty *vty;
 
@@ -608,6 +608,7 @@ vtysh_execute (const char *line)
    int retVal = CMD_SUCCESS;
    vty_interrupted_flag_set(0);
    reset_page_height();
+   skip_further_execution = 0;
    retVal = vtysh_execute_func (line, 1);
    vty_interrupted_flag_set(0);
    reset_page_height();

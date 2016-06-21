@@ -99,6 +99,7 @@ char integrate_default[] = SYSCONFDIR INTEGRATE_DEFAULT_CONFIG;
 int vtysh_page_height = 0;
 int cur_page_height = 0;
 boolean skip_more_output = 0;
+int skip_further_execution = 0;
 extern pthread_mutex_t vtysh_ovsdb_mutex;
 
 /* Used to signal to a running command to stop waiting, looping, etc. */
@@ -288,6 +289,7 @@ vty_out (struct vty *vty, const char *format, ...)
             else if (VTYSH_PAGE_ABORT == ret)
             {
               skip_more_output = 1;
+              skip_further_execution = 1;
               if (p != buf)
               {
                 XFREE (MTYPE_VTY_OUT_BUF, p);
