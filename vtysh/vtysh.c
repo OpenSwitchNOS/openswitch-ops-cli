@@ -76,6 +76,7 @@
 
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#include "vty_utils.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -3273,6 +3274,8 @@ vtysh_prompt (void)
 #ifdef ENABLE_OVSDB
    const struct ovsrec_system *ovs = NULL;
    const char *val;
+
+   VTYSH_OVSDB_LOCK;
    ovs = ovsrec_system_first(idl);
 
    if (ovs)
@@ -3290,6 +3293,7 @@ vtysh_prompt (void)
          host.name = XSTRDUP (MTYPE_HOST, val);
       }
    }
+   VTYSH_OVSDB_UNLOCK;
 #endif
 
    hostname = host.name;
