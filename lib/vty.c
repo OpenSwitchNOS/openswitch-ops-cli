@@ -341,7 +341,8 @@ vty_out (struct vty *vty, const char *format, ...)
     p = buf;
 
       /* Pointer p must point out buffer. */
-      buffer_put (vty->obuf, (u_char *) p, len);
+      if(vty->obuf)
+          buffer_put (vty->obuf, (u_char *) p, len);
 
       /* If p is not different with buf, it is allocated buffer.  */
       if (p != buf)
@@ -1977,7 +1978,7 @@ vty_serv_sock_addrinfo (const char *hostname, unsigned short port)
   req.ai_flags = AI_PASSIVE;
   req.ai_family = AF_UNSPEC;
   req.ai_socktype = SOCK_STREAM;
-  sprintf (port_str, "%d", port);
+  snprintf (port_str, BUFSIZ, "%d", port);
   port_str[sizeof (port_str) - 1] = '\0';
 
   ret = getaddrinfo (hostname, port_str, &req, &ainfo);
@@ -2471,7 +2472,7 @@ vty_use_backup_config (char *fullpath)
     }
 
   fullpath_tmp = malloc (strlen (fullpath) + 8);
-  sprintf (fullpath_tmp, "%s.XXXXXX", fullpath);
+  snprintf (fullpath_tmp,strlen(fullpath) + 8, "%s.XXXXXX", fullpath);
   
   /* Open file to configuration write. */
   tmp = mkstemp (fullpath_tmp);
@@ -2533,7 +2534,7 @@ vty_read_config (char *config_file,
           getcwd (cwd, MAXPATHLEN);
           tmp = XMALLOC (MTYPE_TMP, 
  			      strlen (cwd) + strlen (config_file) + 2);
-          sprintf (tmp, "%s/%s", cwd, config_file);
+          snprintf (tmp, strlen (cwd) + strlen (config_file) + 2, "%s/%s", cwd, config_file);
           fullpath = tmp;
         }
       else
