@@ -1542,7 +1542,7 @@ cmd_word_match(struct cmd_token *token,
                         }
                         for (i = min_max[0]; i <= min_max[1]; i++)
                         {
-                            sprintf (buf_temp, "%lu", i);
+                            snprintf (buf_temp, DECIMAL_STRLEN_MAX + 1, "%lu", i);
                             if (cmd_ifname_match (buf_temp) != 0)
                             {
                                 flag = 1;
@@ -3975,7 +3975,7 @@ DEFUN (config_write_file,
 
 
   config_file_tmp = XMALLOC (MTYPE_TMP, strlen (config_file) + 8);
-  sprintf (config_file_tmp, "%s.XXXXXX", config_file);
+  snprintf (config_file_tmp,strlen (config_file) + 8, "%s.XXXXXX", config_file);
 
   /* Open file to configuration write. */
   fd = mkstemp (config_file_tmp);
@@ -4768,7 +4768,7 @@ set_log_file(struct vty *vty, const char *fname, int loglevel)
           zlog_err ("config_log_file: Unable to alloc mem!");
           return CMD_WARNING;
         }
-      sprintf (p, "%s/%s", cwd, fname);
+      snprintf (p,strlen (cwd) + strlen (fname) + 2, "%s/%s", cwd, fname);
       fullpath = p;
     }
   else
@@ -5674,7 +5674,7 @@ cmd_get_list_from_range_str (const char *str_ptr, int flag_intf)
         {
             for(i = num[0]; i <= num[1]; i++)
             {
-                sprintf(buf, "%lu", i);
+                snprintf(buf, DECIMAL_STRLEN_MAX + 1, "%lu", i);
                 node = cmd_insert_value_list (node, buf);
             }
         }
