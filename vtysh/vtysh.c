@@ -3321,7 +3321,6 @@ vtysh_prompt (void)
 
 #ifdef ENABLE_OVSDB
 
-
 /* Function to create new user with password and add it to the ovsdb-cliet group*/
 static int
 create_new_vtysh_user(const char *user)

@@ -91,6 +91,7 @@ def sftpclient_host_limit(dut01):
 
     return True
 
+
 def sftpclient_non_admin_user(dut01):
     if (enterConfigShell(dut01) is False):
         return False

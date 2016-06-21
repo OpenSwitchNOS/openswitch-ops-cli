@@ -45,7 +45,7 @@ validate_user_privilege (void)
     pw = getpwuid( getuid());
     if (pw == NULL)
     {
-        VLOG_ERR("ERROR :Unknown User.\n");
+        VLOG_ERR("ERROR: Unknown User.\n");
         return false;
     }
 

@@ -87,7 +87,7 @@ show_source_interface_selection(source_interface_protocol type)
             buff = (char *)smap_get(&row->other_config,
                                     SYSTEM_OTHER_CONFIG_MAP_PROTOCOLS_SOURCE);
             if (buff == NULL) {
-                vty_out(vty, " %-15s %-6s ", "tftp","");
+                vty_out(vty, " %-15s %-6s ", "tftp", "");
             } else {
                 vty_out(vty, " %-15s %-46s ", "tftp", buff);
             }

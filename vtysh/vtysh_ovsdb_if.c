@@ -898,7 +898,9 @@ vtysh_ovsdb_is_loaded()
 void
 vtysh_ovsdb_exit(void)
 {
+    VTYSH_OVSDB_LOCK;
     ovsdb_idl_destroy(idl);
+    VTYSH_OVSDB_UNLOCK;
 }
 
 /* Check whether config is initialized by subsystem. */
@@ -987,7 +989,7 @@ vtysh_ovsdb_interface_match(const char *str)
     {
         if ( strcmp(str,row->name) == 0) {
             VTYSH_OVSDB_UNLOCK;
-            return 0;
+	    return 0;
         }
     }
     // Search for each lag port
@@ -995,7 +997,7 @@ vtysh_ovsdb_interface_match(const char *str)
     {
         if ( strcmp(str,lag_port->name) == 0){
             VTYSH_OVSDB_UNLOCK;
-            return 0;
+	    return 0;
         }
     }
     VTYSH_OVSDB_UNLOCK;
