@@ -4479,9 +4479,9 @@ vtysh_init_vty ( struct passwd *pw)
   if (rbac_check_user_permission(pw->pw_name, RBAC_SYS_MGMT))
   {
     install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
+    install_element (ENABLE_NODE, &vtysh_reboot_cmd);
   }
 
- install_element (ENABLE_NODE, &vtysh_reboot_cmd);
  install_element (ENABLE_NODE, &vtysh_set_prompt_cmd);
  install_element (ENABLE_NODE, &vtysh_reset_prompt_cmd);
 
