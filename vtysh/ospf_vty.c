@@ -135,6 +135,54 @@ ospf_str_to_area_id (const char *str, struct in_addr *area_id)
   return 0;
 }
 
+/* qsort comparator function.
+ */
+int
+compare_nodes_by_ip_in_numerical(const void *a_, const void *b_)
+{
+    const struct shash_node *const *a = a_;
+    const struct shash_node *const *b = b_;
+    uint i1=0,i2=0;
+
+    sscanf((*a)->name,"%d",&i1);
+    sscanf((*b)->name,"%d",&i2);
+
+    if (i1 == i2)
+        return 0;
+    else if (i1 < i2)
+        return -1;
+    else
+        return 1;
+}
+
+/*
+ * Sorting function for routes
+ * on success, returns sorted list of routes.
+ */
+const struct shash_node **
+sort_ospf_route(const struct shash *sh)
+{
+    if (shash_is_empty(sh)) {
+        return NULL;
+    } else {
+        const struct shash_node **nodes;
+        struct shash_node *node;
+
+        size_t i, n;
+
+        n = shash_count(sh);
+        nodes = xmalloc(n * sizeof *nodes);
+        i = 0;
+        SHASH_FOR_EACH (node, sh) {
+            if(node != NULL)
+                nodes[i++] = node;
+        }
+        ovs_assert(i == n);
+
+        qsort(nodes, n, sizeof *nodes, compare_nodes_by_ip_in_numerical);
+        return nodes;
+    }
+}
 
 /* Function to get the statistics from neighbor table. */
 int64_t
@@ -3853,14 +3901,19 @@ ospf_route_network_show(const struct ovsrec_ospf_router *router_row)
 {
     const struct ovsrec_ospf_route *route_row = NULL;
     const struct ovsrec_ospf_area *area_row = NULL;
-    int i = 0, j = 0, area_id = 0;
+    int i = 0, j = 0, area_id = 0, count = 0;
     int64_t cost = OSPF_DEFAULT_COST;
     char area_str[OSPF_SHOW_STR_LEN];
+    struct shash sorted_ospf_net_route;
+    const struct shash_node **nodes;
+    const char *port_ip_str;
 
     memset(area_str,'\0', OSPF_SHOW_STR_LEN);
 
     vty_out (vty, "============ OSPF network routing table ============%s",
          VTY_NEWLINE);
+
+    shash_init(&sorted_ospf_net_route);
 
     OVSREC_OSPF_AREA_FOR_EACH(area_row, idl)
     {
@@ -3868,6 +3921,21 @@ ospf_route_network_show(const struct ovsrec_ospf_router *router_row)
         for (i = 0; i < area_row->n_inter_area_ospf_routes; i++)
         {
             route_row = area_row->inter_area_ospf_routes[i];
+            port_ip_str = route_row->prefix;
+            shash_add(&sorted_ospf_net_route, port_ip_str, (void *)route_row);
+        }
+
+        if (!shash_is_empty(&sorted_ospf_net_route))
+        {
+            count = shash_count(&sorted_ospf_net_route);
+            nodes = sort_ospf_route(&sorted_ospf_net_route);
+        }
+        else
+            count = 0;
+
+        for (int idx = 0; idx < count; idx++)
+        {
+            route_row = (const struct ovsrec_ospf_route *)nodes[idx]->data;
             area_id = smap_get_int(&route_row->route_info,
                                    OSPF_KEY_ROUTE_AREA_ID, 0);
             if (area_id != 0)
@@ -3888,10 +3956,28 @@ ospf_route_network_show(const struct ovsrec_ospf_router *router_row)
                          VTY_NEWLINE);
         }
 
+        if (!shash_is_empty(&sorted_ospf_net_route))
+            shash_clear(&sorted_ospf_net_route);
+
         /* Print intra area routes. */
         for (i = 0; i < area_row->n_intra_area_ospf_routes; i++)
         {
             route_row = area_row->intra_area_ospf_routes[i];
+            port_ip_str = route_row->prefix;
+            shash_add(&sorted_ospf_net_route, port_ip_str, (void *)route_row);
+        }
+
+        if (!shash_is_empty(&sorted_ospf_net_route))
+        {
+            count = shash_count(&sorted_ospf_net_route);
+            nodes = sort_ospf_route(&sorted_ospf_net_route);
+        }
+        else
+            count = 0;
+
+        for (int idx = 0; idx < count; idx++)
+        {
+            route_row = (const struct ovsrec_ospf_route *)nodes[idx]->data;
             area_id = smap_get_int(&route_row->route_info,
                                    OSPF_KEY_ROUTE_AREA_ID, 0);
             if (area_id != 0)
@@ -3911,9 +3997,13 @@ ospf_route_network_show(const struct ovsrec_ospf_router *router_row)
                 vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
                          VTY_NEWLINE);
         }
-    }
-    vty_out (vty, "%s", VTY_NEWLINE);
 
+        if (!shash_is_empty(&sorted_ospf_net_route))
+            shash_clear(&sorted_ospf_net_route);
+    }
+    shash_destroy(&sorted_ospf_net_route);
+
+    vty_out (vty, "%s", VTY_NEWLINE);
 }
 
 
@@ -3922,75 +4012,114 @@ ospf_route_router_show(const struct ovsrec_ospf_router *router_row)
 {
     const struct ovsrec_ospf_route *route_row = NULL;
     const struct ovsrec_ospf_area *area_row = NULL;
-    int i = 0, j = 0, area_id = 0;
+    int i = 0, j = 0, area_id = 0, count = 0;
     int64_t cost = OSPF_DEFAULT_COST;
     char area_str[OSPF_SHOW_STR_LEN];
     const char *abr = NULL;
     const char *asbr = NULL;
+    struct shash sorted_ospf_route;
+    const struct shash_node **nodes;
+    const char *port_ip_str;
 
     memset(area_str,'\0', OSPF_SHOW_STR_LEN);
 
     vty_out (vty, "============ OSPF router routing table =============%s",
          VTY_NEWLINE);
 
+    shash_init(&sorted_ospf_route);
     OVSREC_OSPF_AREA_FOR_EACH(area_row, idl)
     {
         /* Print inter area routes. */
         for (i = 0; i < area_row->n_router_ospf_routes; i++)
         {
             route_row = area_row->router_ospf_routes[i];
-            area_id = smap_get_int(&route_row->route_info,
-                                   OSPF_KEY_ROUTE_AREA_ID, 0);
-            if (area_id != 0)
-            {
-                OSPF_IP_STRING_CONVERT(area_str, ntohl(area_id));
-            }
-            else
-            {
-                strncpy(area_str, "0.0.0.0", OSPF_SHOW_STR_LEN - 1);
-            }
-
-            cost = smap_get_int(&route_row->route_info,
-                                OSPF_KEY_ROUTE_COST, OSPF_DEFAULT_COST);
-            abr = smap_get(&route_row->route_info, OSPF_KEY_ROUTE_TYPE_ABR);
-            asbr = smap_get(&route_row->route_info, OSPF_KEY_ROUTE_TYPE_ASBR);
-
-            vty_out (vty, "R    %-15s    %s [%lu] area: %s%s%s%s",
-                     route_row->prefix,
-                     !strcmp(route_row->path_type,
-                     OSPF_PATH_TYPE_STRING_INTER_AREA) ? "IA" : "  ",
-                     cost, area_str,
-                     (abr && !strcmp(abr, "true")) ? ", ABR" : "",
-                     (asbr && !strcmp(asbr, "true")) ? ", ASBR" : "",
-                     VTY_NEWLINE);
-
-            for(j = 0; j < route_row->n_paths; j++)
-                vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
-                         VTY_NEWLINE);
+            port_ip_str = route_row->prefix;
+            shash_add(&sorted_ospf_route, port_ip_str, (void *)route_row);
         }
     }
-    vty_out (vty, "%s", VTY_NEWLINE);
 
+    if (!shash_is_empty(&sorted_ospf_route))
+    {
+        count = shash_count(&sorted_ospf_route);
+        nodes = sort_ospf_route(&sorted_ospf_route);
+    }
+    else
+        count = 0;
+
+    for (int idx = 0; idx < count; idx++)
+    {
+        route_row = (const struct ovsrec_ospf_route *)nodes[idx]->data;
+        area_id = smap_get_int(&route_row->route_info,
+                               OSPF_KEY_ROUTE_AREA_ID, 0);
+        if (area_id != 0)
+        {
+            OSPF_IP_STRING_CONVERT(area_str, ntohl(area_id));
+        }
+        else
+        {
+            strncpy(area_str, "0.0.0.0", OSPF_SHOW_STR_LEN - 1);
+        }
+
+        cost = smap_get_int(&route_row->route_info,
+                            OSPF_KEY_ROUTE_COST, OSPF_DEFAULT_COST);
+        abr = smap_get(&route_row->route_info, OSPF_KEY_ROUTE_TYPE_ABR);
+        asbr = smap_get(&route_row->route_info, OSPF_KEY_ROUTE_TYPE_ASBR);
+
+        vty_out (vty, "R    %-15s    %s [%lu] area: %s%s%s%s",
+                 route_row->prefix,
+                 !strcmp(route_row->path_type,
+                 OSPF_PATH_TYPE_STRING_INTER_AREA) ? "IA" : "  ",
+                 cost, area_str,
+                 (abr && !strcmp(abr, "true")) ? ", ABR" : "",
+                 (asbr && !strcmp(asbr, "true")) ? ", ASBR" : "",
+                 VTY_NEWLINE);
+
+        for(j = 0; j < route_row->n_paths; j++)
+            vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
+                    VTY_NEWLINE);
+    }
+    shash_destroy(&sorted_ospf_route);
+
+    vty_out (vty, "%s", VTY_NEWLINE);
 }
 
 static void
 ospf_route_external_show(const struct ovsrec_ospf_router *router_row)
 {
     const struct ovsrec_ospf_route *route_row = NULL;
-    int i = 0, j = 0, area_id = 0;
+    int i = 0, j = 0, area_id = 0, count = 0;
     int64_t cost = OSPF_DEFAULT_COST;
     char area_str[OSPF_SHOW_STR_LEN];
     const char *val = NULL;
+    struct shash sorted_ospf_ext_route;
+    const struct shash_node **nodes;
+    const char *port_ip_str;
 
     memset(area_str,'\0', OSPF_SHOW_STR_LEN);
 
     vty_out (vty, "============ OSPF external routing table ===========%s",
          VTY_NEWLINE);
 
-    /* Print inter area routes. */
+    shash_init(&sorted_ospf_ext_route);
     for (i = 0; i < router_row->n_ext_ospf_routes; i++)
     {
         route_row = router_row->ext_ospf_routes[i];
+        port_ip_str = route_row->prefix;
+        shash_add(&sorted_ospf_ext_route, port_ip_str, (void *)route_row);
+    }
+
+    if (!shash_is_empty(&sorted_ospf_ext_route))
+    {
+        count = shash_count(&sorted_ospf_ext_route);
+        nodes = sort_ospf_route(&sorted_ospf_ext_route);
+    }
+    else
+        count = 0;
+
+    /* Print inter area routes. */
+    for (int idx = 0; idx < count; idx++)
+    {
+        route_row = (const struct ovsrec_ospf_route *)nodes[idx]->data;
         area_id = smap_get_int(&route_row->route_info,
                                OSPF_KEY_ROUTE_AREA_ID, 0);
         if (area_id != 0)
@@ -4032,9 +4161,9 @@ ospf_route_external_show(const struct ovsrec_ospf_router *router_row)
             vty_out (vty, "%24s   %s%s", "", route_row->paths[j],
                      VTY_NEWLINE);
     }
+    shash_destroy(&sorted_ospf_ext_route);
 
     vty_out (vty, "%s", VTY_NEWLINE);
-
 }
 
 
