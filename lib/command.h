@@ -705,6 +705,7 @@ void install_dyn_helpstr_funcptr(char *funcname,
 #define DECIMAL_STRLEN_MAX 10
 #define COMMA_ERR  1
 #define COMMA_STR_VALID 0
+#define MAX_HOSTNAME_LEN   32
 
 struct range_list
 {

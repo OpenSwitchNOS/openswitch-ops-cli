@@ -4186,7 +4186,6 @@ DEFUN (config_no_hostname,
   return CMD_SUCCESS;
 }
 #else
-#define MAX_HOSTNAME_LEN 32
 #define MAX_DOMAINNAME_LEN 32
 extern char *temp_prompt;
 extern void  vtysh_ovsdb_hostname_set(const char * in);

@@ -35,8 +35,6 @@
 #include "vtysh_ovsdb_config_context.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include "vtysh/vtysh_ovsdb_router_context.h"
-#include "vtysh/vtysh_ovsdb_sftp_context.h"
-#include "vtysh/vtysh_ovsdb_source_interface_context.h"
 
 /* Intialize the module "vtysh_ovsdb_config" used for log macros */
 VLOG_DEFINE_THIS_MODULE(vtysh_ovsdb_config);
@@ -221,8 +219,6 @@ vtysh_ovsdb_init_clients(void)
   /* register vtysh context table client callbacks */
   vtysh_init_config_context_clients();
   vtysh_init_router_context_clients();
-  vtysh_init_source_interface_context_clients();
-  vtysh_init_sftp_context_clients();
 }
 
 

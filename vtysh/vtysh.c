@@ -63,11 +63,9 @@
 #include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "ecmp_vty.h"
-#include "source_interface_selection_vty.h"
 #endif
 
 #include "sub_intf_vty.h"
-#include "sftp_vty.h"
 #include "vtysh_utils.h"
 #include <termios.h>
 #include "vtysh/utils/lacp_vtysh_utils.h"
@@ -4498,11 +4496,7 @@ vtysh_init_vty ( struct passwd *pw)
   alias_vty_init();
   logrotate_vty_init();
 
-  /* Initialize source interface selection CLI*/
-  source_interface_selection_vty_init();
-
   /* Initialise SFTP CLI */
-  sftp_vty_init();
 
   /* Initialize ospf commands*/
   ospf_vty_init();
