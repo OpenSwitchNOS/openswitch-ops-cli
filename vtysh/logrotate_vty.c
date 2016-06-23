@@ -150,14 +150,18 @@ static int set_logrotate_target(const char *uri)
     struct in_addr addr;
     struct in6_addr addrv6;
     boolean is_ipv4 = TRUE;
+    struct in_addr addr;
+    struct in6_addr addrv6;
+    boolean is_ipv4 = TRUE;
 
     if(strncmp(uri,SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
         {
         ip_value = uri+7;
 
-        if ((strlen(uri) <= 7) || (strncmp(uri,"tftp://",7)) || !is_valid_ip_address(ip_value))
+        if ((strlen(uri) <= 7) || (strncmp(uri,"tftp://",7)))
         {
-            vty_out(vty, "Invalid parameter. Supported values :'tftp://A.B.C.D' or 'tftp://X:X::X:X'. %s", VTY_NEWLINE);
+            vty_out(vty, "Invalid parameter. Supported values "
+                    ":'tftp://A.B.C.D' or 'tftp://X:X::X:X'. %s", VTY_NEWLINE);
             return CMD_ERR_NOTHING_TODO;
         }
 
@@ -166,7 +170,8 @@ static int set_logrotate_target(const char *uri)
             {
             if(inet_pton(AF_INET6, ip_value, &addrv6) <= 0)
                 {
-                VLOG_ERR("Invalid IPv4 or IPv6 address\n");
+                vty_out(vty, "Invalid parameter. Supported values "
+                     ":'tftp://A.B.C.D' or 'tftp://X:X::X:X'. %s", VTY_NEWLINE);
                 return CMD_ERR_NOTHING_TODO;
                 }
             is_ipv4 = FALSE;
@@ -174,13 +179,15 @@ static int set_logrotate_target(const char *uri)
 
         if(is_ipv4 && (!IS_VALID_IPV4(htonl(addr.s_addr))))
             {
-            VLOG_ERR("IPv4 :Broadcast, multicast and loopback addresses are not allowed\n");
+            vty_out(vty, "Invalid parameter. Supported values "
+                    ":'tftp://A.B.C.D' or 'tftp://X:X::X:X'. %s", VTY_NEWLINE);
             return CMD_ERR_NOTHING_TODO;
             }
 
         if((!is_ipv4) && (!IS_VALID_IPV6(&addrv6)))
             {
-            VLOG_ERR("IPv6 :Multicast and loopback addresses are not allowed\n");
+            vty_out(vty, "Invalid parameter. Supported values "
+                    ":'tftp://A.B.C.D' or 'tftp://X:X::X:X'. %s", VTY_NEWLINE);
             return CMD_ERR_NOTHING_TODO;
             }
         }
