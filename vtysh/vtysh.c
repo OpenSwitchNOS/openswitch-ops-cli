@@ -4444,9 +4444,8 @@ vtysh_init_vty ( struct passwd *pw)
   if (rbac_check_user_permission(pw->pw_name, RBAC_SYS_MGMT))
   {
     install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
+    install_element (ENABLE_NODE, &vtysh_reboot_cmd);
   }
-
- install_element (ENABLE_NODE, &vtysh_reboot_cmd);
 
 #ifdef ENABLE_OVSDB
   /* vtysh_cli_post_init will install all the features
