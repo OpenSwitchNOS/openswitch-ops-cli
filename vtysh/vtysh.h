@@ -78,6 +78,8 @@ struct vtysh_alias_data {
 #define OVSDB_INVALID_VALUE_ERROR     "Address entered is not present"
 #define OVSDB_DUPLICATE_VALUE_ERROR   "Duplicate value entered"
 
+#define IPV4_ADDRESS_MAX_SUBNET_MASK "31"
+
 #define  IS_NETWORK_ADDRESS(i)     (((long)(i) & 0x000000ff) == 0x0)
 #define  IS_SUBNET_BROADCAST(i)     (((long)(i) & 0x000000ff) == 0xff)
 #define  IS_BROADCAST_IPV4(i)      (((long)(i) & 0xffffffff) == 0xffffffff)
