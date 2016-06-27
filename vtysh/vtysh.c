@@ -49,6 +49,7 @@
 #include "lib/cli_plugins.h"
 #include "log.h"
 #include "bgp_vty.h"
+#include "bfd_vty.h"
 #include "logrotate_vty.h"
 #include "openvswitch/vlog.h"
 #include "ovsdb-idl.h"
@@ -4282,6 +4283,9 @@ vtysh_init_vty ( struct passwd *pw)
 
    policy_vty_init();
    bgp_vty_init();
+
+   bfd_vty_init();
+
 #ifndef ENABLE_OVSDB
    install_element (ISIS_NODE, &vtysh_exit_isisd_cmd);
 #endif

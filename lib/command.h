@@ -577,6 +577,7 @@ struct dyn_cb_func
 #define RIP_STR     "RIP information\n"
 #define BGP_STR     "BGP specific commands\n"
 #define OSPF_STR    "OSPF information\n"
+#define BFD_STR     "BFD specific commands\n"
 #define NEIGHBOR_STR "Specify neighbor router\n"
 #define DEBUG_STR   "Debugging functions (see also 'undebug')\n"
 #define UNDEBUG_STR "Disable debugging functions (see also 'debug')\n"

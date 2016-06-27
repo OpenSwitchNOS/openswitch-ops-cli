@@ -234,6 +234,28 @@ vtysh_ovsdb_ovstable_parse_lacpcfg(const struct smap *lacp_config, vtysh_ovsdb_c
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_bfd_global
+| Responsibility : parse bfd global columns
+| Return : vtysh_ret_val, e_vtysh_ok
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_bfd_global(vtysh_ovsdb_cbmsg *p_msg)
+{
+  const struct ovsrec_bfd *ovs_bfd;
+
+  ovs_bfd = ovsrec_bfd_first(p_msg->idl);
+  if (ovs_bfd) {
+     vtysh_ovsdb_cli_print(p_msg,
+		     "bfd interval %ld min_rx %ld multiplier %ld",
+			*ovs_bfd->min_tx,
+			*ovs_bfd->min_rx,
+			*ovs_bfd->decay_min_rx);
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_parse_alias
 | Responsibility : parse alias column in system table
 | Parameters :
@@ -521,6 +543,9 @@ vtysh_config_context_global_clientcallback(void *p_private)
     {
       vtysh_ovsdb_cli_print(p_msg, "session-timeout %d", atoi(data));
     }
+
+    /* parse the bfd global config */
+    vtysh_ovsdb_ovstable_parse_bfd_global(p_msg);
 
     /* parse the alias coumn */
     vtysh_ovsdb_ovstable_parse_alias(p_msg);

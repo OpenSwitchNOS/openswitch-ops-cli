@@ -114,6 +114,10 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       value_bgp_neighbors[n_neighbors]->
                                       value_timers[0]);
 
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->n_fall_over_bfd > 0)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s","","neighbor",
+                                      bgp_router_context->key_bgp_neighbors[n_neighbors], "fall-over", "bfd");
+
             i=0;
             while (i < bgp_router_context->value_bgp_neighbors[n_neighbors]->
                    n_route_maps) {

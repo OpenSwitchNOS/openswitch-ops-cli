@@ -262,6 +262,48 @@ vtysh_wait(void)
 }
 
 static void
+bfd_ovsdb_init()
+{
+	/* Registering BFD Global table */
+	ovsdb_idl_add_table(idl, &ovsrec_table_bfd);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_col_enable);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_col_min_rx);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_col_min_tx);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_col_decay_min_rx);
+
+	/* BFD Session table */
+	ovsdb_idl_add_table(idl, &ovsrec_table_bfd_session);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_remote_multiplier);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_remote_state);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_remote_diagnostic);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_effective_min_tx_interval);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_bgp_asn);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_owner);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_forwarding);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_bfd_src_ip);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_decay_min_rx);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_bfd_local_dst_mac);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_state);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_remote_discriminator);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_min_tx);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_forwarding_if_rx);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_min_rx);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_effective_min_rx_interval);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_enable);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_check_tnl_key);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_diagnostic);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_bfd_remote_dst_mac);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_remote_min_rx_interval);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_local_discriminator);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_bfd_local_src_mac);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_bfd_dst_ip);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_flap_count);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_remote_min_tx_interval);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_session_id);
+	ovsdb_idl_add_column(idl, &ovsrec_bfd_session_col_cpath_down);
+}
+
+static void
 bgp_ovsdb_init()
 {
     /* BGP router table. */
@@ -290,6 +332,8 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_remote_as);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_allow_as_in);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_local_as);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_fall_over_bfd);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_fall_over_bfd_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_weight);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_tcp_port_number);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_advertisement_interval);
@@ -699,6 +743,8 @@ ovsdb_init(const char *db_path)
     /* VRF tables. */
     vrf_ovsdb_init();
 
+    /* BFD tables. */
+    bfd_ovsdb_init();
 
     /* Policy tables. */
     policy_ovsdb_init();
