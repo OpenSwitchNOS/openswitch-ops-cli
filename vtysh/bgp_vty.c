@@ -2789,6 +2789,118 @@ DEFUN(neighbor_remote_as,
     return cli_neighbor_remote_as_cmd_execute(NULL, vty, argc, argv);
 }
 
+/*
+ * Enables BFD to an *EXISTING* peer group OR
+ * creates a NEW peer if none exists
+ */
+static int
+cli_neighbor_fallover_bfd_cmd_execute(char *vrf_name, struct vty *vty,
+                                  int argc, const char *argv[])
+{
+    const char *peer_str = argv[0];
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+    const bool is_set_bfd = true;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+       ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row, (int64_t)vty->index);
+    if (!bgp_router_context) {
+       ERRONEOUS_DB_TXN(txn, "Bgp router context not available");
+    }
+
+    /* An ipv4 or v6 address, must be a neighbor/peer. */
+    if (string_is_an_ip_address(peer_str)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, peer_str);
+        if (ovs_bgp_neighbor) {
+            /* write to the DB */
+            ovsrec_bgp_neighbor_set_bfd_fallover_enable(ovs_bgp_neighbor, &is_set_bfd, 1);
+        }
+    }
+
+    /* Done. */
+    END_DB_TXN(txn);
+}
+
+/*
+ * Disables BFD to an *EXISTING* peer group
+ */
+static int
+cli_neighbor_no_fallover_bfd_cmd_execute(char *vrf_name, struct vty *vty,
+                                  int argc,const char *argv[])
+{
+    const char *peer_str = argv[0];
+    const struct ovsrec_bgp_router *bgp_router_context;
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor;
+    struct ovsdb_idl_txn *txn;
+
+    START_DB_TXN(txn);
+
+    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
+    if (vrf_row == NULL) {
+        ERRONEOUS_DB_TXN(txn, "no vrf found");
+    }
+    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
+                                                        (int64_t)vty->index);
+    if (!bgp_router_context) {
+        ERRONEOUS_DB_TXN(txn, "Bgp router context not available");
+    }
+
+    /* An ipv4 or v6 address, must be a neighbor/peer. */
+    if (string_is_an_ip_address(peer_str)) {
+        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(bgp_router_context, peer_str);
+        if (ovs_bgp_neighbor) {
+            /* write to the DB */
+            ovsrec_bgp_neighbor_set_bfd_fallover_enable(ovs_bgp_neighbor, NULL, 0);
+        }
+    }
+
+    /* Done. */
+    END_DB_TXN(txn);
+}
+
+DEFUN(neighbor_bfd_fallover_enable,
+      neighbor_bfd_fallover_enable_cmd,
+      NEIGHBOR_CMD2 "fall-over bfd",
+      NEIGHBOR_STR
+      NEIGHBOR_ADDR_STR2
+      "Fallover mechanism for the neighbor\n"
+      "BFD as fallover for the neighbor\n")
+{
+    if (argc != 1) {
+        VLOG_DBG("\nargc should be 1, it is %d; %s: %d\n",
+                argc, __FILE__, __LINE__);
+        return CMD_WARNING;
+    }
+
+    return cli_neighbor_fallover_bfd_cmd_execute(NULL, vty, argc, argv);
+}
+
+DEFUN (no_neighbor_bfd_fallover_enable,
+       no_neighbor_bfd_fallover_enable_cmd,
+       NO_NEIGHBOR_CMD2 "fall-over bfd",
+       NO_STR
+       NEIGHBOR_STR
+       NEIGHBOR_ADDR_STR2
+      "Fallover mechanism for the neighbor\n"
+      "BFD as fallover for the neighbor\n")
+{
+    if (argc != 1) {
+        VLOG_DBG("\nargc should be 1, it is %d; %s: %d\n",
+            argc, __FILE__, __LINE__);
+        return CMD_WARNING;
+    }
+
+    return cli_neighbor_no_fallover_bfd_cmd_execute(NULL, vty, argc, argv);
+}
+
 void
 bgp_neighbor_remove_for_matching_peer_group_from_bgp_router(
                         const struct ovsrec_bgp_router *bgp_router_context,
@@ -9628,6 +9740,19 @@ show_one_bgp_neighbor(struct vty *vty, char *name,
                 safe_print_smap_value(&ovs_bgp_neighbor->status,
                                       BGP_PEER_STATE));
 
+    if (ovs_bgp_neighbor->bfd_fallover_enable) {
+        vty_out(vty, "    fallover_bfd: %s\n",
+                (ovs_bgp_neighbor->n_bfd_fallover_enable) ? "Enable" : "Disable");
+
+        /* bfd status */
+        if (ovs_bgp_neighbor->bfd_session) {
+            vty_out(vty, "    BFD status: %s\n",
+                    safe_print_string(1, ovs_bgp_neighbor->bfd_session->state));
+        }
+    } else {
+        vty_out(vty, "    fallover_bfd: %s\n", "Disable");
+    }
+
     if (ovs_bgp_neighbor->n_shutdown)
         if(*ovs_bgp_neighbor->shutdown)
             vty_out(vty, "    shutdown: %s\n",
@@ -10400,6 +10525,10 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &neighbor_peer_group_cmd);
     install_element(BGP_NODE, &no_neighbor_peer_group_cmd);
     install_element(BGP_NODE, &no_neighbor_peer_group_remote_as_cmd);
+
+    /* "Neighbor fall-over" commands. */
+    install_element(BGP_NODE, &neighbor_bfd_fallover_enable_cmd);
+    install_element(BGP_NODE, &no_neighbor_bfd_fallover_enable_cmd);
 
     /* "Neighbor local-as" commands. */
     install_element(BGP_NODE, &neighbor_local_as_cmd);
