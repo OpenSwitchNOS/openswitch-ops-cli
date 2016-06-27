@@ -25,6 +25,7 @@
 #define _OVSDB_VTY_UTILS_H
 
 #include "vtysh/command.h"
+#include "ovsdb-idl.h"
 
 /*
 ** depending on the outcome of the db transaction, returns

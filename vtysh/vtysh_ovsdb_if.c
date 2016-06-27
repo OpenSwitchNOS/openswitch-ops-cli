@@ -161,6 +161,8 @@ bgp_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_remote_as);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_allow_as_in);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_local_as);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_bfd_fallover_enable);
+    ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_bfd_fallover_status);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_weight);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_tcp_port_number);
     ovsdb_idl_add_column(idl, &ovsrec_bgp_neighbor_col_advertisement_interval);
@@ -546,7 +548,6 @@ ovsdb_init(const char *db_path)
 
     /* VRF tables. */
     vrf_ovsdb_init();
-
 
     /* Policy tables. */
     policy_ovsdb_init();

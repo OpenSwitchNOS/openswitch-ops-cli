@@ -71,6 +71,7 @@ typedef enum vtysh_config_context_client_idenum
 {
   /* client callback based on client-id value */
   e_vtysh_config_context_global = 0,
+  e_vtysh_config_context_bfd,
   e_vtysh_config_context_vrf,
   e_vtysh_config_context_sflow,
   e_vtysh_config_context_fan,
