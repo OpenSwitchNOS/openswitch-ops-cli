@@ -100,6 +100,10 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       nbr_table->value_timers[1],
                                       nbr_table->value_timers[0]);
 
+            if (bgp_router_context->value_bgp_neighbors[n_neighbors]->n_bfd_fallover_enable > 0)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s","","neighbor",
+                                      bgp_router_context->key_bgp_neighbors[n_neighbors], "fall-over", "bfd");
+
             i=0;
             while (i < nbr_table->n_route_maps) {
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
