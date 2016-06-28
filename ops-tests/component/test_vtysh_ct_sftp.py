@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from pytest import mark
+
 TOPOLOGY = """
 #
 # +-------+
@@ -27,6 +29,7 @@ TOPOLOGY = """
 """
 
 
+@mark.gate
 def test_sftp_server_configuration(topology, step):
     sw1 = topology.get('sw1')
 
