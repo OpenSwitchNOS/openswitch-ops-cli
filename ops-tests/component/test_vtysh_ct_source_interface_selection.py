@@ -14,6 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+from pytest import mark
 
 TOPOLOGY = """
 #
@@ -27,6 +28,7 @@ TOPOLOGY = """
 """
 
 
+@mark.gate
 def test_source_interface_configuration(topology, step):
     sw1 = topology.get('sw1')
 

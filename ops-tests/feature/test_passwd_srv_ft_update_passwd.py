@@ -36,6 +36,7 @@ TOPOLOGY = """
 
 
 @mark.platform_incompatible(['ostl'])
+@mark.gate
 def test_change_user_password(topology):
     """
     Test that user logged-on via CLI can change own password using 'password'
@@ -126,6 +127,7 @@ def test_change_user_password(topology):
 
 
 @mark.platform_incompatible(['ostl'])
+@mark.gate
 def test_invalid_old_password(topology):
     """
     Test that user logged-on via CLI can change own password using 'password'

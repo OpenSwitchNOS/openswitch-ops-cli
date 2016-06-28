@@ -19,9 +19,8 @@
 """
 OpenSwitch Test for switchd related configurations.
 """
+from pytest import mark
 
-# from pytest import set_trace
-# from time import sleep
 
 TOPOLOGY = """
 # +-------+
@@ -265,6 +264,7 @@ def noradiusretries(dut):
     assert 'Retries         : 1' not in out
 
 
+@mark.gate
 def test_vtysh_ct_aaa(topology, step):
     ops1 = topology.get('ops1')
     assert ops1 is not None
