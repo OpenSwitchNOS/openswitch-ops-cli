@@ -4131,6 +4131,8 @@ int is_valid_ip_address(const char *ip_value)
     boolean  is_ipv4 = TRUE;
     unsigned short ip_length;
     char ip_tmp[MAX_IPV6_STRING_LENGTH];
+    int mask_match = 1;
+    char *token = NULL;
 
     memset(ip_tmp, 0, MAX_IPV6_STRING_LENGTH);
     memset (&addr, 0, sizeof (struct in_addr));
@@ -4146,6 +4148,10 @@ int is_valid_ip_address(const char *ip_value)
     strncpy(ip_tmp,ip_value,ip_length);
     ip_tmp[ip_length + 1] = '\0';
     strtok(ip_tmp,"/");
+    token = strtok(NULL,"\0");
+
+    if (token != NULL)
+        mask_match = strcmp(token, SUBNET_MASK_THIRTY_ONE);
 
     if(inet_pton(AF_INET, ip_tmp, &addr) <= 0)
     {
@@ -4157,8 +4163,12 @@ int is_valid_ip_address(const char *ip_value)
         is_ipv4 = FALSE;
     }
 
-    if((is_ipv4) && (!IS_VALID_IPV4(htonl(addr.s_addr))))
+    if((mask_match != 0) && (is_ipv4) && (!IS_VALID_IPV4(htonl(addr.s_addr))))
     {
+        VLOG_ERR("IPv4: Broadcast, multicast and loopback addresses are not allowed\n");
+        return FALSE;
+    } else  if ((mask_match == 0) && (is_ipv4) &&
+                 (!IS_VALID_IPV4_WITHOUT_NETWORK(htonl(addr.s_addr)))) {
         VLOG_ERR("IPv4: Broadcast, multicast and loopback addresses are not allowed\n");
         return FALSE;
     }
