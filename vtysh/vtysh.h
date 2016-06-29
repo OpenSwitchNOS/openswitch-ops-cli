@@ -77,6 +77,8 @@ struct vtysh_alias_data {
 #define OVSDB_INVALID_VALUE_ERROR     "Address entered is not present"
 #define OVSDB_DUPLICATE_VALUE_ERROR   "Duplicate value entered"
 
+#define SUBNET_MASK_THIRTY_ONE "31"
+
 #define  IS_NETWORK_ADDRESS(i)     (((long)(i) & 0x000000ff) == 0x0)
 #define  IS_SUBNET_BROADCAST(i)     (((long)(i) & 0x000000ff) == 0xff)
 #define  IS_BROADCAST_IPV4(i)      (((long)(i) & 0xffffffff) == 0xffffffff)
@@ -91,6 +93,11 @@ struct vtysh_alias_data {
                           IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
                                                     IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i) | \
                                                                               IS_NETWORK_ADDRESS(i))
+
+#define IS_VALID_IPV4_WITHOUT_NETWORK(i) !(IS_BROADCAST_IPV4(i) | IS_LOOPBACK_IPV4(i) | \
+                                            IS_MULTICAST_IPV4(i) | IS_EXPERIMENTAL_IPV4(i) |\
+                                                IS_INVALID_IPV4(i) | IS_SUBNET_BROADCAST(i))
+
 #define USERADD "/usr/sbin/useradd"
 #define USERMOD "/usr/sbin/usermod"
 #define PASSWD "/usr/bin/passwd"
