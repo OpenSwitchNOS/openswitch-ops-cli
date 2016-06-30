@@ -36,6 +36,7 @@ TOPOLOGY = """
 
 
 # @mark.platform_incompatible(['ostl'])
+@mark.gate
 @mark.skipif(True, reason="Disabling due to gate job failures")
 def test_change_user_password(topology):
     """
@@ -127,6 +128,7 @@ def test_change_user_password(topology):
 
 
 # @mark.platform_incompatible(['ostl'])
+@mark.gate
 @mark.skipif(True, reason="Disabling due to gate job failures")
 def test_invalid_old_password(topology):
     """
