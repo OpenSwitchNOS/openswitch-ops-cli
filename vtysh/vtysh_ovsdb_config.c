@@ -76,7 +76,11 @@ vtysh_sh_run_iteratecontextlist(FILE *fp)
              ovsdb_idl_get_seqno(idl));
     fprintf(fp, "!\n");
     db_ver = ovsrec_get_db_version();
-    fprintf(fp, "Version %s \n", db_ver ? db_ver : CONF_DEFAULT_VER );
+
+    fprintf(fp, "!Version %s %s\n",
+            vtysh_ovsdb_os_name_get() ,
+            vtysh_ovsdb_switch_version_get() );
+    fprintf(fp, "!Schema version %s\n", db_ver ? db_ver : CONF_DEFAULT_VER );
 
     while (current != NULL)
     {
