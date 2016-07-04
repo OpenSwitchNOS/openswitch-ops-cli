@@ -200,15 +200,14 @@ loopback_if_config_ip (const char *if_name, const char *ip4)
     enum ovsdb_idl_txn_status status;
     bool port_found;
     bool secondary = false;
+    char *netmask = NULL;
 
     if (!is_valid_ip_address(ip4))
     {
-        if (!IS_LOOPBACK_IPV4(ip4))
-        {
-            vty_out(vty, "Invalid IP address. %s", VTY_NEWLINE);
-            return CMD_SUCCESS;
-        }
+        vty_out(vty, "Invalid IP address. %s", VTY_NEWLINE);
+        return CMD_SUCCESS;
     }
+
 
     if (!is_ip_configurable(vty, ip4, if_name, AF_INET, secondary))
     {
@@ -243,6 +242,15 @@ loopback_if_config_ip (const char *if_name, const char *ip4)
     if ((NULL != ip4) && (NULL != port_row->ip4_address)
             && (strcmp (port_row->ip4_address, ip4) == 0))
     {
+        return CMD_SUCCESS;
+    }
+
+    /* Only 32 bit mask is allowed for loopback interfaces */
+    netmask = strrchr((char *)ip4, '/');
+    if (NULL != netmask && strcmp(netmask + 1, "32"))
+    {
+        vty_out(vty, "Only 32 bit mask is allowed for "
+                     "loopback interfaces.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
@@ -342,11 +350,20 @@ loopback_if_config_ipv6 (const char *if_name, const char *ipv6)
     struct ovsdb_idl_txn *status_txn = NULL;
     enum ovsdb_idl_txn_status status;
     bool secondary = false;
-
+    char *netmask = NULL;
 
     if (!is_valid_ip_address(ipv6))
     {
         vty_out(vty, "Invalid IP address. %s", VTY_NEWLINE);
+        return CMD_SUCCESS;
+    }
+
+    /* Only 128 bit mask is allowed for IPv6 address of loopback interfaces */
+    netmask = strrchr((char *)ipv6, '/');
+    if (NULL != netmask && strcmp(netmask + 1, "128"))
+    {
+        vty_out(vty, "Only 128 bit mask is allowed for IPv6 "
+                     "loopback interfaces.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
 
