@@ -59,9 +59,14 @@
 #include "lib/vty.h"
 #include "latch.h"
 #include "lib/vty_utils.h"
+#include "vtysh/utils/vrf_vtysh_utils.h"
 #include "vrf-utils.h"
 
 #define TMOUT_POLL_INTERVAL 20
+
+/* Initialize a cursor for the VRF table to query the VRF table index.*/
+struct ovsdb_idl_index_cursor vrf_cursor;
+bool is_vrf_cursor_initialized = false;
 
 int64_t timeout_start;
 struct termios tp;
@@ -391,6 +396,28 @@ vrf_ovsdb_init()
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_user_config);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_parent);
     ovsdb_idl_add_column(idl, &ovsrec_interface_col_split_children);
+
+    /* Creating an index for the VRF table. */
+    struct ovsdb_idl_index *vrf_index;
+    vrf_index = ovsdb_idl_create_index(idl, &ovsrec_table_vrf,
+                                         "vrf_table_index");
+    if (vrf_index) {
+        ovsdb_idl_index_add_column(vrf_index, &ovsrec_vrf_col_name,
+                                   OVSDB_INDEX_ASC, compare_nodes_vrf);
+
+        /* Create a cursor to perform queries to the index defined */
+        if (ovsdb_idl_initialize_cursor(idl, &ovsrec_table_vrf,
+                                        "vrf_table_index",
+                                        &vrf_cursor)) {
+            is_vrf_cursor_initialized = true;
+        } else {
+            VLOG_ERR("Failed to initialize the cursor used to query the VRF "
+                     "table index");
+        }
+    } else {
+        VLOG_ERR("Failed to create an index for the VRF table");
+    }
+
 }
 
 static void

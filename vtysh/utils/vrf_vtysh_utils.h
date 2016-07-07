@@ -24,11 +24,11 @@
 #define _VRF_VTY_UTILS_H
 
 #include "ops-utils.h"
-#define VRF_VLAN_INTF_ID_OFFSET 4
 
 const struct ovsrec_vrf* port_vrf_lookup(const struct ovsrec_port *port_row);
 
-int compare_nodes_vrf(void *a_, void *b_);
+int compare_nodes_vrf(const void *a_, const void *b_);
+int compare_interface_nodes_vrf(const void *a_, const void *b_);
 
 extern int
 ops_sort(const struct shash *sh, void *ptr_func_sort,
