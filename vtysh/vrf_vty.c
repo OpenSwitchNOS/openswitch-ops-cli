@@ -1411,81 +1411,127 @@ vrf_del_ipv6 (const char *if_name, const char *ipv6, bool secondary)
 }
 
 /*
+ * This function is used to print the sorted interface list
+ * that are attached to VRF and the VRF tbale_id and status.
+ */
+void
+print_vrf_info (const struct ovsrec_vrf *vrf_row)
+{
+    const struct ovsrec_port *port_row = NULL;
+    const struct shash_node **nodes;
+    struct shash sorted_ports;
+    uint16_t count;
+    size_t i;
+
+    vty_out (vty, "VRF Name   : %s%s", vrf_row->name, VTY_NEWLINE);
+    vty_out (vty, "VRF Status : %s%s", vrf_is_ready(idl, vrf_row->name) ? "UP" : "DOWN", VTY_NEWLINE);
+    vty_out (vty, "table_id   : %" PRId64 "%s", *(vrf_row->table_id), VTY_NEWLINE);
+    vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
+    vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
+
+    shash_init(&sorted_ports);
+    for (i = 0; i < vrf_row->n_ports; i++)
+    {
+        shash_add(&sorted_ports, vrf_row->ports[i]->name,
+                    (void *)vrf_row->ports[i]);
+    }
+
+    count = shash_count(&sorted_ports);
+    if (count)
+    {
+        nodes = xmalloc(count * sizeof *nodes);
+        if (nodes)
+        {
+            ops_sort(&sorted_ports, compare_interface_nodes_vrf, nodes);
+            for (i = 0; i < count; i++)
+            {
+                port_row = (const struct ovsrec_port *)nodes[i]->data;
+                if (smap_get(&port_row->status, PORT_STATUS_MAP_ERROR) == NULL)
+                {
+                    vty_out (vty, "\t%-8s            %-8s%s", port_row->name,
+                             PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
+                }
+                else
+                {
+                    vty_out (vty, "\t%-8s            error : %-8s%s", port_row->name,
+                             smap_get(&port_row->status, PORT_STATUS_MAP_ERROR),
+                             VTY_NEWLINE);
+                }
+            }
+            free(nodes);
+        }
+    }
+    shash_destroy(&sorted_ports);
+    vty_out (vty, "%s", VTY_NEWLINE);
+    return;
+}
+
+/*
  * This function is used to show the VRF information.
  * Currently, it shows the interfaces attached to each VRF.
  */
 static int
-show_vrf_info ()
+show_vrf_info (char* vrf_name)
 {
-  const struct ovsrec_vrf *vrf_row = NULL;
-  const struct ovsrec_port *port_row = NULL;
-  const struct shash_node **nodes;
-  struct shash sorted_vrf;
-  uint16_t count;
-  size_t i;
+    const struct ovsrec_vrf *vrf_row = NULL;
+    struct ovsrec_vrf vrf;
+    extern struct ovsdb_idl_index_cursor vrf_cursor;
+    extern bool is_vrf_cursor_initialized;
 
-  vrf_row = ovsrec_vrf_first (idl);
-  if (!vrf_row)
+    /** Sample output **
+     * VRF Configuration:
+     * ------------------
+     * VRF Name : vrf_default
+     * VRF Status : UP
+     * table_id   : 0
+     *         Interfaces :     Status :
+     *         -------------------------
+     *         1                up
+     *         2                error: no_internal_vlan
+     *
+     */
+
+    if (!is_vrf_cursor_initialized)
     {
-      vty_out (vty, "No VRF found.%s", VTY_NEWLINE);
-      return CMD_SUCCESS;
+        return CMD_SUCCESS;
     }
-  /** Sample output **
-   * VRF Configuration:
-   * ------------------
-   * VRF Name : vrf_default
-   *
-   *         Interfaces :     Status :
-   *         -------------------------
-   *         1                up
-   *         2                error: no_internal_vlan
-   *
-   */
-
-  vty_out (vty, "VRF Configuration:%s", VTY_NEWLINE);
-  vty_out (vty, "------------------%s", VTY_NEWLINE);
-  OVSREC_VRF_FOR_EACH (vrf_row, idl)
+    else
     {
-      vty_out (vty, "VRF Name : %s%s\n", vrf_row->name, VTY_NEWLINE);
-      vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
-      vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
-
-      shash_init(&sorted_vrf);
-      for (i = 0; i < vrf_row->n_ports; i++)
+        vty_out (vty, "VRF Configuration:%s", VTY_NEWLINE);
+        vty_out (vty, "------------------%s", VTY_NEWLINE);
+        if (NULL != vrf_name)
         {
-          shash_add(&sorted_vrf, vrf_row->ports[i]->name,
-                    (void *)vrf_row->ports[i]);
-        }
-
-      count = shash_count(&sorted_vrf);
-      if (count)
-        {
-          nodes = xmalloc(count * sizeof *nodes);
-          if (nodes)
+            vrf.name = strdup(vrf_name);
+            vrf_row = ovsrec_vrf_index_find(&vrf_cursor, &vrf);
+            if (vrf_row == NULL)
             {
-              ops_sort(&sorted_vrf, compare_nodes_vrf, nodes);
-
-              for (i = 0; i < count; i++)
-              {
-                port_row = (const struct ovsrec_port *)nodes[i]->data;
-                if (smap_get(&port_row->status, PORT_STATUS_MAP_ERROR) == NULL)
-                  {
-                    vty_out (vty, "\t%-8s            %-8s%s", port_row->name,
-                             PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
-                  }
-                else
-                  {
-                    vty_out (vty, "\t%-8s            error : %-8s%s", port_row->name,
-                             smap_get(&port_row->status, PORT_STATUS_MAP_ERROR),
-                             VTY_NEWLINE);
-                  }
-              }
-              free(nodes);
+                vty_out(vty, "VRF %s not found.%s", vrf_name, VTY_NEWLINE);
+                VLOG_DBG("%s VRF \"%s\" is not found.", __func__, vrf_name);
+                free(vrf.name);
+                return CMD_SUCCESS;
             }
+            print_vrf_info(vrf_row);
+            free(vrf.name);
         }
-      shash_destroy(&sorted_vrf);
+        else
+        {
+            /* Print vrf_default */
+            vrf.name = strdup("vrf_default");
+            vrf_row = ovsrec_vrf_index_find(&vrf_cursor, &vrf);
+            print_vrf_info(vrf_row);
+
+            /* Print the rest of the VRFs */
+            OVSREC_VRF_FOR_EACH_BYINDEX (vrf_row, &vrf_cursor)
+            {
+                /* Skip default VRF */
+                if(strncmp("vrf_default", vrf_row->name, strlen("vrf_default") ) == 0)
+                    continue;
+                print_vrf_info(vrf_row);
+            }
+            free(vrf.name);
+        }
+        return CMD_SUCCESS;
     }
-  return CMD_SUCCESS;
 }
 
 /*-----------------------------------------------------------------------------
@@ -1770,14 +1816,25 @@ DEFUN (cli_vrf_del_ipv6,
       (argv[1] != NULL) ? true : false);
 }
 
+DEFUN (cli_vrf_show_vrf_name,
+    cli_vrf_show_vrf_name_cmd,
+    "show vrf VRF",
+    SHOW_STR
+    VRF_STR
+    "VRF name\n")
+{
+  return show_vrf_info((char*) argv[0]);
+}
+
 DEFUN (cli_vrf_show,
     cli_vrf_show_cmd,
     "show vrf",
     SHOW_STR
     VRF_STR)
 {
-  return show_vrf_info();
+  return show_vrf_info(NULL);
 }
+
 #ifdef FTR_PROXY_ARP
   DEFUN (cli_vrf_proxy_arp_enable,
          cli_vrf_proxy_arp_enable_cmd,
@@ -1849,6 +1906,7 @@ vrf_vty_init (void)
 #endif /* FTR_LOCAL_PROXY_ARP */
 
   install_element (ENABLE_NODE, &cli_vrf_show_cmd);
+  install_element (ENABLE_NODE, &cli_vrf_show_vrf_name_cmd);
 
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_add_port_cmd);
   install_element (VLAN_INTERFACE_NODE, &cli_vrf_del_port_cmd);
