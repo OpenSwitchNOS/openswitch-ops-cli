@@ -4535,6 +4535,7 @@ ALIAS(no_neighbor_description,
       "Up to 80 characters describing this neighbor\n")
 
 
+#if 0
 /* Neighbor update-source. */
 static int
 cli_neighbor_update_source_execute(char* vrf_name,
@@ -4643,7 +4644,7 @@ DEFUN(no_neighbor_update_source,
 
     END_DB_TXN(txn);
 }
-
+#endif
 /* Neighbor default-originate. */
 DEFUN(neighbor_default_originate,
       neighbor_default_originate_cmd,
@@ -9787,11 +9788,11 @@ show_one_bgp_neighbor(struct vty *vty, char *name,
         vty_out(vty, "    ttl_security hops: %s\n",
                 safe_print_integer(ovs_bgp_neighbor->n_ttl_security_hops,
                                    ovs_bgp_neighbor->ttl_security_hops));
-
+#if 0
     if (ovs_bgp_neighbor->update_source)
         vty_out(vty, "    update_source: %s\n",
                 safe_print_string(1, ovs_bgp_neighbor->update_source));
-
+#endif
     if (ovs_bgp_neighbor->n_maximum_prefix_limit)
         vty_out(vty, "    maximum_prefix_limit: %s\n",
                 safe_print_integer(ovs_bgp_neighbor->n_maximum_prefix_limit,
@@ -10845,9 +10846,11 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &no_neighbor_description_cmd);
     install_element(BGP_NODE, &no_neighbor_description_val_cmd);
 
+#if 0
     /* "Neighbor update-source" commands. */
     install_element(BGP_NODE, &neighbor_update_source_cmd);
     install_element(BGP_NODE, &no_neighbor_update_source_cmd);
+#endif
 
     /* "Neighbor default-originate" commands. */
     install_element(BGP_NODE, &neighbor_default_originate_cmd);
