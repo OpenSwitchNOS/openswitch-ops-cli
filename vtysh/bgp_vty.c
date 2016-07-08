@@ -4535,115 +4535,6 @@ ALIAS(no_neighbor_description,
       "Up to 80 characters describing this neighbor\n")
 
 
-/* Neighbor update-source. */
-static int
-cli_neighbor_update_source_execute(char* vrf_name,
-    const char* ip_addr, const char* addr_str) {
-    const struct ovsrec_vrf* vrf_row;
-    const struct ovsrec_bgp_router* bgp_router_context;
-    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
-    struct ovsdb_idl_txn* txn;
-
-    START_DB_TXN(txn);
-
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
-    if (vrf_row == NULL) {
-        ERRONEOUS_DB_TXN(txn, "no vrf found");
-    }
-
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
-            (int64_t) vty->index);
-    if (!bgp_router_context) {
-        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
-    }
-
-    if (string_is_an_ip_address(ip_addr)) {
-        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                bgp_router_context, ip_addr);
-
-        if (!ovs_bgp_neighbor) {
-            ABORT_DB_TXN(txn, "no neighbor configured");
-        }
-    }
-    else {
-        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
-                bgp_router_context, ip_addr);
-
-        if (!ovs_bgp_neighbor) {
-            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
-        }
-    }
-
-    ovsrec_bgp_neighbor_set_update_source(ovs_bgp_neighbor, addr_str);
-
-    END_DB_TXN(txn);
-}
-
-DEFUN(neighbor_update_source,
-      neighbor_update_source_cmd,
-      NEIGHBOR_CMD2 "update-source " BGP_UPDATE_SOURCE_STR,
-      NEIGHBOR_STR
-      NEIGHBOR_ADDR_STR2
-      "Source of routing updates\n"
-      BGP_UPDATE_SOURCE_HELP_STR)
-{
-    cli_neighbor_update_source_execute(NULL, argv[0], argv[1]);
-    return CMD_SUCCESS;
-}
-
-DEFUN(no_neighbor_update_source,
-      no_neighbor_update_source_cmd,
-      NO_NEIGHBOR_CMD2 "update-source",
-      NO_STR
-      NEIGHBOR_STR
-      NEIGHBOR_ADDR_STR2
-      "Source of routing updates\n")
-{
-    const struct ovsrec_vrf* vrf_row;
-    const struct ovsrec_bgp_router* bgp_router_context;
-    const struct ovsrec_bgp_neighbor* ovs_bgp_neighbor;
-    struct ovsdb_idl_txn* txn;
-    char* vrf_name = NULL;
-    const char* ip_addr = argv[0];
-
-    START_DB_TXN(txn);
-
-    vrf_row = get_ovsrec_vrf_with_name(vrf_name);
-    if (vrf_row == NULL) {
-        ERRONEOUS_DB_TXN(txn, "no vrf found");
-    }
-
-    bgp_router_context = get_ovsrec_bgp_router_with_asn(vrf_row,
-            (int64_t) vty->index);
-    if (!bgp_router_context) {
-        ERRONEOUS_DB_TXN(txn, "bgp router context not available");
-    }
-
-    if (string_is_an_ip_address(ip_addr)) {
-        ovs_bgp_neighbor = get_bgp_neighbor_with_bgp_router_and_ipaddr(
-                bgp_router_context, ip_addr);
-
-        if (!ovs_bgp_neighbor) {
-            ABORT_DB_TXN(txn, "no neighbor configured");
-        }
-        if (!ovs_bgp_neighbor->update_source) {
-            ABORT_DB_TXN(txn, "command doesn't exist");
-        }
-    }
-    else {
-        ovs_bgp_neighbor = get_bgp_peer_group_with_bgp_router_and_name(
-                bgp_router_context, ip_addr);
-
-        if (!ovs_bgp_neighbor) {
-            ABORT_DB_TXN(txn, "%% Create the peer-group first\n");
-        }
-    }
-
-    ovsrec_bgp_neighbor_set_update_source(ovs_bgp_neighbor, NULL);
-
-    END_DB_TXN(txn);
-}
-
 /* Neighbor default-originate. */
 DEFUN(neighbor_default_originate,
       neighbor_default_originate_cmd,
@@ -9788,10 +9679,6 @@ show_one_bgp_neighbor(struct vty *vty, char *name,
                 safe_print_integer(ovs_bgp_neighbor->n_ttl_security_hops,
                                    ovs_bgp_neighbor->ttl_security_hops));
 
-    if (ovs_bgp_neighbor->update_source)
-        vty_out(vty, "    update_source: %s\n",
-                safe_print_string(1, ovs_bgp_neighbor->update_source));
-
     if (ovs_bgp_neighbor->n_maximum_prefix_limit)
         vty_out(vty, "    maximum_prefix_limit: %s\n",
                 safe_print_integer(ovs_bgp_neighbor->n_maximum_prefix_limit,
@@ -10844,10 +10731,6 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &neighbor_description_cmd);
     install_element(BGP_NODE, &no_neighbor_description_cmd);
     install_element(BGP_NODE, &no_neighbor_description_val_cmd);
-
-    /* "Neighbor update-source" commands. */
-    install_element(BGP_NODE, &neighbor_update_source_cmd);
-    install_element(BGP_NODE, &no_neighbor_update_source_cmd);
 
     /* "Neighbor default-originate" commands. */
     install_element(BGP_NODE, &neighbor_default_originate_cmd);
