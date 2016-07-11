@@ -90,6 +90,7 @@ FILE *logfile;
 
 #ifdef ENABLE_OVSDB
 extern void reset_page_break_on_interrupt();
+extern pthread_mutex_t vtysh_ovsdb_mutex;
 #endif //ENABLE_OVSDB
 
 /* SIGTSTP handler.  This function care user's ^Z input. */
@@ -102,6 +103,9 @@ sigtstp (int sig)
   vty_interrupted_flag_set(1);
   /* Reset the page_break settings to default */
   reset_page_break_on_interrupt();
+
+  /* Release the lock, if command execution thread has taken it */
+  pthread_mutex_unlock(&vtysh_ovsdb_mutex);
 #endif //ENABLE_OVSDB
 
   /* Execute "end" command. */
@@ -131,6 +135,9 @@ sigint (int sig)
   vty_interrupted_flag_set(1);
   /* Reset the page_break settings to default */
   reset_page_break_on_interrupt();
+
+  /* Release the lock, if command execution thread has taken it */
+  pthread_mutex_unlock(&vtysh_ovsdb_mutex);
 #endif //ENABLE_OVSDB
 
   /* Check this process is not child process. */
