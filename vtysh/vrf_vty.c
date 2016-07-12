@@ -1424,8 +1424,16 @@ print_vrf_info (const struct ovsrec_vrf *vrf_row)
     size_t i;
 
     vty_out (vty, "VRF Name   : %s%s", vrf_row->name, VTY_NEWLINE);
-    vty_out (vty, "VRF Status : %s%s", vrf_is_ready(idl, vrf_row->name) ? "UP" : "DOWN", VTY_NEWLINE);
-    vty_out (vty, "table_id   : %" PRId64 "%s", *(vrf_row->table_id), VTY_NEWLINE);
+    if (vrf_is_ready(idl, vrf_row->name))
+    {
+        vty_out (vty, "VRF Status : %s%s", "UP", VTY_NEWLINE);
+        vty_out (vty, "table_id   : %" PRId64 "%s", *(vrf_row->table_id), VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "VRF Status : %s%s", "DOWN", VTY_NEWLINE);
+        vty_out (vty, "table_id   : %s%s", "", VTY_NEWLINE);
+    }
     vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
     vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
 
