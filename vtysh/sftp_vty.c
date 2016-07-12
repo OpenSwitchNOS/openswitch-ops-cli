@@ -171,7 +171,6 @@ sftp_client_copy (sftpClient *sc)
     int ret = CMD_SUCCESS;
     int len = 0, argc = 2;
     int cmd_len = 0;
-    char *dest = NULL;
     char *command = NULL;
     char *arguments[argc];
 
@@ -204,18 +203,7 @@ sftp_client_copy (sftpClient *sc)
         /* SFTP client for non-interactive mode. */
         len += sprintf(command+len, "%s:", sc->hostName);
         len += sprintf(command+len, "%s", sc->srcFile);
-
-        /* If no destination location is mentioned then
-         * DEFAULT_DST is the destination. */
-        if (strcmp(sc->dstFile, "") != 0)
-        {
-            dest = sc->dstFile;
-        }
-        else
-        {
-            dest = DEFAULT_DST;
-        }
-        arguments[1] = dest;
+        arguments[1] = sc->dstFile;
     }
 
     arguments[0] = command;
@@ -312,7 +300,7 @@ DEFUN ( cli_sftp_interactive,
     }
 
     sclient.srcFile = "";
-    sclient.dstFile = "";
+    sclient.dstFile = NULL;
     sclient.isInteractive = true;
 
     return sftp_client_copy(&sclient);
@@ -373,11 +361,10 @@ DEFUN ( cli_sftp_non_interactive_copy,
     }
 
     sclient.srcFile = (char*)argv[2];
-    if((strcmp((char*)argv[3], "") == 0))
-    {
-        sclient.dstFile = "";
-    }
-    else
+    /* Setting to default destination location. */
+    sclient.dstFile = DEFAULT_DST;
+    /* Assign new destination location if user has provided. */
+    if(argc == 4)
     {
         sclient.dstFile = (char*)argv[3];
     }
