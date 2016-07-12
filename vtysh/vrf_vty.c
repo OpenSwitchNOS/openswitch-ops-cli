@@ -1424,10 +1424,18 @@ print_vrf_info (const struct ovsrec_vrf *vrf_row)
     size_t i;
 
     vty_out (vty, "VRF Name   : %s%s", vrf_row->name, VTY_NEWLINE);
-    vty_out (vty, "VRF Status : %s%s", vrf_is_ready(idl, vrf_row->name) ? "UP" : "DOWN", VTY_NEWLINE);
-    vty_out (vty, "table_id   : %" PRId64 "%s", *(vrf_row->table_id), VTY_NEWLINE);
-    vty_out (vty, "\tInterfaces :     Status : %s", VTY_NEWLINE);
-    vty_out (vty, "\t-------------------------%s", VTY_NEWLINE);
+    if (vrf_is_ready(idl, vrf_row->name))
+    {
+        vty_out (vty, "VRF Status : %s%s", "UP", VTY_NEWLINE);
+        vty_out (vty, "table_id   : %" PRId64 "%s", *(vrf_row->table_id), VTY_NEWLINE);
+    }
+    else
+    {
+        vty_out (vty, "VRF Status : %s%s", "DOWN", VTY_NEWLINE);
+        vty_out (vty, "table_id   : %s%s", "", VTY_NEWLINE);
+    }
+    vty_out (vty, "\t%-20s   %s%s", "Interfaces", "Status", VTY_NEWLINE);
+    vty_out (vty, "\t-----------------------------%s", VTY_NEWLINE);
 
     shash_init(&sorted_ports);
     for (i = 0; i < vrf_row->n_ports; i++)
@@ -1448,12 +1456,12 @@ print_vrf_info (const struct ovsrec_vrf *vrf_row)
                 port_row = (const struct ovsrec_port *)nodes[i]->data;
                 if (smap_get(&port_row->status, PORT_STATUS_MAP_ERROR) == NULL)
                 {
-                    vty_out (vty, "\t%-8s            %-8s%s", port_row->name,
+                    vty_out (vty, "\t%-20s     %s%s", port_row->name,
                              PORT_STATUS_MAP_ERROR_DEFAULT, VTY_NEWLINE);
                 }
                 else
                 {
-                    vty_out (vty, "\t%-8s            error : %-8s%s", port_row->name,
+                    vty_out (vty, "\t%-20s     error : %-8s%s", port_row->name,
                              smap_get(&port_row->status, PORT_STATUS_MAP_ERROR),
                              VTY_NEWLINE);
                 }
