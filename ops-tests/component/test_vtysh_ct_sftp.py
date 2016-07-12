@@ -54,15 +54,15 @@ def test_sftp_server_configuration(topology, step):
     step('Enable the SFTP server and then verify the show running command.')
     sw1("sftp server enable")
     cmd_out = sw1("do show running-config")
-    assert 'enable' in cmd_out
+    assert 'sftp server enable' in cmd_out
 
     step('Enable the SFTP server and check show running command.\n'
          'Disable the SFTP server and verify the config is removed '
          'in the show running command.')
     sw1("sftp server enable")
     cmd_out = sw1("do show running-config")
-    assert 'enable' in cmd_out
+    assert 'sftp server enable' in cmd_out
 
     sw1("no sftp server enable")
     cmd_out = sw1("do show running-config")
-    assert 'enable' not in cmd_out
+    assert 'sftp server enable' not in cmd_out
