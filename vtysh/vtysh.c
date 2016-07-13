@@ -2855,7 +2855,7 @@ cleanup:
  *  @param newpass  new password
  */
 static void
-send_credential_to_passwd_server(const char* username, const char* oldpass,
+send_credential_to_passwd_server(const char* username, const char* groupname, const char* oldpass,
         const char* newpass, int opcode)
 {
     int sockfd, sockaddr_len, msg_len, enc_msg_size;
@@ -2936,6 +2936,8 @@ send_credential_to_passwd_server(const char* username, const char* oldpass,
     }
 
     memcpy(msg.username, username, strlen(username));
+    memcpy(msg.groupname, groupname, strlen(groupname));
+
 
     enc_msg = encrypt_msg_to_passwd_srv_d(msg, &enc_msg_size);
     if (enc_msg == NULL)
@@ -3113,7 +3115,7 @@ set_user_passwd(void)
         goto cleanup;
     }
     else {
-        send_credential_to_passwd_server(pw->pw_name, oldpassword, passwd,
+        send_credential_to_passwd_server(pw->pw_name, NULL, oldpassword, passwd,
                 PASSWD_MSG_CHG_PASSWORD);
     }
 
@@ -3332,7 +3334,7 @@ vtysh_prompt (void)
 
 /* Function to create new user with password and add it to the ovsdb-cliet group*/
 static int
-create_new_vtysh_user(const char *user)
+create_new_vtysh_user(const char *user, const char *group)
 {
     struct crypt_data data;
     data.initialized = 0;
@@ -3340,15 +3342,14 @@ create_new_vtysh_user(const char *user)
     char *passwd = NULL;
     char *cp = NULL;
 
-    /* Avoid system users. */
-    if (!check_user_group(getlogin(), OPS_ADMIN_GROUP)) {
-        vty_out(vty, "%s cannot add user.%s", getlogin(), VTY_NEWLINE);
-        return CMD_ERR_NOTHING_TODO;
-    }
-
     if (!strcmp(user, "root")) {
         vty_out(vty, "Permission denied. Cannot add the root user.%s",
                 VTY_NEWLINE);
+        return CMD_ERR_NOTHING_TODO;
+    }
+
+    if (!strcmp(group, "admin") && !strcmp(group, "netop")) {
+        vty_out(vty, "%s is not a valid group name.%s", group, VTY_NEWLINE);
         return CMD_ERR_NOTHING_TODO;
     }
 
@@ -3383,7 +3384,7 @@ create_new_vtysh_user(const char *user)
         return CMD_ERR_NOTHING_TODO;
     }
 
-    send_credential_to_passwd_server(user, NULL, passwd, PASSWD_MSG_ADD_USER);
+    send_credential_to_passwd_server(user, group, NULL, passwd, PASSWD_MSG_ADD_USER);
 
     free(cp);
     free(passwd);
@@ -3394,12 +3395,14 @@ create_new_vtysh_user(const char *user)
  */
 DEFUN(vtysh_user_add,
        vtysh_user_add_cmd,
-       "user add WORD",
+       "user add WORD group WORD",
        "User account\n"
        "Adding a new user account\n"
-       "User name to be added\n")
+       "User name to be added\n"
+       "Adding user to the group\n"
+       "User group to which user will be added")
 {
-    return create_new_vtysh_user(argv[0]);
+    return create_new_vtysh_user(argv[0], argv[1]);
 
 }
 
@@ -3407,19 +3410,13 @@ DEFUN(vtysh_user_add,
 static int
 delete_user(const char *user)
 {
-    /* Avoid system users. */
-    if (!check_user_group(getlogin(), OPS_ADMIN_GROUP)) {
-        vty_out(vty, "%s cannot remove user.%s", getlogin(), VTY_NEWLINE);
-        return CMD_ERR_NOTHING_TODO;
-    }
-
     if (!strcmp(user, "root")) {
         vty_out(vty, "Permission denied. Cannot remove the root user.%s",
                 VTY_NEWLINE);
         return CMD_ERR_NOTHING_TODO;
     }
 
-    send_credential_to_passwd_server(user, NULL, NULL, PASSWD_MSG_DEL_USER);
+    send_credential_to_passwd_server(user, NULL, NULL, NULL, PASSWD_MSG_DEL_USER);
 
     return CMD_SUCCESS;
 }
@@ -4267,6 +4264,10 @@ vtysh_init_vty ( struct passwd *pw)
    install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
    install_element (OSPF_NODE, &vtysh_end_all_cmd);
+
+   /* enabling user add and del */
+   install_element (ENABLE_NODE, &vtysh_user_add_cmd);
+   install_element (ENABLE_NODE, &vtysh_user_del_cmd);
 
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);
