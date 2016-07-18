@@ -76,6 +76,9 @@
 #include <openssl/pem.h>
 #include "vty_utils.h"
 
+#include <sys/types.h>
+#include <pwd.h>
+
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
 #ifdef ENABLE_OVSDB
@@ -3327,6 +3330,126 @@ vtysh_prompt (void)
    return buf;
 }
 
+/*
+ * Return the index of displayable/OPS user group
+ */
+
+static int
+get_group_index(const char *group, int ops)
+{
+    static char *display_grp[MAX_OPS_GROUP] = {"admin",
+                                               "netop"
+                                              };
+    static char *ops_grp[MAX_OPS_GROUP] = {"ops_admin",
+                                           "ops_netop"
+                                          };
+    if (group == NULL)
+    {
+        return -1;
+    }
+    for (int i = 0; i < MAX_OPS_GROUP; i++)
+    {
+        if (ops)
+        {
+            if ((ops_grp[i] !=NULL) && !strcmp(ops_grp[i], group))
+                return i;
+        }
+        else
+        {
+            if ((display_grp[i] !=NULL) && !strcmp(display_grp[i], group))
+                return i;
+        }
+    }
+    return -1;
+}
+
+/*
+ * Converts ops group name to displayable name.
+ * For example "ops_admin" to "admin".
+ */
+
+static int
+convert_to_ops_group(int group_index, char *display_grp_name)
+{
+    static char *group_name[MAX_OPS_GROUP] = {"admin",
+                                              "netop"
+                                             };
+    if (group_index >= MAX_OPS_GROUP)
+    {
+        return -1;
+    }
+    else
+    {
+        strncpy(display_grp_name, group_name[group_index], MAX_GRP_NAME_SIZE);
+        return 1;
+    }
+}
+
+/* Fetch the list of users in the switch. */
+
+static int
+get_user_list(user_list *p_users)
+{
+    int           j = 0;
+    int           group_index = 0;
+    int           ngroups = MAX_GROUPS_USED;
+    gid_t         *groups;
+    struct passwd *p_user;
+    struct group  *gr;
+
+    groups = malloc(ngroups * sizeof(gid_t));
+
+    if (groups == NULL)
+    {
+        VLOG_ERR("malloc failed. Function = %s, Line =%d",__func__, __LINE__);
+        return 0; //Failure
+    }
+
+    /* Rewind to the beginning of the password database. */
+    setpwent();
+
+    /* Get the first record from the password database. */
+    p_user = getpwent();
+    while (p_user != NULL)
+    {
+        ngroups = MAX_GROUPS_USED;
+        memset(groups, 0, ngroups * sizeof(gid_t));
+        /* Retrieve all the groups of p_user. */
+        if (getgrouplist(p_user->pw_name, p_user->pw_gid,groups,
+                         &ngroups) != -1)
+        {
+            for (j = 0; j < ngroups; j++)
+            {
+                gr = getgrgid(groups[j]);
+                /* Populate if p_user belongs to ops-group. */
+                group_index = get_group_index(gr->gr_name, OPS_GRP);
+                if ((gr != NULL) && (group_index != -1))
+                {
+                    p_users->usr_grp_tuple[group_index * MAX_USERS_PER_GROUP
+                    + p_users->user_count[group_index]].uid = p_user->pw_uid;
+
+                    p_users->usr_grp_tuple[group_index * MAX_USERS_PER_GROUP
+                    + p_users->user_count[group_index]].gid = gr->gr_gid;
+
+                    p_users->user_count[group_index] += 1;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            VLOG_ERR("Retrieving group-list failed for %s, ngroups: %d",
+                      p_user->pw_name, ngroups);
+        }
+        /* Get the next record from the password database. */
+        p_user = getpwent();
+    }
+    free(groups);
+    /* Close the password database. */
+    endpwent();
+    return 1; //Success
+}
+
 #ifdef ENABLE_OVSDB
 
 
@@ -3435,6 +3558,48 @@ DEFUN(vtysh_user_del,
 {
     return delete_user(argv[0]);
 }
+
+DEFUN(vtysh_user_list,
+      vtysh_user_list_cmd,
+      "show user-list",
+      SHOW_STR
+      "Displays the list of local users\n")
+{
+    struct group   * gr;
+    struct passwd  *pw;
+    user_list      users;
+    int            group_index = 0;
+    char           group_name[MAX_GRP_NAME_SIZE];
+
+    vty_out(vty, "%-20s %-20s%s", "USER", "GROUP", VTY_NEWLINE);
+    vty_out(vty, "--------------------------%s", VTY_NEWLINE);
+    for (int i = 0; i < MAX_OPS_GROUP; i++)
+    {
+        users.user_count[i] = 0;
+    }
+    if (!get_user_list(&users))
+    {
+        return CMD_ERR_NOTHING_TODO;
+    }
+    for (int i = 0; i < MAX_OPS_GROUP; i++)
+    {
+        for (int j = 0; j < users.user_count[i]; j++)
+        {
+            pw = getpwuid(users.usr_grp_tuple[i * MAX_USERS_PER_GROUP + j].uid);
+            gr = getgrgid(users.usr_grp_tuple[i * MAX_USERS_PER_GROUP + j].gid);
+            group_index = get_group_index(gr->gr_name, OPS_GRP);
+            if ((group_index != -1) &&
+                convert_to_ops_group(group_index, group_name))
+            {
+                vty_out(vty, "%-20s %-20s%s", pw->pw_name
+                                            , group_name
+                                            , VTY_NEWLINE);
+            }
+        }
+    }
+    return CMD_SUCCESS;
+}
+
 /*
  * TODO: THis command maybe re used later once RBAC CLI infra comes up
  */
@@ -4267,6 +4432,12 @@ vtysh_init_vty ( struct passwd *pw)
    install_element (OSPF_NODE, &vtysh_quit_ospfd_cmd);
    install_element (OSPF_NODE, &vtysh_exit_ospfd_cmd);
    install_element (OSPF_NODE, &vtysh_end_all_cmd);
+
+   if (check_user_group(pw->pw_name, OPS_ADMIN_GROUP))
+   {
+       /* show user-list */
+       install_element (ENABLE_NODE, &vtysh_user_list_cmd);
+   }
 
 #ifndef ENABLE_OVSDB
    install_element (BGP_NODE, &vtysh_quit_bgpd_cmd);

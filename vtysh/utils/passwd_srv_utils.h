@@ -82,4 +82,26 @@ char *get_passwd_sock_fd_path(void);
 char *get_passwd_pub_key_path(void);
 int passwd_srv_path_manager_init(void);
 
+#define MAX_OPS_GROUP           16
+#define MAX_USERS_PER_GROUP     8
+#define MAX_GRP_NAME_SIZE       64
+#define MAX_GROUPS_USED         (NGROUPS_MAX / 1000)
+
+enum
+{
+    DISPLAY_GRP,
+    OPS_GRP
+};
+typedef struct _tuple
+{
+    uid_t uid;
+    gid_t gid;
+}tuple;
+
+typedef struct _user_list
+{
+    int user_count[MAX_OPS_GROUP];
+    tuple usr_grp_tuple[MAX_OPS_GROUP * MAX_USERS_PER_GROUP];
+}user_list;
+
 #endif /* PASSWD_SRV_UTILS_H */
