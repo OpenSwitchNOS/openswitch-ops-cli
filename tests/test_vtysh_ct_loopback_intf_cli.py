@@ -45,23 +45,23 @@ def loopback_cli(**kwargs):
               'same name for L3 port ###")
 
     devIntReturn = device1.DeviceInteract(command=
-                                          "ovs-vsctl get interface lo1 name")
+                                          "ovs-vsctl get interface loopback1 name")
     retCode = devIntReturn.get('buffer')
-    assert "lo1" in retCode, "Failed to retrieve ovs-vsctl command"
-    LogOutput('info', "### lo1 created successfully in intf row  ###")
+    assert "loopback1" in retCode, "Failed to retrieve ovs-vsctl command"
+    LogOutput('info', "### loopback1 created successfully in intf row  ###")
 
     devIntReturn = device1.DeviceInteract(command=
-                                          "ovs-vsctl get port lo1 name")
+                                          "ovs-vsctl get port loopback1 name")
     retCode = devIntReturn.get('buffer')
-    assert "lo1" in retCode, "Failed to retrieve ovs-vsctl command"
-    LogOutput('info', "### lo1 created successfully in port row ###")
+    assert "loopback1" in retCode, "Failed to retrieve ovs-vsctl command"
+    LogOutput('info', "### loopback1 created successfully in port row ###")
 
 # assigning ipv4 and verifying whether ip assigned
     retStruct = LoopbackInterfaceEnable(deviceObj=device1,
                                         loopback="1", addr="192.168.1.5",
                                         mask=24, config=True, enable=True)
     devIntReturn = device1.DeviceInteract(command="ovs-vsctl get\
-                                                   port lo1 ip4_address ")
+                                                   port loopback1 ip4_address ")
     retCode = devIntReturn.get('buffer')
     assert "192.168.1.5/24" in retCode, \
            'Test to verify Loopback-interface configuration clis - FAILED!'
@@ -72,7 +72,7 @@ def loopback_cli(**kwargs):
                                         enable=True, ipv6flag=True, mask=24,
                                         config=True)
     devIntReturn = device1.DeviceInteract(command=
-                                          "ovs-vsctl get port lo1 ip6_address")
+                                          "ovs-vsctl get port loopback1 ip6_address")
     retCode = devIntReturn.get('buffer')
     assert "10:10::10:10/24" in retCode, \
            'Test to verify Loopback-interface configuration clis - FAILED!'
@@ -83,7 +83,7 @@ def loopback_cli(**kwargs):
                                         mask=24, config=False, enable=True)
     devIntReturn = device1.DeviceInteract(command=
                                           "ovs-vsctl get interface\
-                                           lo1 ip4_address")
+                                           loopback1 ip4_address")
     retCode = devIntReturn.get('buffer').splitlines()
     if len(retCode) == 2:
         retCode = retCode[1]
@@ -94,11 +94,11 @@ def loopback_cli(**kwargs):
     retStruct = LoopbackInterfaceEnable(deviceObj=device1,
                                         loopback="1", enable=False)
     devIntReturn = device1.DeviceInteract(command=
-                                          "ovs-vsctl get interface lo1 name")
+                                          "ovs-vsctl get interface loopback1 name")
     retCode = devIntReturn.get('buffer').splitlines()
     if len(retCode) == 3:
         retCode = retCode[1]
-    assert "ovs-vsctl: no row \"lo1\" in table Interface" in retCode, \
+    assert "ovs-vsctl: no row \"loopback1\" in table Interface" in retCode, \
            'Test to verify Loopback-interface configuration clis - FAILED!'
 
     devIntReturn = device1.DeviceInteract(command="vtysh")

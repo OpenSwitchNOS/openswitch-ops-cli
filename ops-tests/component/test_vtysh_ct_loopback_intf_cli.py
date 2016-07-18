@@ -49,29 +49,29 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
     ops1("config t")
     ops1("interface loopback 1")
 
-    out = ops1("get interface lo1 name", shell="vsctl")
-    assert "lo1" in out
+    out = ops1("get interface loopback1 name", shell="vsctl")
+    assert "loopback1" in out
 
-    out = ops1("get port lo1 name", shell="vsctl")
-    assert "lo1" in out
+    out = ops1("get port loopback1 name", shell="vsctl")
+    assert "loopback1" in out
 
     ops1("ipv6 address 10:10::10:10/24")
 
-    out = ops1("get port lo1 ip6_address", shell="vsctl")
+    out = ops1("get port loopback1 ip6_address", shell="vsctl")
     assert "10:10::10:10/24" in out
 
     ops1("ip address 192.168.1.5/24")
 
-    out = ops1("get port lo1 ip4_address", shell="vsctl")
+    out = ops1("get port loopback1 ip4_address", shell="vsctl")
     assert "192.168.1.5/24" in out
 
     ops1("exit")
     ops1("no interface loopback 1")
 
-    out = ops1("get interface lo1 name", shell="vsctl")
+    out = ops1("get interface loopback1 name", shell="vsctl")
     if len(out) == 3:
         out = out[1]
-    assert "ovs-vsctl: no row \"lo1\" in table Interface" in out
+    assert "ovs-vsctl: no row \"loopback1\" in table Interface" in out
 
     ops1("int loopback 2")
     out = ops1("ip address 255.255.255.255/24")
