@@ -75,7 +75,7 @@ DEFUN (vtysh_loopback_interface,
     struct ovsrec_port **ports = NULL;
     long long int loopback_number;
 
-    snprintf(ifname, MAX_IFNAME_LENGTH, "%s%s", "lo", argv[0]);
+    snprintf(ifname, MAX_IFNAME_LENGTH, "%s%s", "loopback", argv[0]);
     loopback_number = (long long int)atoi(argv[0]);
 
     if ((loopback_number < MIN_LOOPBACK_INTF_RANGE) ||
@@ -578,8 +578,8 @@ compare_nodes_by_loopback_id (const void *a_, const void *b_)
     const struct shash_node *const *b = b_;
     unsigned long i1 = 0, i2 = 0;
 
-    sscanf((*a)->name,"lo%lu",&i1);
-    sscanf((*b)->name,"lo%lu",&i2);
+    sscanf((*a)->name,"loopback%lu",&i1);
+    sscanf((*b)->name,"loopback%lu",&i2);
 
     if(i1 == i2)
        return 0;
@@ -632,7 +632,7 @@ DEFUN (cli_intf_show_interface_loopback_if,
 
     if ((argc > 0) && (NULL != argv[0]))
     {
-        sprintf(loopbackintf, "lo%s", argv[0]);
+        sprintf(loopbackintf, "loopback%s", argv[0]);
         filter_intf = true;
     }
     if ((NULL != argv[0]) && (strcmp(argv[0], "brief") == 0))
@@ -805,7 +805,7 @@ DEFUN (vtysh_del_loopback_interface,
         "Virtual interface number\n")
 {
     static char ifname[MAX_IFNAME_LENGTH]={0};
-    snprintf(ifname, MAX_IFNAME_LENGTH, "%s%s", "lo", argv[0]);
+    snprintf(ifname, MAX_IFNAME_LENGTH, "%s%s", "loopback", argv[0]);
     return delete_loopback_intf(ifname);
 }
 
