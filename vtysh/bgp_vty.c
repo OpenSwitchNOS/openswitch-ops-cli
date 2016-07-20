@@ -1282,6 +1282,7 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     const struct ovsrec_bgp_router *bgp_router_row;
     const struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn;
+    const bool fast_external_failover = true;
 
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
@@ -1303,6 +1304,10 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     if (bgp_router_row == NULL) {
         bgp_router_row = ovsrec_bgp_router_insert(bgp_router_txn);
         bgp_router_insert_to_vrf(vrf_row, bgp_router_row, asn);
+        /* Enable BGP fast external failover by default */
+        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row,
+                                                     &fast_external_failover,
+                                                     1);
     }
     /* Get the context from previous command for sub-commands. */
     vty->node = BGP_NODE;
@@ -2055,6 +2060,7 @@ cli_no_bgp_fast_external_failover_cmd_execute(char *vrf_name)
     const struct ovsrec_bgp_router *bgp_router_row;
     const struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn = NULL;
+    const bool fast_external_failover = false;
 
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
@@ -2072,7 +2078,9 @@ cli_no_bgp_fast_external_failover_cmd_execute(char *vrf_name)
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
     } else {
         /* Unset fast external failover. */
-        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row, NULL, 0);
+        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row,
+                                                     &fast_external_failover,
+                                                     1);
     }
 
     /* End of transaction. */
