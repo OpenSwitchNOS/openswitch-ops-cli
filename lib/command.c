@@ -2560,7 +2560,7 @@ desc_unique_string (vector v, const char *str)
 
 
 char ErrDescStr[] =
-            "Error: Help strings does not match for the identical tokens";
+            "Clear data in access-list/bgp.";
 /**
  * Check the command tokens in the list v for identical commands with
  * different help strings. If so, change the error string to Error String
