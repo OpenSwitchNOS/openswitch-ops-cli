@@ -10341,13 +10341,6 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &bgp_deterministic_med_cmd);
     install_element(BGP_NODE, &no_bgp_deterministic_med_cmd);
 
-    /* "Bgp graceful-restart" commands. */
-    install_element(BGP_NODE, &bgp_graceful_restart_cmd);
-    install_element(BGP_NODE, &no_bgp_graceful_restart_cmd);
-    install_element(BGP_NODE, &bgp_graceful_restart_stalepath_time_cmd);
-    install_element(BGP_NODE, &no_bgp_graceful_restart_stalepath_time_cmd);
-    install_element(BGP_NODE, &no_bgp_graceful_restart_stalepath_time_val_cmd);
-
     /* "Bgp fast-external-failover" commands. */
     install_element(BGP_NODE, &bgp_fast_external_failover_cmd);
     install_element(BGP_NODE, &no_bgp_fast_external_failover_cmd);
