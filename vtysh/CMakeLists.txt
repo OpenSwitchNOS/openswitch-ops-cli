@@ -61,8 +61,7 @@ add_executable(vtysh
   utils/intf_vtysh_utils.c
   utils/vrf_vtysh_utils.c
   utils/l3_vtysh_utils.c
-  utils/audit_log_utils.c
-  utils/passwd_srv_utils.c)
+  utils/audit_log_utils.c)
 
 target_link_libraries(vtysh PUBLIC
   ${OVSCOMMON_LIBRARIES}
