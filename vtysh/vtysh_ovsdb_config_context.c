@@ -255,6 +255,103 @@ vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 }
 
 /*-----------------------------------------------------------------------------
+| Function : vtysh_ovsdb_ovstable_parse_tacacs_cfg
+| Responsibility : parse tacacs_config column in system table
+| Parameters :
+|    ifrow_tacacs_config   : tacacs_config column object pointer
+|    pmsg : callback arguments from show running config handler|
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_ovsdb_ovstable_parse_tacacs_cfg(const struct smap *ifrow_tacacs, vtysh_ovsdb_cbmsg *p_msg)
+{
+  const char *tcp_port = NULL;
+  const char *timeout = NULL;
+  const char *passkey = NULL;
+
+  if(ifrow_tacacs == NULL)
+  {
+    return e_vtysh_error;
+  }
+
+  passkey = smap_get(ifrow_tacacs, SYSTEM_TACACS_CONFIG_PASSKEY);
+  if (passkey)
+  {
+    if (!VTYSH_STR_EQ(passkey, TACACS_SERVER_PASSKEY_DEFAULT))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "tacacs-server key %s", passkey);
+    }
+  }
+
+  tcp_port = smap_get(ifrow_tacacs, SYSTEM_TACACS_CONFIG_TCP_PORT);
+  if (tcp_port)
+  {
+    if (!VTYSH_STR_EQ(tcp_port, TACACS_SERVER_TCP_PORT_DEFAULT_VAL))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "tacacs-server port %s", tcp_port);
+    }
+  }
+
+  timeout = smap_get(ifrow_tacacs, SYSTEM_TACACS_CONFIG_TIMEOUT);
+  if (timeout)
+  {
+    if (!VTYSH_STR_EQ(timeout, TACACS_SERVER_TIMEOUT_DEFAULT_VAL))
+    {
+        vtysh_ovsdb_cli_print(p_msg, "tacacs-server timeout %s", timeout);
+    }
+  }
+
+  return e_vtysh_ok;
+}
+
+
+/*-----------------------------------------------------------------------------
+| Function : vtysh_display_tacacsservertable_commands
+| Responsibility : display tacacs server table commands
+| scope : static
+| Parameters :
+|    row : idl row object pointer
+|    fp : file pointer
+| Return : vtysh_ret_val, e_vtysh_ok
+-----------------------------------------------------------------------------*/
+static vtysh_ret_val
+vtysh_display_tacacsservertable_commands(void *p_private)
+{
+  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
+
+  const struct ovsrec_tacacs_server *row;
+
+  vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
+                           "vtysh_ovsdb_tacacsservertable_clientcallback entered");
+  if (!ovsrec_tacacs_server_first(p_msg->idl))
+  {
+      return e_vtysh_ok;
+  }
+
+  OVSREC_TACACS_SERVER_FOR_EACH(row, p_msg->idl)
+  {
+      /* buff size based on port 11 " port %5d", timeout 11 " timeout %2d"
+       * key 68 "key %64s"*/
+      char buff[90]= {0};
+      char *append_buff = buff;
+      if (*(row->tcp_port) != TACACS_SERVER_TCP_PORT_DEFAULT)
+         append_buff += sprintf(append_buff, " port %ld", *(row->tcp_port));
+
+      if (*(row->timeout) != TACACS_SERVER_TIMEOUT_DEFAULT)
+         append_buff += sprintf(append_buff, " timeout %ld", *(row->timeout));
+
+      if (!VTYSH_STR_EQ(row->passkey, TACACS_SERVER_PASSKEY_DEFAULT))
+         append_buff += sprintf(append_buff, " passkey %s", row->passkey);
+
+      if(append_buff == buff)
+         vtysh_ovsdb_cli_print(p_msg, "tacacs-server host %s", row->ip_address);
+      else
+         vtysh_ovsdb_cli_print(p_msg, "tacacs-server host %s%s", row->ip_address, append_buff);
+  }
+
+  return e_vtysh_ok;
+}
+
+/*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_radiusservertable_parse_options
 | Responsibility : parse column in radius server table
 | Parameters :
@@ -539,10 +636,15 @@ vtysh_config_context_global_clientcallback(void *p_private)
 
     /* parse ntp config param */
     vtysh_ovsdb_ovstable_parse_ntp_cfg(&vswrow->ntp_config, p_msg);
+
+    /* parse tacacs_config param */
+    vtysh_ovsdb_ovstable_parse_tacacs_cfg(&vswrow->tacacs_config, p_msg);
   }
 
   /* display radius server commands */
   vtysh_display_radiusservertable_commands(p_private);
+  /* display tacacs server commands */
+  vtysh_display_tacacsservertable_commands(p_private);
 
   return e_vtysh_ok;
 }
