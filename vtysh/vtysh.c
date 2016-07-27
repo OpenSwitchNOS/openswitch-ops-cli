@@ -3428,13 +3428,8 @@ DEFUN(vtysh_user_add,
 static int
 delete_user(const char *user)
 {
-    /* Avoid system users. */
-    if (!check_user_group(getlogin(), OPS_ADMIN_GROUP)) {
-        vty_out(vty, "%s cannot remove user.%s", getlogin(), VTY_NEWLINE);
-        return CMD_ERR_NOTHING_TODO;
-    }
-
-    if (!strcmp(user, "root")) {
+    if ((!strcmp(user, "root")) || (!strcmp(user, "admin"))
+         || (!strcmp(user, "netop"))) {
         vty_out(vty, "Permission denied. Cannot remove the root user.%s",
                 VTY_NEWLINE);
         return CMD_ERR_NOTHING_TODO;
