@@ -10295,21 +10295,6 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &no_bgp_router_id_cmd);
     install_element(BGP_NODE, &no_bgp_router_id_val_cmd);
 
-    /* "Bgp cluster-id" commands. */
-    install_element(BGP_NODE, &bgp_cluster_id_cmd);
-    install_element(BGP_NODE, &bgp_cluster_id32_cmd);
-    install_element(BGP_NODE, &no_bgp_cluster_id_cmd);
-    install_element(BGP_NODE, &no_bgp_cluster_id_arg_cmd);
-
-    /* "Bgp confederation" commands. */
-    install_element(BGP_NODE, &bgp_confederation_identifier_cmd);
-    install_element(BGP_NODE, &no_bgp_confederation_identifier_cmd);
-    install_element(BGP_NODE, &no_bgp_confederation_identifier_arg_cmd);
-
-    /* "Bgp confederation peers" commands. */
-    install_element(BGP_NODE, &bgp_confederation_peers_cmd);
-    install_element(BGP_NODE, &no_bgp_confederation_peers_cmd);
-
     /* "Maximum-paths" commands. */
     install_element(BGP_NODE, &bgp_maxpaths_cmd);
     install_element(BGP_NODE, &no_bgp_maxpaths_cmd);
@@ -10329,70 +10314,17 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &no_bgp_timers_cmd);
     install_element(BGP_NODE, &no_bgp_timers_arg_cmd);
 
-    /* "Bgp client-to-client reflection" commands. */
-    install_element(BGP_NODE, &no_bgp_client_to_client_reflection_cmd);
-    install_element(BGP_NODE, &bgp_client_to_client_reflection_cmd);
-
-    /* "Bgp always-compare-med" commands. */
-    install_element(BGP_NODE, &bgp_always_compare_med_cmd);
-    install_element(BGP_NODE, &no_bgp_always_compare_med_cmd);
-
-    /* "Bgp deterministic-med" commands. */
-    install_element(BGP_NODE, &bgp_deterministic_med_cmd);
-    install_element(BGP_NODE, &no_bgp_deterministic_med_cmd);
-
     /* "Bgp fast-external-failover" commands. */
     install_element(BGP_NODE, &bgp_fast_external_failover_cmd);
     install_element(BGP_NODE, &no_bgp_fast_external_failover_cmd);
-
-    /* "Bgp enforce-first-as" commands. */
-    install_element(BGP_NODE, &bgp_enforce_first_as_cmd);
-    install_element(BGP_NODE, &no_bgp_enforce_first_as_cmd);
-
-    /* "Bgp bestpath compare-routerid" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_compare_router_id_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_compare_router_id_cmd);
-
-    /* "Bgp bestpath as-path ignore" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_aspath_ignore_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_aspath_ignore_cmd);
-
-    /* "Bgp bestpath as-path confed" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_aspath_confed_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_aspath_confed_cmd);
-
-    /* "Bgp bestpath as-path multipath-relax" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_aspath_multipath_relax_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_aspath_multipath_relax_cmd);
 
     /* "Bgp log-neighbor-changes" commands. */
     install_element(BGP_NODE, &bgp_log_neighbor_changes_cmd);
     install_element(BGP_NODE, &no_bgp_log_neighbor_changes_cmd);
 
-    /* "Bgp bestpath med" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_med_cmd);
-    install_element(BGP_NODE, &bgp_bestpath_med2_cmd);
-    install_element(BGP_NODE, &bgp_bestpath_med3_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_med_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_med2_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_med3_cmd);
-
-    /* "No bgp default ipv4-unicast" commands. */
-    install_element(BGP_NODE, &no_bgp_default_ipv4_unicast_cmd);
-    install_element(BGP_NODE, &bgp_default_ipv4_unicast_cmd);
-
     /* "Bgp network" commands. */
     install_element(BGP_NODE, &bgp_network_cmd);
     install_element(BGP_NODE, &no_bgp_network_cmd);
-
-    /* "Bgp network import-check" commands. */
-    install_element(BGP_NODE, &bgp_network_import_check_cmd);
-    install_element(BGP_NODE, &no_bgp_network_import_check_cmd);
-
-    /* "Bgp default local-preference" commands. */
-    install_element(BGP_NODE, &bgp_default_local_preference_cmd);
-    install_element(BGP_NODE, &no_bgp_default_local_preference_cmd);
-    install_element(BGP_NODE, &no_bgp_default_local_preference_val_cmd);
 
     /* "Neighbor remote-as" commands. */
     install_element(BGP_NODE, &neighbor_remote_as_cmd);
@@ -11025,34 +10957,19 @@ bgp_vty_init(void)
 
     /* "Show ip bgp summary" commands. */
     install_element(VIEW_NODE, &show_ip_bgp_summary_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_ipv4_summary_cmd);
-    install_element(VIEW_NODE, &show_bgp_ipv4_safi_summary_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
     install_element(VIEW_NODE, &show_bgp_summary_cmd);
     install_element(VIEW_NODE, &show_bgp_ipv6_summary_cmd);
-    install_element(VIEW_NODE, &show_bgp_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
     install_element(RESTRICTED_NODE, &show_ip_bgp_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_ipv4_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_bgp_ipv4_safi_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
     install_element(RESTRICTED_NODE, &show_bgp_summary_cmd);
     install_element(RESTRICTED_NODE, &show_bgp_ipv6_summary_cmd);
-    install_element(RESTRICTED_NODE, &show_bgp_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
     install_element(ENABLE_NODE, &show_ip_bgp_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_ipv4_summary_cmd);
-    install_element(ENABLE_NODE, &show_bgp_ipv4_safi_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
     install_element(ENABLE_NODE, &show_bgp_summary_cmd);
     install_element(ENABLE_NODE, &show_bgp_ipv6_summary_cmd);
-    install_element(ENABLE_NODE, &show_bgp_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
 
     /* "Show ip bgp neighbors" commands. */
@@ -11060,22 +10977,12 @@ bgp_vty_init(void)
     install_element(VIEW_NODE, &show_ip_bgp_ipv4_neighbors_cmd);
     install_element(VIEW_NODE, &show_ip_bgp_neighbors_peer_cmd);
     install_element(VIEW_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_all_neighbors_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_rd_neighbors_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
     install_element(RESTRICTED_NODE, &show_ip_bgp_neighbors_peer_cmd);
     install_element(RESTRICTED_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
     install_element(ENABLE_NODE, &show_ip_bgp_neighbors_cmd);
     install_element(ENABLE_NODE, &show_ip_bgp_ipv4_neighbors_cmd);
     install_element(ENABLE_NODE, &show_ip_bgp_neighbors_peer_cmd);
     install_element(ENABLE_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_all_neighbors_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_rd_neighbors_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
 
 #ifdef HAVE_IPV6
     install_element(VIEW_NODE, &show_bgp_neighbors_cmd);
@@ -11090,27 +10997,9 @@ bgp_vty_init(void)
     install_element(ENABLE_NODE, &show_bgp_ipv6_neighbors_peer_cmd);
 
     /* Old commands.  */
-    install_element(VIEW_NODE, &show_ipv6_bgp_summary_cmd);
-    install_element(VIEW_NODE, &show_ipv6_mbgp_summary_cmd);
     install_element(VIEW_NODE, &show_ipv6_bgp_cmd);
-    install_element(ENABLE_NODE, &show_ipv6_bgp_summary_cmd);
-    install_element(ENABLE_NODE, &show_ipv6_mbgp_summary_cmd);
     install_element(ENABLE_NODE, &show_ipv6_bgp_cmd);
 #endif /* HAVE_IPV6 */
-
-    /* "Show ip bgp paths" commands. */
-    install_element(VIEW_NODE, &show_ip_bgp_paths_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_ipv4_paths_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_paths_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_ipv4_paths_cmd);
-
-    /* "Show ip bgp community" commands. */
-    install_element(VIEW_NODE, &show_ip_bgp_community_info_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_community_info_cmd);
-
-    /* "Show ip bgp attribute-info" commands. */
-    install_element(VIEW_NODE, &show_ip_bgp_attr_info_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_attr_info_cmd);
 
     /* "Redistribute" commands. */
     install_element(BGP_NODE, &bgp_redistribute_ipv4_cmd);
