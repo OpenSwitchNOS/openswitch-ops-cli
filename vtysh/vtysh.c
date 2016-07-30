@@ -131,6 +131,7 @@ int vtysh_writeconfig_integrated = 0;
 
 extern char config_default[];
 
+int tac_encryption = 1;
 void ospf_vty_init(void);
 
 /*

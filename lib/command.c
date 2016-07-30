@@ -45,6 +45,8 @@ Boston, MA 02111-1307, USA.  */
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
 #endif
 
+#include "libtac.h"
+
 #define MAX_CMD_LEN 256
 #define MAX_DYN_HELPSTR_LEN 256
 /* Command vector which includes some level of command lists. Normally
@@ -3356,6 +3358,53 @@ cmd_execute_command_real (vector vline,
     return CMD_SUCCESS_DAEMON;
   vty->buf = (char*)matched_element->string;
   vty->length = strlen(matched_element->string);
+
+
+  struct tac_attrib *attr = NULL;
+  char tty[] = "mytty";
+	char *remote_addr = "1.1.1.1";
+	char *user = "bob";
+	char *service = "ppp";
+	char *protocol = "ip";
+	struct addrinfo *tac_server;
+	char tac_server_name[] = "172.17.0.3";
+	char *tac_secret = "tac_test";
+	int tac_fd;
+	struct areply arep;
+	struct addrinfo hints;
+
+  memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	ret = getaddrinfo(tac_server_name, "tacacs", &hints, &tac_server);
+	if (ret != 0) {
+		printf("error: resolving name %s: %s", tac_server_name,
+				gai_strerror(ret));
+	}
+
+  tac_add_attrib(&attr, "service", service);
+  tac_add_attrib(&attr, "protocol", protocol);
+  tac_add_attrib(&attr, "cmd", vty->buf);
+
+  tac_fd = tac_connect_single(tac_server, tac_secret, NULL, 60);
+  if (tac_fd < 0) {
+      printf("Error connecting to TACACS+ server: %m\n");
+  }
+
+  tac_author_send(tac_fd, user, tty, remote_addr, attr);
+
+  tac_author_read(tac_fd, &arep);
+  if (arep.status != AUTHOR_STATUS_PASS_ADD
+      && arep.status != AUTHOR_STATUS_PASS_REPL) {
+      printf("Authorization FAILED: %s\n", arep.msg);
+  } else {
+      printf("Authorization OK: %s\n", arep.msg);
+  }
+
+  tac_free_attrib(&attr);
+
+
+
   /* Execute matched command. */
   if(((matched_element->attr) & CMD_ATTR_NOLOCK) == 0)
   {

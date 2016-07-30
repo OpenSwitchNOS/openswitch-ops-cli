@@ -40,6 +40,7 @@ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror -DFTR_PROXY_ARP -D
 
 include_directories(
   ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/../tacacs/libtac/include/
   ${CMAKE_SOURCE_DIR}/lib
   ${PROJECT_SOURCE_DIR}
   ${OVSCOMMON_INCLUDE_DIRS}
@@ -68,7 +69,7 @@ target_link_libraries(vtysh PUBLIC
   ${OVSDB_LIBRARIES}
   ${OPSCLI_LIBRARIES}
   ${OPSUTILS_LIBRARIES}
-  crypt pthread readline ops-cli audit opsutils crypto)
+  crypt pthread readline ops-cli audit opsutils crypto pam_tacplus)
 
 install(
   TARGETS vtysh

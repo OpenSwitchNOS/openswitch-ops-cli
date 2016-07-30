@@ -27,5 +27,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project ("ops-cli")
 
+add_subdirectory(tacacs)
+add_subdirectory(tacacs/libtac)
 add_subdirectory(lib)
 add_subdirectory(vtysh)

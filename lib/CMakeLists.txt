@@ -42,6 +42,9 @@ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror")
 
 include_directories(
   ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/tacacs
+  ${CMAKE_SOURCE_DIR}/tacacs/libtac/include
+  ${CMAKE_SOURCE_DIR}/tacacs/libtac/lib
   ${CMAKE_SOURCE_DIR}/lib
   ${PROJECT_SOURCE_DIR}
   ${OVSCOMMON_INCLUDE_DIRS})
@@ -77,7 +80,7 @@ set_target_properties(ops-cli PROPERTIES SOVERSION "0.0.0")
 
 set(PKG_CONFIG_LIBDIR "\${prefix}/lib")
 set(PKG_CONFIG_INCLUDEDIR "\${prefix}/include/vtysh")
-set(PKG_CONFIG_LIBS "-L\${libdir} -lops-cli")
+set(PKG_CONFIG_LIBS "-L\${libdir} -lops-cli -lpam_tacplus")
 set(PKG_CONFIG_CFLAGS "-I\${includedir}")
 
 configure_file(
