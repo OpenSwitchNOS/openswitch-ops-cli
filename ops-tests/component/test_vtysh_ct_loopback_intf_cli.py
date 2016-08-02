@@ -55,15 +55,21 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
     out = ops1("get port loopback1 name", shell="vsctl")
     assert "loopback1" in out
 
-    ops1("ipv6 address 10:10::10:10/24")
+    out = ops1("ipv6 address 10:10::10:10/24")
+    assert "Only 128 bit mask is allowed for IPv6 loopback interfaces." in out
+
+    ops1("ipv6 address 10:10::10:10/128")
 
     out = ops1("get port loopback1 ip6_address", shell="vsctl")
-    assert "10:10::10:10/24" in out
+    assert "10:10::10:10/128" in out
 
-    ops1("ip address 192.168.1.5/24")
+    out = ops1("ip address 192.168.1.5/24")
+    assert "Only 32 bit mask is allowed for loopback interfaces." in out
+
+    ops1("ip address 192.168.1.5/32")
 
     out = ops1("get port loopback1 ip4_address", shell="vsctl")
-    assert "192.168.1.5/24" in out
+    assert "192.168.1.5/32" in out
 
     ops1("exit")
     ops1("no interface loopback 1")
@@ -76,13 +82,6 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
     ops1("int loopback 2")
     out = ops1("ip address 255.255.255.255/24")
     assert "Invalid IP address." in out
-
-    ops1("int loopback 1")
-    ops1("ip address 192.168.1.5/24")
-    ops1("int loopback 2")
-    out = ops1("ip address 192.168.1.5/24")
-    assert "Overlapping networks observed for \"192.168.1.5/24\". "\
-           "Please configure non overlapping networks." in out
 
     out = ops1("int loopback 21474836501")
     assert "% Unknown command." in out
