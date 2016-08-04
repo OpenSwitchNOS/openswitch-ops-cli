@@ -189,7 +189,9 @@ vtysh_config_parse_line (const char *line)
 	config_add_line (config_top, line);
       break;
     default:
-      if (strncmp (line, "interface", strlen ("interface")) == 0)
+      if (strncmp (line, "aaa group server", strlen("aaa group server")) == 0)
+        config = config_get (SERVER_GROUP_NODE, line);
+      else if (strncmp (line, "interface", strlen ("interface")) == 0)
 	config = config_get (INTERFACE_NODE, line);
       else if (strncmp (line, "interface mgmt", strlen ("interface mgmt")) == 0)
           config = config_get (MGMT_INTERFACE_NODE, line);
@@ -257,7 +259,7 @@ vtysh_config_parse_line (const char *line)
       else if (strncmp (line, "password", strlen ("password")) == 0
 	       || strncmp (line, "enable password",
 			   strlen ("enable password")) == 0)
-	config = config_get (AAA_NODE, line);
+	config = config_get (SERVER_GROUP_NODE, line);
       else if (strncmp (line, "ip protocol", strlen ("ip protocol")) == 0)
 	config = config_get (PROTOCOL_NODE, line);
       else
@@ -304,7 +306,7 @@ vtysh_config_parse (char *line)
    || (I) == AS_LIST_NODE || (I) == COMMUNITY_LIST_NODE || \
    (I) == PREFIX_IPV6_NODE \
    || (I) == SERVICE_NODE || (I) == FORWARDING_NODE || (I) == DEBUG_NODE \
-   || (I) == AAA_NODE)
+   || (I) == SERVER_GROUP_NODE)
 
 /* Display configuration to file pointer. */
 void

@@ -928,6 +928,12 @@ vtysh_completion (char *text, int start, int end)
 #endif
 
 /* Vty node structures. */
+static struct cmd_node server_group_node =
+   {
+      SERVER_GROUP_NODE,
+      "%s(config-sg)# ",
+   };
+
 static struct cmd_node bgp_node =
    {
       BGP_NODE,
@@ -1381,6 +1387,7 @@ vtysh_exit (struct vty *vty)
     case CONFIG_NODE:
       vty->node = ENABLE_NODE;
       break;
+    case SERVER_GROUP_NODE:
     case INTERFACE_NODE:
     case SUB_INTERFACE_NODE:
     case LOOPBACK_INTERFACE_NODE:
@@ -4191,6 +4198,7 @@ void
 vtysh_init_vty ( struct passwd *pw)
 {
    /* Install nodes. */
+   install_node (&server_group_node, NULL);
    install_node (&bgp_node, NULL);
 #ifndef ENABLE_OVSDB
    install_node (&rip_node, NULL);
@@ -4228,6 +4236,7 @@ vtysh_init_vty ( struct passwd *pw)
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
    vtysh_install_default (CONFIG_NODE);
+   vtysh_install_default (SERVER_GROUP_NODE);
    vtysh_install_default (BGP_NODE);
 #ifndef ENABLE_OVSDB
    vtysh_install_default (RIP_NODE);

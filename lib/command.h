@@ -105,7 +105,7 @@ enum node_type
   CONFIG_NODE,			/* Config node. Default mode of config file. */
   SERVICE_NODE, 		/* Service node. */
   DEBUG_NODE,			/* Debug node. */
-  AAA_NODE,			/* AAA node. */
+  SERVER_GROUP_NODE,            /* Server Group node. */
   KEYCHAIN_NODE,		/* Key-chain node. */
   KEYCHAIN_KEY_NODE,		/* Key-chain key node. */
   INTERFACE_NODE,		/* Interface mode node. */
