@@ -189,7 +189,9 @@ vtysh_config_parse_line (const char *line)
 	config_add_line (config_top, line);
       break;
     default:
-      if (strncmp (line, "interface", strlen ("interface")) == 0)
+      if (strncmp (line, "aaa group server", strlen("aaa group server")) == 0)
+        config = config_get (AAA_NODE, line);
+      else if (strncmp (line, "interface", strlen ("interface")) == 0)
 	config = config_get (INTERFACE_NODE, line);
       else if (strncmp (line, "interface mgmt", strlen ("interface mgmt")) == 0)
           config = config_get (MGMT_INTERFACE_NODE, line);

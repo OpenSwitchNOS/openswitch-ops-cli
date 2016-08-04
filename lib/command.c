@@ -3743,6 +3743,7 @@ DEFUN_NON_IDL (config_exit,
       vty->node = ENABLE_NODE;
       vty_config_unlock (vty);
       break;
+    case AAA_NODE:
     case INTERFACE_NODE:
     case VLAN_NODE:
     case MGMT_INTERFACE_NODE:
@@ -3809,6 +3810,7 @@ DEFUN_NON_IDL (config_end,
       /* Nothing to do. */
       break;
     case CONFIG_NODE:
+    case AAA_NODE:
     case INTERFACE_NODE:
     case VLAN_NODE:
     case LINK_AGGREGATION_NODE:
