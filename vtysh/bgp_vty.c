@@ -822,7 +822,7 @@ static void show_ipv6_routes(struct vty *vty,
                     vty_out (vty, "%7d", def_metric);
                 /* Print local preference. */
                 vty_out (vty, "%7d", ppsd->local_pref);
-                vty_out (vty, "%7d ", ppsd->weight?ppsd->weight:BGP_ATTR_DEFAULT_WEIGHT);
+                vty_out (vty, "%7d ", ppsd->weight);
                 /* Print AS path. */
                 if (ppsd->aspath) {
                     vty_out(vty, "%s", ppsd->aspath);
@@ -11700,27 +11700,19 @@ policy_get_route_map_entry_in_ovsdb(unsigned long pref, const char *name,
     struct ovsrec_route_map_entry *rt_map_entry_row;
     int i = 0;
 
-    VLOG_INFO("%s: route-map pref %ld name %s action %s",
-              __FUNCTION__, pref, name, action);
     OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
         if (strcmp(name, rt_map_row->name) == 0) {
-            VLOG_INFO("%s: route-map name %s match found", __FUNCTION__, name);
             for ( i = 0 ; i < rt_map_row->n_route_map_entries; i++) {
                 if (rt_map_row->key_route_map_entries[i] == pref) {
-                    VLOG_INFO("%s: route-map entry with pref %ld found",
-                              __FUNCTION__, pref);
                     rt_map_entry_row = rt_map_row->value_route_map_entries[i];
 
                     if (!strcmp(rt_map_entry_row->action, action)) {
-                        VLOG_INFO("%s: route-map entry with action %s found",
-                                  __FUNCTION__, action);
                         return rt_map_entry_row;
                     }
                 }
             }
         }
     }
-    VLOG_INFO("%s: route-map entry not found, returning NULL", __FUNCTION__);
     return NULL;
 }
 
@@ -11735,7 +11727,6 @@ bgp_route_map_entry_insert_to_route_map(const struct ovsrec_route_map *
     struct ovsrec_route_map_entry  **rt_map_entry_list;
     int i, new_size;
 
-    VLOG_INFO("%s: route-map seq %ld", __FUNCTION__, seq);
     new_size = rt_map_row->n_route_map_entries + 1;
     pref_list = xmalloc(sizeof(int64_t) * new_size);
     rt_map_entry_list = xmalloc(sizeof * rt_map_row->value_route_map_entries *
@@ -11750,8 +11741,6 @@ bgp_route_map_entry_insert_to_route_map(const struct ovsrec_route_map *
                 CONST_CAST(struct ovsrec_route_map_entry *, rt_map_entry_row);
     ovsrec_route_map_set_route_map_entries(rt_map_row, pref_list,
                                            rt_map_entry_list, new_size);
-    VLOG_INFO("%s: Returned from ovsrec_route_map_set_route_map_entries",
-              __FUNCTION__);
 
     free(pref_list);
     free(rt_map_entry_list);
@@ -11816,9 +11805,6 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
     const struct ovsrec_route_map_entry  *rt_map_entry_row;
     unsigned long pref;
 
-    VLOG_INFO("%s: route-map name %s typestr %s seq %s", __FUNCTION__,
-              name, typestr, seq);
-
     /* Permit check. */
     if ((strncmp(typestr, "permit", strlen (typestr)) != 0) &&
         (strncmp(typestr, "deny", strlen (typestr)) != 0)) {
@@ -11840,7 +11826,6 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
      * The row will be used as uuid, refered to from another table.
      */
     if (!rt_map_row) {
-        VLOG_INFO("%s: Insert new route-map row in DB", __FUNCTION__);
         rt_map_row = ovsrec_route_map_insert(policy_txn);
         ovsrec_route_map_set_name(rt_map_row, name);
     }
@@ -11851,13 +11836,11 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
     rt_map_entry_row = policy_get_route_map_entry_in_ovsdb(pref, name, typestr);
 
     if (!rt_map_entry_row) {
-        VLOG_INFO("%s: Insert new route-map entry row in DB", __FUNCTION__);
         rt_map_entry_row = ovsrec_route_map_entry_insert(policy_txn);
         bgp_route_map_entry_insert_to_route_map(rt_map_row, rt_map_entry_row,
                                                 (int64_t)pref);
 
     /* Row was not found, which means it is a new entry. Set default vals. */
-        VLOG_INFO("%s: Setting route-map entry default values", __FUNCTION__);
         ovsrec_route_map_entry_set_action(rt_map_entry_row, typestr);
         ovsrec_route_map_entry_set_match(rt_map_entry_row, NULL);
         ovsrec_route_map_entry_set_set(rt_map_entry_row, NULL);
@@ -11869,8 +11852,6 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
     vty->index = &rmp_context;
     vty->node = RMAP_NODE;
 
-    VLOG_INFO("%s: rmp_context.pref %d rmp_context.name %s rmp_context.action %s",
-              __FUNCTION__, rmp_context.pref, rmp_context.name, rmp_context.action);
     END_DB_TXN(policy_txn);
 }
 
@@ -12013,8 +11994,6 @@ policy_set_route_map_match_in_ovsdb(struct vty *vty,
     struct smap smap_match;
     char *table_key;
 
-    VLOG_INFO("%s: rt_map_entry_row %p command %s arg %s", __FUNCTION__,
-              rt_map_entry_row, command, arg);
     table_key = policy_cmd_to_key_lookup (command, match_table);
     if (table_key == NULL) {
         VLOG_ERR("Route map match wrong key - %s", command);
@@ -12026,13 +12005,9 @@ policy_set_route_map_match_in_ovsdb(struct vty *vty,
     smap_clone (&smap_match, &rt_map_entry_row->match);
 
     if (arg) {
-        VLOG_INFO("%s: Setting arg %s with table_key %s into smap",
-                  __FUNCTION__, arg, table_key);
         /* Non-empty key, so the value will be set. */
         smap_replace (&smap_match, table_key, arg);
     } else {
-        VLOG_INFO("%s: Unsetting table_key %s from smap",
-                  __FUNCTION__, table_key);
         /* Empty key indicates an unset. */
         smap_remove (&smap_match, table_key);
     }
@@ -12040,7 +12015,6 @@ policy_set_route_map_match_in_ovsdb(struct vty *vty,
     ovsrec_route_map_entry_set_match (rt_map_entry_row, &smap_match);
     smap_destroy (&smap_match);
 
-    VLOG_INFO("%s: Committing txn for route-map entry match", __FUNCTION__);
     END_DB_TXN (policy_txn);
 }
 
@@ -12298,9 +12272,6 @@ policy_set_route_map_set_in_ovsdb(struct vty *vty,
     char *table_key;
     const struct smap *psmap;
 
-    VLOG_INFO("%s: rt_map_entry_row %p command %s arg %s", __FUNCTION__,
-              rt_map_entry_row, command, arg);
-
     table_key = policy_cmd_to_key_lookup (command, set_table);
     if (table_key == NULL) {
         VLOG_ERR("Route map set wrong key - %s", command);
@@ -12313,20 +12284,15 @@ policy_set_route_map_set_in_ovsdb(struct vty *vty,
     smap_clone (&smap_set, psmap);
 
     if (arg) {
-        VLOG_INFO("%s: Setting arg %s with table_key %s into smap",
-                  __FUNCTION__, arg, table_key);
         /* Non-empty key, so the value will be set. */
         smap_replace (&smap_set, table_key, arg);
     } else {
-        VLOG_INFO("%s: Unsetting table_key %s from smap",
-                  __FUNCTION__, table_key);
         /* Empty key indicates an unset. */
         smap_remove (&smap_set, table_key);
     }
 
     ovsrec_route_map_entry_set_set (rt_map_entry_row, &smap_set);
     smap_destroy (&smap_set);
-    VLOG_INFO("%s: Committing txn for route-map entry set", __FUNCTION__);
     END_DB_TXN (policy_txn);
 }
 
