@@ -822,7 +822,7 @@ static void show_ipv6_routes(struct vty *vty,
                     vty_out (vty, "%7d", def_metric);
                 /* Print local preference. */
                 vty_out (vty, "%7d", ppsd->local_pref);
-                vty_out (vty, "%7d ", ppsd->weight?ppsd->weight:BGP_ATTR_DEFAULT_WEIGHT);
+                vty_out (vty, "%7d ", ppsd->weight);
                 /* Print AS path. */
                 if (ppsd->aspath) {
                     vty_out(vty, "%s", ppsd->aspath);
