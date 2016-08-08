@@ -83,6 +83,20 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
     out = ops1("ip address 255.255.255.255/24")
     assert "Invalid IP address." in out
 
+    ops1("int 1")
+    ops1("ip address 192.168.1.5/24")
+    ops1("int loopback 2")
+    out = ops1("ip address 192.168.1.10/32")
+    assert "Overlapping networks observed for \"192.168.1.10/32\". "\
+           "Please configure non overlapping networks." in out
+
+    ops1("int vlan 1")
+    ops1("ip address 192.168.1.5/24")
+    ops1("int loopback 2")
+    out = ops1("ip address 192.168.1.10/32")
+    assert "Overlapping networks observed for \"192.168.1.10/32\". "\
+           "Please configure non overlapping networks." in out
+
     out = ops1("int loopback 21474836501")
     assert "% Unknown command." in out
 
