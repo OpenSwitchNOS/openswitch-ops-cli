@@ -4189,6 +4189,9 @@ DEFUN (config_no_hostname,
 #else
 #define MAX_HOSTNAME_LEN 32
 #define MAX_DOMAINNAME_LEN 32
+#define HOSTNAME_INVALID_INPUT_STR "To be compliant with RFC 1123, the hostname must"\
+                         " contain only letters, numbers and hyphens, and"\
+                         " must not start or end with a hyphen.\n"
 extern void  vtysh_ovsdb_hostname_set(const char * in);
 extern const char* vtysh_ovsdb_hostname_get();
 extern void  vtysh_ovsdb_domainname_set(const char * in);
@@ -4206,9 +4209,19 @@ DEFUN (config_hostname,
         vty_out (vty, "Specify string of max %d character.\n", MAX_HOSTNAME_LEN);
         return CMD_SUCCESS;
     }
-    if (!isalpha((int) *argv[0]))
+
+    for(int i = 0; argv[0][i] != '\0'; i++)
     {
-        vty_out (vty, "Please specify string starting with alphabet.%s", VTY_NEWLINE);
+        if(!isalnum(argv[0][i]) && argv[0][i] != '-')
+        {
+            vty_out(vty, HOSTNAME_INVALID_INPUT_STR);
+            return CMD_SUCCESS;
+        }
+    }
+    if (!isalnum(argv[0][0]) || !isalnum(argv[0][strlen(argv[0])-1]))
+    {
+        vty_out (vty, "Please specify string starting and ending with "
+                           "alphabet or number.%s", VTY_NEWLINE);
         return CMD_SUCCESS;
     }
     vtysh_ovsdb_hostname_set(argv[0]);
