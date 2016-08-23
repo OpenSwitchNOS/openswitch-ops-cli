@@ -607,6 +607,14 @@ struct dyn_cb_func
 #define AREA_TAG_STR "[area tag]\n"
 #define RIB_STR    "Routing Information Base\n"
 #define APPLY_STR "Apply a configuration record\n"
+#define BANNER_STR "Customize login banner\n"
+#define BANNER_EXEC_STR "The login banner displayed after authentication\n"
+#define BANNER_DELIM_STR "Specify a delimiter to terminate the banner string\n"
+#define BANNER_DEFAULT_STR "Restore the default pre-authentication banner\n"
+#define BANNER_EXEC_DEFAULT_STR "Restore the default post-authentication banner\n"
+#define NO_BANNER_STR "Disable login banner\n"
+#define SHOW_BANNER_STR "Show the currently configured pre-login banner message\n"
+#define SHOW_BANNER_EXEC_STR "Show the currently configured post-login banner message\n"
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"

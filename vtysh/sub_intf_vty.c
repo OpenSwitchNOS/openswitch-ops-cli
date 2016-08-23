@@ -909,7 +909,7 @@ DEFUN (cli_intf_show_subintferface_ifname,
     }
     if (!known_intf && argv[0])
     {
-        vty_out(vty,"%% Unknown interface%s", VTY_NEWLINE);
+        vty_out(vty,"%% Interface %s is not present %s", argv[0],VTY_NEWLINE);
     }
     return CMD_SUCCESS;
 }

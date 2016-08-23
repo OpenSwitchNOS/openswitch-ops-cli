@@ -63,6 +63,7 @@
 #include "loopback_vty.h"
 #include "vrf_vty.h"
 #include "ecmp_vty.h"
+#include "banner_vty.h"
 #endif
 
 #include "sub_intf_vty.h"
@@ -2548,16 +2549,36 @@ DEFUN (vtysh_copy_startupconfig,
   return CMD_SUCCESS;
 }
 
-DEFUN (vtysh_erase_startupconfig,
+DEFUN_NOLOCK (vtysh_erase_startupconfig,
        vtysh_erase_startupconfig_cmd,
        "erase startup-config",
        ERASE_STR
        "Contents of startup configuration\n")
 {
-    char *arguments[] = {"delete", "startup-config"};
-    execute_command ("cfgdbutil", 2, (const char **)arguments);
+    char flag = '0';
+    vty_out(vty,"\rStartup configuration will be deleted.\nDo you want to continue [y/n]?");
+    while(1)
+    {
+        flag=getchar();
+        if (flag == 'y')
+        {
+            char *arguments[] = {"delete", "startup-config"};
+            execute_command ("cfgdbutil", 2, (const char **)arguments);
+            break;
+        }
+        else if (flag == 'n')
+        {
+            break;
+        }
+        else
+        {
+            vty_out(vty,"\r                              ");
+            vty_out(vty,"\rDo you want to continue [y/n]?");
+        }
+    }
     return CMD_SUCCESS;
 }
+
 #ifndef ENABLE_OVSDB
 DEFUN (vtysh_ping,
       vtysh_ping_cmd,
@@ -2677,7 +2698,7 @@ DEFUN (vtysh_start_bash,
 }
 
 /*Function to check whether user is member of the given group*/
-static int
+int
 check_user_group( const char *user, const char *group_name)
 {
        int j, ngroups;
@@ -4535,5 +4556,7 @@ vtysh_init_vty ( struct passwd *pw)
   /* Initialize ECMP CLI */
   ecmp_vty_init();
 
+  /* Initialize banner CLI */
+  banner_vty_init();
 #endif
 }

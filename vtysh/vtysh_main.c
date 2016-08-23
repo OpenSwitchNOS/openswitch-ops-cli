@@ -50,6 +50,7 @@
 #include "vtysh_ovsdb_config.h"
 #include "lib/lib_vtysh_ovsdb_if.h"
 #include "openvswitch/vlog.h"
+#include "vtysh/banner_vty.h"
 #include "lib/cli_plugins.h"
 #include "vtysh/utils/passwd_srv_utils.h"
 
@@ -180,6 +181,7 @@ vtysh_signal_init ()
   vtysh_signal_set (SIGINT, sigint);
   vtysh_signal_set (SIGTSTP, sigtstp);
   vtysh_signal_set (SIGPIPE, SIG_IGN);
+  vtysh_signal_set (SIGQUIT, SIG_IGN);
 }
 
 /* Help information display. */

@@ -170,6 +170,8 @@ int vty_refresh_aliases(void);
 /* Child process execution flag. */
 extern int execute_flag;
 
+int check_user_group(const char *, const char *);
+
 
 extern struct vty *vty;
 int vtysh_exit (struct vty *vty);
