@@ -32,6 +32,27 @@
 #include "vty.h"
 #include "lib/route_types.h"
 
+/* Privilege levels for command nodes */
+typedef enum node_priv_level_e
+{
+    PRIV_LEVEL_0,                  /* Lowest privilege */
+    PRIV_LEVEL_1,
+    PRIV_LEVEL_2,
+    PRIV_LEVEL_3,
+    PRIV_LEVEL_4,
+    PRIV_LEVEL_5,
+    PRIV_LEVEL_6,
+    PRIV_LEVEL_7,
+    PRIV_LEVEL_8,
+    PRIV_LEVEL_9,
+    PRIV_LEVEL_10,
+    PRIV_LEVEL_11,
+    PRIV_LEVEL_12,
+    PRIV_LEVEL_13,
+    PRIV_LEVEL_14,
+    PRIV_LEVEL_15,                 /* Highest privilege */
+    PRIV_LEVEL_INVALID             /* Invalid privilege level */
+} node_priv_level_t;
 
 enum data_type{
   NODE=0,
@@ -95,66 +116,116 @@ struct format_parser_state
 #endif
 
 /* There are some command levels which called from command node. */
+#ifdef ENABLE_OVSDB
+#define FOREACH_NODE_TYPE(NODE) \
+    NODE(AUTH_NODE) \
+    NODE(RESTRICTED_NODE) \
+    NODE(VIEW_NODE) \
+    NODE(AUTH_ENABLE_NODE) \
+    NODE(ENABLE_NODE) \
+    NODE(CONFIG_NODE) \
+    NODE(SERVICE_NODE) \
+    NODE(DEBUG_NODE) \
+    NODE(AAA_NODE) \
+    NODE(AAA_SERVER_GROUP_NODE) \
+    NODE(KEYCHAIN_NODE) \
+    NODE(KEYCHAIN_KEY_NODE) \
+    NODE(INTERFACE_NODE) \
+    NODE(ZEBRA_NODE) \
+    NODE(TABLE_NODE) \
+    NODE(RIP_NODE) \
+    NODE(RIPNG_NODE) \
+    NODE(BABEL_NODE) \
+    NODE(BGP_NODE) \
+    NODE(BGP_VPNV4_NODE) \
+    NODE(BGP_IPV4_NODE) \
+    NODE(BGP_IPV4M_NODE) \
+    NODE(BGP_IPV6_NODE) \
+    NODE(BGP_IPV6M_NODE) \
+    NODE(OSPF_NODE) \
+    NODE(OSPF6_NODE) \
+    NODE(ISIS_NODE) \
+    NODE(PIM_NODE) \
+    NODE(MASC_NODE) \
+    NODE(IRDP_NODE) \
+    NODE(IP_NODE) \
+    NODE(PREFIX_NODE) \
+    NODE(PREFIX_IPV6_NODE) \
+    NODE(AS_LIST_NODE) \
+    NODE(COMMUNITY_LIST_NODE) \
+    NODE(RMAP_NODE) \
+    NODE(SMUX_NODE) \
+    NODE(DUMP_NODE) \
+    NODE(FORWARDING_NODE) \
+    NODE(PROTOCOL_NODE) \
+    NODE(DHCP_SERVER_NODE) \
+    NODE(TFTP_SERVER_NODE) \
+    NODE(ACCESS_LIST_NODE) \
+    NODE(MIRROR_NODE) \
+    NODE(VLAN_NODE) \
+    NODE(MGMT_INTERFACE_NODE) \
+    NODE(LINK_AGGREGATION_NODE) \
+    NODE(QOS_QUEUE_PROFILE_NODE) \
+    NODE(QOS_SCHEDULE_PROFILE_NODE) \
+    NODE(VLAN_INTERFACE_NODE) \
+    NODE(SUB_INTERFACE_NODE) \
+    NODE(LOOPBACK_INTERFACE_NODE) \
+    NODE(IPSEC_IKE_NODE) \
+    NODE(IPSEC_IKE_ISAKMP_NODE) \
+    NODE(VRRP_IF_NODE) \
+    NODE(VTY_NODE) \
+    NODE(MAX_NODE_TYPES)
+#else
+#define FOREACH_NODE_TYPE(NODE) \
+    NODE(AUTH_NODE) \
+    NODE(RESTRICTED_NODE) \
+    NODE(VIEW_NODE) \
+    NODE(AUTH_ENABLE_NODE) \
+    NODE(ENABLE_NODE) \
+    NODE(CONFIG_NODE) \
+    NODE(SERVICE_NODE) \
+    NODE(DEBUG_NODE) \
+    NODE(AAA_NODE) \
+    NODE(AAA_SERVER_GROUP_NODE) \
+    NODE(KEYCHAIN_NODE) \
+    NODE(KEYCHAIN_KEY_NODE) \
+    NODE(INTERFACE_NODE) \
+    NODE(ZEBRA_NODE) \
+    NODE(TABLE_NODE) \
+    NODE(RIP_NODE) \
+    NODE(RIPNG_NODE) \
+    NODE(BABEL_NODE) \
+    NODE(BGP_NODE) \
+    NODE(BGP_VPNV4_NODE) \
+    NODE(BGP_IPV4_NODE) \
+    NODE(BGP_IPV4M_NODE) \
+    NODE(BGP_IPV6_NODE) \
+    NODE(BGP_IPV6M_NODE) \
+    NODE(OSPF_NODE) \
+    NODE(OSPF6_NODE) \
+    NODE(ISIS_NODE) \
+    NODE(PIM_NODE) \
+    NODE(MASC_NODE) \
+    NODE(IRDP_NODE) \
+    NODE(IP_NODE) \
+    NODE(PREFIX_NODE) \
+    NODE(PREFIX_IPV6_NODE) \
+    NODE(AS_LIST_NODE) \
+    NODE(COMMUNITY_LIST_NODE) \
+    NODE(RMAP_NODE) \
+    NODE(SMUX_NODE) \
+    NODE(DUMP_NODE) \
+    NODE(FORWARDING_NODE) \
+    NODE(PROTOCOL_NODE) \
+    NODE(VTY_NODE) \
+    NODE(MAX_NODE_TYPES)
+#endif
+
+#define GENERATE_NODE_TYPE(NODE_TYPE) NODE_TYPE,
 enum node_type
 {
-  AUTH_NODE,			/* Authentication mode of vty interface. */
-  RESTRICTED_NODE,		/* Restricted view mode */
-  VIEW_NODE,			/* View node. Default mode of vty interface. */
-  AUTH_ENABLE_NODE,		/* Authentication mode for change enable. */
-  ENABLE_NODE,			/* Enable node. */
-  CONFIG_NODE,			/* Config node. Default mode of config file. */
-  SERVICE_NODE, 		/* Service node. */
-  DEBUG_NODE,			/* Debug node. */
-  AAA_NODE,			/* AAA node. */
-  AAA_SERVER_GROUP_NODE,        /* AAA Server Group node. */
-  KEYCHAIN_NODE,		/* Key-chain node. */
-  KEYCHAIN_KEY_NODE,		/* Key-chain key node. */
-  INTERFACE_NODE,		/* Interface mode node. */
-  ZEBRA_NODE,			/* zebra connection node. */
-  TABLE_NODE,			/* rtm_table selection node. */
-  RIP_NODE,			/* RIP protocol mode node. */
-  RIPNG_NODE,			/* RIPng protocol mode node. */
-  BABEL_NODE,			/* Babel protocol mode node. */
-  BGP_NODE,			/* BGP protocol mode which includes BGP4+ */
-  BGP_VPNV4_NODE,		/* BGP MPLS-VPN PE exchange. */
-  BGP_IPV4_NODE,		/* BGP IPv4 unicast address family.  */
-  BGP_IPV4M_NODE,		/* BGP IPv4 multicast address family.  */
-  BGP_IPV6_NODE,		/* BGP IPv6 address family */
-  BGP_IPV6M_NODE,		/* BGP IPv6 multicast address family. */
-  OSPF_NODE,			/* OSPF protocol mode */
-  OSPF6_NODE,			/* OSPF protocol for IPv6 mode */
-  ISIS_NODE,			/* ISIS protocol mode */
-  PIM_NODE,			/* PIM protocol mode */
-  MASC_NODE,			/* MASC for multicast.  */
-  IRDP_NODE,			/* ICMP Router Discovery Protocol mode. */
-  IP_NODE,			/* Static ip route node. */
-  PREFIX_NODE,			/* Prefix list node. */
-  PREFIX_IPV6_NODE,		/* Prefix list node. */
-  AS_LIST_NODE,			/* AS list node. */
-  COMMUNITY_LIST_NODE,		/* Community list node. */
-  RMAP_NODE,			/* Route map node. */
-  SMUX_NODE,			/* SNMP configuration node. */
-  DUMP_NODE,			/* Packet dump node. */
-  FORWARDING_NODE,		/* IP forwarding node. */
-  PROTOCOL_NODE,                /* protocol filtering node */
-#ifdef ENABLE_OVSDB
-  DHCP_SERVER_NODE,             /* DHCP server node */
-  TFTP_SERVER_NODE,             /* TFTP server node */
-  ACCESS_LIST_NODE,             /* Access Control List node */
-  MIRROR_NODE,                  /* Mirror node */
-  VLAN_NODE,                    /* Vlan Node */
-  MGMT_INTERFACE_NODE,          /* Management Interface Node*/
-  LINK_AGGREGATION_NODE,        /* Link aggregation Node*/
-  QOS_QUEUE_PROFILE_NODE,       /* QoS Queue Profile Node. */
-  QOS_SCHEDULE_PROFILE_NODE,    /* QoS Schedule Profile Node. */
-  VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
-  SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
-  LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
-  IPSEC_IKE_NODE,                   /* IPsec policy node */
-  IPSEC_IKE_ISAKMP_NODE,            /* IPsec ISAKMP node */
-  VRRP_IF_NODE,                /* VRRP interface node */
-#endif
-  VTY_NODE,			/* Vty node. */
+    FOREACH_NODE_TYPE(GENERATE_NODE_TYPE)
+    MIN_NODE_TYPES = AUTH_NODE,           /* Minimum node types */
 };
 
 /* Node which has some commands and prompt string and configuration
@@ -175,6 +246,9 @@ struct cmd_node
 
   /* Vector of this node's command list. */
   vector cmd_vector;
+
+  /* Privilege level for the node. */
+  node_priv_level_t privilege_level;
 };
 
 /* MACROS TO BE USED AS COMMAND ATTRIBUTES */
@@ -197,6 +271,7 @@ struct cmd_element
   vector tokens;		/* Vector of cmd_tokens */
   int attr;			/* Command attributes */
   const char *dyn_cb_str;       /* Callback funcname list for dynamic helpstr */
+  node_priv_level_t privilege_level;       /* Privilege level of the command */
 };
 
 
@@ -268,6 +343,7 @@ struct dyn_cb_func
     .attr = attrs, \
     .daemon = dnum, \
     .dyn_cb_str = dyn_cbstr, \
+    .privilege_level = PRIV_LEVEL_INVALID, \
   };
 
 #define DEFUN_CMD_FUNC_DECL(funcname) \
@@ -739,4 +815,6 @@ int cmd_input_range_match(const char *, const char *, enum cli_int_type);
 int cmd_range_comma_cli_parser_validate(const char* src, const char* dst,
                                     enum cli_int_type type,
                                     const char **matched, int *match);
+node_priv_level_t (*p_get_node_privilege_level)(enum node_type);
+void (*p_init_node_priv_level_map)(void);
 #endif /* _ZEBRA_COMMAND_H */

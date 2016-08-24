@@ -97,6 +97,9 @@ static int passwd_srv_pubkey_len;
 
 extern int skip_further_execution;
 
+/* TACACS debug flag for development phase. */
+extern int tacacs_debug;
+
 /* Struct VTY. */
 struct vty *vty;
 
@@ -1111,6 +1114,11 @@ DEFUNSH_NON_IDL (VTYSH_ALL,
                  "end",
                  "End current mode and change to enable mode\n")
 {
+   if (tacacs_debug)
+   {
+       vty_out(vty, "Command privilege-level: %d %s",
+           vtysh_end_all_cmd.privilege_level, VTY_NEWLINE);
+   }
    return vtysh_end ();
 }
 #if 0
@@ -1367,6 +1375,11 @@ DEFUNSH (VTYSH_ALL,
       "Configuration from vty interface\n"
       "Configuration terminal (default)\n")
 {
+   if (tacacs_debug)
+   {
+       vty_out(vty, "Command privilege-level: %d %s",
+           vtysh_config_terminal_cmd.privilege_level, VTY_NEWLINE);
+   }
    vty->node = CONFIG_NODE;
    return CMD_SUCCESS;
 }
@@ -1446,6 +1459,11 @@ DEFUNSH_NON_IDL (VTYSH_ALL,
                  "exit",
                  "Exit current mode and down to previous mode\n")
 {
+   if (tacacs_debug)
+   {
+       vty_out(vty, "Command privilege-level: %d %s",
+           vtysh_exit_all_cmd.privilege_level, VTY_NEWLINE);
+   }
    return vtysh_exit (vty);
 }
 

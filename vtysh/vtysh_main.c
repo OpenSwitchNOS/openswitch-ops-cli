@@ -53,6 +53,9 @@
 #include "vtysh/banner_vty.h"
 #include "lib/cli_plugins.h"
 #include "vtysh/utils/passwd_srv_utils.h"
+#include <ltdl.h>
+
+#define RBAC_SO_PATH  "librbac.so.0.1.0"
 
 #define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
@@ -88,6 +91,9 @@ struct thread_master *master;
 
 /* Command logging */
 FILE *logfile;
+
+/* TACACS Debug flag for development phase only. */
+int tacacs_debug;
 
 #ifdef ENABLE_OVSDB
 extern void reset_page_break_on_interrupt();
@@ -198,6 +204,7 @@ usage (int status)
 	    "-d, --daemon             Connect only to the specified daemon\n" \
 	    "-E, --echo               Echo prompt and command in -c mode\n" \
 	    "-C, --dryrun             Check configuration for validity and exit\n" \
+            "-T, --tacacs             Enable TACACS debug mode\n" \
 	    "-h, --help               Display this help and exit\n\n" \
 	    "Note that multiple commands may be executed from the command\n" \
 	    "line by passing multiple -c args, or by embedding linefeed\n" \
@@ -210,6 +217,7 @@ usage (int status)
 struct option longopts[] =
 {
   { "boot",                 no_argument,             NULL, 'b'},
+  { "tacacs",               no_argument,             NULL, 'T'},
   /* For compatibility with older zebra/quagga versions */
   { "eval",                 required_argument,       NULL, 'e'},
   { "command",              required_argument,       NULL, 'c'},
@@ -275,6 +283,45 @@ static void log_it(const char *line)
 
   fprintf(logfile, "%s:%s %s\n", tod, user, line);
 }
+/*
+ * Initializes the node privilege levels from RBAC so.
+ * Returns true when the initialization was successful and
+ * false when the initialization failed.
+ */
+
+bool
+rbac_init_node_privilege(lt_dlhandle *dhhandle)
+{
+  p_get_node_privilege_level = NULL;
+  p_init_node_priv_level_map = NULL;
+  /* Read node to privilege level mapping from RBAC so. */
+  lt_dlinit();
+  *dhhandle = lt_dlopen (RBAC_SO_PATH);
+  if (*dhhandle == NULL)
+  {
+      VLOG_ERR ("Failed to load the rbac library. Error = %s\n", lt_dlerror());
+      return false;
+  }
+  /* Initialize node privilege level map from RBAC so. */
+  p_init_node_priv_level_map = lt_dlsym (*dhhandle,"init_node_priv_level_map");
+  if (p_init_node_priv_level_map == NULL)
+  {
+      VLOG_ERR ("Failed to find init_node_priv_level_map. Error = %s\n",
+          lt_dlerror());
+      lt_dlclose (*dhhandle);
+      return false;
+  }
+  p_init_node_priv_level_map();
+  p_get_node_privilege_level = lt_dlsym (*dhhandle,"get_node_privilege_level");
+  if (p_get_node_privilege_level == NULL)
+  {
+      VLOG_ERR ("Failed to find get_node_privilege_level. Error = %s\n",
+          lt_dlerror());
+      lt_dlclose (*dhhandle);
+      return false;
+  }
+  return true;
+}
 
 /* VTY shell main routine. */
 int
@@ -300,6 +347,7 @@ main (int argc, char **argv, char **env)
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
   struct passwd *pw = NULL;
+  lt_dlhandle dhhandle = 0;
 
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
@@ -319,9 +367,9 @@ main (int argc, char **argv, char **env)
   while (1)
     {
 #ifdef ENABLE_OVSDB
-      opt = getopt_long (argc, argv, "be:c:d:nEhCtv:D:", longopts, 0);
+      opt = getopt_long (argc, argv, "be:c:d:nEhTCtv:D:", longopts, 0);
 #else
-      opt = getopt_long (argc, argv, "be:c:nEhC", longopts, 0);
+      opt = getopt_long (argc, argv, "be:c:nEhTC", longopts, 0);
 #endif
 
       if (opt == EOF)
@@ -377,6 +425,9 @@ main (int argc, char **argv, char **env)
           vtysh_show_startup = 1;
           break;
 #endif
+        case 'T':
+            tacacs_debug = 1;
+            break;
 	default:
 	  usage (1);
 	  break;
@@ -386,6 +437,12 @@ main (int argc, char **argv, char **env)
   if (pw == NULL)
   {
       fprintf(stderr,"Unknown User.\n");
+      exit(1);
+  }
+  /* Initialize node privilege levels. */
+  if (!rbac_init_node_privilege(&dhhandle))
+  {
+      VLOG_ERR("RBAC privilege level initialization failed\n");
       exit(1);
   }
   if (!( rbac_check_user_permission(pw->pw_name,RBAC_READ_SWITCH_CONFIG) ||
@@ -591,7 +648,7 @@ main (int argc, char **argv, char **env)
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_exit();
 #endif
-
+  lt_dlclose (dhhandle);
   /* Rest in peace. */
   exit (0);
 }
