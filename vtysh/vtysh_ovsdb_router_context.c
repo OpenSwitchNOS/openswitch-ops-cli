@@ -594,7 +594,7 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                        "comm_list");
 
             if (set_val)
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s delete", "",
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
                     "set comm-list",
                         set_val);
 
