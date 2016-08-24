@@ -244,6 +244,10 @@ install_node (struct cmd_node *node,
   vector_set_index (cmdvec, node->node, node);
   node->func = func;
   node->cmd_vector = vector_init (VECTOR_MIN_SIZE);
+  if (p_get_node_privilege_level != NULL)
+  {
+      node->privilege_level = p_get_node_privilege_level(node->node);
+  }
 }
 
 /* Breaking up string into each command piece. I assume given
@@ -703,6 +707,11 @@ install_element (enum node_type ntype, struct cmd_element *cmd)
 #else
     cmd->tokens = utils_cmd_parse_format(cmd->string, cmd->doc, cmd->dyn_cb_str);
 #endif
+  /* Set privilege level. */
+  if ((cnode->privilege_level < cmd->privilege_level))
+  {
+      cmd->privilege_level = cnode->privilege_level;
+  }
 }
 
 static const unsigned char itoa64[] =
@@ -3356,6 +3365,7 @@ cmd_execute_command_real (vector vline,
     return CMD_SUCCESS_DAEMON;
   vty->buf = (char*)matched_element->string;
   vty->length = strlen(matched_element->string);
+  vty_out(vty, "Command privilege-level: %d %s", matched_element->privilege_level, VTY_NEWLINE);
   /* Execute matched command. */
   if(((matched_element->attr) & CMD_ATTR_NOLOCK) == 0)
   {

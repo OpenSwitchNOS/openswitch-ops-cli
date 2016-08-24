@@ -32,6 +32,28 @@
 #include "vty.h"
 #include "lib/route_types.h"
 
+/* Privilege levels for command nodes */
+typedef enum node_priv_level_e
+{
+    PRIV_LEVEL_0,                  /* Lowest privilege */
+    PRIV_LEVEL_1,
+    PRIV_LEVEL_2,
+    PRIV_LEVEL_3,
+    PRIV_LEVEL_4,
+    PRIV_LEVEL_5,
+    PRIV_LEVEL_6,
+    PRIV_LEVEL_7,
+    PRIV_LEVEL_8,
+    PRIV_LEVEL_9,
+    PRIV_LEVEL_10,
+    PRIV_LEVEL_11,
+    PRIV_LEVEL_12,
+    PRIV_LEVEL_13,
+    PRIV_LEVEL_14,
+    PRIV_LEVEL_15,                 /* Highest privilege */
+    PRIV_LEVEL_INVALID             /* Invalid privilege level */
+} node_priv_level_t;
+
 
 enum data_type{
   NODE=0,
@@ -155,6 +177,7 @@ enum node_type
   VRRP_IF_NODE,                /* VRRP interface node */
 #endif
   VTY_NODE,			/* Vty node. */
+  MAX_NODE_TYPES,               /* Maximum node types */
 };
 
 /* Node which has some commands and prompt string and configuration
@@ -175,6 +198,9 @@ struct cmd_node
 
   /* Vector of this node's command list. */
   vector cmd_vector;
+
+  /* Privilege level for the node. */
+  node_priv_level_t privilege_level;
 };
 
 /* MACROS TO BE USED AS COMMAND ATTRIBUTES */
@@ -197,6 +223,7 @@ struct cmd_element
   vector tokens;		/* Vector of cmd_tokens */
   int attr;			/* Command attributes */
   const char *dyn_cb_str;       /* Callback funcname list for dynamic helpstr */
+  node_priv_level_t privilege_level;       /* Privilege level of the command */
 };
 
 
@@ -268,6 +295,7 @@ struct dyn_cb_func
     .attr = attrs, \
     .daemon = dnum, \
     .dyn_cb_str = dyn_cbstr, \
+    .privilege_level = PRIV_LEVEL_INVALID, \
   };
 
 #define DEFUN_CMD_FUNC_DECL(funcname) \
@@ -739,4 +767,6 @@ int cmd_input_range_match(const char *, const char *, enum cli_int_type);
 int cmd_range_comma_cli_parser_validate(const char* src, const char* dst,
                                     enum cli_int_type type,
                                     const char **matched, int *match);
+node_priv_level_t (*p_get_node_privilege_level)(enum node_type);
+void (*p_init_node_priv_level_map)(void);
 #endif /* _ZEBRA_COMMAND_H */

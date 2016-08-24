@@ -53,6 +53,9 @@
 #include "vtysh/banner_vty.h"
 #include "lib/cli_plugins.h"
 #include "vtysh/utils/passwd_srv_utils.h"
+#include <ltdl.h>
+
+#define RBAC_SO_PATH  "/usr/lib/librbac.so.0.1.0"
 
 #define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
@@ -275,6 +278,44 @@ static void log_it(const char *line)
 
   fprintf(logfile, "%s:%s %s\n", tod, user, line);
 }
+/*
+ * Initializes the node privilege levels from RBAC so.
+ * Returns true when the initialization was successful and
+ * false when the initialization failed.
+ */
+
+bool
+rbac_init_node_privilege(lt_dlhandle *dhhandle)
+{
+  p_get_node_privilege_level = NULL;
+  p_init_node_priv_level_map = NULL;
+  /* Read node to privilege level mapping from RBAC so. */
+  lt_dlinit();
+  lt_dlerror();
+  *dhhandle = lt_dlopen (RBAC_SO_PATH);
+  if (lt_dlerror())
+  {
+      VLOG_ERR ("Failed to load the rbac library");
+      return false;
+  }
+  /* Initialize node privilege level map from RBAC so. */
+  p_init_node_priv_level_map = lt_dlsym (*dhhandle,"init_node_priv_level_map");
+  if (lt_dlerror() || (p_init_node_priv_level_map == NULL))
+  {
+      VLOG_ERR ("Failed to find init_node_priv_level_map");
+      lt_dlclose (*dhhandle);
+      return false;
+  }
+  p_init_node_priv_level_map();
+  p_get_node_privilege_level = lt_dlsym (*dhhandle,"get_node_privilege_level");
+  if (lt_dlerror() || (p_get_node_privilege_level == NULL))
+  {
+      VLOG_ERR ("Failed to find get_node_privilege_level");
+      lt_dlclose (*dhhandle);
+      return false;
+  }
+  return true;
+}
 
 /* VTY shell main routine. */
 int
@@ -300,6 +341,8 @@ main (int argc, char **argv, char **env)
   char *temp_db = NULL;
   pthread_t vtysh_ovsdb_if_thread;
   struct passwd *pw = NULL;
+  lt_dlhandle dhhandle = 0;
+  bool is_node_priv_init = false;
 
   /* set CONSOLE as OFF and SYSLOG as DBG for ops-cli VLOG moduler list.*/
   vlog_set_verbosity("CONSOLE:OFF");
@@ -396,6 +439,8 @@ main (int argc, char **argv, char **env)
               pw->pw_name);
       exit(1);
   }
+  /* Initialize node privilege levels. */
+  is_node_priv_init = rbac_init_node_privilege(&dhhandle);
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_init_clients();
   vtysh_ovsdb_init(argc, argv, temp_db);
@@ -591,7 +636,10 @@ main (int argc, char **argv, char **env)
 #ifdef ENABLE_OVSDB
   vtysh_ovsdb_exit();
 #endif
-
+  if (is_node_priv_init)
+  {
+      lt_dlclose (dhhandle);
+  }
   /* Rest in peace. */
   exit (0);
 }
