@@ -1328,6 +1328,8 @@ vty_stop_input (struct vty *vty)
     case MGMT_INTERFACE_NODE:
 #ifdef ENABLE_OVSDB
     case VLAN_INTERFACE_NODE:
+    case VXLAN_TUNNEL_INTERFACE_NODE:
+    case VNI_NODE:
     case DHCP_SERVER_NODE:
     case TFTP_SERVER_NODE:
     case ACCESS_LIST_NODE:

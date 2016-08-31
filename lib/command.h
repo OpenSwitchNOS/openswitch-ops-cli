@@ -97,6 +97,9 @@ struct format_parser_state
 /* There are some command levels which called from command node. */
 enum node_type
 {
+  VXLAN_TUNNEL_INTERFACE_NODE,  /* Vxlan tunnel interface node. */
+  VNI_NODE,                     /* VNI (tunnel key) node. */
+
   AUTH_NODE,			/* Authentication mode of vty interface. */
   RESTRICTED_NODE,		/* Restricted view mode */
   VIEW_NODE,			/* View node. Default mode of vty interface. */
@@ -151,8 +154,8 @@ enum node_type
   LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
   IPSEC_IKE_NODE,                   /* IPsec policy node */
   IPSEC_IKE_ISAKMP_NODE,            /* IPsec ISAKMP node */
-  VRRP_IF_NODE,                /* VRRP interface node */
-#endif
+  VRRP_IF_NODE,                 /* VRRP interface node */
+  #endif
   VTY_NODE,			/* Vty node. */
 };
 
@@ -617,6 +620,9 @@ struct dyn_cb_func
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
+
+/* Added for Vxlan Tunnel */
+#define TUNNEL_STR   "Tunnel Configuration\n"
 
 /* Added for SFLOW */
 #define SFLOW_STR     "SFLOW Configuration\n"
