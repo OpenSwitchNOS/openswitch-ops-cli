@@ -181,6 +181,7 @@ vtysh_signal_init ()
   vtysh_signal_set (SIGINT, sigint);
   vtysh_signal_set (SIGTSTP, sigtstp);
   vtysh_signal_set (SIGPIPE, SIG_IGN);
+  vtysh_signal_set (SIGQUIT, SIG_IGN);
 }
 
 /* Help information display. */
