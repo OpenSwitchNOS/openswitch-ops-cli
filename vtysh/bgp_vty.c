@@ -754,7 +754,7 @@ static void show_routes(struct vty *vty,
                 /* Print local preference. */
                 vty_out (vty, "%7d", ppsd->local_pref);
                 /* Print weight for non-static routes. */
-                vty_out (vty, "%7d ", ppsd->weight?ppsd->weight:BGP_ATTR_DEFAULT_WEIGHT);
+                vty_out (vty, "%7d ", ppsd->weight);
                 /* Print AS path. */
                 if (ppsd->aspath) {
                     vty_out(vty, "%s", ppsd->aspath);
@@ -1282,6 +1282,7 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     const struct ovsrec_bgp_router *bgp_router_row;
     const struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn;
+    const bool fast_external_failover = true;
 
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
@@ -1303,6 +1304,11 @@ cli_router_bgp_cmd_execute(char *vrf_name, int64_t asn)
     if (bgp_router_row == NULL) {
         bgp_router_row = ovsrec_bgp_router_insert(bgp_router_txn);
         bgp_router_insert_to_vrf(vrf_row, bgp_router_row, asn);
+
+        /* Enable BGP fast external failover by default */
+        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row,
+                                                     &fast_external_failover,
+                                                     1);
     }
     /* Get the context from previous command for sub-commands. */
     vty->node = BGP_NODE;
@@ -2055,6 +2061,7 @@ cli_no_bgp_fast_external_failover_cmd_execute(char *vrf_name)
     const struct ovsrec_bgp_router *bgp_router_row;
     const struct ovsrec_vrf *vrf_row;
     struct ovsdb_idl_txn *bgp_router_txn = NULL;
+    const bool fast_external_failover = false;
 
     /* Start of transaction. */
     START_DB_TXN(bgp_router_txn);
@@ -2072,7 +2079,9 @@ cli_no_bgp_fast_external_failover_cmd_execute(char *vrf_name)
         ERRONEOUS_DB_TXN(bgp_router_txn, "no bgp router found");
     } else {
         /* Unset fast external failover. */
-        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row, NULL, 0);
+        ovsrec_bgp_router_set_fast_external_failover(bgp_router_row,
+                                                     &fast_external_failover,
+                                                     1);
     }
 
     /* End of transaction. */
@@ -10411,21 +10420,6 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &no_bgp_router_id_cmd);
     install_element(BGP_NODE, &no_bgp_router_id_val_cmd);
 
-    /* "Bgp cluster-id" commands. */
-    install_element(BGP_NODE, &bgp_cluster_id_cmd);
-    install_element(BGP_NODE, &bgp_cluster_id32_cmd);
-    install_element(BGP_NODE, &no_bgp_cluster_id_cmd);
-    install_element(BGP_NODE, &no_bgp_cluster_id_arg_cmd);
-
-    /* "Bgp confederation" commands. */
-    install_element(BGP_NODE, &bgp_confederation_identifier_cmd);
-    install_element(BGP_NODE, &no_bgp_confederation_identifier_cmd);
-    install_element(BGP_NODE, &no_bgp_confederation_identifier_arg_cmd);
-
-    /* "Bgp confederation peers" commands. */
-    install_element(BGP_NODE, &bgp_confederation_peers_cmd);
-    install_element(BGP_NODE, &no_bgp_confederation_peers_cmd);
-
     /* "Maximum-paths" commands. */
     install_element(BGP_NODE, &bgp_maxpaths_cmd);
     install_element(BGP_NODE, &no_bgp_maxpaths_cmd);
@@ -10445,77 +10439,17 @@ bgp_vty_init(void)
     install_element(BGP_NODE, &no_bgp_timers_cmd);
     install_element(BGP_NODE, &no_bgp_timers_arg_cmd);
 
-    /* "Bgp client-to-client reflection" commands. */
-    install_element(BGP_NODE, &no_bgp_client_to_client_reflection_cmd);
-    install_element(BGP_NODE, &bgp_client_to_client_reflection_cmd);
-
-    /* "Bgp always-compare-med" commands. */
-    install_element(BGP_NODE, &bgp_always_compare_med_cmd);
-    install_element(BGP_NODE, &no_bgp_always_compare_med_cmd);
-
-    /* "Bgp deterministic-med" commands. */
-    install_element(BGP_NODE, &bgp_deterministic_med_cmd);
-    install_element(BGP_NODE, &no_bgp_deterministic_med_cmd);
-
-    /* "Bgp graceful-restart" commands. */
-    install_element(BGP_NODE, &bgp_graceful_restart_cmd);
-    install_element(BGP_NODE, &no_bgp_graceful_restart_cmd);
-    install_element(BGP_NODE, &bgp_graceful_restart_stalepath_time_cmd);
-    install_element(BGP_NODE, &no_bgp_graceful_restart_stalepath_time_cmd);
-    install_element(BGP_NODE, &no_bgp_graceful_restart_stalepath_time_val_cmd);
-
     /* "Bgp fast-external-failover" commands. */
     install_element(BGP_NODE, &bgp_fast_external_failover_cmd);
     install_element(BGP_NODE, &no_bgp_fast_external_failover_cmd);
-
-    /* "Bgp enforce-first-as" commands. */
-    install_element(BGP_NODE, &bgp_enforce_first_as_cmd);
-    install_element(BGP_NODE, &no_bgp_enforce_first_as_cmd);
-
-    /* "Bgp bestpath compare-routerid" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_compare_router_id_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_compare_router_id_cmd);
-
-    /* "Bgp bestpath as-path ignore" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_aspath_ignore_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_aspath_ignore_cmd);
-
-    /* "Bgp bestpath as-path confed" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_aspath_confed_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_aspath_confed_cmd);
-
-    /* "Bgp bestpath as-path multipath-relax" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_aspath_multipath_relax_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_aspath_multipath_relax_cmd);
 
     /* "Bgp log-neighbor-changes" commands. */
     install_element(BGP_NODE, &bgp_log_neighbor_changes_cmd);
     install_element(BGP_NODE, &no_bgp_log_neighbor_changes_cmd);
 
-    /* "Bgp bestpath med" commands. */
-    install_element(BGP_NODE, &bgp_bestpath_med_cmd);
-    install_element(BGP_NODE, &bgp_bestpath_med2_cmd);
-    install_element(BGP_NODE, &bgp_bestpath_med3_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_med_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_med2_cmd);
-    install_element(BGP_NODE, &no_bgp_bestpath_med3_cmd);
-
-    /* "No bgp default ipv4-unicast" commands. */
-    install_element(BGP_NODE, &no_bgp_default_ipv4_unicast_cmd);
-    install_element(BGP_NODE, &bgp_default_ipv4_unicast_cmd);
-
     /* "Bgp network" commands. */
     install_element(BGP_NODE, &bgp_network_cmd);
     install_element(BGP_NODE, &no_bgp_network_cmd);
-
-    /* "Bgp network import-check" commands. */
-    install_element(BGP_NODE, &bgp_network_import_check_cmd);
-    install_element(BGP_NODE, &no_bgp_network_import_check_cmd);
-
-    /* "Bgp default local-preference" commands. */
-    install_element(BGP_NODE, &bgp_default_local_preference_cmd);
-    install_element(BGP_NODE, &no_bgp_default_local_preference_cmd);
-    install_element(BGP_NODE, &no_bgp_default_local_preference_val_cmd);
 
     /* "Neighbor remote-as" commands. */
     install_element(BGP_NODE, &neighbor_remote_as_cmd);
@@ -11152,14 +11086,9 @@ bgp_vty_init(void)
 
     /* "Show ip bgp summary" commands. */
     install_element(VIEW_NODE, &show_ip_bgp_summary_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_ipv4_summary_cmd);
-    install_element(VIEW_NODE, &show_bgp_ipv4_safi_summary_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
     install_element(VIEW_NODE, &show_bgp_summary_cmd);
     install_element(VIEW_NODE, &show_bgp_ipv6_summary_cmd);
-    install_element(VIEW_NODE, &show_bgp_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
     install_element(RESTRICTED_NODE, &show_ip_bgp_summary_cmd);
     install_element(RESTRICTED_NODE, &show_ip_bgp_ipv4_summary_cmd);
@@ -11172,14 +11101,9 @@ bgp_vty_init(void)
     install_element(RESTRICTED_NODE, &show_bgp_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
     install_element(ENABLE_NODE, &show_ip_bgp_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_ipv4_summary_cmd);
-    install_element(ENABLE_NODE, &show_bgp_ipv4_safi_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
     install_element(ENABLE_NODE, &show_bgp_summary_cmd);
     install_element(ENABLE_NODE, &show_bgp_ipv6_summary_cmd);
-    install_element(ENABLE_NODE, &show_bgp_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
 
     /* "Show ip bgp neighbors" commands. */
@@ -11187,14 +11111,8 @@ bgp_vty_init(void)
     install_element(VIEW_NODE, &show_ip_bgp_ipv4_neighbors_cmd);
     install_element(VIEW_NODE, &show_ip_bgp_neighbors_peer_cmd);
     install_element(VIEW_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_all_neighbors_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_rd_neighbors_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
     install_element(RESTRICTED_NODE, &show_ip_bgp_neighbors_peer_cmd);
     install_element(RESTRICTED_NODE, &show_ip_bgp_ipv4_neighbors_peer_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_vpnv4_all_neighbors_peer_cmd);
-    install_element(RESTRICTED_NODE, &show_ip_bgp_vpnv4_rd_neighbors_peer_cmd);
     install_element(ENABLE_NODE, &show_ip_bgp_neighbors_cmd);
     install_element(ENABLE_NODE, &show_ip_bgp_ipv4_neighbors_cmd);
     install_element(ENABLE_NODE, &show_ip_bgp_neighbors_peer_cmd);
@@ -11217,27 +11135,9 @@ bgp_vty_init(void)
     install_element(ENABLE_NODE, &show_bgp_ipv6_neighbors_peer_cmd);
 
     /* Old commands.  */
-    install_element(VIEW_NODE, &show_ipv6_bgp_summary_cmd);
-    install_element(VIEW_NODE, &show_ipv6_mbgp_summary_cmd);
     install_element(VIEW_NODE, &show_ipv6_bgp_cmd);
-    install_element(ENABLE_NODE, &show_ipv6_bgp_summary_cmd);
-    install_element(ENABLE_NODE, &show_ipv6_mbgp_summary_cmd);
     install_element(ENABLE_NODE, &show_ipv6_bgp_cmd);
 #endif /* HAVE_IPV6 */
-
-    /* "Show ip bgp paths" commands. */
-    install_element(VIEW_NODE, &show_ip_bgp_paths_cmd);
-    install_element(VIEW_NODE, &show_ip_bgp_ipv4_paths_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_paths_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_ipv4_paths_cmd);
-
-    /* "Show ip bgp community" commands. */
-    install_element(VIEW_NODE, &show_ip_bgp_community_info_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_community_info_cmd);
-
-    /* "Show ip bgp attribute-info" commands. */
-    install_element(VIEW_NODE, &show_ip_bgp_attr_info_cmd);
-    install_element(ENABLE_NODE, &show_ip_bgp_attr_info_cmd);
 
     /* "Redistribute" commands. */
     install_element(BGP_NODE, &bgp_redistribute_ipv4_cmd);
@@ -11938,19 +11838,27 @@ policy_get_route_map_entry_in_ovsdb(unsigned long pref, const char *name,
     struct ovsrec_route_map_entry *rt_map_entry_row;
     int i = 0;
 
+    VLOG_INFO("%s: route-map pref %ld name %s action %s",
+              __FUNCTION__, pref, name, action);
     OVSREC_ROUTE_MAP_FOR_EACH(rt_map_row, idl) {
         if (strcmp(name, rt_map_row->name) == 0) {
+            VLOG_INFO("%s: route-map name %s match found", __FUNCTION__, name);
             for ( i = 0 ; i < rt_map_row->n_route_map_entries; i++) {
                 if (rt_map_row->key_route_map_entries[i] == pref) {
+                    VLOG_INFO("%s: route-map entry with pref %ld found",
+                              __FUNCTION__, pref);
                     rt_map_entry_row = rt_map_row->value_route_map_entries[i];
 
                     if (!strcmp(rt_map_entry_row->action, action)) {
+                        VLOG_INFO("%s: route-map entry with action %s found",
+                                  __FUNCTION__, action);
                         return rt_map_entry_row;
                     }
                 }
             }
         }
     }
+    VLOG_INFO("%s: route-map entry not found, returning NULL", __FUNCTION__);
     return NULL;
 }
 
@@ -11965,6 +11873,7 @@ bgp_route_map_entry_insert_to_route_map(const struct ovsrec_route_map *
     struct ovsrec_route_map_entry  **rt_map_entry_list;
     int i, new_size;
 
+    VLOG_INFO("%s: route-map seq %ld", __FUNCTION__, seq);
     new_size = rt_map_row->n_route_map_entries + 1;
     pref_list = xmalloc(sizeof(int64_t) * new_size);
     rt_map_entry_list = xmalloc(sizeof * rt_map_row->value_route_map_entries *
@@ -11979,6 +11888,8 @@ bgp_route_map_entry_insert_to_route_map(const struct ovsrec_route_map *
                 CONST_CAST(struct ovsrec_route_map_entry *, rt_map_entry_row);
     ovsrec_route_map_set_route_map_entries(rt_map_row, pref_list,
                                            rt_map_entry_list, new_size);
+    VLOG_INFO("%s: Returned from ovsrec_route_map_set_route_map_entries",
+              __FUNCTION__);
 
     free(pref_list);
     free(rt_map_entry_list);
@@ -12043,6 +11954,9 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
     const struct ovsrec_route_map_entry  *rt_map_entry_row;
     unsigned long pref;
 
+    VLOG_INFO("%s: route-map name %s typestr %s seq %s", __FUNCTION__,
+              name, typestr, seq);
+
     /* Permit check. */
     if ((strncmp(typestr, "permit", strlen (typestr)) != 0) &&
         (strncmp(typestr, "deny", strlen (typestr)) != 0)) {
@@ -12064,6 +11978,7 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
      * The row will be used as uuid, refered to from another table.
      */
     if (!rt_map_row) {
+        VLOG_INFO("%s: Insert new route-map row in DB", __FUNCTION__);
         rt_map_row = ovsrec_route_map_insert(policy_txn);
         ovsrec_route_map_set_name(rt_map_row, name);
     }
@@ -12074,11 +11989,13 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
     rt_map_entry_row = policy_get_route_map_entry_in_ovsdb(pref, name, typestr);
 
     if (!rt_map_entry_row) {
+        VLOG_INFO("%s: Insert new route-map entry row in DB", __FUNCTION__);
         rt_map_entry_row = ovsrec_route_map_entry_insert(policy_txn);
         bgp_route_map_entry_insert_to_route_map(rt_map_row, rt_map_entry_row,
                                                 (int64_t)pref);
 
     /* Row was not found, which means it is a new entry. Set default vals. */
+        VLOG_INFO("%s: Setting route-map entry default values", __FUNCTION__);
         ovsrec_route_map_entry_set_action(rt_map_entry_row, typestr);
         ovsrec_route_map_entry_set_match(rt_map_entry_row, NULL);
         ovsrec_route_map_entry_set_set(rt_map_entry_row, NULL);
@@ -12090,6 +12007,8 @@ policy_set_route_map_in_ovsdb(struct vty *vty, const char *name,
     vty->index = &rmp_context;
     vty->node = RMAP_NODE;
 
+    VLOG_INFO("%s: rmp_context.pref %d rmp_context.name %s rmp_context.action %s",
+              __FUNCTION__, rmp_context.pref, rmp_context.name, rmp_context.action);
     END_DB_TXN(policy_txn);
 }
 
@@ -12232,6 +12151,8 @@ policy_set_route_map_match_in_ovsdb(struct vty *vty,
     struct smap smap_match;
     char *table_key;
 
+    VLOG_INFO("%s: rt_map_entry_row %p command %s arg %s", __FUNCTION__,
+              rt_map_entry_row, command, arg);
     table_key = policy_cmd_to_key_lookup (command, match_table);
     if (table_key == NULL) {
         VLOG_ERR("Route map match wrong key - %s", command);
@@ -12243,9 +12164,13 @@ policy_set_route_map_match_in_ovsdb(struct vty *vty,
     smap_clone (&smap_match, &rt_map_entry_row->match);
 
     if (arg) {
+        VLOG_INFO("%s: Setting arg %s with table_key %s into smap",
+                  __FUNCTION__, arg, table_key);
         /* Non-empty key, so the value will be set. */
         smap_replace (&smap_match, table_key, arg);
     } else {
+        VLOG_INFO("%s: Unsetting table_key %s from smap",
+                  __FUNCTION__, table_key);
         /* Empty key indicates an unset. */
         smap_remove (&smap_match, table_key);
     }
@@ -12253,6 +12178,7 @@ policy_set_route_map_match_in_ovsdb(struct vty *vty,
     ovsrec_route_map_entry_set_match (rt_map_entry_row, &smap_match);
     smap_destroy (&smap_match);
 
+    VLOG_INFO("%s: Committing txn for route-map entry match", __FUNCTION__);
     END_DB_TXN (policy_txn);
 }
 
@@ -12510,6 +12436,9 @@ policy_set_route_map_set_in_ovsdb(struct vty *vty,
     char *table_key;
     const struct smap *psmap;
 
+    VLOG_INFO("%s: rt_map_entry_row %p command %s arg %s", __FUNCTION__,
+              rt_map_entry_row, command, arg);
+
     table_key = policy_cmd_to_key_lookup (command, set_table);
     if (table_key == NULL) {
         VLOG_ERR("Route map set wrong key - %s", command);
@@ -12522,15 +12451,20 @@ policy_set_route_map_set_in_ovsdb(struct vty *vty,
     smap_clone (&smap_set, psmap);
 
     if (arg) {
+        VLOG_INFO("%s: Setting arg %s with table_key %s into smap",
+                  __FUNCTION__, arg, table_key);
         /* Non-empty key, so the value will be set. */
         smap_replace (&smap_set, table_key, arg);
     } else {
+        VLOG_INFO("%s: Unsetting table_key %s from smap",
+                  __FUNCTION__, table_key);
         /* Empty key indicates an unset. */
         smap_remove (&smap_set, table_key);
     }
 
     ovsrec_route_map_entry_set_set (rt_map_entry_row, &smap_set);
     smap_destroy (&smap_set);
+    VLOG_INFO("%s: Committing txn for route-map entry set", __FUNCTION__);
     END_DB_TXN (policy_txn);
 }
 

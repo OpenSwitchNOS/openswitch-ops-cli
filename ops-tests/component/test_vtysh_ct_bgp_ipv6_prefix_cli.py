@@ -19,6 +19,7 @@
 """
 OpenSwitch Test for switchd related configurations.
 """
+from pytest import mark
 
 
 TOPOLOGY = """
@@ -731,6 +732,7 @@ def validate_show_ipv6_prefix_list_word_prefix_longer(step):
     assert plist_created is True
 
 
+@mark.gate
 def test_vtysh_ct_bgp_ipv6_prefix_cli(topology, step):
     ops1 = topology.get("ops1")
     assert ops1 is not None

@@ -220,6 +220,7 @@ create_vlan_interface(const char *vlan_if)
     ovsrec_port_set_interfaces(port_row, iface_list, 1);
     ops_port_set_tag((int)tag, port_row, idl);
     ovsrec_port_set_vlan_mode(port_row, 0 /*PORT_VLAN_ACCESS*/);
+    ovsrec_port_set_admin(port_row, OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
 
     /* Add the port to vrf port list */
     vrf_port_list =
