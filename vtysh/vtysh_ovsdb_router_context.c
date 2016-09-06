@@ -600,7 +600,7 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 
             set_val = smap_get(
                        &ovs_route_map->value_route_map_entries[j]->set,
-                       "extcommunity rt");
+                       "extcommunity_rt");
             if (set_val)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
                     "set extcommunity rt",
@@ -608,7 +608,7 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 
             set_val = smap_get(
                        &ovs_route_map->value_route_map_entries[j]->set,
-                       "extcommunity soo");
+                       "extcommunity_soo");
 
             if (set_val)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
