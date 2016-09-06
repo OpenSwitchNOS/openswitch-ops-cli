@@ -257,6 +257,9 @@ ospf_get_port_intervals(const struct ovsrec_port* port_row,
 int
 vtysh_init_intf_ospf_context_clients();
 
+int64_t ospf_get_distance(const struct ovsrec_ospf_router *router_row,
+                          const char *key);
+
 
 /* OSPF KEYS */
 
