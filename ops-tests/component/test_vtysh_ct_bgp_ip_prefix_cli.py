@@ -19,6 +19,7 @@
 """
 OpenSwitch Test for switchd related configurations.
 """
+from pytest import mark
 
 
 TOPOLOGY = """
@@ -560,6 +561,7 @@ def delete_bgp_ip_prefix_list_word_deny_any(step):
     assert plist_deleted is True
 
 
+@mark.gate
 def test_vtysh_ct_bgp_ip_prefix_cli(topology, step):
     ops1 = topology.get("ops1")
     assert ops1 is not None
