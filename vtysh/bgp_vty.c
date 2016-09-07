@@ -4728,6 +4728,49 @@ ALIAS(no_neighbor_port,
       "Neighbor's BGP port\n"
       "TCP port number\n")
 
+static int
+cli_bgp_neighbor_weight_execute (char *vrf_name,
+    char *neighbor,
+    char *weight_str,
+    bool set)
+{
+    const struct ovsrec_vrf *vrf_row;
+    const struct ovsrec_bgp_neighbor *bgp_neighbor_row;
+    const struct ovsrec_bgp_router *bgp_router_row;
+    struct ovsdb_idl_txn *txn;
+
+    int64_t weight;
+
+    START_DB_TXN (txn);
+
+    vrf_row = get_ovsrec_vrf_with_name (vrf_name);
+    if (!vrf_row) {
+        ERRONEOUS_DB_TXN (txn, "No VRF found");
+    }
+
+    bgp_router_row = get_ovsrec_bgp_router_with_asn (vrf_row,
+                        (int64_t)vty->index);
+    if (!bgp_router_row) {
+        ERRONEOUS_DB_TXN (txn, "No BGP router found");
+    }
+
+    bgp_neighbor_row =
+    get_bgp_neighbor_with_bgp_router_and_ipaddr (bgp_router_row, neighbor);
+    if (!bgp_neighbor_row) {
+        ERRONEOUS_DB_TXN (txn, "No BGP neighbor found");
+    }
+
+    if (!weight_str || !set) {
+        ovsrec_bgp_neighbor_set_weight (bgp_neighbor_row, &weight, 0);
+    }
+    else {
+        weight = (int64_t) atoi (weight_str);
+        ovsrec_bgp_neighbor_set_weight (bgp_neighbor_row, &weight, 1);
+    }
+    END_DB_TXN (txn);
+}
+
+
 DEFUN(neighbor_weight,
       neighbor_weight_cmd,
       NEIGHBOR_CMD2 "weight <0-65535>",
@@ -4736,8 +4779,8 @@ DEFUN(neighbor_weight,
       "Set default weight for routes from this neighbor\n"
       "default weight\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    return cli_bgp_neighbor_weight_execute (NULL, (char *)argv[0],
+    (char *)argv[1], true);
 }
 
 DEFUN(no_neighbor_weight,
@@ -4748,8 +4791,13 @@ DEFUN(no_neighbor_weight,
       NEIGHBOR_ADDR_STR2
       "Set default weight for routes from this neighbor\n")
 {
-    report_unimplemented_command(vty, argc, argv);
-    return CMD_SUCCESS;
+    if (argc > 1) {
+        return cli_bgp_neighbor_weight_execute (NULL, (char *)argv[0],
+            (char *)argv[1], false);
+    }
+    else {
+        return cli_bgp_neighbor_weight_execute (NULL, (char *)argv[0], NULL, false);
+    }
 }
 
 ALIAS(no_neighbor_weight,

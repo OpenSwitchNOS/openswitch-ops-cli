@@ -875,6 +875,25 @@ def verify_no_neighbor_ttl_security_hops_peergroup(step):
         foundpeergroupcfg is False
     )
 
+def verify_neighbor_weight_cmd(step):
+    step("Verifying neighbor weight/no neighbor weight commands")
+    switch = dutarray[0]
+    weight = "65534"
+    nbr_cfg_string = "neighbor " + bgp2_router_id+" weight " + weight
+
+    switch("end")
+    switch("conf t")
+    switch("router bgp %s" % bgp1_asn)
+    switch("neighbor %s weight %s" % (bgp2_router_id, weight))
+    dump = switch("do show running-config")
+    assert nbr_cfg_string in dump
+    switch("no neighbor %s weight" % bgp2_router_id)
+    dump = switch("do show running-config")
+    assert nbr_cfg_string not in dump
+    switch("neighbor %s weight %s" % (bgp2_router_id, weight))
+    switch("no neighbor %s weight %s" % (bgp2_router_id, weight))
+    dump = switch("do show running-config")
+    assert nbr_cfg_string not in dump
 
 def test_vtysh_ct_bgp_neighbor(topology, step):
     ops1 = topology.get("ops1")
@@ -931,3 +950,4 @@ def test_vtysh_ct_bgp_neighbor(topology, step):
     configure_neighbor_ttl_security_peer_group_test_dependency(step)
     verify_no_neighbor_ttl_security_hops_peergroup(step)
     unconfigure_neighbor_ttl_security_peer_group_test_dependency(step)
+    verify_neighbor_weight_cmd(step)

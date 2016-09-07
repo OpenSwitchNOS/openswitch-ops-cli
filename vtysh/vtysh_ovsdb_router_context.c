@@ -138,6 +138,11 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       "allowas-in",
                                       *(nbr_table->allow_as_in));
 
+            if (nbr_table->n_weight)
+              vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %lu", "", "neighbor",
+                                      neighbor,
+                                      "weight", *(nbr_table->weight));
+
             if (nbr_table->n_remove_private_as)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s", "", "neighbor",
                                       neighbor,
