@@ -201,10 +201,11 @@ vtysh_config_parse_line (const char *line)
 #endif
       else if (strncmp (line, "interface lag", strlen ("interface lag")) == 0)
           config = config_get (LINK_AGGREGATION_NODE, line);
-      else if (strncasecmp (line, "interface tunnel mode xxxx", strlen ("interface tunnel mode xxxx")) == 0)
+      else if (strncasecmp (line, "interface tunnel mode xxxxx", strlen ("interface tunnel mode xxxxx")) == 0)
       {
           char *mode_str = malloc(sizeof("mode xxxxx"));
           mode_str = get_mode_from_line(line);
+          vty_out(vty, "mode str frm function %s\n", mode_str);
           if (strncmp(mode_str, "mode vxlan", strlen("mode xxxxx")) == 0)
               config = config_get (VXLAN_TUNNEL_INTERFACE_NODE, line);
           free(mode_str);

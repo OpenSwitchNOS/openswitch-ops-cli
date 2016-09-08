@@ -79,6 +79,7 @@ typedef enum vtysh_config_context_client_idenum
   e_vtysh_config_context_staticroute,
   e_vtysh_config_context_ecmp,
   e_vtysh_config_context_ntp,
+  e_vtysh_config_context_tunnel,
   e_vtysh_config_context_mstp,
   e_vtysh_config_context_syslog,
   e_vtysh_config_context_snmp,

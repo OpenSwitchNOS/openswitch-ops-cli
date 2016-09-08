@@ -179,6 +179,8 @@ int vtysh_end (void);
 void vtysh_install_default (enum node_type node);
 extern struct cmd_element vtysh_end_all_cmd;
 extern struct cmd_element vtysh_exit_interface_cmd;
+extern struct cmd_element vtysh_exit_tunnel_interface_cmd;
+extern struct cmd_element vtysh_exit_vni_cmd;
 int default_port_add (const char *if_name);
 #define MAX_IFNAME_LENGTH 50
 

@@ -1045,6 +1045,18 @@ static struct cmd_node keychain_key_node =
       "%s(config-keychain-key)# "
    };
 
+static struct cmd_node vxlan_tunnel_interface_node =
+{
+  VXLAN_TUNNEL_INTERFACE_NODE,
+  "%s(config-vxlan-if)# "
+};
+
+static struct cmd_node vni_node =
+{
+  VNI_NODE,
+  "%s(config-vni)# "
+};
+
 /* Defined in lib/vty.c */
 extern struct cmd_node vty_node;
 
@@ -1670,6 +1682,38 @@ DEFUNSH_NON_IDL (VTYSH_INTERFACE,
 #ifndef ENABLE_OVSDB
 ALIAS (vtysh_exit_interface,
       vtysh_quit_interface_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+#endif
+
+DEFUNSH_NON_IDL (VXLAN_TUNNEL_INTERFACE_NODE,
+                 vtysh_exit_tunnel_interface,
+                 vtysh_exit_tunnel_interface_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+#ifndef ENABLE_OVSDB
+ALIAS (vtysh_exit_tunnel_interface,
+      vtysh_quit_tunnel_interface_cmd,
+      "quit",
+      "Exit current mode and down to previous mode\n")
+#endif
+
+DEFUNSH_NON_IDL (VNI_NODE,
+                 vtysh_exit_vni,
+                 vtysh_exit_vni_cmd,
+                 "exit",
+                 "Exit current mode and down to previous mode\n")
+{
+   return vtysh_exit (vty);
+}
+
+#ifndef ENABLE_OVSDB
+ALIAS (vtysh_exit_vni,
+      vtysh_quit_vni_cmd,
       "quit",
       "Exit current mode and down to previous mode\n")
 #endif
@@ -4222,6 +4266,8 @@ vtysh_init_vty ( struct passwd *pw)
    /* Sub-interafce and Loopback nodes. */
    install_node (&sub_interface_node, NULL);
    install_node (&loopback_interface_node, NULL);
+   install_node (&vxlan_tunnel_interface_node, NULL);
+   install_node (&vni_node, NULL);
 #endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
@@ -4296,8 +4342,8 @@ vtysh_init_vty ( struct passwd *pw)
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
-   install_element (VXLAN_TUNNEL_INTERFACE_NODE, &vtysh_quit_interface_cmd);
-   install_element (VNI_NODE, &vtysh_quit_interface_cmd);
+   install_element (VXLAN_TUNNEL_INTERFACE_NODE, &vtysh_exit_tunnel_interface_cmd);
+   install_element (VNI_NODE, &vtysh_exit_vni_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
    install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
