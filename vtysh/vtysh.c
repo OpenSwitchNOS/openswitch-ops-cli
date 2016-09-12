@@ -1057,6 +1057,12 @@ static struct cmd_node vni_node =
   "%s(config-vni)# "
 };
 
+static struct cmd_node gre_tunnel_interface_node =
+{
+  GRE_TUNNEL_INTERFACE_NODE,
+  "%s(config-gre-if)# "
+};
+
 /* Defined in lib/vty.c */
 extern struct cmd_node vty_node;
 
@@ -1403,6 +1409,7 @@ vtysh_exit (struct vty *vty)
     case VLAN_INTERFACE_NODE:
     case VXLAN_TUNNEL_INTERFACE_NODE:
     case VNI_NODE:
+    case GRE_TUNNEL_INTERFACE_NODE:
     case LINK_AGGREGATION_NODE:
     case QOS_QUEUE_PROFILE_NODE:
     case QOS_SCHEDULE_PROFILE_NODE:
@@ -4263,11 +4270,12 @@ vtysh_init_vty ( struct passwd *pw)
    install_node (&rip_node, NULL);
 #endif
 #ifdef ENABLE_OVSDB
-   /* Sub-interafce and Loopback nodes. */
+   /* Sub-interface and Loopback nodes. */
    install_node (&sub_interface_node, NULL);
    install_node (&loopback_interface_node, NULL);
    install_node (&vxlan_tunnel_interface_node, NULL);
    install_node (&vni_node, NULL);
+   install_node (&gre_tunnel_interface_node, NULL);
 #endif
    install_node (&rmap_node, NULL);
    install_node (&zebra_node, NULL);
@@ -4342,8 +4350,11 @@ vtysh_init_vty ( struct passwd *pw)
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
-   install_element (VXLAN_TUNNEL_INTERFACE_NODE, &vtysh_exit_tunnel_interface_cmd);
+   install_element (VXLAN_TUNNEL_INTERFACE_NODE,
+                    &vtysh_exit_tunnel_interface_cmd);
    install_element (VNI_NODE, &vtysh_exit_vni_cmd);
+   install_element (GRE_TUNNEL_INTERFACE_NODE,
+                    &vtysh_exit_tunnel_interface_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
    install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
