@@ -152,9 +152,10 @@ enum node_type
   VLAN_INTERFACE_NODE,          /* VLAN Interface Node*/
   SUB_INTERFACE_NODE,           /* Sub Interface mode node. */
   LOOPBACK_INTERFACE_NODE,      /* Loopback Interface mode node. */
-  IPSEC_IKE_NODE,                   /* IPsec policy node */
-  IPSEC_IKE_ISAKMP_NODE,            /* IPsec ISAKMP node */
+  IPSEC_IKE_NODE,               /* IPsec policy node */
+  IPSEC_IKE_ISAKMP_NODE,        /* IPsec ISAKMP node */
   VRRP_IF_NODE,                 /* VRRP interface node */
+  GRE_TUNNEL_INTERFACE_NODE,    /* GRE tunnel interface node */
   #endif
   VTY_NODE,			/* Vty node. */
 };
@@ -593,7 +594,7 @@ struct dyn_cb_func
 #define IN_STR      "Filter incoming routing updates\n"
 #define V4NOTATION_STR "specify by IPv4 address notation(e.g. 0.0.0.0)\n"
 #define OSPF6_NUMBER_STR "Specify by number\n"
-#define INTERFACE_STR "Interface infomation\n"
+#define INTERFACE_STR "Interface information\n"
 #define INTERFACE_NO_STR "Delete a non-physical interface's configuration\n"
 #define IFNAME_STR  "Interface name(e.g. ep0)\n"
 #define IP6_STR     "IPv6 Information\n"
