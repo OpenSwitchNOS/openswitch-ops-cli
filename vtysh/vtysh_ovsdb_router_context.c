@@ -595,13 +595,13 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                        "comm_list");
 
             if (set_val)
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s delete", "",
                     "set comm-list",
                         set_val);
 
             set_val = smap_get(
                        &ovs_route_map->value_route_map_entries[j]->set,
-                       "extcommunity_rt");
+                       "extcommunity rt");
             if (set_val)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
                     "set extcommunity rt",
@@ -609,7 +609,7 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 
             set_val = smap_get(
                        &ovs_route_map->value_route_map_entries[j]->set,
-                       "extcommunity_soo");
+                       "extcommunity soo");
 
             if (set_val)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",

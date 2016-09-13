@@ -4302,6 +4302,8 @@ vtysh_init_vty ( struct passwd *pw)
    vtysh_install_default (RIP_NODE);
 #endif
    vtysh_install_default (INTERFACE_NODE);
+   vtysh_install_default (VXLAN_TUNNEL_INTERFACE_NODE);
+   vtysh_install_default (VNI_NODE);
 #ifdef ENABLE_OVSDB
    /* Sub-interafce and Loopback nodes. */
    vtysh_install_default (SUB_INTERFACE_NODE);
@@ -4342,8 +4344,6 @@ vtysh_init_vty ( struct passwd *pw)
    install_element (OSPF6_NODE, &vtysh_quit_ospf6d_cmd);
    install_element (RIPNG_NODE, &vtysh_quit_ripngd_cmd);
    install_element (VLAN_INTERFACE_NODE, &vtysh_quit_interface_cmd);
-   install_element (VXLAN_TUNNEL_INTERFACE_NODE, &vtysh_exit_tunnel_interface_cmd);
-   install_element (VNI_NODE, &vtysh_exit_vni_cmd);
    install_element (BGP_IPV4M_NODE, &vtysh_quit_bgpd_cmd);
    install_element (RIP_NODE, &vtysh_quit_ripd_cmd);
    install_element (BGP_IPV4_NODE, &vtysh_quit_bgpd_cmd);
@@ -4357,6 +4357,8 @@ vtysh_init_vty ( struct passwd *pw)
    install_element (VIEW_NODE, &vtysh_quit_all_cmd);
    install_element (RMAP_NODE, &vtysh_quit_rmap_cmd);
    install_element (INTERFACE_NODE, &vtysh_quit_interface_cmd);
+   install_element (VXLAN_TUNNEL_INTERFACE_NODE, &vtysh_quit_tunnel_interface_cmd);
+   install_element (VNI_NODE, &vtysh_quit_vni_cmd);
    install_element (VTY_NODE, &vtysh_quit_line_vty_cmd);
 #endif
    /* "exit" command. */
