@@ -255,106 +255,6 @@ vtysh_ovsdb_ovstable_parse_alias(vtysh_ovsdb_cbmsg *p_msg)
 }
 
 /*-----------------------------------------------------------------------------
-| Function : vtysh_ovsdb_radiusservertable_parse_options
-| Responsibility : parse column in radius server table
-| Parameters :
-|    temp :  Double pointer to RADIUS information
-|    count : Total number of RADIUS server entries.
-| Return : vtysh_ret_val, e_vtysh_ok
------------------------------------------------------------------------------*/
-static vtysh_ret_val
-vtysh_ovsdb_radiusservertable_parse_options(char **temp, int count, vtysh_ovsdb_cbmsg *p_msg)
-{
-    int64_t local_count = 0;
-    char *ipaddr, *udp_port, *timeout, *passkey, *retries;
-
-    while (count--)
-    {
-       ipaddr=strtok(temp[local_count],":");
-       udp_port=strtok(NULL," ");
-       passkey=strtok(NULL," ");
-       retries=strtok(NULL, " ");
-       timeout=strtok(NULL, " ");
-
-       if (!strcmp(passkey, RADIUS_SERVER_DEFAULT_PASSKEY) && (atoi(udp_port) == RADIUS_SERVER_DEFAULT_PORT) ) {
-           vtysh_ovsdb_cli_print(p_msg, "radius-server host %s", ipaddr);
-       }
-
-       if (strcmp(passkey, RADIUS_SERVER_DEFAULT_PASSKEY)) {
-           vtysh_ovsdb_cli_print(p_msg, "radius-server host %s key %s", ipaddr, passkey);
-       }
-
-       if (atoi(udp_port) != RADIUS_SERVER_DEFAULT_PORT) {
-           vtysh_ovsdb_cli_print(p_msg, "radius-server host %s auth_port %s", ipaddr, udp_port);
-       }
-       local_count += 1;
-    }
-
-    if (atoi(retries) != RADIUS_SERVER_DEFAULT_RETRIES) {
-        vtysh_ovsdb_cli_print(p_msg, "radius-server retries %d", atoi(retries));
-    }
-
-    if (atoi(timeout) != RADIUS_SERVER_DEFAULT_TIMEOUT) {
-        vtysh_ovsdb_cli_print(p_msg, "radius-server timeout %d", atoi(timeout));
-    }
-
-    return e_vtysh_ok;
-}
-
-
-/*-----------------------------------------------------------------------------
-| Function : vtysh_display_radiusservertable_commands
-| Responsibility : display radius server table commands
-| scope : static
-| Parameters :
-|    row : idl row object pointer
-|    fp : file pointer
-| Return : vtysh_ret_val, e_vtysh_ok
------------------------------------------------------------------------------*/
-static vtysh_ret_val
-vtysh_display_radiusservertable_commands(void *p_private)
-{
-  vtysh_ovsdb_cbmsg_ptr p_msg = (vtysh_ovsdb_cbmsg *)p_private;
-
-  const struct ovsrec_radius_server *row;
-  char *temp[64];
-  int count = 0;
-
-  vtysh_ovsdb_config_logmsg(VTYSH_OVSDB_CONFIG_DBG,
-                           "vtysh_ovsdb_radiusservertable_clientcallback entered");
-  if (!ovsrec_radius_server_first(p_msg->idl))
-  {
-      return e_vtysh_ok;
-  }
-
-  OVSREC_RADIUS_SERVER_FOR_EACH(row, p_msg->idl)
-  {
-      /* Array buff max size is 60, since it should accomodate a string
-       * in below format, where IP address max lenght is 15, port max
-       * length is 5, passkey/shared secret max length is 32, retries
-       * max length is 1 and timeout max length is 2.
-       * {"<ipaddress>:<port> <passkey> <retries> <timeout> "}
-       */
-      char buff[60]= {0};
-
-      sprintf(buff, "%s:%ld %s %lu %lu ", row->ip_address, *(row->udp_port), \
-                            row->passkey, *(row->retries), *(row->timeout));
-      temp[row->priority - 1] = (char *)malloc(strlen(buff));
-      strncpy(temp[row->priority - 1],buff,strlen(buff));
-      count += 1;
-  }
-  /* parse radius server param */
-  vtysh_ovsdb_radiusservertable_parse_options(temp, count, p_msg);
-  while(count)
-  {
-      count--;
-      free(temp[count]);
-  }
-
-  return e_vtysh_ok;
-}
-
-/*-----------------------------------------------------------------------------
 | Function : vtysh_ovsdb_ovstable_parse_logrotate_cfg
 | Responsibility : parse logrotate_config in system table
 | Parameters :
@@ -540,9 +440,6 @@ vtysh_config_context_global_clientcallback(void *p_private)
     /* parse ntp config param */
     vtysh_ovsdb_ovstable_parse_ntp_cfg(&vswrow->ntp_config, p_msg);
   }
-
-  /* display radius server commands */
-  vtysh_display_radiusservertable_commands(p_private);
 
   return e_vtysh_ok;
 }
