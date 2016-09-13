@@ -34,6 +34,8 @@
 #define NETWORK_MAX_LEN 49
 #define TIMER_KEY_MAX_LENGTH 80
 #define BGP_MAX_TIMERS 2
+#define BGP_DEFAULT_HOLDTIME 180
+#define BGP_DEFAULT_KEEPALIVE 60
 
 /*
 ** depending on the outcome of the db transaction, returns

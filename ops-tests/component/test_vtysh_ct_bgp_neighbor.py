@@ -895,6 +895,39 @@ def verify_neighbor_weight_cmd(step):
     dump = switch("do show running-config")
     assert nbr_cfg_string not in dump
 
+def verify_bgp_timers_negotiation(step):
+    step("Verifying BGP timers negotiation works correctly...")
+    i = 0
+    ht_array = ['120', '150']
+    ka_array = ['40', '30']
+    id_array = [bgp1_router_id, bgp2_router_id]
+    nbr_array = [peer_group, bgp2_neighbor]
+    asn_array = [bgp1_asn, bgp2_asn]
+    sw1_expected1 = "Configured timers: Keepalive %s, Holdtime %s" % (ka_array[0], ht_array[0])
+    sw1_expected2 = "Negotiated timers: Keepalive %s, Holdtime %s" % (ka_array[0], ht_array[0])
+    sw2_expected1 = "Configured timers: Keepalive %s, Holdtime %s" % (ka_array[1], ht_array[1])
+    sw2_expected2 = "Negotiated timers: Keepalive %s, Holdtime %s" % (ka_array[0], ht_array[0])
+    s1_res = [sw1_expected1, sw1_expected2]
+    s2_res = [sw2_expected1, sw2_expected2]
+    for switch in dutarray:
+        switch("end")
+        switch("conf t")
+        switch("router bgp %s" % asn_array[i])
+        switch("neighbor %s timers %s %s" % (nbr_array[i], ka_array[i], ht_array[i]))
+        i = i + 1
+    for switch in dutarray:
+        switch("do clear bgp * in")
+        switch("do clear bgp * out")
+    sleep(20)
+    dump1 = dutarray[0]("do show ip bgp neighbors")
+    dump2 = dutarray[1]("do show ip bgp neighbors")
+    for str in s1_res:
+        assert str in dump1
+    for str in s2_res:
+        assert str in dump2
+    dutarray[0]("end")
+    dutarray[1]("end")
+
 def test_vtysh_ct_bgp_neighbor(topology, step):
     ops1 = topology.get("ops1")
     ops2 = topology.get("ops2")
@@ -951,3 +984,4 @@ def test_vtysh_ct_bgp_neighbor(topology, step):
     verify_no_neighbor_ttl_security_hops_peergroup(step)
     unconfigure_neighbor_ttl_security_peer_group_test_dependency(step)
     verify_neighbor_weight_cmd(step)
+    verify_bgp_timers_negotiation(step)

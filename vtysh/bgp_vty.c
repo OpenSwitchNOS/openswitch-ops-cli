@@ -9780,9 +9780,11 @@ DEFUN(show_ipv6_bgp,
 
 static void
 show_one_bgp_neighbor(struct vty *vty, char *name,
-                      const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor)
+    const struct ovsrec_bgp_neighbor *ovs_bgp_neighbor,
+    const struct ovsrec_bgp_router *ovs_bgp_router)
 {
     int i = 0;
+    int64_t value_timers[2];
 
     if (object_is_peer_group(ovs_bgp_neighbor))
         return;
@@ -9867,9 +9869,37 @@ show_one_bgp_neighbor(struct vty *vty, char *name,
                                    ovs_bgp_neighbor->maximum_prefix_limit));
 
     if (ovs_bgp_neighbor->n_tcp_port_number)
-        vty_out(vty, "    tcp_port_number: %s\n\n",
+        vty_out(vty, "    tcp_port_number: %s\n",
                 safe_print_integer(ovs_bgp_neighbor->n_tcp_port_number,
                                    ovs_bgp_neighbor->tcp_port_number));
+
+    /*
+     * Print configured BGP timers, priority is
+     * Peer-group timers > Per-neighbor configured >
+     * > Per-router configured > default values
+    */
+    if (ovs_bgp_neighbor->bgp_peer_group && ovs_bgp_neighbor->bgp_peer_group->n_timers) {
+        memcpy(value_timers, ovs_bgp_neighbor->bgp_peer_group->value_timers, sizeof(value_timers));
+    }
+    else if (ovs_bgp_neighbor->n_timers) {
+        memcpy(value_timers, ovs_bgp_neighbor->value_timers, sizeof(value_timers));
+    }
+    else if (ovs_bgp_router->n_timers) {
+        memcpy(value_timers, ovs_bgp_router->value_timers, sizeof(value_timers));
+    }
+    else {
+        value_timers[0] = BGP_DEFAULT_HOLDTIME;
+        value_timers[1] = BGP_DEFAULT_KEEPALIVE;
+    }
+
+    vty_out(vty, "    Configured timers: Keepalive %ld, Holdtime %ld\n",
+        value_timers[1], value_timers[0]);
+
+    if (ovs_bgp_neighbor->n_negotiated_timers == 2) {
+        vty_out(vty, "    Negotiated timers: Keepalive %ld, Holdtime %ld\n\n",
+                ovs_bgp_neighbor->value_negotiated_timers[1],
+                ovs_bgp_neighbor->value_negotiated_timers[0]);
+    }
 
     if (ovs_bgp_neighbor->n_statistics) {
         vty_out(vty, "    statistics:\n");
@@ -9904,7 +9934,8 @@ show_bgp_router_neighbors(struct vty *vty,
            (peer && (0 == strcmp(ovs_bgp_router->key_bgp_neighbors[i],
                                  peer)))) {
             show_one_bgp_neighbor(vty, ovs_bgp_router->key_bgp_neighbors[i],
-                                  ovs_bgp_router->value_bgp_neighbors[i]);
+                                  ovs_bgp_router->value_bgp_neighbors[i],
+                                  ovs_bgp_router);
         }
     }
 }
