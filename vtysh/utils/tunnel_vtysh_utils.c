@@ -3,10 +3,9 @@
 #include <stdlib.h>
 #include "tunnel_vtysh_utils.h"
 
-char *get_mode_from_line(const char line[])
+void get_mode_from_line(const char line[], char *mode_str)
 {
   unsigned int count = 0, i = 0, j = 0, indx = 0;
-  char *temp = malloc(sizeof(strlen(line)));
 
   for(i=0; i<strlen(line); i++)
   {
@@ -18,11 +17,10 @@ char *get_mode_from_line(const char line[])
       for(j=i+1; j<strlen(line); j++)
       {
         indx = j-i-1;
-        temp[indx] = line[j];
+        mode_str[indx] = line[j];
       }
-      temp[j-i] = '\0';
+      mode_str[j-i] = '\0';
       break;
     }
   }
-  return temp;
 }

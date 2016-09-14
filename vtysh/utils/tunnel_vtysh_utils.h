@@ -24,6 +24,6 @@
 #ifndef _TUNNEL_VTYSH_UTILS_H
 #define _TUNNEL_VTYSH_UTILS_H
 
-char *get_mode_from_line(const char *);
+void get_mode_from_line(const char *, char *);
 
 #endif /* _TUNNEL_VTYSH_UTILS_H */
