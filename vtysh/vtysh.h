@@ -122,9 +122,36 @@ struct vtysh_alias_data {
 #define RBAC_WRITE_SWITCH_CONFIG                "WRITE_SWITCH_CONFIG"
 #define RBAC_SYS_MGMT                           "SYS_MGMT"
 
+#define PRIV_LVL_ENV                            "PRIV_LVL"
+#define BASE_10                                 10
+
 enum ip_type {
     IPV4=0,
     IPV6
+};
+
+enum resource_type_e {
+    VTY_SH,
+    ADMIN_CMDS
+};
+
+enum privilege_level_e {
+    OPERATOR_LVL,  /* Read-only role */
+    PRIV_LVL_1,        /* Placeholders for new roles */
+    PRIV_LVL_2,
+    PRIV_LVL_3,
+    PRIV_LVL_4,
+    PRIV_LVL_5,
+    PRIV_LVL_6,
+    PRIV_LVL_7,
+    PRIV_LVL_8,
+    PRIV_LVL_9,
+    PRIV_LVL_10,
+    PRIV_LVL_11,
+    PRIV_LVL_12,
+    PRIV_LVL_13,
+    NETOP_LVL,          /* Netop role */
+    ADMIN_LVL           /* Admin role */
 };
 
 int is_valid_ip_address(const char *ip_value);
@@ -172,6 +199,13 @@ extern int execute_flag;
 
 int check_user_group(const char *, const char *);
 
+bool get_string_as_long(long *result, const char * str, int base);
+
+bool is_tacacs_user_permitted(long privilege, enum resource_type_e resource);
+
+bool is_rbac_user_permitted(char * username, enum resource_type_e resource);
+
+bool is_user_permitted(char * username, enum resource_type_e resource);
 
 extern struct vty *vty;
 int vtysh_exit (struct vty *vty);
