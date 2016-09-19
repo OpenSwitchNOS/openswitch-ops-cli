@@ -32,25 +32,32 @@ Boston, MA 02111-1307, USA.  */
 #include "vector.h"
 #include "vty.h"
 #include "command.h"
+#include "shash.h"
 #include "workqueue.h"
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
+#include "vtysh/vtysh_ovsdb_config_context.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
+#include "vtysh/utils/tacacs_vtysh_utils.h"
 #include "vtysh/utils/audit_log_utils.h"
 #include "ovsdb-idl.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include <latch.h>
+#include <ltdl.h>
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
+extern struct ovsdb_idl *idl;
 #endif
 
 #define MAX_CMD_LEN 256
 #define MAX_DYN_HELPSTR_LEN 256
+#define AAA_UTILS_SO_PATH "/usr/lib/security/libpam_tacplus.so"
+#define BUFSIZE 1024
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec = NULL;
-
 #define AUDIT_LOG_USER_MSG(vty, cfgdata, ret) \
     if (vty->node >= CONFIG_NODE){ \
        const char *hostname = vtysh_ovsdb_hostname_get(); \
@@ -3238,6 +3245,131 @@ autocomplete_command_tokens(struct cmd_element *matched_element, vector vline,
   return cmd_string;
 }
 
+int check_cmd_authorization(char *tac_command, const struct
+                            ovsrec_aaa_server_group_prio *group_prio_list,
+                            struct vty *vty)
+{
+
+  int count = 0;
+  const struct ovsrec_tacacs_server *server_row = NULL;
+  const struct ovsrec_aaa_server_group *group_row = NULL;
+  struct shash sorted_tacacs_servers;
+  const struct shash_node **nodes;
+  int count_server = 0;
+  int idx = 0;
+  bool by_default_priority = false;
+  int iter = 0;
+  int (*tac_cmd_author_ptr)(const char *, const char *,
+                            const char *, char * , char *,
+                            char *, char *, char  *,
+                            int , bool , const char *,
+                            const char *, const char * ) = NULL;
+  const struct ovsrec_system *ovs = ovsrec_system_first(idl);
+  char *passkey = NULL;
+  char *timeout_str = NULL;
+  int timeout = 0;
+  char *tty = "mytty";
+  char *remote_addr = "";
+  char *service = "shell";
+  char *protocol = "ip";
+  int tac_author_status = 0;
+  struct passwd *pw;
+
+  if (group_prio_list != NULL)
+  {
+    count = group_prio_list->n_authorization_group_prios;
+
+    if (count >= 1 && strcmp(group_prio_list->value_authorization_group_prios[0]->group_name, TAC_NONE_GROUP))
+    {
+      /* get the logged in user.*/
+      pw = getpwuid( getuid());
+
+      shash_init(&sorted_tacacs_servers);
+
+      OVSREC_TACACS_SERVER_FOR_EACH(server_row, idl)
+      {
+        shash_add(&sorted_tacacs_servers, server_row->ip_address, (void *)server_row);
+      }
+
+      nodes = sort_tacacs_server(&sorted_tacacs_servers, by_default_priority);
+      count_server = shash_count(&sorted_tacacs_servers);
+
+      for(iter = 0; iter < count; iter ++)
+      {
+        group_row = group_prio_list->value_authorization_group_prios[iter];
+        for(idx = 0; idx < count_server; idx++)
+        {
+          server_row = (const struct ovsrec_tacacs_server *)nodes[idx]->data;
+          if (server_row->group == group_row)
+          {
+            /* check if timeout is set by user or get global value*/
+            if (server_row->timeout)
+              timeout = *(server_row->timeout);
+            else
+            {
+              timeout_str = strdup(smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_TIMEOUT));
+              timeout = atoi(timeout_str);
+            }
+            /* check if passkey is set by user or get global value*/
+            if (server_row->passkey)
+            {
+              strncpy(passkey, server_row->passkey, strlen(server_row->passkey));
+              passkey[strlen(server_row->passkey)+1] = '\0';
+            }
+            else
+              passkey =  strdup(smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_PASSKEY));
+
+            if (strcmp(group_row->group_name, TAC_NONE_GROUP) != 0)
+            {
+              lt_dlhandle dhhandle = 0;
+              lt_dlinit();
+              lt_dlerror();
+
+              dhhandle = lt_dlopen (AAA_UTILS_SO_PATH);
+              if (lt_dlerror())
+              {
+                VLOG_ERR ("Failed to load the rbac library");
+                break;
+              }
+
+              tac_cmd_author_ptr = lt_dlsym (dhhandle,"tac_cmd_author");
+              if (tac_cmd_author_ptr == NULL)
+              {
+                VLOG_ERR ("Could not get the lock for %s", AAA_UTILS_SO_PATH);
+                break;
+              }
+              else
+              {
+                /*send the command for authorization*/
+                tac_author_status = tac_cmd_author_ptr(server_row->ip_address, passkey, pw->pw_name,
+                                                       tty, remote_addr, service, protocol, tac_command,
+                                                       timeout, true, NULL, NULL, NULL);
+                if (tac_author_status == EXIT_OK)
+                {
+                  VLOG_DBG(" %s command authorized for %s\n", tac_command, pw->pw_name);
+                  return EXIT_OK;
+                }
+              }
+            }
+            else
+              break;
+          }
+        }
+      }
+    }
+    else
+    {
+      VLOG_DBG("No servers found in the priority list or 'none' set for authorization");
+      return EXIT_CONTINUE;
+    }
+  }
+  else
+  {
+    VLOG_DBG("Could not fetch the priority list for tacacs command authorization");
+    return EXIT_CONTINUE;
+  }
+  return tac_author_status;
+}
 
 /* Execute command by argument vline vector. */
 static int
@@ -3261,6 +3393,9 @@ cmd_execute_command_real (vector vline,
   char op[MAX_OP_DESC_LEN];
   char *cfgdata;
   char cmd_string[MAX_CFGDATA_LEN] = "";
+  const struct ovsrec_aaa_server_group_prio *group_prio_list = NULL;
+  char *tac_command = NULL;
+  int tac_author_return;
 
   /* Make copy of command elements. */
   cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
@@ -3351,6 +3486,17 @@ cmd_execute_command_real (vector vline,
   /* For vtysh execution. */
   if (cmd)
     *cmd = matched_element;
+
+  tac_command = (char*)matched_element->string;
+
+  group_prio_list = ovsrec_aaa_server_group_prio_first(idl);
+
+  tac_author_return = check_cmd_authorization(tac_command, group_prio_list, vty);
+  if (tac_author_return == EXIT_FAIL)
+  {
+    vty_out(vty, "Error: You are not authorized to execute this command\n");
+    return CMD_ERR_NOTHING_TODO;
+  }
 
   if (matched_element->daemon)
     return CMD_SUCCESS_DAEMON;
