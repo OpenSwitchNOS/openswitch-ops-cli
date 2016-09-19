@@ -106,6 +106,7 @@ enum node_type
   SERVICE_NODE, 		/* Service node. */
   DEBUG_NODE,			/* Debug node. */
   AAA_NODE,			/* AAA node. */
+  AAA_SERVER_GROUP_NODE,        /* AAA Server Group node. */
   KEYCHAIN_NODE,		/* Key-chain node. */
   KEYCHAIN_KEY_NODE,		/* Key-chain key node. */
   INTERFACE_NODE,		/* Interface mode node. */

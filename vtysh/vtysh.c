@@ -38,6 +38,7 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -929,6 +930,12 @@ vtysh_completion (char *text, int start, int end)
 #endif
 
 /* Vty node structures. */
+static struct cmd_node aaa_server_group_node =
+   {
+      AAA_SERVER_GROUP_NODE,
+      "%s(config-sg)# ",
+   };
+
 static struct cmd_node bgp_node =
    {
       BGP_NODE,
@@ -1382,6 +1389,7 @@ vtysh_exit (struct vty *vty)
     case CONFIG_NODE:
       vty->node = ENABLE_NODE;
       break;
+    case AAA_SERVER_GROUP_NODE:
     case INTERFACE_NODE:
     case SUB_INTERFACE_NODE:
     case LOOPBACK_INTERFACE_NODE:
@@ -4208,10 +4216,133 @@ int is_valid_ip_address(const char *ip_value)
 
 #endif /* ENABLE_OVSDB */
 
+/*
+ * Function       : vtysh_string_to_long
+ * Responsibility : Converts 'str' string to long and is stored in 'result'
+ * Parameters     : long * result    - holds the converted string
+ *                : const char * str - string to be converted to long
+ *                : int base         - base to use for the conversion
+ * Return         : 'true' on success and 'false' on failure
+ */
+bool
+vtysh_string_to_long(long *result, const char * str, int base)
+{
+    char *end;
+    errno = 0;
+
+    *result = strtol(str, &end, base);
+
+    if ((errno == ERANGE && (*result == LONG_MAX || *result == LONG_MIN))
+        || (errno != 0 && *result == 0)) {
+        VLOG_ERR("Error while converting %s to long: Out of range\n",str);
+        return false;
+    }
+
+    if (end == str) {
+        VLOG_ERR("Error while converting %s to long: No digits were found\n",
+                  str);
+        return false;
+    }
+
+    if (*end != '\0') {
+        VLOG_ERR("Error while converting %s to long: "
+                 "Further characters after number %s \n",
+                  str, end);
+        return false;
+    }
+
+    VLOG_INFO("String %s was converted to %ld\n", str, *result);
+    return true;
+}
+
+/*
+ * Function       : vtysh_is_tacacs_user_permitted
+ * Responsibility : Checks if at privilege level 'privilege',
+ *                  'resource' can be accessed or not.
+ * Parameters     : long privilege           - (0 to 15)
+ *                : resource_type_e resource - VTY_SH/ADMIN_CMDS
+ * Return         : 'true' if resource is permitted for the TACACS privilege
+ *                  level 'privilege' and 'false' if not.
+ */
+bool
+vtysh_is_tacacs_user_permitted(long privilege, enum resource_type_e resource)
+{
+
+    switch (resource) {
+        case VTY_SH:
+            return ((privilege >= OPERATOR_LVL) &&
+                    (privilege <= NETOP_LVL)) ? true: false;
+        case ADMIN_CMDS:
+            return privilege == ADMIN_LVL ? true: false;
+        default:
+            return false;
+    }
+}
+
+/*
+ * Function       : vtysh_is_rbac_user_permitted
+ * Responsibility : Checks if user 'username' has access to 'resource'
+ * Parameters     : char * username
+ *                : resource_type_e resource - VTY_SH/ADMIN_CMDS
+ * Return         : 'true' if user 'username' has access to 'resource'
+ *                  and 'false' if not.
+ */
+bool
+vtysh_is_rbac_user_permitted(char * username, enum resource_type_e resource)
+{
+
+    switch(resource) {
+        case VTY_SH:
+            if (rbac_check_user_permission(username, RBAC_READ_SWITCH_CONFIG)
+                 || rbac_check_user_permission(username,
+                                               RBAC_WRITE_SWITCH_CONFIG)) {
+                return true;
+            }
+        case ADMIN_CMDS:
+            if (rbac_check_user_permission(username, RBAC_SYS_MGMT)) {
+                return true;
+            }
+    }
+    return false;
+}
+
+/*
+ * Function       : vtysh_is_user_permitted
+ * Responsibility : Checks if user 'username' has access to 'resource'
+ * Parameters     : char * username
+ *                : resource_type_e resource - VTYSH/ADMIN_CMDS
+ * Return         : 'true' if user 'username' has access to 'resource'
+ *                  and 'false' if not.
+ */
+
+bool
+vtysh_is_user_permitted(char * username, enum resource_type_e resource)
+{
+    long privilege;
+    const char *priv_lvl = getenv(PRIV_LVL_ENV);
+
+    /* PRIV_LVL ENV variable is not NULL. RADIUS/TACACS authenticated user */
+    if (priv_lvl != NULL) {
+
+        if (vtysh_string_to_long(&privilege, priv_lvl, BASE_10)) {
+            return vtysh_is_tacacs_user_permitted(privilege, resource);
+        } else {
+            VLOG_ERR("Conversion from %s to long failed for user %s\n",
+                      priv_lvl, username);
+            return false;
+        }
+
+    } else {
+        /* Use RBAC when PRIV_LVL is not set. Locally authenticated user */
+        return vtysh_is_rbac_user_permitted(username, resource);
+    }
+}
+
 void
 vtysh_init_vty ( struct passwd *pw)
 {
    /* Install nodes. */
+   install_node (&aaa_server_group_node, NULL);
    install_node (&bgp_node, NULL);
 #ifndef ENABLE_OVSDB
    install_node (&rip_node, NULL);
@@ -4249,6 +4380,7 @@ vtysh_init_vty ( struct passwd *pw)
    vtysh_install_default (VIEW_NODE);
    vtysh_install_default (ENABLE_NODE);
    vtysh_install_default (CONFIG_NODE);
+   vtysh_install_default (AAA_SERVER_GROUP_NODE);
    vtysh_install_default (BGP_NODE);
 #ifndef ENABLE_OVSDB
    vtysh_install_default (RIP_NODE);
@@ -4520,7 +4652,7 @@ vtysh_init_vty ( struct passwd *pw)
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
 #endif
   install_element (ENABLE_NODE, &vtysh_passwd_cmd);
-  if (rbac_check_user_permission(pw->pw_name, RBAC_SYS_MGMT))
+  if (vtysh_is_user_permitted(pw->pw_name, ADMIN_CMDS))
   {
     install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
     install_element (ENABLE_NODE, &vtysh_reboot_cmd);
