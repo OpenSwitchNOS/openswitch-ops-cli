@@ -52,6 +52,12 @@ def test_vtysh_ct_loopback_intf_cli(topology, step):
     out = ops1("get interface loopback1 name", shell="vsctl")
     assert "loopback1" in out
 
+    out = ops1("get interface loopback1 admin_state", shell="vsctl")
+    assert "up" in out
+
+    out = ops1("get interface loopback1 link_state", shell="vsctl")
+    assert "up" in out
+
     out = ops1("get port loopback1 name", shell="vsctl")
     assert "loopback1" in out
 

@@ -128,6 +128,12 @@ DEFUN (vtysh_loopback_interface,
                 OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP);
         ovsrec_interface_set_user_config(intf_row, &smap_user_config);
 
+        /* set admin_state and link_state to "up" since we do not expect it to be down */
+        /* It can be that ops-switch should do that,
+         * but we do that here until we have a need for that */
+        ovsrec_interface_set_admin_state(intf_row, OVSREC_INTERFACE_ADMIN_STATE_UP);
+        ovsrec_interface_set_link_state(intf_row, OVSREC_INTERFACE_LINK_STATE_UP);
+
         /*Create port table entry.*/
         port_row = ovsrec_port_insert(txn);
         ovsrec_port_set_name(port_row, ifname);
