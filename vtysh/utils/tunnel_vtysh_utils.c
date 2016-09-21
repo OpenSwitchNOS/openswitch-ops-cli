@@ -23,7 +23,8 @@
 #include <stdlib.h>
 #include "tunnel_vtysh_utils.h"
 
-void get_mode_from_line(const char line[], char *mode_str)
+void
+get_mode_from_line(const char line[], char *mode_str)
 {
   unsigned int count = 0, i = 0, j = 0, indx = 0;
 
@@ -43,4 +44,19 @@ void get_mode_from_line(const char line[], char *mode_str)
       break;
     }
   }
+}
+
+int
+get_id_from_name(const char *name, const char *static_str)
+{
+    int i = 0, id_number = 0;
+    char id_str[5] = {0};
+    int ss_len = strlen(static_str);
+
+    for(i=0; i < (strlen(name) - ss_len); i++)
+        id_str[i] = name[i+ss_len];
+    id_str[i] = '\0';
+    id_number = atoi(id_str);
+
+    return id_number;
 }

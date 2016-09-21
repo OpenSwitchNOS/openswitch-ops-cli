@@ -26,5 +26,6 @@
 #define _TUNNEL_VTYSH_UTILS_H
 
 void get_mode_from_line(const char *, char *);
+int get_id_from_name(const char *name, const char *static_str);
 
 #endif /* _TUNNEL_VTYSH_UTILS_H */

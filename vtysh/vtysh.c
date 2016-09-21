@@ -4369,7 +4369,7 @@ vtysh_init_vty ( struct passwd *pw)
    install_element (VXLAN_TUNNEL_INTERFACE_NODE, &vtysh_quit_tunnel_interface_cmd);
    install_element (VNI_NODE, &vtysh_quit_vni_cmd);
    install_element (GRE_TUNNEL_INTERFACE_NODE,
-                    &vtysh_exit_tunnel_interface_cmd);
+                    &vtysh_quit_interface_cmd);
    install_element (VTY_NODE, &vtysh_quit_line_vty_cmd);
 #endif
    /* "exit" command. */
