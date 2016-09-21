@@ -25,6 +25,11 @@
 #ifndef _TUNNEL_VTYSH_UTILS_H
 #define _TUNNEL_VTYSH_UTILS_H
 
+#define MAX_TUNNEL_LENGTH       15
+#define MAX_INTF_LENGTH         15
+#define MAX_VLAN_LENGTH         15
+
 void get_mode_from_line(const char *, char *);
+int get_id_from_name(const char *if_name);
 
 #endif /* _TUNNEL_VTYSH_UTILS_H */

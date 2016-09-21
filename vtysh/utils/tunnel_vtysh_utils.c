@@ -23,7 +23,8 @@
 #include <stdlib.h>
 #include "tunnel_vtysh_utils.h"
 
-void get_mode_from_line(const char line[], char *mode_str)
+void
+get_mode_from_line(const char line[], char *mode_str)
 {
   unsigned int count = 0, i = 0, j = 0, indx = 0;
 
@@ -43,4 +44,18 @@ void get_mode_from_line(const char line[], char *mode_str)
       break;
     }
   }
+}
+
+int
+get_id_from_name(const char *if_name)
+{
+    int id_number = 0;
+
+    // Scans in the format of nameNumber, i.e. tunnel1 and extracts the integer
+    if (!if_name || !sscanf(if_name, "%*[^0-9]" "%d", &id_number))
+    {
+        return -1;
+    }
+
+    return id_number;
 }

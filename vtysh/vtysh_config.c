@@ -105,7 +105,7 @@ config_get (int index, const char *line)
       master->cmp = (int (*)(void *, void *)) config_cmp;
       vector_set_index (configvec, index, master);
     }
-  
+
   for (ALL_LIST_ELEMENTS (master, node, nnode, config_loop))
     {
       if (strcmp (config_loop->name, line) == 0)
@@ -208,6 +208,9 @@ vtysh_config_parse_line (const char *line)
           get_mode_from_line(line, mode_str);
           if (strncmp(mode_str, "mode vxlan", strlen("mode vxlan")) == 0)
               config = config_get (VXLAN_TUNNEL_INTERFACE_NODE, line);
+          else if (strncmp(mode_str, "mode gre", strlen("mode gre")) == 0)
+              config = config_get(GRE_TUNNEL_INTERFACE_NODE, line);
+
           free(mode_str);
       }
       else if (strncmp (line, "qos queue-profile",
@@ -290,7 +293,7 @@ vtysh_config_parse (char *line)
 {
   char *begin;
   char *pnt;
-  
+
   begin = pnt = line;
 
   while (*pnt != '\0')
@@ -382,7 +385,7 @@ vtysh_read_file (FILE *confp)
   vty->fd = 0;			/* stdout */
   vty->type = VTY_TERM;
   vty->node = CONFIG_NODE;
-  
+
   vtysh_execute_no_pager ("enable");
   vtysh_execute_no_pager ("configure terminal");
 
@@ -394,7 +397,7 @@ vtysh_read_file (FILE *confp)
 
   vty_close (vty);
 
-  if (ret != CMD_SUCCESS) 
+  if (ret != CMD_SUCCESS)
     {
       switch (ret)
 	{
@@ -405,7 +408,7 @@ vtysh_read_file (FILE *confp)
 	  fprintf (stderr, "There is no such command.\n");
 	  break;
 	}
-      fprintf (stderr, "Error occured during reading below line.\n%s\n", 
+      fprintf (stderr, "Error occured during reading below line.\n%s\n",
 	       vty->buf);
       exit (1);
     }

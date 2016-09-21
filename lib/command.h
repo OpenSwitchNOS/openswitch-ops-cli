@@ -618,6 +618,7 @@ struct dyn_cb_func
 #define NO_BANNER_STR "Disable login banner\n"
 #define SHOW_BANNER_STR "Show the currently configured pre-login banner message\n"
 #define SHOW_BANNER_EXEC_STR "Show the currently configured post-login banner message\n"
+#define RUNNING_CONFIG_STR "Current running configuration\n"
 
 /* Added for VRF */
 #define VRF_STR     "VRF Configuration\n"
