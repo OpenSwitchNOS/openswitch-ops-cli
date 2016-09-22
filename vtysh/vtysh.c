@@ -4298,10 +4298,12 @@ vtysh_is_rbac_user_permitted(char * username, enum resource_type_e resource)
                                                RBAC_WRITE_SWITCH_CONFIG)) {
                 return true;
             }
+            break;
         case ADMIN_CMDS:
             if (rbac_check_user_permission(username, RBAC_SYS_MGMT)) {
                 return true;
             }
+            break;
     }
     return false;
 }

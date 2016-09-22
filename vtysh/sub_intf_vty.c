@@ -1237,7 +1237,7 @@ DEFUN (cli_del_sub_intf,
         cli_del_sub_intf_cmd,
         "no interface A.B",
         NO_STR
-        "Delete a pseudo interface's configuration\n"
+        INTERFACE_NO_STR
         "Subinterface name as physical_interface.subinterface name <1-4294967293>\n")
 {
     return delete_sub_intf(argv[0]);

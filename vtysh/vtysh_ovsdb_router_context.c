@@ -100,6 +100,10 @@ void vtysh_router_context_bgp_neighbor_callback(vtysh_ovsdb_cbmsg_ptr p_msg)
                                       nbr_table->value_timers[1],
                                       nbr_table->value_timers[0]);
 
+            if (nbr_table->n_bfd_fallover_enable > 0)
+                vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s","","neighbor",
+                                      neighbor, "fall-over", "bfd");
+
             i=0;
             while (i < nbr_table->n_route_maps) {
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s %s %s %s %s", "",
@@ -590,13 +594,13 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
                        "comm_list");
 
             if (set_val)
-                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s delete", "",
+                vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
                     "set comm-list",
                         set_val);
 
             set_val = smap_get(
                        &ovs_route_map->value_route_map_entries[j]->set,
-                       "extcommunity rt");
+                       "extcommunity_rt");
             if (set_val)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
                     "set extcommunity rt",
@@ -604,7 +608,7 @@ vtysh_router_context_bgp_routemap_clientcallback(void *p_private)
 
             set_val = smap_get(
                        &ovs_route_map->value_route_map_entries[j]->set,
-                       "extcommunity soo");
+                       "extcommunity_soo");
 
             if (set_val)
                 vtysh_ovsdb_cli_print(p_msg,"%4s %s %s", "",
