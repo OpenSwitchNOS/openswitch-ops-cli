@@ -199,13 +199,15 @@ extern int execute_flag;
 
 int check_user_group(const char *, const char *);
 
-bool get_string_as_long(long *result, const char * str, int base);
+bool vtysh_get_string_as_long(long *result, const char * str, int base);
 
-bool is_tacacs_user_permitted(long privilege, enum resource_type_e resource);
+bool vtysh_is_tacacs_user_permitted(long privilege,
+                                    enum resource_type_e resource);
 
-bool is_rbac_user_permitted(char * username, enum resource_type_e resource);
+bool vtysh_is_rbac_user_permitted(char * username,
+                                  enum resource_type_e resource);
 
-bool is_user_permitted(char * username, enum resource_type_e resource);
+bool vtysh_is_user_permitted(char * username, enum resource_type_e resource);
 
 extern struct vty *vty;
 int vtysh_exit (struct vty *vty);
