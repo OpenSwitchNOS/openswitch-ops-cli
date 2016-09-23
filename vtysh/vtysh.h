@@ -122,6 +122,10 @@ struct vtysh_alias_data {
 #define RBAC_WRITE_SWITCH_CONFIG                "WRITE_SWITCH_CONFIG"
 #define RBAC_SYS_MGMT                           "SYS_MGMT"
 
+#define AUTH_METHOD_ENV                         "AUTH_MODE"
+#define RADIUS                                  "RADIUS"
+#define TACACS                                  "TACACS"
+
 #define PRIV_LVL_ENV                            "PRIV_LVL"
 #define BASE_10                                 10
 
@@ -136,9 +140,9 @@ enum resource_type_e {
 };
 
 enum privilege_level_e {
-    OPERATOR_LVL,  /* Read-only role */
-    PRIV_LVL_1,        /* Placeholders for new roles */
-    PRIV_LVL_2,
+    PRIV_LVL_0,
+    OPERATOR_LVL,        /* Operator role */
+    PRIV_LVL_2,          /* Placeholders for new roles */
     PRIV_LVL_3,
     PRIV_LVL_4,
     PRIV_LVL_5,
@@ -152,6 +156,11 @@ enum privilege_level_e {
     PRIV_LVL_13,
     NETOP_LVL,          /* Netop role */
     ADMIN_LVL           /* Admin role */
+};
+
+enum radius_priv_lvl_e {
+    ADMINISTRATIVE = 6,  /* Access to privileged commands */
+    NAS_PROMPT           /* Access to non-privileged commands */
 };
 
 int is_valid_ip_address(const char *ip_value);
@@ -199,13 +208,20 @@ extern int execute_flag;
 
 int check_user_group(const char *, const char *);
 
-bool get_string_as_long(long *result, const char * str, int base);
+bool vtysh_get_string_as_long(long *result, const char * str, int base);
 
-bool is_tacacs_user_permitted(long privilege, enum resource_type_e resource);
+long vtysh_get_remote_user_privilege(char *username, const char * auth_mode,
+                                     long privilege);
 
-bool is_rbac_user_permitted(char * username, enum resource_type_e resource);
+bool vtysh_is_remote_user_permitted(long privilege,
+                                    enum resource_type_e resource);
 
-bool is_user_permitted(char * username, enum resource_type_e resource);
+bool vtysh_is_rbac_user_permitted(char * username,
+                                  enum resource_type_e resource);
+
+bool vtysh_is_user_permitted(char * username, enum resource_type_e resource);
+
+long vtysh_radius_to_switch_privilege(long privilege);
 
 extern struct vty *vty;
 int vtysh_exit (struct vty *vty);
