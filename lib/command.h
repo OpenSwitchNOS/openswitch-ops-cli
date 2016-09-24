@@ -716,6 +716,13 @@ void install_dyn_helpstr_funcptr(char *funcname,
 #define COMMA_ERR  1
 #define COMMA_STR_VALID 0
 #define MAX_HOSTNAME_LEN   32
+#define TAC_NONE_GROUP  "none"
+#define EXIT_OK         0
+#define EXIT_FAIL       1
+#define EXIT_CONTINUE   2
+#define SYSTEM_AAA_TACACS_TIMEOUT              "tacacs_timeout"
+#define SYSTEM_AAA_TACACS_PASSKEY              "tacacs_passkey"
+#define SYSTEM_AAA_TACACS_AUTH                 "tacacs_auth"
 
 struct range_list
 {

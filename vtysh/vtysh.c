@@ -4217,7 +4217,7 @@ int is_valid_ip_address(const char *ip_value)
 #endif /* ENABLE_OVSDB */
 
 /*
- * Function       : string_to_long
+ * Function       : vtysh_string_to_long
  * Responsibility : Converts 'str' string to long and is stored in 'result'
  * Parameters     : long * result    - holds the converted string
  *                : const char * str - string to be converted to long
@@ -4225,7 +4225,8 @@ int is_valid_ip_address(const char *ip_value)
  * Return         : 'true' on success and 'false' on failure
  */
 bool
-string_to_long(long *result, const char * str, int base) {
+vtysh_string_to_long(long *result, const char * str, int base)
+{
     char *end;
     errno = 0;
 
@@ -4255,7 +4256,7 @@ string_to_long(long *result, const char * str, int base) {
 }
 
 /*
- * Function       : is_tacacs_user_permitted
+ * Function       : vtysh_is_tacacs_user_permitted
  * Responsibility : Checks if at privilege level 'privilege',
  *                  'resource' can be accessed or not.
  * Parameters     : long privilege           - (0 to 15)
@@ -4264,7 +4265,8 @@ string_to_long(long *result, const char * str, int base) {
  *                  level 'privilege' and 'false' if not.
  */
 bool
-is_tacacs_user_permitted(long privilege, enum resource_type_e resource) {
+vtysh_is_tacacs_user_permitted(long privilege, enum resource_type_e resource)
+{
 
     switch (resource) {
         case VTY_SH:
@@ -4278,7 +4280,7 @@ is_tacacs_user_permitted(long privilege, enum resource_type_e resource) {
 }
 
 /*
- * Function       : is_rbac_user_permitted
+ * Function       : vtysh_is_rbac_user_permitted
  * Responsibility : Checks if user 'username' has access to 'resource'
  * Parameters     : char * username
  *                : resource_type_e resource - VTY_SH/ADMIN_CMDS
@@ -4286,7 +4288,8 @@ is_tacacs_user_permitted(long privilege, enum resource_type_e resource) {
  *                  and 'false' if not.
  */
 bool
-is_rbac_user_permitted(char * username, enum resource_type_e resource) {
+vtysh_is_rbac_user_permitted(char * username, enum resource_type_e resource)
+{
 
     switch(resource) {
         case VTY_SH:
@@ -4295,16 +4298,18 @@ is_rbac_user_permitted(char * username, enum resource_type_e resource) {
                                                RBAC_WRITE_SWITCH_CONFIG)) {
                 return true;
             }
+            break;
         case ADMIN_CMDS:
             if (rbac_check_user_permission(username, RBAC_SYS_MGMT)) {
                 return true;
             }
+            break;
     }
     return false;
 }
 
 /*
- * Function       : is_user_permitted
+ * Function       : vtysh_is_user_permitted
  * Responsibility : Checks if user 'username' has access to 'resource'
  * Parameters     : char * username
  *                : resource_type_e resource - VTYSH/ADMIN_CMDS
@@ -4313,23 +4318,25 @@ is_rbac_user_permitted(char * username, enum resource_type_e resource) {
  */
 
 bool
-is_user_permitted(char * username, enum resource_type_e resource) {
+vtysh_is_user_permitted(char * username, enum resource_type_e resource)
+{
     long privilege;
     const char *priv_lvl = getenv(PRIV_LVL_ENV);
 
     /* PRIV_LVL ENV variable is not NULL. RADIUS/TACACS authenticated user */
     if (priv_lvl != NULL) {
 
-        if (string_to_long(&privilege, priv_lvl, BASE_10)) {
-            return is_tacacs_user_permitted(privilege, resource);
+        if (vtysh_string_to_long(&privilege, priv_lvl, BASE_10)) {
+            return vtysh_is_tacacs_user_permitted(privilege, resource);
         } else {
-            VLOG_ERR("Conversion from %s to long failed\n", priv_lvl);
+            VLOG_ERR("Conversion from %s to long failed for user %s\n",
+                      priv_lvl, username);
             return false;
         }
 
     } else {
         /* Use RBAC when PRIV_LVL is not set. Locally authenticated user */
-        return is_rbac_user_permitted(username, resource);
+        return vtysh_is_rbac_user_permitted(username, resource);
     }
 }
 
@@ -4647,7 +4654,7 @@ vtysh_init_vty ( struct passwd *pw)
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
 #endif
   install_element (ENABLE_NODE, &vtysh_passwd_cmd);
-  if (is_user_permitted(pw->pw_name, ADMIN_CMDS))
+  if (vtysh_is_user_permitted(pw->pw_name, ADMIN_CMDS))
   {
     install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
     install_element (ENABLE_NODE, &vtysh_reboot_cmd);

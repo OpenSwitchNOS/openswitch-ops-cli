@@ -388,7 +388,8 @@ main (int argc, char **argv, char **env)
       fprintf(stderr,"Unknown User.\n");
       exit(1);
   }
-  if (!is_user_permitted(pw->pw_name, VTY_SH))
+
+  if (!vtysh_is_user_permitted(pw->pw_name, VTY_SH))
   {
       fprintf (stderr,
               "%s does not have the required permissions to access Vtysh.\n",
