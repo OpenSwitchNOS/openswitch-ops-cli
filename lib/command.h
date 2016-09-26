@@ -31,7 +31,7 @@
 #include "vector.h"
 #include "vty.h"
 #include "lib/route_types.h"
-
+#include <stdbool.h>
 
 enum data_type{
   NODE=0,
@@ -671,7 +671,11 @@ extern void install_element (enum node_type, struct cmd_element *);
    string with a space between each element (allocated using
    XMALLOC(MTYPE_TMP)).  Returns NULL if shift >= argc. */
 extern char *argv_concat (const char **argv, int argc, int shift);
-
+extern int (*tac_cmd_author_ptr)(const char *, const char *,
+                                 const char *, char * , char *,
+                                 char *, char *, char  *,
+                                 int , bool , const char *,
+                                 const char *, const char * );
 extern vector cmd_make_strvec (const char *);
 extern void cmd_free_strvec (vector);
 extern vector cmd_describe_command (vector, struct vty *, int *status);
@@ -717,9 +721,9 @@ void install_dyn_helpstr_funcptr(char *funcname,
 #define COMMA_STR_VALID 0
 #define MAX_HOSTNAME_LEN   32
 #define TAC_NONE_GROUP  "none"
+#define TAC_DEFAULT_GROUP "tacacs_plus"
 #define EXIT_OK         0
 #define EXIT_FAIL       1
-#define EXIT_CONTINUE   2
 #define SYSTEM_AAA_TACACS_TIMEOUT              "tacacs_timeout"
 #define SYSTEM_AAA_TACACS_PASSKEY              "tacacs_passkey"
 #define SYSTEM_AAA_TACACS_AUTH                 "tacacs_auth"
