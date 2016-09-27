@@ -38,7 +38,6 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
-#include <errno.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -56,7 +55,6 @@
 #include "openswitch-idl.h"
 #include <crypt.h>
 #include "vswitch-idl.h"
-#include <ltdl.h>
 #ifdef ENABLE_OVSDB
 #include "vty.h"
 #include "vswitch-idl.h"
@@ -77,6 +75,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include "vty_utils.h"
+#include "rbac.h"
 
 VLOG_DEFINE_THIS_MODULE(vtysh);
 
@@ -134,57 +133,6 @@ int vtysh_writeconfig_integrated = 0;
 extern char config_default[];
 
 void ospf_vty_init(void);
-
-/*
- * Function : rbac_check_user_permission.
- * Responsibility : routine to check if a user has a particular permission.This
- *    function loads the rbac library runtime due to certain repository
- *    dependancies.Once the dependency is resolved this function should be
- *    removed.
- * Parameters :
- *     char * username  : char* type object containing the username.
- *     char * permission: char* type object containing the permission
- *                        to be checked
- * Return :
- *     bool: returns true if the user has the requisite permission else false
- *
- * TODO : This function should be removed once rbac repo is in place.
- */
-
-bool rbac_check_user_permission(char * username, char * permission)
-{
-    lt_dlhandle dhhandle = 0;
-    bool retval = 0;
-    bool (*fun_ptr)(const char *, const char *) = NULL;
-    if ((username == NULL) || (permission == NULL))
-    {
-       return false;
-    }
-    lt_dlinit();
-    lt_dlerror();
-
-    dhhandle = lt_dlopen ("/usr/lib/librbac.so.0.1.0");
-
-    if (lt_dlerror())
-    {
-       VLOG_ERR ("Failed to load the rbac library");
-       return false;
-    }
-
-    fun_ptr = lt_dlsym (dhhandle,"rbac_check_user_permission");
-
-    if (lt_dlerror() || fun_ptr == NULL)
-    {
-       VLOG_ERR ("Failed to find rbac_check_user_permission");
-       lt_dlclose (dhhandle);
-       return false;
-    }
-
-    retval = fun_ptr( username, permission);
-    lt_dlclose (dhhandle);
-    return retval;
-}
-
 
 static void
 vclient_close (struct vtysh_client *vclient)
@@ -4216,130 +4164,6 @@ int is_valid_ip_address(const char *ip_value)
 
 #endif /* ENABLE_OVSDB */
 
-/*
- * Function       : vtysh_string_to_long
- * Responsibility : Converts 'str' string to long and is stored in 'result'
- * Parameters     : long * result    - holds the converted string
- *                : const char * str - string to be converted to long
- *                : int base         - base to use for the conversion
- * Return         : 'true' on success and 'false' on failure
- */
-bool
-vtysh_string_to_long(long *result, const char * str, int base)
-{
-    char *end;
-    errno = 0;
-
-    *result = strtol(str, &end, base);
-
-    if ((errno == ERANGE && (*result == LONG_MAX || *result == LONG_MIN))
-        || (errno != 0 && *result == 0)) {
-        VLOG_ERR("Error while converting %s to long: Out of range\n",str);
-        return false;
-    }
-
-    if (end == str) {
-        VLOG_ERR("Error while converting %s to long: No digits were found\n",
-                  str);
-        return false;
-    }
-
-    if (*end != '\0') {
-        VLOG_ERR("Error while converting %s to long: "
-                 "Further characters after number %s \n",
-                  str, end);
-        return false;
-    }
-
-    VLOG_INFO("String %s was converted to %ld\n", str, *result);
-    return true;
-}
-
-/*
- * Function       : vtysh_is_tacacs_user_permitted
- * Responsibility : Checks if at privilege level 'privilege',
- *                  'resource' can be accessed or not.
- * Parameters     : long privilege           - (0 to 15)
- *                : resource_type_e resource - VTY_SH/ADMIN_CMDS
- * Return         : 'true' if resource is permitted for the TACACS privilege
- *                  level 'privilege' and 'false' if not.
- */
-bool
-vtysh_is_tacacs_user_permitted(long privilege, enum resource_type_e resource)
-{
-
-    switch (resource) {
-        case VTY_SH:
-            return ((privilege >= OPERATOR_LVL) &&
-                    (privilege <= NETOP_LVL)) ? true: false;
-        case ADMIN_CMDS:
-            return privilege == ADMIN_LVL ? true: false;
-        default:
-            return false;
-    }
-}
-
-/*
- * Function       : vtysh_is_rbac_user_permitted
- * Responsibility : Checks if user 'username' has access to 'resource'
- * Parameters     : char * username
- *                : resource_type_e resource - VTY_SH/ADMIN_CMDS
- * Return         : 'true' if user 'username' has access to 'resource'
- *                  and 'false' if not.
- */
-bool
-vtysh_is_rbac_user_permitted(char * username, enum resource_type_e resource)
-{
-
-    switch(resource) {
-        case VTY_SH:
-            if (rbac_check_user_permission(username, RBAC_READ_SWITCH_CONFIG)
-                 || rbac_check_user_permission(username,
-                                               RBAC_WRITE_SWITCH_CONFIG)) {
-                return true;
-            }
-            break;
-        case ADMIN_CMDS:
-            if (rbac_check_user_permission(username, RBAC_SYS_MGMT)) {
-                return true;
-            }
-            break;
-    }
-    return false;
-}
-
-/*
- * Function       : vtysh_is_user_permitted
- * Responsibility : Checks if user 'username' has access to 'resource'
- * Parameters     : char * username
- *                : resource_type_e resource - VTYSH/ADMIN_CMDS
- * Return         : 'true' if user 'username' has access to 'resource'
- *                  and 'false' if not.
- */
-
-bool
-vtysh_is_user_permitted(char * username, enum resource_type_e resource)
-{
-    long privilege;
-    const char *priv_lvl = getenv(PRIV_LVL_ENV);
-
-    /* PRIV_LVL ENV variable is not NULL. RADIUS/TACACS authenticated user */
-    if (priv_lvl != NULL) {
-
-        if (vtysh_string_to_long(&privilege, priv_lvl, BASE_10)) {
-            return vtysh_is_tacacs_user_permitted(privilege, resource);
-        } else {
-            VLOG_ERR("Conversion from %s to long failed for user %s\n",
-                      priv_lvl, username);
-            return false;
-        }
-
-    } else {
-        /* Use RBAC when PRIV_LVL is not set. Locally authenticated user */
-        return vtysh_is_rbac_user_permitted(username, resource);
-    }
-}
-
 void
 vtysh_init_vty ( struct passwd *pw)
 {
@@ -4654,7 +4478,7 @@ vtysh_init_vty ( struct passwd *pw)
   install_element (CONFIG_NODE, &no_vtysh_enable_password_cmd);
 #endif
   install_element (ENABLE_NODE, &vtysh_passwd_cmd);
-  if (vtysh_is_user_permitted(pw->pw_name, ADMIN_CMDS))
+  if (is_user_permitted(pw->pw_name, ADMIN_CMDS))
   {
     install_element (ENABLE_NODE, &vtysh_start_shell_cmd);
     install_element (ENABLE_NODE, &vtysh_reboot_cmd);
