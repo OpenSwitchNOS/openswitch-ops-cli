@@ -53,6 +53,7 @@
 #include "vtysh/banner_vty.h"
 #include "lib/cli_plugins.h"
 #include "vtysh/utils/passwd_srv_utils.h"
+#include "rbac.h"
 
 #define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
@@ -416,7 +417,8 @@ main (int argc, char **argv, char **env)
       fprintf(stderr,"Unknown User.\n");
       exit(1);
   }
-  if (!vtysh_is_user_permitted(pw->pw_name, VTY_SH))
+
+  if (!rbac_is_user_permitted(pw->pw_name, VTY_SH))
   {
       fprintf (stderr,
               "%s does not have the required permissions to access Vtysh.\n",
