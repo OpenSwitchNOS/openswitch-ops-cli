@@ -46,6 +46,7 @@ include_directories(
   ${PROJECT_SOURCE_DIR}
   ${OVSCOMMON_INCLUDE_DIRS})
 
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror")
 
 add_custom_command(
   OUTPUT gitversion.h

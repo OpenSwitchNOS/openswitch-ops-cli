@@ -228,9 +228,12 @@ int compare_both_numbers(const char *name1, const char *name2)
 |    int: zero if two VRF elements are equal, 1 if the first elemnt is
 |         bigger than second, -1 if the first element is smaller than second
 | sort comparator function.
-| Case 1: When both vrf names consists of numbers only
-| Case 2: When one vrf name consists of numbers and other is proper name
-| Case 3: When both vrf names are proper names with interface type and id
+| Case 1: When both interface name consists of numbers only
+|         Example: 10 and 12-1 etc.
+| Case 2: When one interface name consists of numbers and other is proper name
+|         Example: 10 and vlan20 etc.
+| Case 3: When both interface names are proper names with interface type and id
+|         Example: vlan20 and lo23 etc.
 -----------------------------------------------------------------------------*/
 int
 compare_nodes_vrf (const void *a_, const void *b_)
@@ -283,6 +286,11 @@ compare_interface_nodes_vrf (const void *a_, const void *b_)
     char *name_intf1 = (*a)->name;
     char *name_intf2 = (*b)->name;
 
+    /* bridge_normal has to be at the top */
+    if (!strcmp (name_intf1, "bridge_normal"))
+        return -1;
+    else if (!strcmp (name_intf2, "bridge_normal"))
+        return 1;
     /* Case 1 */
     if (isdigit(*name_intf1) && isdigit(*name_intf2))
     {
