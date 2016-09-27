@@ -70,7 +70,7 @@ target_link_libraries(vtysh PUBLIC
   ${OVSDB_LIBRARIES}
   ${OPSCLI_LIBRARIES}
   ${OPSUTILS_LIBRARIES}
-  crypt pthread readline ops-cli audit opsutils crypto)
+  crypt pthread readline ops-cli audit opsutils crypto ops-rbac)
 
 install(
   TARGETS vtysh
