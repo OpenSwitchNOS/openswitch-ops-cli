@@ -2474,7 +2474,7 @@ vty_use_backup_config (char *fullpath)
     }
 
   fullpath_tmp = malloc (strlen (fullpath) + 8);
-  snprintf (fullpath_tmp,strlen(fullpath) + 8, "%s.XXXXXX", fullpath);
+  snprintf (fullpath_tmp,strlen (fullpath) + 8, "%s.XXXXXX", fullpath);
   
   /* Open file to configuration write. */
   tmp = mkstemp (fullpath_tmp);

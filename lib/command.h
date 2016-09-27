@@ -593,6 +593,7 @@ struct dyn_cb_func
 #define INTERFACE_STR "Interface infomation\n"
 #define INTERFACE_NO_STR "Delete a non-physical interface's configuration\n"
 #define IFNAME_STR  "Interface name(e.g. ep0)\n"
+#define INTERFACE_NO_STR "Delete a non-physical interface's configuration\n"
 #define IP6_STR     "IPv6 Information\n"
 #define OSPF6_STR   "Open Shortest Path First (OSPF) for IPv6\n"
 #define OSPF6_ROUTER_STR "Enable a routing process\n"
@@ -736,6 +737,6 @@ struct range_list* cmd_get_range_value(const char *, int);
 int cmd_input_comma_str_is_valid(const char *, enum cli_int_type);
 int cmd_input_range_match(const char *, const char *, enum cli_int_type);
 int cmd_range_comma_cli_parser_validate(const char* src, const char* dst,
-                                    enum cli_int_type type,
-                                    const char **matched, int *match);
+                                        enum cli_int_type type,
+                                        const char **matched, int *match);
 #endif /* _ZEBRA_COMMAND_H */
