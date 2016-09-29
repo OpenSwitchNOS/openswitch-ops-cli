@@ -3311,7 +3311,7 @@ int check_cmd_authorization(char *tac_command)
         }
 
         /* get the list sorted , true = default and  false = group priority*/
-        nodes = sort_tacacs_server(&sorted_tacacs_servers, by_default_priority);
+        nodes = sort_servers(&sorted_tacacs_servers, by_default_priority, true);
 
         if (nodes == NULL)
         {
