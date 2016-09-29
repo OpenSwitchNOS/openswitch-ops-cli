@@ -3310,8 +3310,10 @@ int check_cmd_authorization(char *tac_command)
           by_default_priority = true;
         }
 
-        /* get the list sorted , true = default and  false = group priority*/
-        nodes = sort_tacacs_server(&sorted_tacacs_servers, by_default_priority);
+        /* get the list sorted , true = default, false = group priority
+         * and true = is_tacacs_server_flag
+         * */
+        nodes = sort_servers(&sorted_tacacs_servers, by_default_priority, true);
 
         if (nodes == NULL)
         {

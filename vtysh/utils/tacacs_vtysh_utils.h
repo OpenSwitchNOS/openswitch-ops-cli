@@ -21,6 +21,8 @@
 
 int compare_nodes_by_tacacs_server_default_priority (const void * , const void * );
 int compare_nodes_by_tacacs_server_group_priority (const void * , const void * );
-const struct shash_node **sort_tacacs_server(struct shash * , bool );
+int compare_nodes_by_radius_server_default_priority (const void * , const void * );
+int compare_nodes_by_radius_server_group_priority (const void * , const void * );
+const struct shash_node **sort_servers(struct shash * , bool, bool );
 
 #endif
