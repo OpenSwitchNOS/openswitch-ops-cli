@@ -32,17 +32,22 @@ Boston, MA 02111-1307, USA.  */
 #include "vector.h"
 #include "vty.h"
 #include "command.h"
+#include "shash.h"
 #include "workqueue.h"
 #ifdef ENABLE_OVSDB
 #include "lib_vtysh_ovsdb_if.h"
 #include "vtysh/vtysh_ovsdb_if.h"
+#include "vtysh/vtysh_ovsdb_config.h"
+#include "vtysh/vtysh_ovsdb_config_context.h"
 #include "vty_utils.h"
 #include "openvswitch/vlog.h"
+#include "vtysh/utils/tacacs_vtysh_utils.h"
 #include "vtysh/utils/audit_log_utils.h"
 #include "ovsdb-idl.h"
 #include "vtysh/utils/vlan_vtysh_utils.h"
 #include <latch.h>
 VLOG_DEFINE_THIS_MODULE(vtysh_command);
+extern struct ovsdb_idl *idl;
 #endif
 
 #define MAX_CMD_LEN 256
@@ -50,7 +55,6 @@ VLOG_DEFINE_THIS_MODULE(vtysh_command);
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec = NULL;
-
 #define AUDIT_LOG_USER_MSG(vty, cfgdata, ret) \
     if (vty->node >= CONFIG_NODE){ \
        const char *hostname = vtysh_ovsdb_hostname_get(); \
@@ -3238,6 +3242,159 @@ autocomplete_command_tokens(struct cmd_element *matched_element, vector vline,
   return cmd_string;
 }
 
+int check_cmd_authorization(char *tac_command)
+{
+
+  int count = 0;
+  const struct ovsrec_tacacs_server *server_row = NULL;
+  const struct ovsrec_aaa_server_group *group_row = NULL;
+  const struct ovsrec_system *ovs = ovsrec_system_first(idl);
+  const struct ovsrec_aaa_server_group_prio *group_prio_list = NULL;
+  struct shash sorted_tacacs_servers;
+  const struct shash_node **nodes = NULL;
+  int count_servers = 0;
+  int idx = 0;
+  int iter = 0;
+  char *passkey = NULL;
+  char *timeout_str = NULL;
+  int timeout = 0;
+  char *tty = "mytty";
+  char *remote_addr = "";
+  char *service = "shell";
+  char *protocol = "ip";
+  int tac_author_status = EXIT_OK;
+  bool by_default_priority = false;
+  struct passwd *pw;
+  /* get the logged in user.*/
+  pw = getpwuid( getuid());
+
+  group_prio_list = ovsrec_aaa_server_group_prio_first(idl);
+
+  if (group_prio_list == NULL)
+  {
+    VLOG_DBG("Could not fetch the priority list for tacacs command authorization");
+    return EXIT_FAIL;
+  }
+
+  /* count the number of groups configured for authorization */
+  count = group_prio_list->n_authorization_group_prios;
+
+  /* check if the number of groups configured is more than one(default) and first group is not "none" */
+  if (count >= 1 && (strcmp(group_prio_list->value_authorization_group_prios[0]->group_name, TAC_NONE_GROUP) != 0))
+  {
+    for (iter = 0; iter < count; iter ++)
+    {
+      /* get the group information */
+      group_row = group_prio_list->value_authorization_group_prios[iter];
+
+      if (strcmp(group_row->group_name, TAC_NONE_GROUP) != 0)
+      {
+        /* initialize the list*/
+        shash_init(&sorted_tacacs_servers);
+        /* Add servers to list if the it is added to group configured for authorization */
+        OVSREC_TACACS_SERVER_FOR_EACH(server_row, idl)
+        {
+          if (server_row->n_group > 1 && (server_row->group[0] == group_row || server_row->group[1] == group_row))
+          {
+            shash_add(&sorted_tacacs_servers, server_row->address, (void *)server_row);
+          }
+          else if (strcmp(group_row->group_name, TAC_DEFAULT_GROUP) == 0)
+          {
+            shash_add(&sorted_tacacs_servers, server_row->address, (void *)server_row);
+          }
+        }
+
+        /* if the groups is default sort by default priority else by group priority */
+        if (strcmp(group_row->group_name, TAC_DEFAULT_GROUP) == 0)
+        {
+          by_default_priority = true;
+        }
+
+        /* get the list sorted , true = default, false = group priority
+         * and true = is_tacacs_server_flag
+         * */
+        nodes = sort_servers(&sorted_tacacs_servers, by_default_priority, true);
+
+        if (nodes == NULL)
+        {
+           shash_destroy(&sorted_tacacs_servers);
+           VLOG_DBG("Failed to get the sorted tacacs server list");
+           return EXIT_FAIL;
+        }
+
+        /* get the number of servers in the list */
+        count_servers = shash_count(&sorted_tacacs_servers);
+        /* send the cmd for authorization to all the servers in the list*/
+        for(idx = 0; idx < count_servers; idx++)
+        {
+          server_row = (const struct ovsrec_tacacs_server *)nodes[idx]->data;
+          /* check if timeout is set by user or get global value*/
+          if (server_row->timeout)
+          {
+            timeout = *(server_row->timeout);
+          }
+	  else
+          {
+            timeout_str = strdup(smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_TIMEOUT));
+            timeout = atoi(timeout_str);
+          }
+          /* check if passkey is set by user or get global value*/
+          if (server_row->passkey)
+          {
+            strncpy(passkey, server_row->passkey, strlen(server_row->passkey));
+            passkey[strlen(server_row->passkey)+1] = '\0';
+          }
+          else
+          {
+            passkey =  strdup(smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_PASSKEY));
+          }
+
+          /*send the command for authorization*/
+          tac_author_status = tac_cmd_author_ptr(server_row->address, passkey, pw->pw_name,
+                                                 tty, remote_addr, service, protocol, tac_command,
+                                                 timeout, true, NULL, NULL, NULL);
+          /* if authorized, return */
+          if (tac_author_status == EXIT_OK)
+          {
+            VLOG_DBG(" %s command authorized for %s\n", tac_command, pw->pw_name);
+            free(nodes);
+            shash_destroy(&sorted_tacacs_servers);
+            return tac_author_status;
+          }
+          /*if not authorized, return */
+          else if (tac_author_status == EXIT_FAIL)
+          {
+            free(nodes);
+            shash_destroy(&sorted_tacacs_servers);
+            return tac_author_status;
+          }
+        }
+        /*
+         * Did not get a valid reply from the servers in this group.
+         * destroy the list and free the node,
+         * so that it can be initialized for different group.
+         */
+        free(nodes);
+        shash_destroy(&sorted_tacacs_servers);
+      }
+      else
+      {
+        return EXIT_OK;
+      }
+    }
+    /*
+     * if we are at this stage that means user is not authorized to execute this command
+     * in any of the servers.We need to check if the last option for authorization is
+     * not none. if not, we should not let the user execute this command.
+     */
+    if (strcmp(group_prio_list->value_authorization_group_prios[count]->group_name, TAC_NONE_GROUP) != 0)
+    {
+      tac_author_status = EXIT_FAIL;
+      VLOG_DBG("Did not recieve valid authorization response from any of the configured servers");
+    }
+  }
+  return tac_author_status;
+}
 
 /* Execute command by argument vline vector. */
 static int
@@ -3261,6 +3418,9 @@ cmd_execute_command_real (vector vline,
   char op[MAX_OP_DESC_LEN];
   char *cfgdata;
   char cmd_string[MAX_CFGDATA_LEN] = "";
+  char *tac_command = NULL;
+  int tac_author_return = 0;
+  bool ready = false;
 
   /* Make copy of command elements. */
   cmd_vector = vector_copy (cmd_node_vector (cmdvec, vty->node));
@@ -3352,6 +3512,28 @@ cmd_execute_command_real (vector vline,
   if (cmd)
     *cmd = matched_element;
 
+  /* copy the command to be sent for cmd authorization */
+  tac_command = (char*)matched_element->string;
+  /* if the command is exit or end, allow it*/
+  if ((strcmp(tac_command, EXIT_CMD) != 0) &&
+      (strcmp(tac_command, END_CMD) != 0))
+  {
+    /* check if the system and db is ready */
+    VTYSH_OVSDB_LOCK;
+    ready = vtysh_chk_for_system_configured_db_is_ready();
+    VTYSH_OVSDB_UNLOCK;
+    if (ready == true)
+    {
+      /* send command for authorization */
+      tac_author_return = check_cmd_authorization(tac_command);
+      if (tac_author_return == EXIT_FAIL)
+      {
+        vty_out(vty, "Cannot execute command. Command not allowed.\n");
+        return CMD_ERR_NOTHING_TODO;
+      }
+    }
+  }
+
   if (matched_element->daemon)
     return CMD_SUCCESS_DAEMON;
   vty->buf = (char*)matched_element->string;
@@ -3400,7 +3582,6 @@ cmd_execute_command_real (vector vline,
   {
       struct range_list *temp = vty->index_list;
       static char ifnumber[MAX_IFNAME_LENGTH];
-      bool ready = false;
       if (temp != NULL)
       {
           while (temp != NULL)

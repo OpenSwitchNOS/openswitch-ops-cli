@@ -40,7 +40,7 @@
 #include "command.h"
 #include "memory.h"
 #include "timeval.h"
-
+#include <ltdl.h>
 #include <libaudit.h>
 #include "vtysh/vtysh.h"
 #include "vtysh/vtysh_user.h"
@@ -53,13 +53,23 @@
 #include "vtysh/banner_vty.h"
 #include "lib/cli_plugins.h"
 #include "vtysh/utils/passwd_srv_utils.h"
+#include "rbac.h"
 
 #define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
 #endif
 
+#define AAA_UTILS_SO_PATH "/usr/lib/security/libpam_tacplus.so"
+
 extern int64_t timeout_start;
 extern struct termios tp;
+
+/* tacacs command authorization function pointer */
+int (*tac_cmd_author_ptr)(const char *, const char *,
+                            const char *, char * , char *,
+                            char *, char *, char  *,
+                            int , bool , const char *,
+                            const char *, const char * ) = NULL;
 
 /* Return value of audit_open call. Use for subsequent audit call.*/
 int audit_fd = 0;
@@ -276,6 +286,25 @@ static void log_it(const char *line)
   fprintf(logfile, "%s:%s %s\n", tod, user, line);
 }
 
+static void tacacs_author_func_ptr_init()
+{
+  lt_dlhandle dhhandle = 0;
+  lt_dlinit();
+  lt_dlerror();
+
+  dhhandle = lt_dlopen (AAA_UTILS_SO_PATH);
+  if (lt_dlerror())
+  {
+    VLOG_ERR ("Failed to load the rbac library for sending command for authorization");
+  }
+
+  tac_cmd_author_ptr = lt_dlsym (dhhandle,"tac_cmd_author");
+  if (tac_cmd_author_ptr == NULL)
+  {
+    VLOG_ERR ("Could not get the lock for %s", AAA_UTILS_SO_PATH);
+  }
+}
+
 /* VTY shell main routine. */
 int
 main (int argc, char **argv, char **env)
@@ -389,7 +418,7 @@ main (int argc, char **argv, char **env)
       exit(1);
   }
 
-  if (!vtysh_is_user_permitted(pw->pw_name, VTY_SH))
+  if (!rbac_is_user_permitted(pw->pw_name, VTY_SH))
   {
       fprintf (stderr,
               "%s does not have the required permissions to access Vtysh.\n",
@@ -581,6 +610,8 @@ main (int argc, char **argv, char **env)
 #endif
 
   ospf_area_vlink_init();
+
+  tacacs_author_func_ptr_init();
 
   /* Main command loop. */
   while (vtysh_rl_gets ())
