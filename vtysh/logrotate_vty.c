@@ -153,6 +153,7 @@ static int set_logrotate_target(const char *uri)
 
     if(strncmp(uri,SYSTEM_LOGROTATE_CONFIG_MAP_TARGET_DEFAULT,5))
     {
+        {
         ip_value = uri+7;
 
         if ((strlen(uri) <= 7) || (strncmp(uri,"tftp://",7)))
