@@ -84,5 +84,6 @@ install(
   FILES
   utils/system_vtysh_utils.h utils/vlan_vtysh_utils.h utils/lacp_vtysh_utils.h
   utils/intf_vtysh_utils.h utils/vrf_vtysh_utils.h utils/ovsdb_vtysh_utils.h
+  utils/audit_log_utils.h utils/l3_vtysh_utils.h
   utils/audit_log_utils.h utils/l3_vtysh_utils.h utils/tacacs_vtysh_utils.h
   DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/vtysh/utils")
