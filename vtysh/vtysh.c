@@ -134,6 +134,7 @@ extern char config_default[];
 
 void ospf_vty_init(void);
 
+
 static void
 vclient_close (struct vtysh_client *vclient)
 {
@@ -3305,7 +3306,6 @@ vtysh_prompt (void)
 }
 
 #ifdef ENABLE_OVSDB
-
 
 /* Function to create new user with password and add it to the ovsdb-cliet group*/
 static int

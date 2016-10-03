@@ -749,7 +749,7 @@ show_subinterface_status(const struct ovsrec_interface *ifrow, bool brief,
                         OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0) &&
                 ((ifrow->admin_state != NULL) &&
                  (strcmp(ifrow->admin_state,
-                    OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0))) ?
+                  OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP) == 0))) ?
                 OVSREC_INTERFACE_USER_CONFIG_ADMIN_UP:
                 OVSREC_INTERFACE_USER_CONFIG_ADMIN_DOWN);
 
@@ -930,6 +930,7 @@ DEFUN (cli_intf_show_subintferface_if_all,
     bool brief = false;
     const struct shash_node **nodes;
     int idx, count;
+    bool known_intf = false;
     const char *parent_intf = NULL;
 
     if (argv[0] != NULL) {
@@ -985,7 +986,17 @@ DEFUN (cli_intf_show_subintferface_if_all,
     for (idx = 0; idx < count; idx++)
     {
         ifrow = (const struct ovsrec_interface *)nodes[idx]->data;
+        if (!known_intf && brief)
+        {
+            display_subinterface_brief_header();
+        }
+
         cli_show_subinterface_row(ifrow, brief);
+        known_intf = true;
+    }
+    if (!known_intf && argv[0])
+    {
+        vty_out(vty,"%% Unknown interface%s", VTY_NEWLINE);
     }
 
     shash_destroy(&sorted_interfaces);
@@ -998,7 +1009,7 @@ DEFUN (vtysh_sub_interface,
         vtysh_sub_interface_cmd,
         "interface A.B",
         "Select an interface to configure\n"
-        "Subinterface name as physical_interface.subinterface name\n")
+        "Subinterface name as physical_interface.subinterface name <1-4294967293>\n")
 {
     return create_sub_interface(argv[0]);
 }
