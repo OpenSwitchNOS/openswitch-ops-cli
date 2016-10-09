@@ -724,6 +724,7 @@ void install_dyn_helpstr_funcptr(char *funcname,
 #define TAC_DEFAULT_GROUP                      "tacacs_plus"
 #define EXIT_OK                                0
 #define EXIT_FAIL                              1
+#define EXIT_CONN_ERR                          2
 #define SYSTEM_AAA_TACACS_TIMEOUT              "tacacs_timeout"
 #define SYSTEM_AAA_TACACS_PASSKEY              "tacacs_passkey"
 #define SYSTEM_AAA_TACACS_AUTH                 "tacacs_auth"

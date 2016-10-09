@@ -3387,10 +3387,10 @@ int check_cmd_authorization(char *tac_command)
      * in any of the servers.We need to check if the last option for authorization is
      * not none. if not, we should not let the user execute this command.
      */
-    if (strcmp(group_prio_list->value_authorization_group_prios[count]->group_name, TAC_NONE_GROUP) != 0)
+    if (strcmp(group_prio_list->value_authorization_group_prios[iter-1]->group_name, TAC_NONE_GROUP) != 0)
     {
-      tac_author_status = EXIT_FAIL;
-      VLOG_DBG("Did not recieve valid authorization response from any of the configured servers");
+      tac_author_status = EXIT_CONN_ERR;
+      VLOG_DBG("Did not receive valid authorization response from any of the configured servers");
     }
   }
   return tac_author_status;
@@ -3529,6 +3529,11 @@ cmd_execute_command_real (vector vline,
       if (tac_author_return == EXIT_FAIL)
       {
         vty_out(vty, "Cannot execute command. Command not allowed.\n");
+        return CMD_ERR_NOTHING_TODO;
+      }
+      else if (tac_author_return == EXIT_CONN_ERR)
+      {
+        vty_out(vty, "Cannot execute command. Could not connect to any TACACS+ servers.\n");
         return CMD_ERR_NOTHING_TODO;
       }
     }
