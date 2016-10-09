@@ -3256,7 +3256,8 @@ int check_cmd_authorization(char *tac_command)
   int idx = 0;
   int iter = 0;
   char *passkey = NULL;
-  char *timeout_str = NULL;
+  const char *passkey_const = NULL;
+  const char *timeout_str = NULL;
   int timeout = 0;
   char *tty = "mytty";
   char *remote_addr = "";
@@ -3268,11 +3269,15 @@ int check_cmd_authorization(char *tac_command)
   /* get the logged in user.*/
   pw = getpwuid( getuid());
 
+  passkey = (char *)malloc(MAX_LENGTH_TACACS_PASSKEY * sizeof(char));
+  memset(passkey, '\0', MAX_LENGTH_TACACS_PASSKEY);
+
   group_prio_list = ovsrec_aaa_server_group_prio_first(idl);
 
   if (group_prio_list == NULL)
   {
     VLOG_DBG("Could not fetch the priority list for tacacs command authorization");
+    free(passkey);
     return EXIT_FAIL;
   }
 
@@ -3335,7 +3340,7 @@ int check_cmd_authorization(char *tac_command)
           }
 	  else
           {
-            timeout_str = strdup(smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_TIMEOUT));
+            timeout_str = smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_TIMEOUT);
             timeout = atoi(timeout_str);
           }
           /* check if passkey is set by user or get global value*/
@@ -3346,7 +3351,9 @@ int check_cmd_authorization(char *tac_command)
           }
           else
           {
-            passkey =  strdup(smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_PASSKEY));
+            passkey_const = smap_get(&ovs->aaa, SYSTEM_AAA_TACACS_PASSKEY);
+            strncpy(passkey, passkey_const, strlen(passkey_const));
+            passkey[strlen(passkey_const)+1] = '\0';
           }
 
           /*send the command for authorization*/
@@ -3357,6 +3364,7 @@ int check_cmd_authorization(char *tac_command)
           if (tac_author_status == EXIT_OK)
           {
             VLOG_DBG(" %s command authorized for %s\n", tac_command, pw->pw_name);
+            free(passkey);
             free(nodes);
             shash_destroy(&sorted_tacacs_servers);
             return tac_author_status;
@@ -3364,6 +3372,7 @@ int check_cmd_authorization(char *tac_command)
           /*if not authorized, return */
           else if (tac_author_status == EXIT_FAIL)
           {
+            free(passkey);
             free(nodes);
             shash_destroy(&sorted_tacacs_servers);
             return tac_author_status;
@@ -3374,11 +3383,13 @@ int check_cmd_authorization(char *tac_command)
          * destroy the list and free the node,
          * so that it can be initialized for different group.
          */
+        free(passkey);
         free(nodes);
         shash_destroy(&sorted_tacacs_servers);
       }
       else
       {
+        free(passkey);
         return EXIT_OK;
       }
     }
@@ -3387,10 +3398,10 @@ int check_cmd_authorization(char *tac_command)
      * in any of the servers.We need to check if the last option for authorization is
      * not none. if not, we should not let the user execute this command.
      */
-    if (strcmp(group_prio_list->value_authorization_group_prios[count]->group_name, TAC_NONE_GROUP) != 0)
+    if (strcmp(group_prio_list->value_authorization_group_prios[iter-1]->group_name, TAC_NONE_GROUP) != 0)
     {
-      tac_author_status = EXIT_FAIL;
-      VLOG_DBG("Did not recieve valid authorization response from any of the configured servers");
+      tac_author_status = EXIT_CONN_ERR;
+      VLOG_DBG("Did not receive valid authorization response from any of the configured servers");
     }
   }
   return tac_author_status;
@@ -3529,6 +3540,11 @@ cmd_execute_command_real (vector vline,
       if (tac_author_return == EXIT_FAIL)
       {
         vty_out(vty, "Cannot execute command. Command not allowed.\n");
+        return CMD_ERR_NOTHING_TODO;
+      }
+      else if (tac_author_return == EXIT_CONN_ERR)
+      {
+        vty_out(vty, "Cannot execute command. Could not connect to any TACACS+ servers.\n");
         return CMD_ERR_NOTHING_TODO;
       }
     }
