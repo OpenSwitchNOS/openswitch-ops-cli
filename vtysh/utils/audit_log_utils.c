@@ -48,6 +48,7 @@ audit_log_user_msg(char *op, const char *cfgdata, char *hostname, int result)
 {
     char aubuf[MAX_CFGDATA_LEN];
     char *cfg;
+    const char *remote_user = getenv(REMOTE_USER_ENV);
 
     strcat(strcpy(aubuf, op), " ");
 
@@ -55,10 +56,19 @@ audit_log_user_msg(char *op, const char *cfgdata, char *hostname, int result)
     if (cfgdata != NULL){
        cfg = audit_encode_nv_string("data", cfgdata, 0);
        if (cfg != NULL){
-           strcat(strncat(aubuf, cfg,
-                          (MAX_CFGDATA_LEN - (MAX_OP_DESC_LEN + 1))), " ");
+           strncat(strncat(aubuf,
+                          cfg,
+                          (MAX_CFGDATA_LEN - (MAX_OP_DESC_LEN + MAX_RUSER_NAME_LEN + MAX_RUSER_ENV_LEN + 1))),
+                   " ",
+                   strlen(" "));
            free(cfg);
        }
+    }
+
+    if (remote_user != NULL) {
+        char user_name[MAX_RUSER_NAME_LEN];
+        snprintf(user_name, MAX_RUSER_NAME_LEN + MAX_RUSER_ENV_LEN, "user=%s", remote_user);
+        strncat(aubuf, user_name, MAX_RUSER_NAME_LEN + MAX_RUSER_ENV_LEN);
     }
     /* Call audit log event*/
     audit_log_user_message(audit_fd, AUDIT_USYS_CONFIG, aubuf, hostname, NULL,
