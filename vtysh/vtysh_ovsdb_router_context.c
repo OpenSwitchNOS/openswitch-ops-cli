@@ -710,8 +710,9 @@ vtysh_router_context_bgp_clientcallback(void *p_private)
                                       bgp_router_row->value_timers[0]);
 
             if (bgp_router_row->n_fast_external_failover)
-                vtysh_ovsdb_cli_print(p_msg, "%4s %s", "",
-                                      "bgp fast-external-failover");
+                if (*(bgp_router_row->fast_external_failover))
+                    vtysh_ovsdb_cli_print(p_msg, "%4s %s", "",
+                                          "bgp fast-external-failover");
 
             if (bgp_router_row->n_log_neighbor_changes)
                 vtysh_ovsdb_cli_print(p_msg, "%4s %s", "",

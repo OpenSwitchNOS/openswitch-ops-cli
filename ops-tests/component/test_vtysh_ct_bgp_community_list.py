@@ -19,6 +19,7 @@
 """
 OpenSwitch Test for switchd related configurations.
 """
+from pytest import mark
 
 
 TOPOLOGY = """
@@ -146,6 +147,7 @@ def delete_bgp_extcommunity_list(dut, step):
     assert community_deleted is True
 
 
+@mark.gate
 def test_vtysh_ct_bgp_community_list(topology, step):
     ops1 = topology.get("ops1")
     assert ops1 is not None

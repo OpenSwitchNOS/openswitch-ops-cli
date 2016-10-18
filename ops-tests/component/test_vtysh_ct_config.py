@@ -30,21 +30,6 @@ TOPOLOGY = """
 [type=openswitch name="OpenSwitch 1"] ops1
 """
 
-
-def enablelldptest(dut, step):
-    step('Test to verify show running-config for lldp enable')
-    enable_lldp = False
-    out = dut('configure terminal')
-    out = dut('lldp enable')
-    out = dut('do show running-config')
-    dut('end')
-    lines = out.splitlines()
-    for line in lines:
-        if 'lldp enable' in line:
-            enable_lldp = True
-    assert enable_lldp is True
-
-
 def setlldpholdtimetest(dut, step):
     step('Test to verify show running-config for lldp holdtime')
     set_lldp_hold_time = False
@@ -304,8 +289,6 @@ def test_vtysh_ct_config(topology, step):
     assert ops1 is not None
 
     restoreconfigfromrunningconfig(ops1, step)
-
-    enablelldptest(ops1, step)
 
     setlldpholdtimetest(ops1, step)
 
