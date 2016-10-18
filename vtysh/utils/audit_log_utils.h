@@ -27,8 +27,10 @@
 #ifndef NULL
 #define NULL 0
 #endif
-#define MAX_OP_DESC_LEN 20
-#define MAX_CFGDATA_LEN 1000
+#define MAX_OP_DESC_LEN    20
+#define MAX_CFGDATA_LEN    1288
+#define MAX_RUSER_NAME_LEN  288
+#define REMOTE_USER_ENV    "RUSER"
 
 void audit_log_user_msg(char *op, const char *cfgdata, char *hostname, int result);
 extern int audit_fd;

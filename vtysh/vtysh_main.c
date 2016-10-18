@@ -54,6 +54,7 @@
 #include "lib/cli_plugins.h"
 #include "vtysh/utils/passwd_srv_utils.h"
 #include "rbac.h"
+#include "vtysh/utils/audit_log_utils.h"
 
 #define FEATURES_CLI_PATH     "/usr/lib/cli/plugins"
 VLOG_DEFINE_THIS_MODULE(vtysh_main);
@@ -420,9 +421,16 @@ main (int argc, char **argv, char **env)
 
   if (!rbac_is_user_permitted(pw->pw_name, VTY_SH))
   {
-      fprintf (stderr,
+      const char *remote_user = getenv(REMOTE_USER_ENV);
+      if (remote_user != NULL) {
+          fprintf (stderr,
+              "%s does not have the required permissions to access Vtysh.\n",
+              remote_user);
+      } else {
+          fprintf (stderr,
               "%s does not have the required permissions to access Vtysh.\n",
               pw->pw_name);
+      }
       exit(1);
   }
 #ifdef ENABLE_OVSDB
