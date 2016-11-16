@@ -3681,9 +3681,29 @@ cmd_execute_command (vector vline, struct vty *vty, struct cmd_element **cmd,
       shifted_vline = vector_init (vector_count(vline));
       /* use memcpy? */
       for (index = 1; index < vector_active (vline); index++)
-	{
-	  vector_set_index (shifted_vline, index-1, vector_lookup(vline, index));
-	}
+      {
+        vector_set_index (shifted_vline, index-1, vector_lookup(vline, index));
+      }
+
+      ret = cmd_execute_command_real (shifted_vline, FILTER_RELAXED, vty, cmd);
+
+      vector_free(shifted_vline);
+
+      if (ret != CMD_ERR_NO_MATCH) { 
+        vty->node = onode;
+        vty->index_list = temp;
+        return ret;
+      }
+
+      vty->node = VIEW_NODE;
+      /* We can try it on enable node, cos' the vty is authenticated */
+
+      shifted_vline = vector_init (vector_count(vline));
+      /* use memcpy? */
+      for (index = 1; index < vector_active (vline); index++)
+      {
+        vector_set_index (shifted_vline, index-1, vector_lookup(vline, index));
+      }
 
       ret = cmd_execute_command_real (shifted_vline, FILTER_RELAXED, vty, cmd);
 
